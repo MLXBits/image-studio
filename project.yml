@@ -1,0 +1,50 @@
+name: MLXBits Image Studio
+options:
+  bundleIdPrefix: com.mlxbits
+  deploymentTarget:
+    macOS: "14.0"
+  xcodeVersion: "15.0"
+  createIntermediateGroups: true
+  generateEmptyDirectories: true
+
+settings:
+  base:
+    SWIFT_VERSION: "5.9"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    SWIFT_STRICT_CONCURRENCY: minimal
+    CODE_SIGN_STYLE: Automatic
+    ENABLE_HARDENED_RUNTIME: YES
+
+targets:
+  MLXBits Image Studio:
+    type: application
+    platform: macOS
+    sources:
+      - path: .
+        excludes:
+          - "*.yml"
+          - "*.md"
+          - ".git/**"
+          - "*.xcodeproj/**"
+    info:
+      path: Resources/Info.plist
+      properties:
+        CFBundleName: MLXBits Image Studio
+        CFBundleIdentifier: com.mlxbits.image-studio
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: ""
+        NSPrincipalClass: NSApplication
+        NSHighResolutionCapable: true
+        NSSupportsAutomaticGraphicsSwitching: true
+    entitlements:
+      path: Resources/MLXBits_Image_Studio.entitlements
+      properties:
+        com.apple.security.app-sandbox: false
+        com.apple.security.files.user-selected.read-write: true
+        com.apple.security.network.client: true
+    settings:
+      base:
+        PRODUCT_NAME: "MLXBits Image Studio"
+        PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio
