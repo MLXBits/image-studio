@@ -1,0 +1,477 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */; };
+		01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */; };
+		05D0EFBB04B11FB433F2B181 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_3E8DCB4C-96A3-4CF2-B18E-681F1F061F3A" /* ContentView.swift */; };
+		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
+		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
+		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
+		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
+		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
+		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
+		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
+		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
+		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
+		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
+		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
+		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
+		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
+		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
+		C18FF45A49A46D429A6D2780 /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_503946E3-777E-474F-BAC4-6989B0E6E3FA" /* MLXBitsImageStudioApp.swift */; };
+		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
+		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
+		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
+		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
+		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
+		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
+		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
+		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
+		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
+		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
+		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
+		9135F9C12F493D9C0C50F9C0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
+		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
+		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
+		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
+		B4AC7D434D66D9191658D727 /* MLXBits_Image_Studio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MLXBits_Image_Studio.entitlements; sourceTree = "<group>"; };
+		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
+		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
+		DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepwisePreviewView.swift; sourceTree = "<group>"; };
+		DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
+		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
+		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
+		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
+		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
+		"TEMP_3E8DCB4C-96A3-4CF2-B18E-681F1F061F3A" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		"TEMP_503946E3-777E-474F-BAC4-6989B0E6E3FA" /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		03F175B8A6A79FC1A8184DE3 /* Queue */ = {
+			isa = PBXGroup;
+			children = (
+				B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */,
+			);
+			path = Queue;
+			sourceTree = "<group>";
+		};
+		117682124434130DAFA9B142 /* Utilities */ = {
+			isa = PBXGroup;
+			children = (
+				A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */,
+				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
+				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
+			);
+			path = Utilities;
+			sourceTree = "<group>";
+		};
+		488186364822998F1551919C = {
+			isa = PBXGroup;
+			children = (
+				EF16D0F619C4921D0A476F26 /* Models */,
+				AB119E2514CE274AB18259A7 /* Resources */,
+				9F6BCBE28C9814EF7779D261 /* Runner */,
+				F0AE2F196D188960303A9263 /* Stores */,
+				117682124434130DAFA9B142 /* Utilities */,
+				B710AC1696FB0682EE9DD323 /* Views */,
+				59578468794BD12E79493C05 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		59578468794BD12E79493C05 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		72528118E0360DB5F808B0BC /* ParamsPanel */ = {
+			isa = PBXGroup;
+			children = (
+				B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */,
+				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
+				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
+				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
+			);
+			path = ParamsPanel;
+			sourceTree = "<group>";
+		};
+		9F6BCBE28C9814EF7779D261 /* Runner */ = {
+			isa = PBXGroup;
+			children = (
+				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
+			);
+			path = Runner;
+			sourceTree = "<group>";
+		};
+		AB119E2514CE274AB18259A7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				9135F9C12F493D9C0C50F9C0 /* Info.plist */,
+				B4AC7D434D66D9191658D727 /* MLXBits_Image_Studio.entitlements */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		AE6CA2D7C353EC349D6C918D /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A31CFEFF049480510A99BB2F /* SettingsView.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		B4967038153E9BBCF696B8BA /* PreviewPane */ = {
+			isa = PBXGroup;
+			children = (
+				6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */,
+				529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */,
+				DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */,
+			);
+			path = PreviewPane;
+			sourceTree = "<group>";
+		};
+		B710AC1696FB0682EE9DD323 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				DB23B4F3B654A98909C6B6E3 /* Gallery */,
+				72528118E0360DB5F808B0BC /* ParamsPanel */,
+				B4967038153E9BBCF696B8BA /* PreviewPane */,
+				03F175B8A6A79FC1A8184DE3 /* Queue */,
+				AE6CA2D7C353EC349D6C918D /* Settings */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		DB23B4F3B654A98909C6B6E3 /* Gallery */ = {
+			isa = PBXGroup;
+			children = (
+				EB0CE758913192CEFE013E01 /* GalleryItemView.swift */,
+				B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */,
+			);
+			path = Gallery;
+			sourceTree = "<group>";
+		};
+		EF16D0F619C4921D0A476F26 /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				91C5CA95EAA14C772647C853 /* FluxJob.swift */,
+				EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */,
+				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		F0AE2F196D188960303A9263 /* Stores */ = {
+			isa = PBXGroup;
+			children = (
+				3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */,
+				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
+				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
+			);
+			path = Stores;
+			sourceTree = "<group>";
+		};
+		"TEMP_5E0CD1EE-97DC-47ED-A0C1-CCE86F482C96" /* . */ = {
+			isa = PBXGroup;
+			children = (
+				"TEMP_503946E3-777E-474F-BAC4-6989B0E6E3FA" /* MLXBitsImageStudioApp.swift */,
+				"TEMP_3E8DCB4C-96A3-4CF2-B18E-681F1F061F3A" /* ContentView.swift */,
+				9F6BCBE28C9814EF7779D261 /* Runner */,
+				AB119E2514CE274AB18259A7 /* Resources */,
+				F0AE2F196D188960303A9263 /* Stores */,
+				EF16D0F619C4921D0A476F26 /* Models */,
+				117682124434130DAFA9B142 /* Utilities */,
+				B710AC1696FB0682EE9DD323 /* Views */,
+			);
+			name = .;
+			path = .;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		FD361358DA78AED467EBF531 /* MLXBits Image Studio */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 11644E12E4E096464A3FE521 /* Build configuration list for PBXNativeTarget "MLXBits Image Studio" */;
+			buildPhases = (
+				7180A44B4EABA08AA5126CD2 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "MLXBits Image Studio";
+			packageProductDependencies = (
+			);
+			productName = "MLXBits Image Studio";
+			productReference = 3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		9AEA2A5DAB777680E33673B0 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					FD361358DA78AED467EBF531 = {
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 80B2D1A9A84BE0DFA37267DB /* Build configuration list for PBXProject "MLXBits Image Studio" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 488186364822998F1551919C;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 59578468794BD12E79493C05 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				FD361358DA78AED467EBF531 /* MLXBits Image Studio */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		7180A44B4EABA08AA5126CD2 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
+				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
+				4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */,
+				05D0EFBB04B11FB433F2B181 /* ContentView.swift in Sources */,
+				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
+				9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */,
+				C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */,
+				6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */,
+				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
+				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
+				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
+				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
+				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
+				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
+				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
+				C18FF45A49A46D429A6D2780 /* MLXBitsImageStudioApp.swift in Sources */,
+				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
+				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
+				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,
+				2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */,
+				A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */,
+				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
+				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		0B11ECDD2C74C4303160A53E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.mlxbits.image-studio";
+				PRODUCT_NAME = "MLXBits Image Studio";
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		13DBFCB45D040ECB77F5F2F6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio.entitlements;
+				COMBINE_HIDPI_IMAGES = YES;
+				INFOPLIST_FILE = Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = "com.mlxbits.image-studio";
+				PRODUCT_NAME = "MLXBits Image Studio";
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		99A79175BAB8DC0E2C7FADCA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		FC1B3AB16075326E105FC231 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = minimal;
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		11644E12E4E096464A3FE521 /* Build configuration list for PBXNativeTarget "MLXBits Image Studio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				0B11ECDD2C74C4303160A53E /* Debug */,
+				13DBFCB45D040ECB77F5F2F6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		80B2D1A9A84BE0DFA37267DB /* Build configuration list for PBXProject "MLXBits Image Studio" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				99A79175BAB8DC0E2C7FADCA /* Debug */,
+				FC1B3AB16075326E105FC231 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 9AEA2A5DAB777680E33673B0 /* Project object */;
+}
