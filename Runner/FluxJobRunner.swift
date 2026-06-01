@@ -246,7 +246,7 @@ final class FluxJobRunner {
 
     private func startStepwiseWatcher(job: FluxJob, dir: URL) {
         stopStepwiseWatcher()
-        let timer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self, weak job] _ in
+        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self, weak job] _ in
             guard let self, let job else { return }
             Task { @MainActor in self.pollStepwise(job: job, dir: dir) }
         }
