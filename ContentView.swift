@@ -17,7 +17,7 @@ final class ParamsPanelState {
     var loras: [LoraEntry] = []
     var imagePath: String = ""
     var imageStrength: Double = 0.75
-    var board: String = "Default"
+    var board: String = ""
     var batchCount: Int = 1
 
     func applyDefaults(from settings: AppSettings) {

@@ -80,7 +80,7 @@ class AppSettings {
         mfluxBinaryDir  = s.mfluxBinaryDir  ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
         outputDir       = s.outputDir       ?? ""   // empty = not yet chosen; app will prompt on first use
         defaultModel    = model
-        defaultBoard    = s.defaultBoard    ?? "Default"
+        defaultBoard    = s.defaultBoard    ?? ""
         defaultWidth    = s.defaultWidth    ?? 1024
         defaultHeight   = s.defaultHeight   ?? 1024
         defaultLoras    = s.defaultLoras    ?? []

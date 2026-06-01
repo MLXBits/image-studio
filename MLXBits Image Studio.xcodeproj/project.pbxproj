@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */; };
+		EA474B9A2B2A480F891C614F /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */; };
 		01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */; };
 		030A9E1E3E7B24EC8F29C1DB /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
@@ -44,6 +45,7 @@
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
+		4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
@@ -129,6 +131,7 @@
 			isa = PBXGroup;
 			children = (
 				B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */,
+				4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */,
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
@@ -321,6 +324,7 @@
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
+				EA474B9A2B2A480F891C614F /* FolderComboBox.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
 				030A9E1E3E7B24EC8F29C1DB /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
