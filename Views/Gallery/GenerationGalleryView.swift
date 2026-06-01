@@ -323,9 +323,6 @@ struct GenerationGalleryView: View {
             let toMove = gallery.items.filter { multiSelection.contains($0.id) }
             gallery.moveItems(toMove, toBoard: name, outputDir: settings.outputDir)
             multiSelection.removeAll()
-        } else if let item = selectedItem {
-            gallery.moveItem(item, toBoard: name, outputDir: settings.outputDir)
-            selectedItem = nil
         }
         onSelectBoard?(name)
         showingNewGroup = false
