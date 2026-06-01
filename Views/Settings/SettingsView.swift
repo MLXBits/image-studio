@@ -114,7 +114,7 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            LoraManagerView(loras: $s.defaultLoras)
+            LoraManagerView(loras: $s.defaultLoras, showNotes: true, alwaysExpanded: true)
                 .frame(maxHeight: .infinity, alignment: .top)
         }
         .padding()

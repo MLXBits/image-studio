@@ -202,6 +202,14 @@ struct ContentView: View {
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }
+        .onChange(of: settings.defaultLoras) { _, updated in
+            let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
+                e.notes.isEmpty ? nil : (e.path, e.notes)
+            })
+            for i in params.loras.indices where notesByPath[params.loras[i].path] != nil {
+                params.loras[i].notes = notesByPath[params.loras[i].path]!
+            }
+        }
         .onChange(of: showingOutputDirPrompt) { _, showing in
             if !showing, !settings.outputDir.isEmpty {
                 gallery.scan(outputDir: settings.outputDir)
