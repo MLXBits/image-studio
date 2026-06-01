@@ -161,13 +161,12 @@ struct ModelDefaultsView: View {
                 if current != nil {
                     resetButton { var d = settings.defaults(for: model); d.steps = nil; settings.updateDefaults(d, for: model) }
                 }
-                Stepper(value: bound, in: 1...150) {
-                    TextField("", value: bound, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 64)
-                        .onSubmit { bound.wrappedValue = max(1, min(150, bound.wrappedValue)) }
-                }
+                TextField("", value: bound, format: .number)
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 64)
+                    .onSubmit { bound.wrappedValue = max(1, min(150, bound.wrappedValue)) }
+                Stepper("", value: bound, in: 1...150).labelsHidden()
             }
         }
         .accessibilityLabel("Default steps for \(model.displayName)")
@@ -240,7 +239,7 @@ struct ModelDefaultsView: View {
                         settings.updateDefaults(d, for: model)
                     }
                 }
-                TextField("", text: bound)
+                TextField("org/repo or /path/to/weights", text: bound)
                     .textFieldStyle(.roundedBorder)
                     .labelsHidden()
                     .font(.caption)
@@ -248,6 +247,8 @@ struct ModelDefaultsView: View {
                         let trimmed = bound.wrappedValue.trimmingCharacters(in: .whitespaces)
                         bound.wrappedValue = trimmed
                     }
+                Button("Browse…") { browseModelDir(binding: bound) }
+                    .controlSize(.small)
                 InfoButton(
                     title: "Model source override",
                     description: "HF repo ID (e.g. mlx-community/flux2-klein-9b-8bit) " +
@@ -348,6 +349,16 @@ struct ModelDefaultsView: View {
             }
         )
         return LoraManagerView(loras: bound)
+    }
+
+    private func browseModelDir(binding: Binding<String>) {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.title = "Select Model Directory"
+        if panel.runModal() == .OK, let url = panel.url {
+            binding.wrappedValue = url.path
+        }
     }
 
     // A small × button to clear an override back to the model default

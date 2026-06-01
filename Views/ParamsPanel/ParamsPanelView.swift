@@ -341,9 +341,6 @@ struct ParamsPanelView: View {
             )
             .accessibilityLabel("Output group")
             .accessibilityHint("Subfolder name for organizing generated images")
-            .onChange(of: params.board) { _, newVal in
-                settings.defaultBoard = newVal
-            }
         }
     }
 

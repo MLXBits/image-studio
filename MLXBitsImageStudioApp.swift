@@ -21,6 +21,7 @@ struct MLXBitsImageStudioApp: App {
         Settings {
             SettingsView()
                 .environment(settings)
+                .environment(gallery)
         }
     }
 }

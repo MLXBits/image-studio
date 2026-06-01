@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(GalleryStore.self) private var gallery
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
 
@@ -52,7 +53,6 @@ struct SettingsView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .focusable(false)
                 Text("Steps, guidance, quantize, low RAM, and canvas size are configured per-model in the Models tab.")
                     .font(.caption).foregroundStyle(.tertiary)
             } header: {
@@ -88,8 +88,13 @@ struct SettingsView: View {
                     Label("No output folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption).foregroundStyle(.orange)
                 }
-                TextField("Default group", text: $s.defaultBoard)
-                        .textFieldStyle(.roundedBorder)
+                LabeledContent("Default group") {
+                    FolderComboBox(
+                        text: $s.defaultBoard,
+                        options: gallery.boards.filter { $0 != "Default" },
+                        placeholder: "Default"
+                    )
+                }
             } header: {
                 Text("Output")
             } footer: {
