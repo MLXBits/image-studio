@@ -3,15 +3,28 @@ import SwiftUI
 struct GalleryItemView: View {
     let item: GalleryItem
     let isSelected: Bool
+    let isInMultiSelection: Bool
     let onSelect: () -> Void
+    let onMultiToggle: () -> Void
+    let onRangeSelect: () -> Void
     let onRemix: (GenerationMetadata) -> Void
+    let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
     let onMoveToBoard: (String) -> Void
     let onDelete: () -> Void
     @Environment(GalleryStore.self) private var gallery
 
     var body: some View {
-        Button(action: onSelect) {
+        Button(action: {
+            let flags = NSEvent.modifierFlags
+            if flags.contains(.shift) {
+                onRangeSelect()
+            } else if flags.contains(.command) {
+                onMultiToggle()
+            } else {
+                onSelect()
+            }
+        }) {
             ZStack(alignment: .bottom) {
                 thumbnailImage
                     .frame(maxWidth: .infinity)
@@ -31,8 +44,17 @@ struct GalleryItemView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected ? Color.accentColor : Color.clear, lineWidth: 2)
+                    .stroke(isSelected || isInMultiSelection ? Color.accentColor : Color.clear, lineWidth: 2)
             )
+            .overlay(alignment: .topLeading) {
+                if isInMultiSelection {
+                    Image(systemName: "checkmark.circle.fill")
+                        .symbolRenderingMode(.palette)
+                        .foregroundStyle(Color.white, Color.accentColor)
+                        .font(.body)
+                        .padding(4)
+                }
+            }
         }
         .buttonStyle(.plain)
         .contextMenu { contextMenu }
@@ -57,13 +79,20 @@ struct GalleryItemView: View {
 
     @ViewBuilder
     private var contextMenu: some View {
+        Button("Copy Image") {
+            guard let img = NSImage(contentsOfFile: item.path) else { return }
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.writeObjects([img])
+        }
+
         if let meta = item.metadata {
             Button("Remix (new seed)") { onRemix(meta) }
+            Button("Apply Settings") { onApplySettings(meta) }
             Button("Use as Img2Img input") { onUseInImg2Img(item.path) }
             Divider()
         }
 
-        Menu("Move to Board") {
+        Menu("Move to Group") {
             Button("Default") { onMoveToBoard("Default") }
             if !gallery.boards.isEmpty {
                 Divider()

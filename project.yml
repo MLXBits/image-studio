@@ -48,3 +48,4 @@ targets:
       base:
         PRODUCT_NAME: "MLXBits Image Studio"
         PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

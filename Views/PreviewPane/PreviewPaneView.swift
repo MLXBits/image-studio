@@ -11,11 +11,13 @@ struct PreviewPaneView: View {
 
     let state: PreviewState
     let onRemix: (GenerationMetadata) -> Void
+    let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
+    let onClear: () -> Void
 
     var body: some View {
-        ZStack {
+        ZStack(alignment: .topTrailing) {
             switch state {
             case .idle:
                 idleView
@@ -25,11 +27,7 @@ struct PreviewPaneView: View {
                 case .running:
                     StepwisePreviewView(job: job, onCancel: onCancel)
                 case .completed:
-                    CompletedImageView(
-                        job: job,
-                        onRemix: onRemix,
-                        onUseInImg2Img: onUseInImg2Img
-                    )
+                    CompletedImageView(job: job, onRemix: onRemix, onApplySettings: onApplySettings, onUseInImg2Img: onUseInImg2Img)
                 case .failed(let msg):
                     failedView(message: msg)
                 case .cancelled:
@@ -39,15 +37,32 @@ struct PreviewPaneView: View {
                 }
 
             case .galleryItem(let item):
-                GalleryItemDetailView(
-                    item: item,
-                    onRemix: { meta in onRemix(meta) },
-                    onUseInImg2Img: onUseInImg2Img
-                )
+                GalleryItemDetailView(item: item, onRemix: onRemix, onApplySettings: onApplySettings, onUseInImg2Img: onUseInImg2Img)
+            }
+
+            if showsClearButton {
+                Button { onClear() } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.title3)
+                        .symbolRenderingMode(.hierarchical)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .padding(10)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+    }
+
+    private var showsClearButton: Bool {
+        switch state {
+        case .idle: return false
+        case .activeJob(let job):
+            if case .running = job.status { return false }
+            return true
+        case .galleryItem: return true
+        }
     }
 
     private var idleView: some View {
@@ -110,16 +125,50 @@ struct PreviewPaneView: View {
     }
 }
 
+// MARK: - Full-size image viewer (presented as sheet on double-click)
+
+struct FullSizeImageView: View {
+    let image: NSImage
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        ZStack(alignment: .topTrailing) {
+            Color.black
+
+            Image(nsImage: image)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding(20)
+
+            Button { dismiss() } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.title2)
+                    .symbolRenderingMode(.hierarchical)
+                    .foregroundStyle(.white.opacity(0.8))
+            }
+            .buttonStyle(.plain)
+            .padding(12)
+            .keyboardShortcut(.escape, modifiers: [])
+        }
+        .frame(minWidth: 800, minHeight: 600)
+    }
+}
+
 // MARK: - Gallery item detail (in center pane)
 
 private struct GalleryItemDetailView: View {
     let item: GalleryItem
     let onRemix: (GenerationMetadata) -> Void
+    let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
 
     @State private var image: NSImage? = nil
+    @State private var showingLog: Bool = false
+    @State private var showingFullSize: Bool = false
 
     var body: some View {
+        let info = ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
         VStack(spacing: 0) {
             ZStack {
                 Color.black.opacity(0.05)
@@ -134,54 +183,69 @@ private struct GalleryItemDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
-
-            HStack(spacing: 8) {
-                if let meta = item.metadata {
-                    metaChip("\(meta.width)×\(meta.height)")
-                    metaChip(meta.model.displayName)
-                    metaChip("seed \(meta.seed)")
-                    Spacer()
-                    Button("Remix") { onRemix(meta) }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                    Button {
-                        onUseInImg2Img(item.path)
-                    } label: {
-                        Image(systemName: "photo.on.rectangle.angled")
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help("Use as img2img input")
-                } else {
-                    Text(item.filename).font(.caption).foregroundStyle(.secondary)
-                    Spacer()
-                }
-
-                Button {
-                    NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
-                } label: {
-                    Image(systemName: "folder")
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Reveal in Finder")
+            .onTapGesture(count: 2) { if image != nil { showingFullSize = true } }
+            .sheet(isPresented: $showingFullSize) {
+                if let img = image { FullSizeImageView(image: img) }
             }
-            .padding(.horizontal)
-            .padding(.bottom, 16)
+            .contextMenu {
+                Button("Copy Image") {
+                    guard let img = NSImage(contentsOfFile: item.path) else { return }
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.writeObjects([img])
+                }
+                if let meta = item.metadata {
+                    Divider()
+                    Button("Remix (new seed)") { onRemix(meta) }
+                    Button("Apply Settings") { onApplySettings(meta) }
+                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
+                }
+                if info.log != nil {
+                    Divider()
+                    Button("Show Log") { showingLog = true }
+                }
+                Divider()
+                Button("Reveal in Finder") {
+                    NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
+                }
+            }
+
+            ImageMetadataPanel(
+                info: info,
+                onRemix: item.metadata.map { meta in { onRemix(meta) } },
+                onApplySettings: item.metadata.map { meta in { onApplySettings(meta) } },
+                onUseInImg2Img: { onUseInImg2Img(item.path) },
+                onRevealInFinder: {
+                    NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
+                },
+                onShowLog: info.log != nil ? { showingLog = true } : nil
+            )
         }
         .onAppear { loadImage() }
+        .onChange(of: item.id) { _, _ in loadImage() }
+        .sheet(isPresented: $showingLog) { logSheet(log: info.log ?? "") }
     }
 
-    private func metaChip(_ text: String) -> some View {
-        Text(text)
-            .font(.caption2)
-            .foregroundStyle(.secondary)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 3)
-            .background(.secondary.opacity(0.1), in: Capsule())
+    private func logSheet(log: String) -> some View {
+        NavigationStack {
+            ScrollView {
+                Text(log)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Generation Log")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showingLog = false }
+                }
+            }
+        }
+        .frame(width: 640, height: 480)
     }
 
     private func loadImage() {
+        image = nil
         Task.detached(priority: .userInitiated) {
             let img = NSImage(contentsOf: item.url)
             await MainActor.run { image = img }

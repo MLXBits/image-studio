@@ -34,8 +34,10 @@ final class GalleryStore {
         guard !outputDir.isEmpty else { return }
         isScanning = true
         let exts = GalleryStore.imageExtensions
+        // Snapshot existing items so the detached task can preserve UUIDs and cached thumbnails.
+        let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
         Task.detached(priority: .userInitiated) { [weak self] in
-            let found = scanDirectory(outputDir, imageExtensions: exts)
+            let found = scanDirectory(outputDir, imageExtensions: exts, existing: existing)
             await MainActor.run {
                 guard let self else { return }
                 self.items = found
@@ -82,11 +84,42 @@ final class GalleryStore {
         try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         scan(outputDir: outputDir)
     }
+
+    func moveItems(_ items: [GalleryItem], toBoard board: String, outputDir: String) {
+        for item in items {
+            guard item.board != board else { continue }
+            let src = URL(fileURLWithPath: item.path)
+            let destDir = board == "Default"
+                ? URL(fileURLWithPath: outputDir)
+                : URL(fileURLWithPath: outputDir).appendingPathComponent(board)
+            try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
+            let dest = destDir.appendingPathComponent(src.lastPathComponent)
+            try? FileManager.default.moveItem(at: src, to: dest)
+            let srcJson = MetadataSidecar.sidecarURL(for: item.path)
+            if FileManager.default.fileExists(atPath: srcJson.path) {
+                let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
+                try? FileManager.default.moveItem(at: srcJson, to: destJson)
+            }
+        }
+        scan(outputDir: outputDir)
+    }
+
+    func deleteItems(_ items: [GalleryItem], outputDir: String) {
+        for item in items {
+            try? FileManager.default.removeItem(atPath: item.path)
+            try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+        }
+        scan(outputDir: outputDir)
+    }
 }
 
 // MARK: - Free function (nonisolated, safe to call from Task.detached)
 
-private func scanDirectory(_ outputDir: String, imageExtensions: Set<String>) -> [GalleryItem] {
+private func scanDirectory(
+    _ outputDir: String,
+    imageExtensions: Set<String>,
+    existing: [String: GalleryItem] = [:]
+) -> [GalleryItem] {
     let root = URL(fileURLWithPath: outputDir)
     guard let enumerator = FileManager.default.enumerator(
         at: root,
@@ -105,9 +138,10 @@ private func scanDirectory(_ outputDir: String, imageExtensions: Set<String>) ->
         let components = relativePath.split(separator: "/")
         let board = components.count > 1 ? String(components[0]) : "Default"
 
+        let prior = existing[url.path]
         result.append(GalleryItem(
-            id: UUID(), path: url.path, board: board,
-            modifiedAt: modDate, thumbnailData: nil,
+            id: prior?.id ?? UUID(), path: url.path, board: board,
+            modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             metadata: MetadataSidecar.read(for: url.path)
         ))
     }
@@ -116,11 +150,19 @@ private func scanDirectory(_ outputDir: String, imageExtensions: Set<String>) ->
 
 private extension NSImage {
     func thumbnailData(size: CGSize) -> Data? {
+        let imgSize = self.size
+        guard imgSize.width > 0, imgSize.height > 0 else { return nil }
+        // Center-crop to the target aspect ratio before scaling
+        let side = min(imgSize.width, imgSize.height)
+        let srcRect = NSRect(
+            x: (imgSize.width - side) / 2,
+            y: (imgSize.height - side) / 2,
+            width: side,
+            height: side
+        )
         let thumb = NSImage(size: size)
         thumb.lockFocus()
-        draw(in: NSRect(origin: .zero, size: size),
-             from: NSRect(origin: .zero, size: self.size),
-             operation: .copy, fraction: 1.0)
+        draw(in: NSRect(origin: .zero, size: size), from: srcRect, operation: .copy, fraction: 1.0)
         thumb.unlockFocus()
         guard let tiff = thumb.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff) else { return nil }

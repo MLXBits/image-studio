@@ -19,11 +19,13 @@ final class JobStore {
 
     func add(_ job: FluxJob) {
         jobs.insert(job, at: 0)
+        pruneIfNeeded()
         save()
     }
 
     func addBatch(_ jobs: [FluxJob]) {
         for job in jobs.reversed() { self.jobs.insert(job, at: 0) }
+        pruneIfNeeded()
         save()
     }
 
@@ -45,12 +47,51 @@ final class JobStore {
     var pendingJobs: [FluxJob] { jobs.filter { $0.status == .pending } }
     var runningJob: FluxJob? { jobs.first { $0.status == .running } }
 
+    func cancelAllPending() {
+        for job in jobs where job.status == .pending {
+            job.status = .cancelled
+        }
+        save()
+    }
+
+    func restart(_ job: FluxJob) {
+        job.status = .pending
+        job.log = ""
+        job.outputPath = nil
+        job.resolvedSeed = nil
+        job.thumbnailData = nil
+        job.currentStep = 0
+        job.totalSteps = job.steps
+        job.startedAt = nil
+        job.completedAt = nil
+        job.latestStepwisePath = nil
+        // Move to front so it runs next
+        jobs.removeAll { $0.id == job.id }
+        jobs.insert(job, at: 0)
+        save()
+    }
+
     // MARK: - Persistence
+
+    private static let maxJobs = 100
+
+    private func pruneIfNeeded() {
+        guard jobs.count > Self.maxJobs else { return }
+        var result = jobs
+        while result.count > Self.maxJobs {
+            if let idx = result.indices.reversed().first(where: { result[$0].status.isTerminal }) {
+                result.remove(at: idx)
+            } else {
+                break
+            }
+        }
+        jobs = result
+    }
 
     func save() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(Array(jobs.prefix(200))) {
+        if let data = try? encoder.encode(Array(jobs.prefix(Self.maxJobs))) {
             try? FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             try? data.write(to: Self.jobsURL, options: .atomic)
         }

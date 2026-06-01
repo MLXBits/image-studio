@@ -17,12 +17,6 @@ struct MLXBitsImageStudioApp: App {
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)
-        .commands {
-            CommandGroup(after: .appSettings) {
-                Button("Preferences…") {}
-                    .keyboardShortcut(",", modifiers: .command)
-            }
-        }
 
         Settings {
             SettingsView()

@@ -27,18 +27,23 @@ struct StepwisePreviewView: View {
 
             // Progress bar + controls
             VStack(spacing: 8) {
-                if job.totalSteps > 0 {
-                    ProgressView(value: job.progressFraction)
-                        .progressViewStyle(.linear)
-                        .padding(.horizontal)
+                Group {
+                    if job.currentStep > 0 {
+                        ProgressView(value: job.progressFraction)
+                    } else {
+                        ProgressView()
+                    }
                 }
+                .progressViewStyle(.linear)
+                .padding(.horizontal)
 
                 HStack(spacing: 12) {
                     progressLabel
                     Spacer()
                     Button("Cancel") { onCancel() }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderless)
                         .controlSize(.small)
+                        .foregroundStyle(.secondary)
                 }
                 .padding(.horizontal)
             }
@@ -59,18 +64,17 @@ struct StepwisePreviewView: View {
         }
     }
 
+    @ViewBuilder
     private var progressLabel: some View {
-        HStack(spacing: 4) {
-            if job.totalSteps > 0 {
-                Text("Step \(job.currentStep)/\(job.totalSteps)")
-                    .font(.caption)
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
-            } else {
-                Text("Starting…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
+        if job.currentStep > 0 {
+            Text("Step \(job.currentStep)/\(job.totalSteps)")
+                .font(.caption)
+                .monospacedDigit()
+                .foregroundStyle(.secondary)
+        } else {
+            Text("Loading model…")
+                .font(.caption)
+                .foregroundStyle(.secondary)
         }
     }
 

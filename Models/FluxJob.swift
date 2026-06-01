@@ -95,7 +95,7 @@ final class FluxJob: Identifiable {
     var displayName: String {
         let w = "\(width)×\(height)"
         let m = model == .custom ? customModelRepo.split(separator: "/").last.map(String.init) ?? "custom" : model.displayName
-        return "\(m) · \(w) · \(steps)s"
+        return "\(m) · \(w) · \(steps) steps"
     }
 
     init(

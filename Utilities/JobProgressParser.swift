@@ -21,13 +21,4 @@ enum JobProgressParser {
         return best
     }
 
-    static func parseSeed(from log: String) -> Int? {
-        // mflux prints "Using seed: 12345" or "Seed: 12345"
-        let pattern = #"(?:Using seed|Seed):\s*(\d+)"#
-        guard let regex = try? NSRegularExpression(pattern: pattern),
-              let match = regex.firstMatch(
-                  in: log, range: NSRange(log.startIndex..., in: log)),
-              let r = Range(match.range(at: 1), in: log) else { return nil }
-        return Int(log[r])
-    }
 }

@@ -5,6 +5,7 @@ import AppKit
 @MainActor
 final class FluxJobRunner {
     private(set) var activeJob: FluxJob?
+    private(set) var lastCompletedOutputPath: String? = nil
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var stepwiseTimer: Timer?
@@ -52,14 +53,32 @@ final class FluxJobRunner {
             return
         }
 
+        // For quantized non-custom models, ensure a local saved copy exists so every subsequent
+        // load skips in-memory quantization. The mlx-community pre-quantized repos are preferred
+        // when known; otherwise we run mflux-save once to produce a local saved copy.
+        if job.quantize > 0, job.model != .custom,
+           job.model.preQuantizedRepoID(quantize: job.quantize) == nil {
+            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+            if !FluxModelVariant.hasSavedWeights(at: savedPath) {
+                let saved = await runSave(job: job, savePath: savedPath, settings: settings)
+                if !saved {
+                    finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
+                    return
+                }
+            }
+        }
+
         settings.ensureOutputDirExists()
         guard let outputFile = buildOutputPath(job: job, settings: settings) else {
             finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
             return
         }
 
-        let args = buildArgs(job: job, outputFile: outputFile, stepwiseDir: stepDir, settings: settings)
-        job.log = "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
+        let effectiveSeed = job.seed >= 0 ? job.seed : Int(UInt32.random(in: 0 ..< UInt32.max))
+        job.resolvedSeed = effectiveSeed
+
+        let args = buildArgs(job: job, seed: effectiveSeed, outputFile: outputFile, stepwiseDir: stepDir, settings: settings)
+        job.log += "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
 
         let process = Process()
         process.executableURL = URL(fileURLWithPath: binaryPath)
@@ -85,14 +104,39 @@ final class FluxJobRunner {
             }
         }
 
+        let jobStartTime = Date()
+        job.log += "▸ Loading model...\n"
+
         do { try process.run() } catch {
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
             return
         }
 
+        var seenFirstStep = false
+        var seenLastStep = false
+        var loadEndTime: Date? = nil
+        var denoiseEndTime: Date? = nil
+
         for await chunk in stream {
             job.log = appendLog(chunk, to: job.log)
-            if let progress = JobProgressParser.parseStep(from: job.log) {
+            if let progress = JobProgressParser.parseStep(from: job.log),
+               progress.total == job.steps {
+
+                if !seenFirstStep {
+                    seenFirstStep = true
+                    loadEndTime = Date()
+                    let loadSecs = loadEndTime!.timeIntervalSince(jobStartTime)
+                    let label = "▸ Encoding prompt...  (loaded in \(formatDuration(loadSecs)))\n"
+                    job.log = insertBeforeLastLine(job.log, text: label)
+                }
+
+                if !seenLastStep && progress.current == progress.total {
+                    seenLastStep = true
+                    denoiseEndTime = Date()
+                    if !job.log.hasSuffix("\n") { job.log += "\n" }
+                    job.log += "▸ Decoding image...\n"
+                }
+
                 job.currentStep = progress.current
                 job.totalSteps  = progress.total
             }
@@ -103,9 +147,13 @@ final class FluxJobRunner {
 
         if process.terminationStatus == 0 {
             job.outputPath = outputFile
-            if let seed = JobProgressParser.parseSeed(from: job.log) { job.resolvedSeed = seed }
+            let totalSecs = Date().timeIntervalSince(jobStartTime)
+            let decodeSecs = denoiseEndTime.map { Date().timeIntervalSince($0) }
+            let timing = decodeSecs.map { "decoded in \(formatDuration($0)) · " } ?? ""
+            job.log += "▸ Saved to: \(outputFile)  (\(timing)total \(formatDuration(totalSecs)))\n"
             job.thumbnailData = loadThumbnail(at: outputFile)
             MetadataSidecar.write(GenerationMetadata.from(job: job), for: outputFile)
+            lastCompletedOutputPath = outputFile
             finishJob(job, status: .completed, stepDir: stepDir)
         } else if process.terminationReason == .uncaughtSignal {
             finishJob(job, status: .cancelled, stepDir: stepDir)
@@ -122,6 +170,62 @@ final class FluxJobRunner {
         job.completedAt = Date()
         job.latestStepwisePath = nil
         if case .running = status { } else { activeJob = nil }
+    }
+
+    // MARK: - One-time quantized model save
+
+    private func runSave(job: FluxJob, savePath: URL, settings: AppSettings) async -> Bool {
+        let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
+        guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
+            job.log += "⚠️  mflux-save not found — falling back to in-memory quantization.\n"
+            return true  // non-fatal: generate will quantize in-memory instead
+        }
+        try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
+        job.log += "▸ Saving Q\(job.quantize) weights (one-time, ~\(job.quantize == 8 ? "17" : "9") GB)...\n"
+
+        let args = ["--model", job.model.mfluxModelID, "--quantize", "\(job.quantize)", "--path", savePath.path]
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: saveBinary)
+        process.arguments = args
+        process.environment = settings.buildEnvironment()
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        let stream = AsyncStream<String> { continuation in
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty { continuation.finish() }
+                else if let text = String(data: data, encoding: .utf8) { continuation.yield(text) }
+            }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
+
+        do { try process.run() } catch {
+            job.log += "⚠️  mflux-save failed: \(error.localizedDescription)\n"
+            return false
+        }
+
+        for await chunk in stream {
+            job.log = appendLog(chunk, to: job.log)
+        }
+        process.waitUntilExit()
+
+        if process.terminationStatus == 0 {
+            job.log += "▸ Weights saved.\n"
+            return true
+        } else {
+            job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
+            // Clean up partial save so we retry next time rather than loading corrupt weights
+            try? FileManager.default.removeItem(at: savePath)
+            return false
+        }
     }
 
     // MARK: - Stepwise watcher
@@ -159,12 +263,30 @@ final class FluxJobRunner {
     // MARK: - Arg building
 
     private func buildArgs(
-        job: FluxJob, outputFile: String, stepwiseDir: URL, settings: AppSettings
+        job: FluxJob, seed: Int, outputFile: String, stepwiseDir: URL, settings: AppSettings
     ) -> [String] {
         var args: [String] = []
 
         if job.model == .custom {
             args += ["--model", job.customModelRepo, "--base-model", job.customBaseModel.mfluxModelID]
+        } else if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
+            // User-supplied override (HF repo ID or local path): use as-is.
+            // No --quantize flag — the repo carries its own quantization metadata.
+            args += ["--model", override]
+        } else if job.quantize > 0 {
+            if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
+                // Known mlx-community pre-quantized repo: pass directly, mflux detects stored_q.
+                args += ["--model", preQuantizedRepo]
+            } else {
+                let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+                if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                    // Local mflux-saved weights: pass path directly, mflux detects stored_q.
+                    args += ["--model", savedPath.path]
+                } else {
+                    // No saved weights yet (mflux-save may have failed): fall back to in-memory quantization.
+                    args += ["--model", job.model.mfluxModelID]
+                }
+            }
         } else {
             args += ["--model", job.model.mfluxModelID]
         }
@@ -179,13 +301,24 @@ final class FluxJobRunner {
         args += [
             "--width",    "\(job.width)",
             "--height",   "\(job.height)",
-            "--seed",     "\(job.seed)",
             "--steps",    "\(job.steps)",
             "--guidance", String(format: "%.2f", job.guidance),
             "--output",   outputFile,
         ]
 
-        if job.quantize > 0 { args += ["--quantize", "\(job.quantize)"] }
+        args += ["--seed", "\(seed)"]
+
+        // Only pass --quantize when falling back to in-memory quantization (BF16 base model).
+        // Overrides, pre-quantized repos, and locally saved weights carry stored_q in metadata.
+        if job.quantize > 0 {
+            let hasOverride = !(settings.defaults(for: job.model).modelRepoOverride ?? "").isEmpty
+            let hasPreQuantizedRepo = job.model != .custom && job.model.preQuantizedRepoID(quantize: job.quantize) != nil
+            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+            let hasSaved = job.model != .custom && FluxModelVariant.hasSavedWeights(at: savedPath)
+            if !hasOverride && !hasPreQuantizedRepo && !hasSaved {
+                args += ["--quantize", "\(job.quantize)"]
+            }
+        }
         if job.lowRam { args.append("--low-ram") }
         if settings.mlxCacheLimitGB > 0 {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
@@ -221,16 +354,39 @@ final class FluxJobRunner {
 
     private func loadThumbnail(at path: String) -> Data? {
         guard let img = NSImage(contentsOfFile: path) else { return nil }
+        let imgSize = img.size
+        guard imgSize.width > 0, imgSize.height > 0 else { return nil }
+        let side = min(imgSize.width, imgSize.height)
+        let srcRect = NSRect(
+            x: (imgSize.width - side) / 2,
+            y: (imgSize.height - side) / 2,
+            width: side, height: side
+        )
         let size = CGSize(width: 200, height: 200)
         let thumb = NSImage(size: size)
         thumb.lockFocus()
-        img.draw(in: NSRect(origin: .zero, size: size),
-                 from: NSRect(origin: .zero, size: img.size),
-                 operation: .copy, fraction: 1.0)
+        img.draw(in: NSRect(origin: .zero, size: size), from: srcRect, operation: .copy, fraction: 1.0)
         thumb.unlockFocus()
         guard let tiff = thumb.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff) else { return nil }
         return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
+    }
+
+    private func formatDuration(_ seconds: TimeInterval) -> String {
+        if seconds < 60 { return String(format: "%.1fs", seconds) }
+        return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
+    }
+
+    // Insert `text` immediately before the last (possibly incomplete) line.
+    // Used to place stage markers ahead of tqdm output that has no trailing newline.
+    private func insertBeforeLastLine(_ log: String, text: String) -> String {
+        if let lastNewline = log.lastIndex(of: "\n") {
+            let split = log.index(after: lastNewline)
+            let head = String(log[...lastNewline])   // includes the \n
+            let tail = String(log[split...])          // "" when \n was the last char
+            return head + text + tail
+        }
+        return text + log
     }
 
     private func appendLog(_ chunk: String, to log: String) -> String {

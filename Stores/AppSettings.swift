@@ -1,5 +1,50 @@
 import Foundation
 
+// MARK: - Per-model defaults
+
+struct ModelDefaults: Codable, Equatable {
+    var steps: Int?
+    var guidance: Double?
+    var quantize: Int?
+    var lowRam: Bool?
+    var negativePrompt: String?
+    var loras: [LoraEntry]?
+    var width: Int?
+    var height: Int?
+    var modelRepoOverride: String?  // HF repo ID or local path; replaces the mflux default when set
+}
+
+extension ModelDefaults {
+    /// Resolves all values, using global fallbacks for width/height.
+    func resolved(for model: FluxModelVariant, globalWidth: Int, globalHeight: Int) -> Resolved {
+        Resolved(
+            steps:             steps    ?? model.defaultSteps,
+            guidance:          model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
+            quantize:          quantize ?? model.recommendedQuantize,
+            lowRam:            lowRam   ?? false,
+            negativePrompt:    model.isDistilled ? "" : (negativePrompt ?? ""),
+            loras:             loras    ?? [],
+            width:             width    ?? globalWidth,
+            height:            height   ?? globalHeight,
+            modelRepoOverride: modelRepoOverride.flatMap { $0.isEmpty ? nil : $0 }
+        )
+    }
+
+    struct Resolved {
+        let steps: Int
+        let guidance: Double
+        let quantize: Int
+        let lowRam: Bool
+        let negativePrompt: String
+        let loras: [LoraEntry]
+        let width: Int
+        let height: Int
+        let modelRepoOverride: String?
+    }
+}
+
+// MARK: - AppSettings
+
 @Observable
 class AppSettings {
     static let appSupportURL: URL = {
@@ -9,23 +54,23 @@ class AppSettings {
 
     private static let settingsURL: URL = appSupportURL.appendingPathComponent("settings.json")
 
-    var mfluxBinaryDir: String       { didSet { save() } }
-    var outputDir: String            { didSet { save() } }
+    // Global
+    var mfluxBinaryDir: String        { didSet { save() } }
+    var outputDir: String             { didSet { save() } }
     var defaultModel: FluxModelVariant { didSet { save() } }
-    var defaultQuantize: Int         { didSet { save() } }
-    var defaultBoard: String         { didSet { save() } }
-    var defaultWidth: Int            { didSet { save() } }
-    var defaultHeight: Int           { didSet { save() } }
-    var defaultSteps: Int            { didSet { save() } }
-    var defaultGuidance: Double      { didSet { save() } }
-    var defaultSeed: Int             { didSet { save() } }
-    var defaultLowRam: Bool          { didSet { save() } }
-    var defaultLoras: [LoraEntry]    { didSet { save() } }
-    var mlxCacheLimitGB: Double      { didSet { save() } }
-    var hfHome: String               { didSet { save() } }
-    var mfluxCacheDir: String        { didSet { save() } }
-    var hfOffline: Bool              { didSet { save() } }
-    var logFontSize: Double          { didSet { save() } }
+    var defaultBoard: String          { didSet { save() } }
+    var defaultWidth: Int             { didSet { save() } }
+    var defaultHeight: Int            { didSet { save() } }
+    var defaultLoras: [LoraEntry]     { didSet { save() } }
+    var mlxCacheLimitGB: Double       { didSet { save() } }
+    var hfHome: String                { didSet { save() } }
+    var mfluxCacheDir: String         { didSet { save() } }
+    var hfOffline: Bool               { didSet { save() } }
+    var logFontSize: Double           { didSet { save() } }
+    var lastPrompt: String            { didSet { save() } }
+
+    /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
+    var modelDefaults: [String: ModelDefaults] { didSet { save() } }
 
     init() {
         let home = NSHomeDirectory()
@@ -33,39 +78,62 @@ class AppSettings {
         let model = s.defaultModel ?? .flux2Klein9B
 
         mfluxBinaryDir  = s.mfluxBinaryDir  ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
-        outputDir       = s.outputDir       ?? "\(home)/Pictures/MLXBits Image Studio"
+        outputDir       = s.outputDir       ?? ""   // empty = not yet chosen; app will prompt on first use
         defaultModel    = model
-        defaultQuantize = s.defaultQuantize ?? model.recommendedQuantize
         defaultBoard    = s.defaultBoard    ?? "Default"
         defaultWidth    = s.defaultWidth    ?? 1024
         defaultHeight   = s.defaultHeight   ?? 1024
-        defaultSteps    = s.defaultSteps    ?? model.defaultSteps
-        defaultGuidance = s.defaultGuidance ?? model.defaultGuidance
-        defaultSeed     = s.defaultSeed     ?? -1
-        defaultLowRam   = s.defaultLowRam   ?? false
         defaultLoras    = s.defaultLoras    ?? []
         mlxCacheLimitGB = s.mlxCacheLimitGB ?? 0
         hfHome          = s.hfHome          ?? ""
         mfluxCacheDir   = s.mfluxCacheDir   ?? ""
         hfOffline       = s.hfOffline       ?? false
         logFontSize     = s.logFontSize     ?? 12.0
+        lastPrompt      = s.lastPrompt      ?? ""
+        modelDefaults   = s.modelDefaults   ?? [:]
     }
+
+    // MARK: - Per-model helpers
+
+    /// Returns the ModelDefaults for `model`, creating an empty one if none exists.
+    func defaults(for model: FluxModelVariant) -> ModelDefaults {
+        modelDefaults[model.rawValue] ?? ModelDefaults()
+    }
+
+    func resolvedDefaults(for model: FluxModelVariant) -> ModelDefaults.Resolved {
+        defaults(for: model).resolved(for: model, globalWidth: defaultWidth, globalHeight: defaultHeight)
+    }
+
+    func updateDefaults(_ d: ModelDefaults, for model: FluxModelVariant) {
+        modelDefaults[model.rawValue] = d
+    }
+
+    // MARK: - Persistence
 
     func save() {
         let s = Stored(
             mfluxBinaryDir: mfluxBinaryDir, outputDir: outputDir,
-            defaultModel: defaultModel, defaultQuantize: defaultQuantize,
-            defaultBoard: defaultBoard, defaultWidth: defaultWidth,
-            defaultHeight: defaultHeight, defaultSteps: defaultSteps,
-            defaultGuidance: defaultGuidance, defaultSeed: defaultSeed,
-            defaultLowRam: defaultLowRam, defaultLoras: defaultLoras,
+            defaultModel: defaultModel, defaultBoard: defaultBoard,
+            defaultWidth: defaultWidth, defaultHeight: defaultHeight,
+            defaultLoras: defaultLoras,
             mlxCacheLimitGB: mlxCacheLimitGB, hfHome: hfHome,
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
-            logFontSize: logFontSize
+            logFontSize: logFontSize, lastPrompt: lastPrompt,
+            modelDefaults: modelDefaults
         )
         try? FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
         let enc = JSONEncoder(); enc.outputFormatting = .prettyPrinted
         if let data = try? enc.encode(s) { try? data.write(to: Self.settingsURL, options: .atomic) }
+    }
+
+    // The mflux cache dir: honours user override, otherwise matches mflux's own default
+    // (~/Library/Caches/mflux via platformdirs on macOS).
+    var effectiveMfluxCacheDir: URL {
+        if !mfluxCacheDir.isEmpty {
+            return URL(fileURLWithPath: mfluxCacheDir)
+        }
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        return caches.appendingPathComponent("mflux")
     }
 
     func ensureOutputDirExists() {
@@ -81,9 +149,9 @@ class AppSettings {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        if !hfHome.isEmpty        { env["HF_HOME"]           = hfHome }
-        if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"]   = mfluxCacheDir }
-        if hfOffline              { env["HF_HUB_OFFLINE"]    = "1" }
+        if !hfHome.isEmpty        { env["HF_HOME"]         = hfHome }
+        if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"] = mfluxCacheDir }
+        if hfOffline              { env["HF_HUB_OFFLINE"]  = "1" }
         return env
     }
 
@@ -96,30 +164,30 @@ class AppSettings {
 
     private struct Stored: Codable {
         var mfluxBinaryDir: String?; var outputDir: String?
-        var defaultModel: FluxModelVariant?; var defaultQuantize: Int?
+        var defaultModel: FluxModelVariant?
         var defaultBoard: String?; var defaultWidth: Int?; var defaultHeight: Int?
-        var defaultSteps: Int?; var defaultGuidance: Double?; var defaultSeed: Int?
-        var defaultLowRam: Bool?; var defaultLoras: [LoraEntry]?
+        var defaultLoras: [LoraEntry]?
         var mlxCacheLimitGB: Double?; var hfHome: String?; var mfluxCacheDir: String?
-        var hfOffline: Bool?; var logFontSize: Double?
+        var hfOffline: Bool?; var logFontSize: Double?; var lastPrompt: String?
+        var modelDefaults: [String: ModelDefaults]?
 
         init() {}
         init(
             mfluxBinaryDir: String, outputDir: String, defaultModel: FluxModelVariant,
-            defaultQuantize: Int, defaultBoard: String, defaultWidth: Int, defaultHeight: Int,
-            defaultSteps: Int, defaultGuidance: Double, defaultSeed: Int, defaultLowRam: Bool,
-            defaultLoras: [LoraEntry], mlxCacheLimitGB: Double, hfHome: String,
-            mfluxCacheDir: String, hfOffline: Bool, logFontSize: Double
+            defaultBoard: String, defaultWidth: Int, defaultHeight: Int,
+            defaultLoras: [LoraEntry],
+            mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
+            hfOffline: Bool, logFontSize: Double, lastPrompt: String,
+            modelDefaults: [String: ModelDefaults]
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
-            self.defaultModel = defaultModel; self.defaultQuantize = defaultQuantize
-            self.defaultBoard = defaultBoard; self.defaultWidth = defaultWidth
-            self.defaultHeight = defaultHeight; self.defaultSteps = defaultSteps
-            self.defaultGuidance = defaultGuidance; self.defaultSeed = defaultSeed
-            self.defaultLowRam = defaultLowRam; self.defaultLoras = defaultLoras
-            self.mlxCacheLimitGB = mlxCacheLimitGB; self.hfHome = hfHome
-            self.mfluxCacheDir = mfluxCacheDir; self.hfOffline = hfOffline
-            self.logFontSize = logFontSize
+            self.defaultModel   = defaultModel
+            self.defaultBoard   = defaultBoard; self.defaultWidth = defaultWidth
+            self.defaultHeight  = defaultHeight
+            self.defaultLoras   = defaultLoras; self.mlxCacheLimitGB = mlxCacheLimitGB
+            self.hfHome = hfHome; self.mfluxCacheDir = mfluxCacheDir
+            self.hfOffline = hfOffline; self.logFontSize = logFontSize
+            self.lastPrompt = lastPrompt; self.modelDefaults = modelDefaults
         }
     }
 }

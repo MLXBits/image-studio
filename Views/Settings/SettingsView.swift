@@ -3,9 +3,11 @@ import SwiftUI
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @State private var selectedTab: SettingsTab = .generation
+    @State private var showingOutputDirPrompt: Bool = false
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case generation = "Generation"
+        case models = "Models"
         case loras = "LoRAs"
         case advanced = "Advanced"
         var id: String { rawValue }
@@ -17,6 +19,11 @@ struct SettingsView: View {
                 .tabItem { Label("Generation", systemImage: "wand.and.stars") }
                 .tag(SettingsTab.generation)
 
+            ModelDefaultsView()
+                .environment(settings)
+                .tabItem { Label("Models", systemImage: "cpu") }
+                .tag(SettingsTab.models)
+
             lorasTab
                 .tabItem { Label("LoRAs", systemImage: "square.stack.3d.up") }
                 .tag(SettingsTab.loras)
@@ -25,8 +32,12 @@ struct SettingsView: View {
                 .tabItem { Label("Advanced", systemImage: "gearshape") }
                 .tag(SettingsTab.advanced)
         }
-        .padding()
-        .frame(width: 500, height: 420)
+        .frame(width: 560, height: 460)
+        .onExitCommand { NSApp.keyWindow?.performClose(nil) }
+        .sheet(isPresented: $showingOutputDirPrompt) {
+            OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
+                .environment(settings)
+        }
     }
 
     // MARK: - Generation
@@ -34,39 +45,56 @@ struct SettingsView: View {
     private var generationTab: some View {
         @Bindable var s = settings
         return Form {
-            Section("Defaults") {
-                Picker("Model", selection: $s.defaultModel) {
+            Section {
+                Picker("Default model", selection: $s.defaultModel) {
                     ForEach(FluxModelVariant.builtIn, id: \.self) { v in
                         Text(v.displayName).tag(v)
                     }
                 }
-
-                Picker("Quantize", selection: $s.defaultQuantize) {
-                    Text("BF16 (no quantize)").tag(0)
-                    Text("Q8").tag(8)
-                    Text("Q4").tag(4)
-                }
-
-                Stepper("Width: \(s.defaultWidth)", value: $s.defaultWidth, in: 64...2048, step: 64)
-                Stepper("Height: \(s.defaultHeight)", value: $s.defaultHeight, in: 64...2048, step: 64)
-                Stepper("Steps: \(s.defaultSteps)", value: $s.defaultSteps, in: 1...150)
-
-                HStack {
-                    Text("Guidance")
-                    Slider(value: $s.defaultGuidance, in: 1.0...15.0, step: 0.5)
-                    Text(String(format: "%.1f", s.defaultGuidance))
-                        .monospacedDigit().frame(width: 35)
-                }
-
-                Toggle("Low RAM mode by default", isOn: $s.defaultLowRam)
+                .pickerStyle(.menu)
+                .focusable(false)
+                Text("Steps, guidance, quantize, low RAM, and canvas size are configured per-model in the Models tab.")
+                    .font(.caption).foregroundStyle(.tertiary)
+            } header: {
+                Text("Model")
             }
 
-            Section("Output") {
+            Section {
+                DimensionSliderRow(label: "Width",  value: $s.defaultWidth)
+                DimensionSliderRow(label: "Height", value: $s.defaultHeight)
+            } header: {
+                Text("Global canvas fallback")
+            } footer: {
+                Text("Used when a model has no per-model canvas override set in the Models tab.")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+
+            Section {
                 HStack {
-                    TextField("Output directory", text: $s.outputDir)
+                    TextField("Output folder", text: $s.outputDir)
+                        .textFieldStyle(.roundedBorder)
                     Button("Browse…") { browseOutputDir() }
+                    Button {
+                        showingOutputDirPrompt = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .help("Avoid ~/Pictures and ~/Documents if you don't want iCloud to sync generated images")
                 }
-                TextField("Default board", text: $s.defaultBoard)
+                if s.outputDir.isEmpty {
+                    Label("No output folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.orange)
+                }
+                TextField("Default group", text: $s.defaultBoard)
+                        .textFieldStyle(.roundedBorder)
+            } header: {
+                Text("Output")
+            } footer: {
+                Text("Tip: choose a folder outside ~/Pictures and ~/Documents to avoid automatic iCloud sync of generated images.")
+                    .font(.caption).foregroundStyle(.tertiary)
             }
         }
         .formStyle(.grouped)
@@ -95,6 +123,7 @@ struct SettingsView: View {
             Section("mflux Binary") {
                 HStack {
                     TextField("Binary directory", text: $s.mfluxBinaryDir)
+                        .textFieldStyle(.roundedBorder)
                     Button("Browse…") { browseBinaryDir() }
                 }
                 HStack {
@@ -108,26 +137,53 @@ struct SettingsView: View {
                 }
             }
 
-            Section("HuggingFace") {
-                TextField("HF_HOME override (blank = default)", text: $s.hfHome)
-                TextField("MFLUX_CACHE_DIR override (blank = default)", text: $s.mfluxCacheDir)
+            Section {
+                LabeledContent("HF_HOME") {
+                    TextField("default (~/.cache/huggingface)", text: $s.hfHome)
+                        .textFieldStyle(.roundedBorder)
+                }
+                LabeledContent("MFLUX_CACHE_DIR") {
+                    TextField("default (HF_HOME/hub/mflux)", text: $s.mfluxCacheDir)
+                        .textFieldStyle(.roundedBorder)
+                }
                 Toggle("Offline mode (HF_HUB_OFFLINE=1)", isOn: $s.hfOffline)
+            } header: {
+                Text("HuggingFace")
+            } footer: {
+                Text(
+                    "HF_HOME is where HuggingFace downloads and caches model files. " +
+                    "MFLUX_CACHE_DIR is where mflux stores converted weight files. " +
+                    "Leave blank to use the system defaults (~/.cache/huggingface)."
+                )
+                .font(.caption).foregroundStyle(.tertiary)
             }
 
-            Section("MLX") {
-                HStack {
-                    Text("Cache limit (GB, 0 = unlimited)")
-                    Spacer()
-                    TextField("0", value: $s.mlxCacheLimitGB, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 60)
+            Section {
+                LabeledContent("Metal cache limit") {
+                    HStack(spacing: 4) {
+                        TextField("0", value: $s.mlxCacheLimitGB, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 60)
+                            .multilineTextAlignment(.trailing)
+                        Text("GB")
+                            .foregroundStyle(.secondary)
+                    }
                 }
+            } header: {
+                Text("MLX")
+            } footer: {
+                Text(
+                    "Limits how much GPU memory MLX keeps in its buffer pool between operations. " +
+                    "0 = unlimited (default). Set to 4–8 GB if other apps are competing for memory."
+                )
+                .font(.caption).foregroundStyle(.tertiary)
             }
 
             Section("UI") {
                 HStack {
                     Text("Log font size")
-                    Slider(value: $s.logFontSize, in: 10...18, step: 1)
+                    Slider(value: $s.logFontSize, in: 10...18)
+                        .onChange(of: s.logFontSize) { _, v in s.logFontSize = round(v) }
                     Text("\(Int(s.logFontSize))pt").monospacedDigit().frame(width: 35)
                 }
             }
