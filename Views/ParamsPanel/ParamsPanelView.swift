@@ -5,6 +5,8 @@ struct ParamsPanelView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
 
+    @State private var isImageDropTargeted: Bool = false
+
     private var isDistilled: Bool {
         params.model.isDistilled
     }
@@ -272,16 +274,6 @@ struct ParamsPanelView: View {
                     .controlSize(.small)
                     .accessibilityLabel("Choose reference image")
                     .accessibilityHint("Opens a file picker to select an image for img2img generation")
-                    .onDrop(of: [.fileURL], isTargeted: nil) { providers in
-                        providers.first?.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
-                            guard let data,
-                                  let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                            let ext = url.pathExtension.lowercased()
-                            guard ["png","jpg","jpeg","webp"].contains(ext) else { return }
-                            DispatchQueue.main.async { self.params.imagePath = url.path }
-                        }
-                        return true
-                    }
 
                     if clipboardHasImage {
                         Button { pasteImage() } label: {
@@ -324,6 +316,31 @@ struct ParamsPanelView: View {
                         }
                     }
                 }
+            }
+        }
+        .dropDestination(for: String.self, action: { paths, _ in
+            guard let path = paths.first else { return false }
+            let ext = (path as NSString).pathExtension.lowercased()
+            guard ["png", "jpg", "jpeg", "webp"].contains(ext) else { return false }
+            params.imagePath = path
+            return true
+        }, isTargeted: { isImageDropTargeted = $0 })
+        .onDrop(of: [.fileURL], isTargeted: $isImageDropTargeted) { providers in
+            providers.first?.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
+                guard let data,
+                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                let ext = url.pathExtension.lowercased()
+                guard ["png", "jpg", "jpeg", "webp"].contains(ext) else { return }
+                DispatchQueue.main.async { self.params.imagePath = url.path }
+            }
+            return true
+        }
+        .overlay {
+            if isImageDropTargeted {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.accentColor.opacity(0.45))
+                    .padding(-10)
+                    .allowsHitTesting(false)
             }
         }
     }

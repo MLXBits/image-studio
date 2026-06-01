@@ -7,6 +7,10 @@ struct MLXBitsImageStudioApp: App {
     @State private var gallery = GalleryStore()
     @State private var runner = FluxJobRunner()
 
+    init() {
+        UserDefaults.standard.set(300, forKey: "NSInitialToolTipDelay")
+    }
+
     var body: some Scene {
         WindowGroup {
             ContentView()
