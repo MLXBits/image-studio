@@ -302,6 +302,7 @@ struct ContentView: View {
 
     private func generate() {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        NSApp.keyWindow?.makeFirstResponder(nil)
         settings.lastPrompt = params.prompt
         let jobs = (0..<params.batchCount).map { _ in params.makeJob() }
         store.addBatch(jobs)
