@@ -80,10 +80,10 @@ struct ParamsPanelView: View {
                 )
                     .padding(.bottom, 8)
             }
-            .padding(.leading, 12)
-            .padding(.trailing, 20)
+            .padding(.horizontal, 12)
             .padding(.vertical, 12)
         }
+        .scrollIndicators(.automatic)
     }
 
     // MARK: - Prompt editor (auto-expanding)
@@ -113,7 +113,8 @@ struct ParamsPanelView: View {
                     Text("Describe your image…")
                         .foregroundStyle(.tertiary)
                         .font(.body)
-                        .padding(.horizontal, 8)
+                        .padding(.leading, 5)
+                        .padding(.trailing, 8)
                         .padding(.vertical, 8)
                         .allowsHitTesting(false)
                 }
@@ -143,7 +144,8 @@ struct ParamsPanelView: View {
                 if params.negativePrompt.isEmpty {
                     Text("Negative prompt (optional)…")
                         .foregroundStyle(.tertiary)
-                        .padding(.horizontal, 8)
+                        .padding(.leading, 5)
+                        .padding(.trailing, 8)
                         .padding(.vertical, 8)
                         .allowsHitTesting(false)
                 }
