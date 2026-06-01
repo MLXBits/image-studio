@@ -245,7 +245,7 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
                 Button(action: generate) {
-                    Label("Generate", systemImage: "wand.and.stars")
+                    Label("Generate  ⌘↵", systemImage: "wand.and.stars")
                 }
                 .buttonStyle(.borderedProminent)
                 .focusEffectDisabled()
