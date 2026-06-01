@@ -218,6 +218,10 @@ struct GenerationGalleryView: View {
                     .padding(.bottom, 8)
                 } label: {
                     sectionLabel(board: board, count: items.count)
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            withAnimation { isExpanded(for: board).wrappedValue.toggle() }
+                        }
                 }
                 .padding(.horizontal, 4)
 
