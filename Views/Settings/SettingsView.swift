@@ -143,7 +143,7 @@ struct SettingsView: View {
                         .textFieldStyle(.roundedBorder)
                 }
                 LabeledContent("MFLUX_CACHE_DIR") {
-                    TextField("default (HF_HOME/hub/mflux)", text: $s.mfluxCacheDir)
+                    TextField("default (~/Library/Caches/mflux)", text: $s.mfluxCacheDir)
                         .textFieldStyle(.roundedBorder)
                 }
                 Toggle("Offline mode (HF_HUB_OFFLINE=1)", isOn: $s.hfOffline)
@@ -151,9 +151,9 @@ struct SettingsView: View {
                 Text("HuggingFace")
             } footer: {
                 Text(
-                    "HF_HOME is where HuggingFace downloads and caches model files. " +
-                    "MFLUX_CACHE_DIR is where mflux stores converted weight files. " +
-                    "Leave blank to use the system defaults (~/.cache/huggingface)."
+                    "HF_HOME is where HuggingFace caches model files (default: ~/.cache/huggingface). " +
+                    "MFLUX_CACHE_DIR is where mflux stores converted weight files (default: ~/Library/Caches/mflux). " +
+                    "Leave blank to use the system defaults."
                 )
                 .font(.caption).foregroundStyle(.tertiary)
             }

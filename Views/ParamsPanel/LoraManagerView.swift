@@ -113,8 +113,9 @@ private struct LoraRowView: View {
                 .truncationMode(.middle)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Slider(value: $lora.strength, in: 0...2, step: 0.05)
+            Slider(value: $lora.strength, in: 0...2)
                 .frame(width: 60)
+                .onChange(of: lora.strength) { _, v in lora.strength = round(v / 0.05) * 0.05 }
 
             Text(String(format: "%.2f", lora.strength))
                 .font(.caption2)
