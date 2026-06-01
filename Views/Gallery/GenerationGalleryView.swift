@@ -179,6 +179,7 @@ struct GenerationGalleryView: View {
                                 item: item,
                                 isSelected: selectedItem?.id == item.id,
                                 isInMultiSelection: multiSelection.contains(item.id),
+                                hasAnySelection: selectedItem != nil || !multiSelection.isEmpty,
                                 onSelect: {
                                     NSApp.keyWindow?.makeFirstResponder(nil)
                                     multiSelection.removeAll()

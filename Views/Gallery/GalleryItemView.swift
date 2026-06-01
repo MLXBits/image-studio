@@ -4,6 +4,7 @@ struct GalleryItemView: View {
     let item: GalleryItem
     let isSelected: Bool
     let isInMultiSelection: Bool
+    var hasAnySelection: Bool = false
     let onSelect: () -> Void
     let onMultiToggle: () -> Void
     let onRangeSelect: () -> Void
@@ -42,9 +43,22 @@ struct GalleryItemView: View {
                 }
             }
             .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay {
+                let dimmed = hasAnySelection && !isSelected && !isInMultiSelection
+                Color.black.opacity(dimmed ? 0.45 : 0)
+                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .allowsHitTesting(false)
+            }
+            .background(
+                RoundedRectangle(cornerRadius: 6)
+                    .fill(Color.accentColor)
+                    .blur(radius: 8)
+                    .opacity(isSelected ? 0.7 : 0)
+                    .padding(-3)
+            )
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .stroke(isSelected || isInMultiSelection ? Color.accentColor : Color.clear, lineWidth: 2)
+                    .stroke(isSelected || isInMultiSelection ? Color.accentColor : Color.clear, lineWidth: 3)
             )
             .overlay(alignment: .topLeading) {
                 if isInMultiSelection {
