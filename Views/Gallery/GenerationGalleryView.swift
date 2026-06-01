@@ -105,8 +105,8 @@ struct GenerationGalleryView: View {
                 .foregroundStyle(.secondary)
             Spacer()
             Button { showingNewGroup = true } label: {
-                Image(systemName: "folder.badge.plus")
-                    .foregroundStyle(.secondary)
+                Image(systemName: "plus")
+                    .font(.caption)
             }
             .buttonStyle(.plain)
             .help("New group")
@@ -220,10 +220,11 @@ struct GenerationGalleryView: View {
                     sectionLabel(board: board, count: items.count)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation { isExpanded(for: board).wrappedValue.toggle() }
+                            withAnimation(.easeInOut(duration: 0.3)) { isExpanded(for: board).wrappedValue.toggle() }
                         }
                 }
-                .padding(.horizontal, 4)
+                .padding(.leading, 14)
+                .padding(.trailing, 4)
 
                 Divider()
             }
