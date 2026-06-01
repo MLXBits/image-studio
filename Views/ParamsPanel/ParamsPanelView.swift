@@ -95,6 +95,7 @@ struct ParamsPanelView: View {
                 TextEditor(text: $params.prompt)
                     .font(.body)
                     .scrollContentBackground(.hidden)
+                    .scrollIndicators(.never)
             }
             .overlay(alignment: .topLeading) {
                 if params.prompt.isEmpty {
