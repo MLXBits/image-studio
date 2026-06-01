@@ -2,48 +2,68 @@ import SwiftUI
 
 struct LoraManagerView: View {
     @Binding var loras: [LoraEntry]
+    var showNotes: Bool = false
+    var alwaysExpanded: Bool = false
+    var defaultLoras: [LoraEntry] = []
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
     @State private var newPath: String = ""
     @State private var editingID: UUID? = nil
 
     var body: some View {
-        DisclosureGroup(
-            isExpanded: $isExpanded,
-            content: { loraList },
-            label: {
-                HStack {
-                    Text("LoRAs")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                    if !loras.isEmpty {
-                        Text("\(loras.count)")
-                            .font(.caption2)
-                            .padding(.horizontal, 5)
-                            .padding(.vertical, 1)
-                            .background(.blue.opacity(0.2), in: Capsule())
-                    }
-                    Spacer()
-                    Button { isExpanded = true; showingAdd = true } label: {
-                        Image(systemName: "plus")
-                            .font(.caption)
-                    }
-                    .buttonStyle(.plain)
-                }
+        if alwaysExpanded {
+            VStack(spacing: 8) {
+                header
+                loraList
             }
-        )
-        .sheet(isPresented: $showingAdd) { addLoraSheet }
+            .sheet(isPresented: $showingAdd) { addLoraSheet }
+        } else {
+            DisclosureGroup(isExpanded: $isExpanded) {
+                loraList
+            } label: {
+                header
+                    .contentShape(Rectangle())
+                    .onTapGesture { withAnimation { isExpanded.toggle() } }
+            }
+            .sheet(isPresented: $showingAdd) { addLoraSheet }
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("LoRAs")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            if !loras.isEmpty {
+                Text("\(loras.count)")
+                    .font(.caption2)
+                    .padding(.horizontal, 5)
+                    .padding(.vertical, 1)
+                    .background(.blue.opacity(0.2), in: Capsule())
+            }
+            Spacer()
+            Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
+                Image(systemName: "plus")
+                    .font(.caption)
+            }
+            .buttonStyle(.plain)
+        }
     }
 
     @ViewBuilder
     private var loraList: some View {
         VStack(spacing: 4) {
             ForEach($loras) { $lora in
-                LoraRowView(lora: $lora, onDelete: { remove(id: lora.id) })
+                LoraRowView(lora: $lora, showNotes: showNotes, onDelete: { remove(id: lora.id) })
             }
             .onMove { from, to in loras.move(fromOffsets: from, toOffset: to) }
         }
         .padding(.top, 4)
+    }
+
+    private var missingDefaults: [LoraEntry] {
+        let current = Set(loras.map(\.path))
+        return defaultLoras.filter { !current.contains($0.path) }
     }
 
     private var addLoraSheet: some View {
@@ -57,6 +77,25 @@ struct LoraManagerView: View {
                     TextField("org/repo or /path/to/lora.safetensors", text: $newPath)
                         .textFieldStyle(.roundedBorder)
                     Button("Browse…") { browseLocalFile() }
+                }
+            }
+
+            if !missingDefaults.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Missing from defaults")
+                        .font(.caption).foregroundStyle(.secondary)
+                    ForEach(missingDefaults) { lora in
+                        HStack {
+                            Text(lora.displayName)
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Button("Restore") { loras.append(lora) }
+                                .controlSize(.small)
+                        }
+                    }
+                    Button("Restore All") { missingDefaults.forEach { loras.append($0) } }
+                        .controlSize(.small)
                 }
             }
 
@@ -99,35 +138,52 @@ struct LoraManagerView: View {
 
 private struct LoraRowView: View {
     @Binding var lora: LoraEntry
+    var showNotes: Bool = false
     let onDelete: () -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
-            Toggle("", isOn: $lora.enabled)
-                .toggleStyle(.checkbox)
-                .labelsHidden()
-
-            Text(lora.displayName)
-                .font(.caption)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            Slider(value: $lora.strength, in: 0...2)
-                .frame(width: 60)
-                .onChange(of: lora.strength) { _, v in lora.strength = round(v / 0.05) * 0.05 }
-
-            Text(String(format: "%.2f", lora.strength))
-                .font(.caption2)
-                .monospacedDigit()
-                .frame(width: 30, alignment: .trailing)
-
-            Button { onDelete() } label: {
-                Image(systemName: "trash").font(.caption2)
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
+                Toggle("", isOn: $lora.enabled)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                Text(lora.displayName)
+                    .font(.caption)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                Button { onDelete() } label: {
+                    Image(systemName: "trash").font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.red.opacity(0.7))
             }
-            .buttonStyle(.plain)
-            .foregroundStyle(.red.opacity(0.7))
+            HStack(spacing: 6) {
+                Slider(value: $lora.strength, in: 0...2)
+                Text(String(format: "%.2f", lora.strength))
+                    .font(.caption2)
+                    .monospacedDigit()
+                    .frame(width: 34, alignment: .trailing)
+                Stepper("", value: $lora.strength, in: 0...2, step: 0.05)
+                    .labelsHidden()
+            }
+            if showNotes {
+                TextField("Notes (trigger words, recommended strength…)", text: $lora.notes)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+            } else if !lora.notes.isEmpty {
+                Text(lora.notes)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
-        .padding(.vertical, 2)
+        .padding(8)
+        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 8))
+        .onChange(of: lora.strength) { _, v in
+            let rounded = round(v / 0.05) * 0.05
+            if abs(v - rounded) > 1e-10 { lora.strength = rounded }
+        }
     }
 }

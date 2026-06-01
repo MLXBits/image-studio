@@ -348,7 +348,7 @@ struct ModelDefaultsView: View {
                 settings.updateDefaults(d, for: model)
             }
         )
-        return LoraManagerView(loras: bound)
+        return LoraManagerView(loras: bound, showNotes: true, alwaysExpanded: true)
     }
 
     private func browseModelDir(binding: Binding<String>) {
