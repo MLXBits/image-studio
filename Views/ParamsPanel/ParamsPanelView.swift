@@ -285,7 +285,8 @@ struct ParamsPanelView: View {
                             .font(.caption).lineLimit(1).truncationMode(.middle)
                         HStack(spacing: 4) {
                             Text("Strength").font(.caption2).foregroundStyle(.secondary)
-                            Slider(value: $params.imageStrength, in: 0.1...1.0, step: 0.05)
+                            Slider(value: $params.imageStrength, in: 0.1...1.0)
+                                .onChange(of: params.imageStrength) { _, v in params.imageStrength = round(v / 0.05) * 0.05 }
                                 .accessibilityLabel("Image strength")
                                 .accessibilityValue(String(format: "%.0f%%", params.imageStrength * 100))
                                 .accessibilityHint("How much the reference image influences the output. Lower = more faithful to original.")
