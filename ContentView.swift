@@ -198,6 +198,9 @@ struct ContentView: View {
             } else {
                 gallery.scan(outputDir: settings.outputDir)
             }
+            DispatchQueue.main.async {
+                NSApp.keyWindow?.makeFirstResponder(nil)
+            }
         }
         .onChange(of: showingOutputDirPrompt) { _, showing in
             if !showing, !settings.outputDir.isEmpty {
