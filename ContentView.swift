@@ -171,7 +171,9 @@ struct ContentView: View {
         }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
-                if selectedGalleryItem == nil { /* keep preview */ }
+                if selectedGalleryItem == nil {
+                    previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
+                }
                 return
             }
             previewState = .galleryItem(item)
