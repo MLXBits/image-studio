@@ -29,6 +29,43 @@ final class JobStore {
         save()
     }
 
+    func expandBatchJob(_ batchJob: FluxJob) {
+        guard let idx = jobs.firstIndex(where: { $0.id == batchJob.id }) else { return }
+        let expanded = zip(batchJob.seeds, batchJob.outputPaths).enumerated().map { i, pair in
+            let (seed, path) = pair
+            let job = FluxJob(
+                model: batchJob.model,
+                customModelRepo: batchJob.customModelRepo,
+                customBaseModel: batchJob.customBaseModel,
+                prompt: batchJob.prompt,
+                negativePrompt: batchJob.negativePrompt,
+                width: batchJob.width,
+                height: batchJob.height,
+                seed: seed,
+                steps: batchJob.steps,
+                guidance: batchJob.guidance,
+                loras: batchJob.loras,
+                quantize: batchJob.quantize,
+                lowRam: batchJob.lowRam,
+                imagePath: batchJob.imagePath,
+                imageStrength: batchJob.imageStrength,
+                board: batchJob.board,
+                createdAt: batchJob.createdAt
+            )
+            job.status = .completed
+            job.resolvedSeed = seed
+            job.outputPath = path
+            job.thumbnailData = batchJob.outputThumbnails.indices.contains(i) ? batchJob.outputThumbnails[i] : nil
+            job.log = batchJob.log
+            job.currentStep = batchJob.steps
+            job.totalSteps = batchJob.steps
+            job.startedAt = batchJob.startedAt
+            job.completedAt = batchJob.completedAt
+            return job
+        }
+        jobs.replaceSubrange(idx...idx, with: expanded)
+    }
+
     func remove(ids: Set<UUID>, deleteFiles: Bool = false) {
         if deleteFiles {
             for id in ids {

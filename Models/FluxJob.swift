@@ -75,9 +75,14 @@ final class FluxJob: Identifiable {
     var imageStrength: Double
     var board: String
 
+    var seeds: [Int]
+
     var status: JobStatus
     var log: String
     var outputPath: String?
+    var outputPaths: [String] = []          // transient — multi-seed outputs, not persisted
+    var outputThumbnails: [Data] = []       // transient — thumbnails for fan-out, not persisted
+    var completedSeedsInBatch: Int = 0      // transient — incremented as each seed's image lands
     var resolvedSeed: Int?
     var thumbnailData: Data?
     var currentStep: Int
@@ -108,6 +113,7 @@ final class FluxJob: Identifiable {
         width: Int = 1024,
         height: Int = 1024,
         seed: Int = -1,
+        seeds: [Int] = [],
         steps: Int = 4,
         guidance: Double = 1.0,
         loras: [LoraEntry] = [],
@@ -127,6 +133,7 @@ final class FluxJob: Identifiable {
         self.width           = width
         self.height          = height
         self.seed            = seed
+        self.seeds           = seeds
         self.steps           = steps
         self.guidance        = guidance
         self.loras           = loras
@@ -146,7 +153,7 @@ final class FluxJob: Identifiable {
 extension FluxJob: Codable {
     enum CodingKeys: String, CodingKey {
         case id, model, customModelRepo, customBaseModel, prompt, negativePrompt
-        case width, height, seed, steps, guidance, loras, quantize, lowRam
+        case width, height, seed, seeds, steps, guidance, loras, quantize, lowRam
         case imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
@@ -164,6 +171,7 @@ extension FluxJob: Codable {
             width:           (try? c.decode(Int.self,             forKey: .width)) ?? 1024,
             height:          (try? c.decode(Int.self,             forKey: .height)) ?? 1024,
             seed:            (try? c.decode(Int.self,             forKey: .seed)) ?? -1,
+            seeds:           (try? c.decode([Int].self,           forKey: .seeds)) ?? [],
             steps:           (try? c.decode(Int.self,             forKey: .steps)) ?? 4,
             guidance:        (try? c.decode(Double.self,          forKey: .guidance)) ?? 1.0,
             loras:           (try? c.decode([LoraEntry].self,     forKey: .loras)) ?? [],
@@ -197,6 +205,7 @@ extension FluxJob: Codable {
         try c.encode(width,           forKey: .width)
         try c.encode(height,          forKey: .height)
         try c.encode(seed,            forKey: .seed)
+        try c.encode(seeds,           forKey: .seeds)
         try c.encode(steps,           forKey: .steps)
         try c.encode(guidance,        forKey: .guidance)
         try c.encode(loras,           forKey: .loras)
