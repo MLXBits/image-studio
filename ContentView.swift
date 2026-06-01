@@ -285,14 +285,11 @@ struct ContentView: View {
     @ViewBuilder
     private var queueStatusLabel: some View {
         if store.isRunning {
-            let total = max(runner.sessionTotal, 1)
-            let done = runner.sessionCompleted
-            HStack(spacing: 8) {
-                ProgressView(value: Double(done) / Double(total))
-                    .progressViewStyle(.linear)
-                    .frame(width: 80)
-                    .animation(.easeInOut(duration: 0.3), value: done)
-                Text("\(done) / \(total)")
+            let remaining = store.pendingJobs.count + 1
+            HStack(spacing: 6) {
+                ProgressView()
+                    .controlSize(.small)
+                Text("\(remaining) left")
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
             }

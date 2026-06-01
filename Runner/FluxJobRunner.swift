@@ -7,8 +7,7 @@ final class FluxJobRunner {
     private(set) var activeJob: FluxJob?
     private(set) var lastCompletedOutputPath: String? = nil
     private(set) var sessionCompleted: Int = 0
-    private(set) var sessionTotal: Int = 0
-    private var inSession: Bool = false
+    private(set) var inSession: Bool = false
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var stepwiseTimer: Timer?
@@ -28,7 +27,6 @@ final class FluxJobRunner {
         if !inSession {
             inSession = true
             sessionCompleted = 0
-            sessionTotal = store.pendingJobs.count
         }
         store.isRunning = true
         runTask = Task { [weak self] in
