@@ -3,6 +3,7 @@ import SwiftUI
 struct ParamsPanelView: View {
     @Bindable var params: ParamsPanelState
     @Environment(AppSettings.self) private var settings
+    @Environment(GalleryStore.self) private var gallery
 
     private var isDistilled: Bool {
         params.model.isDistilled
@@ -312,11 +313,16 @@ struct ParamsPanelView: View {
                 title: "Group",
                 description: "Organizes generated images into named subfolders inside your output directory. Leave as Default to keep everything in one place."
             )
-            TextField("Default", text: $params.board)
-                .textFieldStyle(.roundedBorder)
-                .font(.caption)
-                .accessibilityLabel("Output group")
-                .accessibilityHint("Subfolder name for organizing generated images")
+            FolderComboBox(
+                text: $params.board,
+                options: gallery.boards.filter { $0 != "Default" },
+                placeholder: "Default"
+            )
+            .accessibilityLabel("Output group")
+            .accessibilityHint("Subfolder name for organizing generated images")
+            .onChange(of: params.board) { _, newVal in
+                settings.defaultBoard = newVal
+            }
         }
     }
 
