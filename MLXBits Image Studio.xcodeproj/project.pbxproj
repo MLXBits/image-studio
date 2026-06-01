@@ -37,6 +37,7 @@
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
 		EFCAF3DC8DBED0EC33159F40 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
+		4A87F152C2C542779C9E41E0 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
 /* End PBXBuildFile section */
 
@@ -57,6 +58,7 @@
 		9135F9C12F493D9C0C50F9C0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
+		DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
@@ -102,6 +104,7 @@
 				86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */,
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
+				DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -321,6 +324,7 @@
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
+				4A87F152C2C542779C9E41E0 /* PassiveTextField.swift in Sources */,
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,

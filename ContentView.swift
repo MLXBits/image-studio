@@ -273,13 +273,12 @@ struct ContentView: View {
                 .help("Generate (⌘↵)")
 
                 HStack(spacing: 4) {
-                    TextField("", value: batchCountBinding, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 46)
-                        .multilineTextAlignment(.center)
-                        .font(.system(.body, design: .monospaced))
-                        .onSubmit { params.batchCount = max(1, min(99, params.batchCount)) }
-                        .focusEffectDisabled()
+                    PassiveTextField(
+                        value: batchCountBinding,
+                        format: .number,
+                        onSubmit: { params.batchCount = max(1, min(99, params.batchCount)) }
+                    )
+                    .frame(width: 46, height: 22)
                     Stepper("", value: batchCountBinding, in: 1...99)
                         .labelsHidden()
                         .focusEffectDisabled()
