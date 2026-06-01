@@ -96,6 +96,7 @@ struct ContentView: View {
     @State private var showingQueue: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
+    @State private var fullSizeImage: NSImage? = nil
 
     private var batchCountBinding: Binding<Int> {
         Binding(get: { params.batchCount }, set: { params.batchCount = $0 })
@@ -104,52 +105,65 @@ struct ContentView: View {
     @State private var pendingSelectPath: String? = nil
 
     var body: some View {
-        HStack(spacing: 0) {
-            if showingParams {
-                ParamsPanelView(params: params)
-                    .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
+        ZStack {
+            HStack(spacing: 0) {
+                if showingParams {
+                    ParamsPanelView(params: params)
+                        .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
+                    Divider()
+                }
+
+                PreviewPaneView(
+                    state: previewState,
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
+                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                    onUseInImg2Img: { path in params.imagePath = path },
+                    onCancel: { runner.cancel() },
+                    onClear: {
+                        selectedGalleryItem = nil
+                        if let job = runner.activeJob {
+                            previewState = .activeJob(job)
+                        } else {
+                            previewState = .idle
+                        }
+                    },
+                    onShowFullSize: { img in
+                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
+                    }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 Divider()
+
+                GenerationGalleryView(
+                    selectedItem: $selectedGalleryItem,
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
+                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                    onUseInImg2Img: { path in params.imagePath = path },
+                    onSelectBoard: { name in params.board = name },
+                    onClearPreview: {
+                        selectedGalleryItem = nil
+                        if let job = runner.activeJob {
+                            previewState = .activeJob(job)
+                        } else {
+                            previewState = .idle
+                        }
+                    }
+                )
+                .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                topControlBar
             }
 
-            PreviewPaneView(
-                state: previewState,
-                onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
-                onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                onUseInImg2Img: { path in params.imagePath = path },
-                onCancel: { runner.cancel() },
-                onClear: {
-                    selectedGalleryItem = nil
-                    if let job = runner.activeJob {
-                        previewState = .activeJob(job)
-                    } else {
-                        previewState = .idle
-                    }
-                }
-            )
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-            Divider()
-
-            GenerationGalleryView(
-                selectedItem: $selectedGalleryItem,
-                onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
-                onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                onUseInImg2Img: { path in params.imagePath = path },
-                onSelectBoard: { name in params.board = name },
-                onClearPreview: {
-                    selectedGalleryItem = nil
-                    if let job = runner.activeJob {
-                        previewState = .activeJob(job)
-                    } else {
-                        previewState = .idle
-                    }
-                }
-            )
-            .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .safeAreaInset(edge: .top, spacing: 0) {
-            topControlBar
+            if let img = fullSizeImage {
+                FullSizeImageView(image: img, onDismiss: {
+                    withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil }
+                })
+                .transition(.opacity)
+                .zIndex(1)
+            }
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
