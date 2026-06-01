@@ -93,9 +93,32 @@ struct ParamsPanelView: View {
     // TextEditor's existing height — useless. The overlay approach is the correct pattern.
 
     private var promptEditor: some View {
-        Text(params.prompt.isEmpty ? " " : params.prompt)
+        promptField(
+            text: $params.prompt,
+            placeholder: "Describe your image…",
+            label: "Prompt",
+            hint: "Describe the image you want to generate"
+        )
+    }
+
+    private var negativePromptEditor: some View {
+        promptField(
+            text: $params.negativePrompt,
+            placeholder: "Negative prompt (optional)…",
+            label: "Negative prompt",
+            hint: "Describe elements to avoid or suppress in the generated image"
+        )
+    }
+
+    private func promptField(
+        text: Binding<String>,
+        placeholder: String,
+        label: String,
+        hint: String
+    ) -> some View {
+        Text(text.wrappedValue.isEmpty ? " " : text.wrappedValue)
             .font(.body)
-            .padding(.horizontal, 9)
+            .padding(.horizontal, 5)
             .padding(.vertical, 8)
             .frame(maxWidth: .infinity, alignment: .topLeading)
             .fixedSize(horizontal: false, vertical: true)
@@ -103,14 +126,11 @@ struct ParamsPanelView: View {
             .opacity(0)
             .allowsHitTesting(false)
             .overlay(alignment: .topLeading) {
-                TextEditor(text: $params.prompt)
-                    .font(.body)
-                    .scrollContentBackground(.hidden)
-                    .scrollIndicators(.never)
+                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8))
             }
             .overlay(alignment: .topLeading) {
-                if params.prompt.isEmpty {
-                    Text("Describe your image…")
+                if text.wrappedValue.isEmpty {
+                    Text(placeholder)
                         .foregroundStyle(.tertiary)
                         .font(.body)
                         .padding(.leading, 5)
@@ -125,33 +145,8 @@ struct ParamsPanelView: View {
                 RoundedRectangle(cornerRadius: 6)
                     .strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1)
             )
-            .accessibilityLabel("Prompt")
-            .accessibilityHint("Describe the image you want to generate")
-    }
-
-    private var negativePromptEditor: some View {
-        TextEditor(text: $params.negativePrompt)
-            .font(.body)
-            .frame(minHeight: 44, maxHeight: 100)
-            .padding(4)
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1)
-            )
-            .overlay(alignment: .topLeading) {
-                if params.negativePrompt.isEmpty {
-                    Text("Negative prompt (optional)…")
-                        .foregroundStyle(.tertiary)
-                        .padding(.leading, 5)
-                        .padding(.trailing, 8)
-                        .padding(.vertical, 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .accessibilityLabel("Negative prompt")
-            .accessibilityHint("Describe elements to avoid or suppress in the generated image")
+            .accessibilityLabel(label)
+            .accessibilityHint(hint)
     }
 
     // MARK: - Steps + Seed (one row, always visible)
