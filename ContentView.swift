@@ -55,8 +55,11 @@ final class ParamsPanelState {
         seed            = newSeed ? -1 : meta.seed
     }
 
-    func makeJob() -> FluxJob {
-        FluxJob(
+    func makeJob(count: Int = 1) -> FluxJob {
+        let seeds: [Int] = count > 1
+            ? (0..<count).map { _ in Int(UInt32.random(in: 0..<UInt32.max)) }
+            : []
+        return FluxJob(
             model: model,
             customModelRepo: customModelRepo,
             customBaseModel: customBaseModel,
@@ -65,6 +68,7 @@ final class ParamsPanelState {
             width: width,
             height: height,
             seed: seed,
+            seeds: seeds,
             steps: steps,
             guidance: guidance,
             loras: loras,
@@ -204,6 +208,10 @@ struct ContentView: View {
             pendingSelectPath = path
             gallery.scan(outputDir: settings.outputDir)
         }
+        .onChange(of: runner.batchImageLanded) { _, count in
+            guard count > 1 else { return }  // first image handled by lastCompletedOutputPath
+            gallery.scan(outputDir: settings.outputDir)
+        }
         .onChange(of: gallery.items) { _, newItems in
             guard let path = pendingSelectPath,
                   let item = newItems.first(where: { $0.path == path }) else { return }
@@ -285,13 +293,20 @@ struct ContentView: View {
     @ViewBuilder
     private var queueStatusLabel: some View {
         if store.isRunning {
-            let remaining = store.pendingJobs.count + 1
             HStack(spacing: 6) {
-                ProgressView()
-                    .controlSize(.small)
-                Text("\(remaining) left")
-                    .monospacedDigit()
-                    .foregroundStyle(.secondary)
+                ProgressView().controlSize(.small)
+                if let job = runner.activeJob, job.seeds.count > 1 {
+                    let done = job.completedSeedsInBatch
+                    let total = job.seeds.count
+                    Text("\(done)/\(total) images")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                } else {
+                    let remaining = store.pendingJobs.count + 1
+                    Text("\(remaining) left")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                }
             }
         } else {
             Label("Queue", systemImage: "list.bullet")
@@ -304,12 +319,11 @@ struct ContentView: View {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
         settings.lastPrompt = params.prompt
-        let jobs = (0..<params.batchCount).map { _ in params.makeJob() }
-        store.addBatch(jobs)
-        // Don't interrupt a running job's preview; new job goes to queue and will auto-display when it starts.
-        if runner.activeJob == nil, let first = jobs.first {
+        let job = params.makeJob(count: params.batchCount)
+        store.add(job)
+        if runner.activeJob == nil {
             selectedGalleryItem = nil
-            previewState = .activeJob(first)
+            previewState = .activeJob(job)
         }
         runner.runNext(in: store, settings: settings)
     }

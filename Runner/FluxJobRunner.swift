@@ -6,11 +6,13 @@ import AppKit
 final class FluxJobRunner {
     private(set) var activeJob: FluxJob?
     private(set) var lastCompletedOutputPath: String? = nil
+    private(set) var batchImageLanded: Int = 0   // incremented per-seed; ContentView scans gallery on change
     private(set) var sessionCompleted: Int = 0
     private(set) var inSession: Bool = false
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var stepwiseTimer: Timer?
+    private var batchPollingTask: Task<Void, Never>?
 
     private static let cacheBase: URL = {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
@@ -33,6 +35,9 @@ final class FluxJobRunner {
             guard let self else { return }
             await self.run(job, settings: settings)
             self.runTask = nil
+            if !job.seeds.isEmpty, case .completed = job.status {
+                store.expandBatchJob(job)
+            }
             store.isRunning = false
             store.save()
             self.runNext(in: store, settings: settings)
@@ -78,15 +83,21 @@ final class FluxJobRunner {
         }
 
         settings.ensureOutputDirExists()
-        guard let outputFile = buildOutputPath(job: job, settings: settings) else {
+        let isMultiSeed = !job.seeds.isEmpty
+        guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
             finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
             return
         }
 
-        let effectiveSeed = job.seed >= 0 ? job.seed : Int(UInt32.random(in: 0 ..< UInt32.max))
-        job.resolvedSeed = effectiveSeed
+        let effectiveSeed: Int
+        if isMultiSeed {
+            effectiveSeed = job.seeds[0]
+        } else {
+            effectiveSeed = job.seed >= 0 ? job.seed : Int(UInt32.random(in: 0 ..< UInt32.max))
+            job.resolvedSeed = effectiveSeed
+        }
 
-        let args = buildArgs(job: job, seed: effectiveSeed, outputFile: outputFile, stepwiseDir: stepDir, settings: settings)
+        let args = buildArgs(job: job, seed: effectiveSeed, outputFile: outputTemplate, stepwiseDir: stepDir, settings: settings)
         job.log += "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
 
         let process = Process()
@@ -111,6 +122,15 @@ final class FluxJobRunner {
                     continuation.finish()
                 }
             }
+        }
+
+        // Pre-compute expected output paths for multi-seed so we can poll as each lands.
+        let batchPaths: [(seed: Int, path: String)] = isMultiSeed
+            ? expandedPaths(from: outputTemplate, seeds: job.seeds)
+            : []
+
+        if isMultiSeed {
+            startBatchPoller(job: job, paths: batchPaths)
         }
 
         let jobStartTime = Date()
@@ -155,14 +175,31 @@ final class FluxJobRunner {
         self.currentProcess = nil
 
         if process.terminationStatus == 0 {
-            job.outputPath = outputFile
             let totalSecs = Date().timeIntervalSince(jobStartTime)
             let decodeSecs = denoiseEndTime.map { Date().timeIntervalSince($0) }
             let timing = decodeSecs.map { "decoded in \(formatDuration($0)) · " } ?? ""
-            job.log += "▸ Saved to: \(outputFile)  (\(timing)total \(formatDuration(totalSecs)))\n"
-            job.thumbnailData = loadThumbnail(at: outputFile)
-            MetadataSidecar.write(GenerationMetadata.from(job: job), for: outputFile)
-            lastCompletedOutputPath = outputFile
+
+            if isMultiSeed {
+                let paths = batchPaths.map(\.path)
+                job.outputPaths = paths
+                job.outputThumbnails = paths.map { loadThumbnail(at: $0) ?? Data() }
+                job.outputPath = paths.first
+                job.thumbnailData = job.outputThumbnails.first
+                // Sidecars written progressively by batchPoller; write any missed ones here.
+                for item in batchPaths where !FileManager.default.fileExists(atPath: item.path + ".json") {
+                    var meta = GenerationMetadata.from(job: job)
+                    meta.seed = item.seed
+                    MetadataSidecar.write(meta, for: item.path)
+                }
+                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(formatDuration(totalSecs)))\n"
+                if job.completedSeedsInBatch == 0 { lastCompletedOutputPath = paths.first }
+            } else {
+                job.outputPath = outputTemplate
+                job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(formatDuration(totalSecs)))\n"
+                job.thumbnailData = loadThumbnail(at: outputTemplate)
+                MetadataSidecar.write(GenerationMetadata.from(job: job), for: outputTemplate)
+                lastCompletedOutputPath = outputTemplate
+            }
             finishJob(job, status: .completed, stepDir: stepDir)
         } else if process.terminationReason == .uncaughtSignal {
             finishJob(job, status: .cancelled, stepDir: stepDir)
@@ -173,6 +210,8 @@ final class FluxJobRunner {
     }
 
     private func finishJob(_ job: FluxJob, status: JobStatus, stepDir: URL) {
+        batchPollingTask?.cancel()
+        batchPollingTask = nil
         stopStepwiseWatcher()
         try? FileManager.default.removeItem(at: stepDir)
         job.status = status
@@ -272,6 +311,39 @@ final class FluxJobRunner {
         }
     }
 
+    // MARK: - Batch polling
+
+    private func expandedPaths(from template: String, seeds: [Int]) -> [(seed: Int, path: String)] {
+        let url = URL(fileURLWithPath: template)
+        let stem = url.deletingPathExtension().lastPathComponent
+        let ext = url.pathExtension
+        let dir = url.deletingLastPathComponent().path
+        return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
+    }
+
+    private func startBatchPoller(job: FluxJob, paths: [(seed: Int, path: String)]) {
+        batchPollingTask?.cancel()
+        batchPollingTask = Task { @MainActor [weak self] in
+            guard let self else { return }
+            var found = Set<String>()
+            while found.count < paths.count, !Task.isCancelled {
+                for item in paths where !found.contains(item.path) {
+                    guard FileManager.default.fileExists(atPath: item.path) else { continue }
+                    found.insert(item.path)
+                    var meta = GenerationMetadata.from(job: job)
+                    meta.seed = item.seed
+                    MetadataSidecar.write(meta, for: item.path)
+                    job.completedSeedsInBatch = found.count
+                    if found.count == 1 { lastCompletedOutputPath = item.path }
+                    batchImageLanded += 1
+                }
+                if found.count < paths.count {
+                    try? await Task.sleep(nanoseconds: 500_000_000)
+                }
+            }
+        }
+    }
+
     // MARK: - Arg building
 
     private func buildArgs(
@@ -318,7 +390,11 @@ final class FluxJobRunner {
             "--output",   outputFile,
         ]
 
-        args += ["--seed", "\(seed)"]
+        if job.seeds.isEmpty {
+            args += ["--seed", "\(seed)"]
+        } else {
+            args += ["--seed"] + job.seeds.map { "\($0)" }
+        }
 
         // Only pass --quantize when falling back to in-memory quantization (BF16 base model).
         // Overrides, pre-quantized repos, and locally saved weights carry stored_q in metadata.
@@ -352,7 +428,7 @@ final class FluxJobRunner {
         return args
     }
 
-    private func buildOutputPath(job: FluxJob, settings: AppSettings) -> String? {
+    private func buildOutputPath(job: FluxJob, settings: AppSettings, multiSeed: Bool = false) -> String? {
         let useBoard = !job.board.isEmpty && job.board != "Default"
         let dir = useBoard ? "\(settings.outputDir)/\(job.board)" : settings.outputDir
         do {
@@ -360,8 +436,13 @@ final class FluxJobRunner {
                 at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
         } catch { return nil }
         let ts = Int(Date().timeIntervalSince1970)
-        let seed = job.seed == -1 ? "rnd" : "\(job.seed)"
-        return "\(dir)/image_\(ts)_\(seed).png"
+        if multiSeed {
+            // No {seed} placeholder — mflux rewrites multi-seed output paths itself:
+            // it appends _seed_{seed} to the stem, so image_ts.png → image_ts_seed_42.png
+            return "\(dir)/image_\(ts).png"
+        }
+        let seedLabel = job.seed == -1 ? "rnd" : "\(job.seed)"
+        return "\(dir)/image_\(ts)_\(seedLabel).png"
     }
 
     private func loadThumbnail(at path: String) -> Data? {
