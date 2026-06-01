@@ -204,7 +204,14 @@ struct GenerationGalleryView: View {
                                     showingDeleteConfirm = true
                                 }
                             )
-                            .draggable(item.path)
+                            .draggable(
+                                multiSelection.contains(item.id)
+                                    ? gallery.items
+                                        .filter { multiSelection.contains($0.id) }
+                                        .map(\.path)
+                                        .joined(separator: "\n")
+                                    : item.path
+                            )
                         }
                     }
                     .padding(.horizontal, 8)
@@ -217,7 +224,8 @@ struct GenerationGalleryView: View {
                 Divider()
             }
             // Entire section (header + grid) is a drop target.
-            .dropDestination(for: String.self) { paths, _ in
+            .dropDestination(for: String.self) { payloads, _ in
+                let paths = payloads.flatMap { $0.components(separatedBy: "\n") }
                 for path in paths {
                     if let item = gallery.items.first(where: { $0.path == path }),
                        item.board != board {
