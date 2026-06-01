@@ -15,6 +15,7 @@ struct PreviewPaneView: View {
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
+    var onShowFullSize: ((NSImage) -> Void)? = nil
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -27,7 +28,13 @@ struct PreviewPaneView: View {
                 case .running:
                     StepwisePreviewView(job: job, onCancel: onCancel)
                 case .completed:
-                    CompletedImageView(job: job, onRemix: onRemix, onApplySettings: onApplySettings, onUseInImg2Img: onUseInImg2Img)
+                    CompletedImageView(
+                        job: job,
+                        onRemix: onRemix,
+                        onApplySettings: onApplySettings,
+                        onUseInImg2Img: onUseInImg2Img,
+                        onShowFullSize: onShowFullSize
+                    )
                 case .failed(let msg):
                     failedView(message: msg)
                 case .cancelled:
@@ -37,7 +44,13 @@ struct PreviewPaneView: View {
                 }
 
             case .galleryItem(let item):
-                GalleryItemDetailView(item: item, onRemix: onRemix, onApplySettings: onApplySettings, onUseInImg2Img: onUseInImg2Img)
+                GalleryItemDetailView(
+                    item: item,
+                    onRemix: onRemix,
+                    onApplySettings: onApplySettings,
+                    onUseInImg2Img: onUseInImg2Img,
+                    onShowFullSize: onShowFullSize
+                )
             }
 
             if showsClearButton {
@@ -125,11 +138,12 @@ struct PreviewPaneView: View {
     }
 }
 
-// MARK: - Full-size image viewer (presented as sheet on double-click)
+// MARK: - Full-size image overlay (shown in-place, no sheet window)
 
 struct FullSizeImageView: View {
     let image: NSImage
-    @Environment(\.dismiss) private var dismiss
+    let onDismiss: () -> Void
+    @State private var keyMonitor: Any? = nil
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -140,8 +154,9 @@ struct FullSizeImageView: View {
                 .aspectRatio(contentMode: .fit)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 .padding(20)
+                .onTapGesture(count: 2) { onDismiss() }
 
-            Button { dismiss() } label: {
+            Button { onDismiss() } label: {
                 Image(systemName: "xmark.circle.fill")
                     .font(.title2)
                     .symbolRenderingMode(.hierarchical)
@@ -149,9 +164,25 @@ struct FullSizeImageView: View {
             }
             .buttonStyle(.plain)
             .padding(12)
-            .keyboardShortcut(.escape, modifiers: [])
         }
-        .frame(minWidth: 800, minHeight: 600)
+        .onAppear { installKeyMonitor() }
+        .onDisappear { removeKeyMonitor() }
+    }
+
+    private func installKeyMonitor() {
+        guard keyMonitor == nil else { return }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.keyCode == 53 else { return event }  // Escape
+            onDismiss()
+            return nil  // consume — prevents system from exiting tiled/zoomed window state
+        }
+    }
+
+    private func removeKeyMonitor() {
+        if let monitor = keyMonitor {
+            NSEvent.removeMonitor(monitor)
+            keyMonitor = nil
+        }
     }
 }
 
@@ -162,10 +193,10 @@ private struct GalleryItemDetailView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
+    var onShowFullSize: ((NSImage) -> Void)? = nil
 
     @State private var image: NSImage? = nil
     @State private var showingLog: Bool = false
-    @State private var showingFullSize: Bool = false
 
     var body: some View {
         let info = ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
@@ -183,9 +214,8 @@ private struct GalleryItemDetailView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
-            .onTapGesture(count: 2) { if image != nil { showingFullSize = true } }
-            .sheet(isPresented: $showingFullSize) {
-                if let img = image { FullSizeImageView(image: img) }
+            .onTapGesture(count: 2) {
+                if let img = image { onShowFullSize?(img) }
             }
             .contextMenu {
                 Button("Copy Image") {

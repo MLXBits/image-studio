@@ -5,10 +5,10 @@ struct CompletedImageView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
+    var onShowFullSize: ((NSImage) -> Void)? = nil
 
     @State private var image: NSImage? = nil
     @State private var showingLog: Bool = false
-    @State private var showingFullSize: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
@@ -25,9 +25,8 @@ struct CompletedImageView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
-            .onTapGesture(count: 2) { if image != nil { showingFullSize = true } }
-            .sheet(isPresented: $showingFullSize) {
-                if let img = image { FullSizeImageView(image: img) }
+            .onTapGesture(count: 2) {
+                if let img = image { onShowFullSize?(img) }
             }
             .contextMenu {
                 if let path = job.outputPath {
