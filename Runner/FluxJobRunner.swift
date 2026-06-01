@@ -6,6 +6,9 @@ import AppKit
 final class FluxJobRunner {
     private(set) var activeJob: FluxJob?
     private(set) var lastCompletedOutputPath: String? = nil
+    private(set) var sessionCompleted: Int = 0
+    private(set) var sessionTotal: Int = 0
+    private var inSession: Bool = false
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var stepwiseTimer: Timer?
@@ -18,7 +21,15 @@ final class FluxJobRunner {
     // MARK: - Public
 
     func runNext(in store: JobStore, settings: AppSettings) {
-        guard runTask == nil, let job = store.pendingJobs.first else { return }
+        guard runTask == nil, let job = store.pendingJobs.first else {
+            inSession = false
+            return
+        }
+        if !inSession {
+            inSession = true
+            sessionCompleted = 0
+            sessionTotal = store.pendingJobs.count
+        }
         store.isRunning = true
         runTask = Task { [weak self] in
             guard let self else { return }
@@ -169,7 +180,10 @@ final class FluxJobRunner {
         job.status = status
         job.completedAt = Date()
         job.latestStepwisePath = nil
-        if case .running = status { } else { activeJob = nil }
+        if case .running = status { } else {
+            activeJob = nil
+            sessionCompleted += 1
+        }
     }
 
     // MARK: - One-time quantized model save

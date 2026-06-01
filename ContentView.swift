@@ -92,6 +92,10 @@ struct ContentView: View {
     @State private var showingQueue: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
+
+    private var batchCountBinding: Binding<Int> {
+        Binding(get: { params.batchCount }, set: { params.batchCount = $0 })
+    }
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String? = nil
 
@@ -140,43 +144,15 @@ struct ContentView: View {
             .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .safeAreaInset(edge: .top, spacing: 0) {
+            topControlBar
+        }
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button { showingParams.toggle() } label: {
                     Label("Toggle Sidebar", systemImage: "sidebar.leading")
                 }
                 .help("Toggle params panel")
-            }
-
-            ToolbarItem(placement: .principal) {
-                @Bindable var p = params
-                HStack(spacing: 8) {
-                    Button(action: generate) {
-                        Label("Generate", systemImage: "wand.and.stars")
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(params.prompt.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .keyboardShortcut(.return, modifiers: .command)
-                    .help("Generate (⌘↵)")
-
-                    Stepper(value: $p.batchCount, in: 1...99) {
-                        TextField("", value: $p.batchCount, format: .number)
-                            .textFieldStyle(.roundedBorder)
-                            .font(.system(.caption, design: .monospaced))
-                            .multilineTextAlignment(.trailing)
-                            .frame(width: 36)
-                            .onSubmit { params.batchCount = max(1, min(99, params.batchCount)) }
-                            .focusable(false)
-                    }
-                    .help("Batch count")
-
-                    Divider().frame(height: 20)
-
-                    Button { showingQueue.toggle() } label: {
-                        queueButtonLabel
-                    }
-                    .help(store.isRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
-                }
             }
 
             ToolbarItem(placement: .primaryAction) {
@@ -259,29 +235,67 @@ struct ContentView: View {
         .frame(width: 360, height: 500)
     }
 
-    // MARK: - Queue button
+    // MARK: - Top control bar
+
+    private var topControlBar: some View {
+        HStack(spacing: 0) {
+            Spacer()
+            HStack(spacing: 12) {
+                let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
+                Button(action: generate) {
+                    Label("Generate", systemImage: "wand.and.stars")
+                }
+                .buttonStyle(.borderedProminent)
+                .focusEffectDisabled()
+                .disabled(!canGenerate)
+                .keyboardShortcut(.return, modifiers: .command)
+                .help("Generate (⌘↵)")
+
+                HStack(spacing: 4) {
+                    TextField("", value: batchCountBinding, format: .number)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 46)
+                        .multilineTextAlignment(.center)
+                        .font(.system(.body, design: .monospaced))
+                        .onSubmit { params.batchCount = max(1, min(99, params.batchCount)) }
+                        .focusEffectDisabled()
+                    Stepper("", value: batchCountBinding, in: 1...99)
+                        .labelsHidden()
+                        .focusEffectDisabled()
+                }
+                .help("Number of images to queue")
+
+                Divider().frame(height: 18)
+
+                Button { showingQueue.toggle() } label: {
+                    queueStatusLabel
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help(store.isRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+            }
+            Spacer()
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 8)
+    }
 
     @ViewBuilder
-    private var queueButtonLabel: some View {
+    private var queueStatusLabel: some View {
         if store.isRunning {
-            let pending = store.pendingJobs.count
-            HStack(spacing: 6) {
-                ProgressView(value: runner.activeJob?.progressFraction ?? 0)
+            let total = max(runner.sessionTotal, 1)
+            let done = runner.sessionCompleted
+            HStack(spacing: 8) {
+                ProgressView(value: Double(done) / Double(total))
                     .progressViewStyle(.linear)
-                    .frame(width: 110)
-                    .animation(.linear(duration: 0.25), value: runner.activeJob?.progressFraction)
-                if pending > 0 {
-                    Text("+\(pending)")
-                        .font(.caption2)
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                        .frame(minWidth: 28, alignment: .leading)
-                }
+                    .frame(width: 80)
+                    .animation(.easeInOut(duration: 0.3), value: done)
+                Text("\(done) / \(total)")
+                    .monospacedDigit()
+                    .foregroundStyle(.secondary)
             }
-            .frame(width: 180)
         } else {
             Label("Queue", systemImage: "list.bullet")
-                .frame(width: 100)
         }
     }
 
