@@ -44,6 +44,9 @@ struct ParamsPanelView: View {
                 // Image input — directly below prompt/negative prompt
                 img2ImgSection
 
+                // Group / board — directly below image input
+                boardRow
+
                 Divider()
 
                 // Dimensions
@@ -64,11 +67,6 @@ struct ParamsPanelView: View {
 
                 // LoRAs
                 LoraManagerView(loras: $params.loras)
-
-                Divider()
-
-                // Group / board
-                boardRow
                     .padding(.bottom, 8)
             }
             .padding(.leading, 12)
