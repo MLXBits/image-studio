@@ -263,7 +263,7 @@ final class FluxJobRunner {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.creationDateKey]) else { return }
         let latest = files
-            .filter { $0.pathExtension.lowercased() == "png" }
+            .filter { $0.pathExtension.lowercased() == "png" && !$0.lastPathComponent.hasPrefix(".") }
             .max {
                 let a = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
                 let b = (try? $1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
