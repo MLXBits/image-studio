@@ -43,7 +43,96 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     var mfluxModelID: String { rawValue }
 
+    // Local path where mflux-save writes quantized weights for this model + quantize level.
+    // Stored under {MFLUX_CACHE_DIR}/saved/{rawValue}-q{quantize}/.
+    func savedModelPath(quantize: Int, in cacheDir: URL) -> URL {
+        cacheDir.appendingPathComponent("saved/\(rawValue)-q\(quantize)", isDirectory: true)
+    }
+
+    // Returns true if mflux-saved weights already exist at the given path.
+    static func hasSavedWeights(at url: URL) -> Bool {
+        guard let files = try? FileManager.default.contentsOfDirectory(
+            at: url, includingPropertiesForKeys: nil) else { return false }
+        return files.contains { $0.pathExtension.lowercased() == "safetensors" }
+    }
+
+    // Returns the HF repo ID of a pre-quantized model published by mlx-community, if one is known.
+    // When present, mflux is passed this repo directly (no --quantize flag) so it loads pre-quantized
+    // weights without needing the full BF16 model in memory.
+    func preQuantizedRepoID(quantize: Int) -> String? {
+        switch (self, quantize) {
+        case (.flux2Klein9B, 8):     return "mlx-community/flux2-klein-9b-8bit"
+        case (.flux2Klein4B, 8):     return "mlx-community/flux2-klein-4b-8bit"
+        case (.flux2KleinBase9B, 8): return "mlx-community/flux2-klein-base-9b-8bit"
+        case (.flux2KleinBase4B, 8): return "mlx-community/flux2-klein-base-4b-8bit"
+        default: return nil
+        }
+    }
+
     static var builtIn: [FluxModelVariant] {
         [.flux2Klein9B, .flux2Klein4B, .flux2KleinBase9B, .flux2KleinBase4B]
+    }
+
+    // The BF16 HF repo uses "FLUX.2-klein-…" (with a dot) while rawValue uses "flux2-klein-…".
+    // This key is used to match the BF16 cache directory by its actual name pattern.
+    var bf16CacheKey: String {
+        switch self {
+        case .flux2Klein9B:     return "flux.2-klein-9b"
+        case .flux2Klein4B:     return "flux.2-klein-4b"
+        case .flux2KleinBase9B: return "flux.2-klein-base-9b"
+        case .flux2KleinBase4B: return "flux.2-klein-base-4b"
+        case .custom:           return ""
+        }
+    }
+
+    // Returns true if any quantized variant of this model is found in the HuggingFace hub cache.
+    var isOnDisk: Bool {
+        guard self != .custom else { return false }
+        let hubDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/huggingface/hub")
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return false }
+        let key = rawValue.lowercased()
+        return entries.contains { $0.lowercased().contains(key) }
+            || (!bf16CacheKey.isEmpty && entries.contains { $0.lowercased().contains(bf16CacheKey) })
+    }
+
+    // Returns true for a specific quantize level (0=bf16, 4=q4, 8=q8).
+    func isOnDisk(quantize: Int) -> Bool {
+        guard self != .custom else { return false }
+        let hubDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/huggingface/hub")
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return false }
+        switch quantize {
+        case 8:
+            let key = rawValue.lowercased()
+            return entries.contains { $0.lowercased().contains(key) && $0.contains("8bit") }
+        case 4:
+            let key = rawValue.lowercased()
+            return entries.contains { $0.lowercased().contains(key) && $0.contains("4bit") }
+        default:  // BF16: original org repo uses "FLUX.2-…" with a dot
+            guard !bf16CacheKey.isEmpty else { return false }
+            return entries.contains { $0.lowercased().contains(bf16CacheKey) }
+        }
+    }
+
+    // Returns the HF hub cache directory URL for the given quantize level, if present.
+    func onDiskURL(quantize: Int) -> URL? {
+        guard self != .custom else { return nil }
+        let hubDir = FileManager.default.homeDirectoryForCurrentUser
+            .appendingPathComponent(".cache/huggingface/hub")
+        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
+        let match: String?
+        switch quantize {
+        case 8:
+            let key = rawValue.lowercased()
+            match = entries.first { $0.lowercased().contains(key) && $0.contains("8bit") }
+        case 4:
+            let key = rawValue.lowercased()
+            match = entries.first { $0.lowercased().contains(key) && $0.contains("4bit") }
+        default:
+            guard !bf16CacheKey.isEmpty else { return nil }
+            match = entries.first { $0.lowercased().contains(bf16CacheKey) }
+        }
+        return match.map { hubDir.appendingPathComponent($0) }
     }
 }

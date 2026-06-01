@@ -21,16 +21,20 @@ final class ParamsPanelState {
     var batchCount: Int = 1
 
     func applyDefaults(from settings: AppSettings) {
-        model    = settings.defaultModel
-        quantize = settings.defaultQuantize
-        board    = settings.defaultBoard
-        width    = settings.defaultWidth
-        height   = settings.defaultHeight
-        steps    = settings.defaultSteps
-        guidance = settings.defaultGuidance
-        seed     = settings.defaultSeed
-        lowRam   = settings.defaultLowRam
-        loras    = settings.defaultLoras
+        let m = settings.defaultModel
+        let d = settings.resolvedDefaults(for: m)
+        model          = m
+        quantize       = d.quantize
+        board          = settings.defaultBoard
+        width          = d.width
+        height         = d.height
+        steps          = d.steps
+        guidance       = d.guidance
+        seed           = -1
+        lowRam         = d.lowRam
+        negativePrompt = d.negativePrompt
+        loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
+        prompt         = settings.lastPrompt
     }
 
     func apply(metadata meta: GenerationMetadata, newSeed: Bool) {
@@ -81,61 +85,112 @@ struct ContentView: View {
     @Environment(FluxJobRunner.self) private var runner
     @Environment(GalleryStore.self) private var gallery
 
+    @Environment(\.openSettings) private var openSettings
+
     @State private var previewState: PreviewState = .idle
     @State private var selectedGalleryItem: GalleryItem? = nil
-    @State private var showingSettings: Bool = false
     @State private var showingQueue: Bool = false
+    @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
+    @State private var showingParams: Bool = true
+    @State private var pendingSelectPath: String? = nil
 
     var body: some View {
-        NavigationSplitView {
-            ParamsPanelView(params: params, onGenerate: generate)
-                .navigationSplitViewColumnWidth(min: 240, ideal: 260, max: 320)
-        } content: {
+        HStack(spacing: 0) {
+            if showingParams {
+                ParamsPanelView(params: params)
+                    .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
+                Divider()
+            }
+
             PreviewPaneView(
                 state: previewState,
                 onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
+                onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
                 onUseInImg2Img: { path in params.imagePath = path },
-                onCancel: { runner.cancel() }
+                onCancel: { runner.cancel() },
+                onClear: {
+                    selectedGalleryItem = nil
+                    if let job = runner.activeJob {
+                        previewState = .activeJob(job)
+                    } else {
+                        previewState = .idle
+                    }
+                }
             )
-        } detail: {
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+            Divider()
+
             GenerationGalleryView(
                 selectedItem: $selectedGalleryItem,
                 onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
-                onUseInImg2Img: { path in params.imagePath = path }
+                onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                onUseInImg2Img: { path in params.imagePath = path },
+                onSelectBoard: { name in params.board = name },
+                onClearPreview: {
+                    selectedGalleryItem = nil
+                    if let job = runner.activeJob {
+                        previewState = .activeJob(job)
+                    } else {
+                        previewState = .idle
+                    }
+                }
             )
-            .navigationSplitViewColumnWidth(min: 180, ideal: 260, max: 360)
+            .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .toolbar {
             ToolbarItem(placement: .navigation) {
-                Button { showingQueue.toggle() } label: {
-                    Label("Queue", systemImage: "list.bullet")
+                Button { showingParams.toggle() } label: {
+                    Label("Toggle Sidebar", systemImage: "sidebar.leading")
                 }
-                .help("Show queue (⌘K)")
+                .help("Toggle params panel")
             }
 
-            ToolbarItem(placement: .automatic) {
-                if store.isRunning {
-                    ProgressView()
-                        .scaleEffect(0.7)
+            ToolbarItem(placement: .principal) {
+                @Bindable var p = params
+                HStack(spacing: 8) {
+                    Button(action: generate) {
+                        Label("Generate", systemImage: "wand.and.stars")
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(params.prompt.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .help("Generate (⌘↵)")
+
+                    Stepper(value: $p.batchCount, in: 1...99) {
+                        TextField("", value: $p.batchCount, format: .number)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.system(.caption, design: .monospaced))
+                            .multilineTextAlignment(.trailing)
+                            .frame(width: 36)
+                            .onSubmit { params.batchCount = max(1, min(99, params.batchCount)) }
+                            .focusable(false)
+                    }
+                    .help("Batch count")
+
+                    Divider().frame(height: 20)
+
+                    Button { showingQueue.toggle() } label: {
+                        queueButtonLabel
+                    }
+                    .help(store.isRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
                 }
             }
 
             ToolbarItem(placement: .primaryAction) {
-                Button { showingSettings = true } label: {
+                Button { openSettings() } label: {
                     Label("Settings", systemImage: "gear")
                 }
             }
-        }
-        .sheet(isPresented: $showingSettings) {
-            SettingsView()
-                .environment(settings)
         }
         .sheet(isPresented: $showingQueue) {
             queueSheet
         }
         .onChange(of: runner.activeJob?.id) { _, id in
             guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
             previewState = .activeJob(job)
         }
         .onChange(of: selectedGalleryItem?.id) { _, id in
@@ -146,19 +201,36 @@ struct ContentView: View {
             previewState = .galleryItem(item)
         }
         .background {
-            Button("") { generate() }
-                .keyboardShortcut(.return, modifiers: .command)
-                .hidden()
-            Button("") { showingSettings = true }
-                .keyboardShortcut(",", modifiers: .command)
-                .hidden()
             Button("") { showingQueue.toggle() }
                 .keyboardShortcut("k", modifiers: .command)
                 .hidden()
         }
+        .sheet(isPresented: $showingOutputDirPrompt) {
+            OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
+                .environment(settings)
+        }
         .onAppear {
             params.applyDefaults(from: settings)
+            if settings.outputDir.isEmpty {
+                showingOutputDirPrompt = true
+            } else {
+                gallery.scan(outputDir: settings.outputDir)
+            }
+        }
+        .onChange(of: showingOutputDirPrompt) { _, showing in
+            if !showing, !settings.outputDir.isEmpty {
+                gallery.scan(outputDir: settings.outputDir)
+            }
+        }
+        .onChange(of: runner.lastCompletedOutputPath) { _, path in
+            pendingSelectPath = path
             gallery.scan(outputDir: settings.outputDir)
+        }
+        .onChange(of: gallery.items) { _, newItems in
+            guard let path = pendingSelectPath,
+                  let item = newItems.first(where: { $0.path == path }) else { return }
+            selectedGalleryItem = item
+            pendingSelectPath = nil
         }
     }
 
@@ -180,26 +252,51 @@ struct ContentView: View {
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { showingQueue = false }
+                        .keyboardShortcut(.cancelAction)
                 }
             }
         }
         .frame(width: 360, height: 500)
     }
 
+    // MARK: - Queue button
+
+    @ViewBuilder
+    private var queueButtonLabel: some View {
+        if store.isRunning {
+            let pending = store.pendingJobs.count
+            HStack(spacing: 6) {
+                ProgressView(value: runner.activeJob?.progressFraction ?? 0)
+                    .progressViewStyle(.linear)
+                    .frame(width: 110)
+                    .animation(.linear(duration: 0.25), value: runner.activeJob?.progressFraction)
+                if pending > 0 {
+                    Text("+\(pending)")
+                        .font(.caption2)
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
+                        .frame(minWidth: 28, alignment: .leading)
+                }
+            }
+            .frame(width: 180)
+        } else {
+            Label("Queue", systemImage: "list.bullet")
+                .frame(width: 100)
+        }
+    }
+
     // MARK: - Generate
 
     private func generate() {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        settings.lastPrompt = params.prompt
         let jobs = (0..<params.batchCount).map { _ in params.makeJob() }
         store.addBatch(jobs)
-        if let first = jobs.first {
+        // Don't interrupt a running job's preview; new job goes to queue and will auto-display when it starts.
+        if runner.activeJob == nil, let first = jobs.first {
+            selectedGalleryItem = nil
             previewState = .activeJob(first)
         }
         runner.runNext(in: store, settings: settings)
-        // Rescan gallery after current run
-        Task { @MainActor in
-            try? await Task.sleep(for: .seconds(1))
-            gallery.scan(outputDir: settings.outputDir)
-        }
     }
 }

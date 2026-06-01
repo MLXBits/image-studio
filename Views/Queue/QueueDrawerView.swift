@@ -26,9 +26,21 @@ struct QueueDrawerView: View {
             Spacer()
             if store.isRunning {
                 Button("Stop") { runner.cancel() }
-                    .buttonStyle(.bordered)
+                    .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(.red)
+                    .focusable(false)
+                    .help("Stop the current job; remaining pending jobs continue")
+
+                Button("Stop All") {
+                    runner.cancel()
+                    store.cancelAllPending()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(.red)
+                .focusable(false)
+                .help("Stop the current job and cancel all pending jobs")
             }
         }
         .padding(.horizontal, 12)
@@ -41,7 +53,7 @@ struct QueueDrawerView: View {
             set: { id in selectedJob = store.jobs.first { $0.id == id } }
         )) {
             ForEach(store.jobs) { job in
-                QueueJobRow(job: job)
+                QueueJobRow(job: job, onRestart: isRestartable(job) ? { restart(job) } : nil)
                     .tag(job.id)
             }
         }
@@ -57,10 +69,23 @@ struct QueueDrawerView: View {
             Spacer()
         }
     }
+
+    private func isRestartable(_ job: FluxJob) -> Bool {
+        switch job.status {
+        case .failed, .cancelled: return true
+        default: return false
+        }
+    }
+
+    private func restart(_ job: FluxJob) {
+        store.restart(job)
+        runner.runNext(in: store, settings: settings)
+    }
 }
 
 private struct QueueJobRow: View {
     let job: FluxJob
+    var onRestart: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 8) {
@@ -74,6 +99,16 @@ private struct QueueJobRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if let onRestart {
+                Button(action: onRestart) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .help("Re-queue this job")
+            }
         }
         .padding(.vertical, 2)
     }

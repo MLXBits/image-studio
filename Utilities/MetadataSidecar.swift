@@ -17,6 +17,7 @@ struct GenerationMetadata: Codable {
     var imageStrength: Double
     var loras: [LoraEntry]
     var generatedAt: Date
+    var log: String?
 
     static func from(job: FluxJob) -> GenerationMetadata {
         GenerationMetadata(
@@ -35,7 +36,8 @@ struct GenerationMetadata: Codable {
             imagePath: job.imagePath,
             imageStrength: job.imageStrength,
             loras: job.loras,
-            generatedAt: job.completedAt ?? Date()
+            generatedAt: job.completedAt ?? Date(),
+            log: job.log.isEmpty ? nil : job.log
         )
     }
 }

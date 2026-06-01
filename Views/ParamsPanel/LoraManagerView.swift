@@ -2,7 +2,7 @@ import SwiftUI
 
 struct LoraManagerView: View {
     @Binding var loras: [LoraEntry]
-    @State private var isExpanded: Bool = false
+    @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
     @State private var newPath: String = ""
     @State private var editingID: UUID? = nil

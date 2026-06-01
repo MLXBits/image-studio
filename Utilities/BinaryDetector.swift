@@ -24,4 +24,11 @@ enum BinaryDetector {
         let path = "\(dir)/mflux-generate-flux2"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-flux2")
     }
+
+    // Returns the full path to mflux-save given a binary directory.
+    static func mfluxSave(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-save") }
+        let path = "\(dir)/mflux-save"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-save")
+    }
 }
