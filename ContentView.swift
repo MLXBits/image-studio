@@ -195,6 +195,12 @@ struct ContentView: View {
                 return
             }
             previewState = .galleryItem(item)
+            if fullSizeImage != nil {
+                Task.detached(priority: .userInitiated) {
+                    let img = NSImage(contentsOf: item.url)
+                    await MainActor.run { if let img { self.fullSizeImage = img } }
+                }
+            }
         }
         .background {
             Button("") { showingQueue.toggle() }
