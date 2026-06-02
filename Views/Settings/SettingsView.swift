@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let openSettingsAdvancedTab = Notification.Name("MLXBitsImageStudio.openSettingsAdvancedTab")
+}
+
 struct SettingsView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
@@ -35,6 +39,9 @@ struct SettingsView: View {
         }
         .frame(width: 560, height: 460)
         .onExitCommand { NSApp.keyWindow?.performClose(nil) }
+        .onReceive(NotificationCenter.default.publisher(for: .openSettingsAdvancedTab)) { _ in
+            selectedTab = .advanced
+        }
         .sheet(isPresented: $showingOutputDirPrompt) {
             OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                 .environment(settings)
@@ -143,6 +150,10 @@ struct SettingsView: View {
             }
 
             Section {
+                LabeledContent("HF_TOKEN") {
+                    SecureField("Hugging Face access token", text: $s.hfToken)
+                        .textFieldStyle(.roundedBorder)
+                }
                 LabeledContent("HF_HOME") {
                     TextField("default (~/.cache/huggingface)", text: $s.hfHome)
                         .textFieldStyle(.roundedBorder)
@@ -156,6 +167,7 @@ struct SettingsView: View {
                 Text("HuggingFace")
             } footer: {
                 Text(
+                    "HF_TOKEN grants access to gated/private models. Stored in the system Keychain. " +
                     "HF_HOME is where HuggingFace caches model files (default: ~/.cache/huggingface). " +
                     "MFLUX_CACHE_DIR is where mflux stores converted weight files (default: ~/Library/Caches/mflux). " +
                     "Leave blank to use the system defaults."

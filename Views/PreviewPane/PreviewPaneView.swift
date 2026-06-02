@@ -8,6 +8,7 @@ enum PreviewState {
 
 struct PreviewPaneView: View {
     @Environment(FluxJobRunner.self) private var runner
+    @Environment(\.openSettings) private var openSettings
 
     let state: PreviewState
     let onRemix: (GenerationMetadata) -> Void
@@ -36,7 +37,7 @@ struct PreviewPaneView: View {
                         onShowFullSize: onShowFullSize
                     )
                 case .failed(let msg):
-                    failedView(message: msg)
+                    failedView(message: msg, job: job)
                 case .cancelled:
                     cancelledView
                 case .pending:
@@ -92,22 +93,65 @@ struct PreviewPaneView: View {
         }
     }
 
-    private func failedView(message: String) -> some View {
-        VStack(spacing: 12) {
+    private func failedView(message: String, job: FluxJob) -> some View {
+        let combined = message + "\n" + job.log
+        let isGatedRepo = combined.contains("private or gated repo")
+            || combined.contains("GatedRepoError")
+            || combined.contains("is restricted")
+            || combined.contains("403 Client Error")
+            || combined.contains("401 Client Error")
+        let repoURL: URL? = job.model != .custom
+            ? job.model.hfRepoURL(quantize: job.quantize)
+            : nil
+
+        return VStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle")
                 .font(.system(size: 40))
                 .foregroundStyle(.red)
             Text("Generation failed")
                 .font(.title3)
-            ScrollView {
-                Text(message)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .padding()
+
+            if isGatedRepo {
+                VStack(spacing: 10) {
+                    Text("This model is gated on HuggingFace.\nAccept the terms and add an access token to continue.")
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .padding(.horizontal)
+
+                    if let url = repoURL {
+                        Link(destination: url) {
+                            Label("Accept Terms on HuggingFace", systemImage: "arrow.up.right.square")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .padding(.horizontal)
+                    }
+
+                    Button {
+                        openSettings()
+                        DispatchQueue.main.async {
+                            NotificationCenter.default.post(name: .openSettingsAdvancedTab, object: nil)
+                        }
+                    } label: {
+                        Label("Add HF Token in Settings", systemImage: "key")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                    .padding(.horizontal)
+                }
+                .padding(.top, 4)
+            } else {
+                ScrollView {
+                    Text(message)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .padding()
+                }
+                .frame(maxHeight: 120)
+                .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             }
-            .frame(maxHeight: 120)
-            .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
         }
         .padding()
     }

@@ -56,16 +56,32 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         return files.contains { $0.pathExtension.lowercased() == "safetensors" }
     }
 
+    // Returns the HuggingFace repo URL for this model + quantize combination, if known.
+    // Used to link users directly to the gated repo so they can accept terms.
+    func hfRepoURL(quantize: Int) -> URL? {
+        let repoID = preQuantizedRepoID(quantize: quantize) ?? bf16HFRepoID
+        return repoID.flatMap { URL(string: "https://huggingface.co/\($0)") }
+    }
+
     // Returns the HF repo ID of a pre-quantized model published by mlx-community, if one is known.
     // When present, mflux is passed this repo directly (no --quantize flag) so it loads pre-quantized
     // weights without needing the full BF16 model in memory.
     func preQuantizedRepoID(quantize: Int) -> String? {
         switch (self, quantize) {
-        case (.flux2Klein9B, 8):     return "mlx-community/flux2-klein-9b-8bit"
-        case (.flux2Klein4B, 8):     return "mlx-community/flux2-klein-4b-8bit"
-        case (.flux2KleinBase9B, 8): return "mlx-community/flux2-klein-base-9b-8bit"
-        case (.flux2KleinBase4B, 8): return "mlx-community/flux2-klein-base-4b-8bit"
+        case (.flux2Klein9B, 8):  return "mlx-community/flux2-klein-9b-8bit"
+        case (.flux2Klein4B, 8):  return "mlx-community/flux2-klein-4b-8bit"
         default: return nil
+        }
+    }
+
+    // BF16 source repo on HuggingFace (used when no pre-quantized repo exists).
+    var bf16HFRepoID: String? {
+        switch self {
+        case .flux2Klein9B:     return "mlx-community/flux2-klein-9b-bf16"
+        case .flux2Klein4B:     return "mlx-community/flux2-klein-4b-bf16"
+        case .flux2KleinBase9B: return "black-forest-labs/FLUX.2-klein-base-9B"
+        case .flux2KleinBase4B: return "black-forest-labs/FLUX.2-klein-base-4B"
+        case .custom:           return nil
         }
     }
 

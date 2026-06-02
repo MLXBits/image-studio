@@ -26,8 +26,8 @@
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
-		9FBA578A7EB611010789C149 /* gen_icon.py in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_38686B8C-0310-4F84-819B-0D374FA70D69" /* gen_icon.py */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
+		B1D2E3F4A5C6D7E8F9A0B1C2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
@@ -75,7 +75,7 @@
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
-		"TEMP_38686B8C-0310-4F84-819B-0D374FA70D69" /* gen_icon.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = gen_icon.py; sourceTree = "<group>"; };
+		C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		"TEMP_6C414C73-9CC7-4B38-BE1B-1F068481ABCA" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		"TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		"TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
@@ -95,6 +95,7 @@
 			children = (
 				A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
+				C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */,
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
 			);
 			path = Utilities;
@@ -227,7 +228,6 @@
 		"TEMP_F4E4046D-B4B3-4ECE-A913-CD4D3EAD672F" /* . */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_38686B8C-0310-4F84-819B-0D374FA70D69" /* gen_icon.py */,
 				"TEMP_6C414C73-9CC7-4B38-BE1B-1F068481ABCA" /* Assets.xcassets */,
 				"TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */,
 				"TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */,
@@ -302,7 +302,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				3C0AE7C8FB34064BEE086D42 /* Assets.xcassets in Resources */,
-				9FBA578A7EB611010789C149 /* gen_icon.py in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -330,6 +329,7 @@
 				84B3B8653D3549C199D2A484 /* InsetTextEditor.swift in Sources */,
 				4A87F152C2C542779C9E41E0 /* PassiveTextField.swift in Sources */,
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
+				B1D2E3F4A5C6D7E8F9A0B1C2 /* KeychainHelper.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
 				EA474B9A2B2A480F891C614F /* FolderComboBox.swift in Sources */,

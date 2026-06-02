@@ -74,8 +74,13 @@ final class FluxJobRunner {
            job.model.preQuantizedRepoID(quantize: job.quantize) == nil {
             let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
             if !FluxModelVariant.hasSavedWeights(at: savedPath) {
-                let saved = await runSave(job: job, savePath: savedPath, settings: settings)
-                if !saved {
+                switch await runSave(job: job, savePath: savedPath, settings: settings) {
+                case .success:
+                    job.statusLine = ""
+                case .cancelled:
+                    finishJob(job, status: .cancelled, stepDir: stepDir)
+                    return
+                case .failed:
                     finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
                     return
                 }
@@ -135,6 +140,7 @@ final class FluxJobRunner {
 
         let jobStartTime = Date()
         job.log += "▸ Loading model...\n"
+        job.statusLine = "Loading model…"
 
         do { try process.run() } catch {
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
@@ -225,14 +231,17 @@ final class FluxJobRunner {
 
     // MARK: - One-time quantized model save
 
-    private func runSave(job: FluxJob, savePath: URL, settings: AppSettings) async -> Bool {
+    private enum SaveResult { case success, cancelled, failed }
+
+    private func runSave(job: FluxJob, savePath: URL, settings: AppSettings) async -> SaveResult {
         let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
         guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
             job.log += "⚠️  mflux-save not found — falling back to in-memory quantization.\n"
-            return true  // non-fatal: generate will quantize in-memory instead
+            return .success  // non-fatal: generate will quantize in-memory instead
         }
         try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
-        job.log += "▸ Saving Q\(job.quantize) weights (one-time, ~\(job.quantize == 8 ? "17" : "9") GB)...\n"
+        job.log += "▸ Downloading and saving Q\(job.quantize) weights (one-time)...\n"
+        job.statusLine = "Downloading model…"
 
         let args = ["--model", job.model.mfluxModelID, "--quantize", "\(job.quantize)", "--path", savePath.path]
         let process = Process()
@@ -243,6 +252,7 @@ final class FluxJobRunner {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
+        self.currentProcess = process
 
         let stream = AsyncStream<String> { continuation in
             pipe.fileHandleForReading.readabilityHandler = { handle in
@@ -259,23 +269,32 @@ final class FluxJobRunner {
         }
 
         do { try process.run() } catch {
+            self.currentProcess = nil
             job.log += "⚠️  mflux-save failed: \(error.localizedDescription)\n"
-            return false
+            return .failed
         }
 
         for await chunk in stream {
             job.log = appendLog(chunk, to: job.log)
+            // Surface the latest download/quantize line (skip the shell command echo)
+            if let last = job.log.components(separatedBy: "\n")
+                .last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty && !$0.hasPrefix("$") }) {
+                job.statusLine = last
+            }
         }
         process.waitUntilExit()
+        self.currentProcess = nil
 
         if process.terminationStatus == 0 {
             job.log += "▸ Weights saved.\n"
-            return true
+            return .success
+        } else if process.terminationReason == .uncaughtSignal {
+            try? FileManager.default.removeItem(at: savePath)
+            return .cancelled
         } else {
             job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
-            // Clean up partial save so we retry next time rather than loading corrupt weights
             try? FileManager.default.removeItem(at: savePath)
-            return false
+            return .failed
         }
     }
 
