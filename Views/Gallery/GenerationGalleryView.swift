@@ -424,13 +424,15 @@ struct GenerationGalleryView: View {
 
     @discardableResult
     private func navigate(_ delta: Int) -> KeyPress.Result {
-        let items = gallery.items
+        guard let current = selectedItem else {
+            selectedItem = gallery.items.first
+            return gallery.items.isEmpty ? .ignored : .handled
+        }
+        let items = gallery.items.filter { $0.board == current.board }
         guard !items.isEmpty else { return .ignored }
-        if let current = selectedItem, let idx = items.firstIndex(where: { $0.id == current.id }) {
+        if let idx = items.firstIndex(where: { $0.id == current.id }) {
             let next = max(0, min(items.count - 1, idx + delta))
             if next != idx { selectedItem = items[next] }
-        } else {
-            selectedItem = items.first
         }
         return .handled
     }
