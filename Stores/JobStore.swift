@@ -84,10 +84,21 @@ final class JobStore {
     var pendingJobs: [FluxJob] { jobs.filter { $0.status == .pending } }
     var runningJob: FluxJob? { jobs.first { $0.status == .running } }
 
+    func cancelJob(_ job: FluxJob) {
+        guard case .pending = job.status else { return }
+        job.status = .cancelled
+        save()
+    }
+
     func cancelAllPending() {
         for job in jobs where job.status == .pending {
             job.status = .cancelled
         }
+        save()
+    }
+
+    func purgeTerminal() {
+        jobs.removeAll { $0.status.isTerminal }
         save()
     }
 

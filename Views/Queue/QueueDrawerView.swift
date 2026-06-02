@@ -24,6 +24,18 @@ struct QueueDrawerView: View {
             Text("Queue")
                 .font(.headline)
             Spacer()
+            if store.jobs.contains(where: { $0.status.isTerminal }) {
+                Button {
+                    store.purgeTerminal()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .foregroundStyle(.secondary)
+                .focusable(false)
+                .help("Remove all completed, failed, and cancelled jobs")
+            }
             if store.isRunning {
                 Button("Stop") { runner.cancel() }
                     .buttonStyle(.borderless)
@@ -53,8 +65,12 @@ struct QueueDrawerView: View {
             set: { id in selectedJob = store.jobs.first { $0.id == id } }
         )) {
             ForEach(store.jobs) { job in
-                QueueJobRow(job: job, onRestart: isRestartable(job) ? { restart(job) } : nil)
-                    .tag(job.id)
+                QueueJobRow(
+                    job: job,
+                    onRestart: isRestartable(job) ? { restart(job) } : nil,
+                    onCancel: isCancellable(job) ? { cancelJob(job) } : nil
+                )
+                .tag(job.id)
             }
         }
         .listStyle(.sidebar)
@@ -77,15 +93,31 @@ struct QueueDrawerView: View {
         }
     }
 
+    private func isCancellable(_ job: FluxJob) -> Bool {
+        switch job.status {
+        case .pending, .running: return true
+        default: return false
+        }
+    }
+
     private func restart(_ job: FluxJob) {
         store.restart(job)
         runner.runNext(in: store, settings: settings)
+    }
+
+    private func cancelJob(_ job: FluxJob) {
+        if case .running = job.status {
+            runner.cancel()
+        } else {
+            store.cancelJob(job)
+        }
     }
 }
 
 private struct QueueJobRow: View {
     let job: FluxJob
     var onRestart: (() -> Void)? = nil
+    var onCancel: (() -> Void)? = nil
 
     var body: some View {
         HStack(spacing: 8) {
@@ -99,6 +131,16 @@ private struct QueueJobRow: View {
                     .foregroundStyle(.secondary)
             }
             Spacer()
+            if let onCancel {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .help("Cancel this job")
+            }
             if let onRestart {
                 Button(action: onRestart) {
                     Image(systemName: "arrow.counterclockwise")

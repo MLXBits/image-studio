@@ -72,9 +72,11 @@ struct StepwisePreviewView: View {
                 .monospacedDigit()
                 .foregroundStyle(.secondary)
         } else {
-            Text("Loading model…")
+            Text(job.statusLine.isEmpty ? "Loading model…" : job.statusLine)
                 .font(.caption)
                 .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .truncationMode(.middle)
         }
     }
 

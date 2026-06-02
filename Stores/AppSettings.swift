@@ -66,6 +66,7 @@ class AppSettings {
     var hfHome: String                { didSet { save() } }
     var mfluxCacheDir: String         { didSet { save() } }
     var hfOffline: Bool               { didSet { save() } }
+    var hfToken: String               { didSet { KeychainHelper.set(hfToken, key: "hf_token") } }
     var logFontSize: Double           { didSet { save() } }
     var lastPrompt: String            { didSet { save() } }
 
@@ -88,6 +89,7 @@ class AppSettings {
         hfHome          = s.hfHome          ?? ""
         mfluxCacheDir   = s.mfluxCacheDir   ?? ""
         hfOffline       = s.hfOffline       ?? false
+        hfToken         = KeychainHelper.get("hf_token")
         logFontSize     = s.logFontSize     ?? 12.0
         lastPrompt      = s.lastPrompt      ?? ""
         modelDefaults   = s.modelDefaults   ?? [:]
@@ -152,6 +154,7 @@ class AppSettings {
         if !hfHome.isEmpty        { env["HF_HOME"]         = hfHome }
         if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"] = mfluxCacheDir }
         if hfOffline              { env["HF_HUB_OFFLINE"]  = "1" }
+        if !hfToken.isEmpty       { env["HF_TOKEN"]        = hfToken }
         return env
     }
 

@@ -88,6 +88,7 @@ final class FluxJob: Identifiable {
     var currentStep: Int
     var totalSteps: Int
     var latestStepwisePath: String?
+    var statusLine: String = ""     // transient: live CLI status for display during load/download
     let createdAt: Date
     var startedAt: Date?
     var completedAt: Date?
