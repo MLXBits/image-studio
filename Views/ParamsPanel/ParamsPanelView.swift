@@ -6,6 +6,7 @@ struct ParamsPanelView: View {
     @Environment(GalleryStore.self) private var gallery
 
     @State private var isImageDropTargeted: Bool = false
+    @State private var isEditDropTargeted: Bool = false
 
     private var isDistilled: Bool {
         params.model.isDistilled
@@ -33,6 +34,12 @@ struct ParamsPanelView: View {
                     params.width          = d.width
                     params.height         = d.height
                     params.loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                    params.isEditMode     = false
+                    params.editImagePaths = []
+                }
+
+                if params.model != .custom {
+                    modePickerRow
                 }
 
                 Divider()
@@ -45,7 +52,11 @@ struct ParamsPanelView: View {
                 }
 
                 // Image input — directly below prompt/negative prompt
-                img2ImgSection
+                if params.isEditMode {
+                    editImagesSection
+                } else {
+                    img2ImgSection
+                }
 
                 Divider()
 
@@ -417,6 +428,179 @@ struct ParamsPanelView: View {
                 params.imagePath = url.path
             }
         }
+    }
+
+    // MARK: - Mode picker (Generate vs Edit, Flux.2 only)
+
+    private var modePickerRow: some View {
+        HStack(spacing: 6) {
+            Text("Mode")
+                .font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
+            InfoButton(
+                title: "Generation Mode",
+                description: "Generate: create or modify images from text + optional reference (img2img).\n\nEdit: compose multiple images with instructions — e.g. two images plus \"make her wear the glasses\". Works with a single image too for general edits."
+            )
+            Picker("", selection: $params.isEditMode) {
+                Text("Generate").tag(false)
+                Text("Edit").tag(true)
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+            .fixedSize()
+            .onChange(of: params.isEditMode) { _, editing in
+                if editing {
+                    params.imagePath = ""
+                } else {
+                    params.editImagePaths = []
+                }
+            }
+        }
+    }
+
+    // MARK: - Edit images section (multi-image list)
+
+    private var editImagesSection: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 4) {
+                sectionHeader("Images", info: "One or more reference images for editing. Order matters: list the primary subject first. Prompt describes the edit — e.g. \"make her wear the glasses\".")
+                Spacer()
+                if !params.editImagePaths.isEmpty {
+                    Button {
+                        params.editImagePaths = []
+                    } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Remove all images")
+                }
+            }
+
+            if !params.editImagePaths.isEmpty {
+                VStack(spacing: 4) {
+                    ForEach(Array(params.editImagePaths.enumerated()), id: \.offset) { idx, path in
+                        editImageRow(path: path, index: idx)
+                    }
+                    .onMove { from, to in params.editImagePaths.move(fromOffsets: from, toOffset: to) }
+                }
+            }
+
+            HStack(spacing: 6) {
+                Button {
+                    browseEditImages()
+                } label: {
+                    HStack {
+                        Image(systemName: "photo.badge.plus")
+                        Text(params.editImagePaths.isEmpty ? "Choose Image…" : "Add Image…")
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 6)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .accessibilityLabel("Add reference image")
+
+                if clipboardHasImage {
+                    Button { pasteEditImage() } label: {
+                        Image(systemName: "doc.on.clipboard")
+                            .padding(.vertical, 6)
+                            .padding(.horizontal, 4)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .keyboardShortcut("v", modifiers: .command)
+                    .accessibilityLabel("Paste image from clipboard")
+                    .help("Paste image from clipboard (⌘V)")
+                }
+            }
+        }
+        .dropDestination(for: String.self, action: { paths, _ in
+            let valid = paths.filter { ["png","jpg","jpeg","webp"].contains(($0 as NSString).pathExtension.lowercased()) }
+            guard !valid.isEmpty else { return false }
+            for path in valid where !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+            return true
+        }, isTargeted: { isEditDropTargeted = $0 })
+        .onDrop(of: [.fileURL], isTargeted: $isEditDropTargeted) { providers in
+            for provider in providers {
+                provider.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
+                    guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
+                    guard ["png","jpg","jpeg","webp"].contains(url.pathExtension.lowercased()) else { return }
+                    DispatchQueue.main.async {
+                        if !self.params.editImagePaths.contains(url.path) { self.params.editImagePaths.append(url.path) }
+                    }
+                }
+            }
+            return true
+        }
+        .overlay {
+            if isEditDropTargeted {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.accentColor.opacity(0.45))
+                    .padding(-10)
+                    .allowsHitTesting(false)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func editImageRow(path: String, index: Int) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: "line.3.horizontal")
+                .font(.caption).foregroundStyle(.tertiary)
+                .help("Drag to reorder")
+            if let img = NSImage(contentsOfFile: path) {
+                Image(nsImage: img)
+                    .resizable()
+                    .aspectRatio(contentMode: .fill)
+                    .frame(width: 36, height: 36)
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+            }
+            Text(URL(fileURLWithPath: path).lastPathComponent)
+                .font(.caption).lineLimit(1).truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button {
+                params.editImagePaths.remove(at: index)
+            } label: {
+                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Remove image")
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 4)
+        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 6))
+    }
+
+    private func browseEditImages() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = []
+        panel.allowsOtherFileTypes = true
+        panel.allowsMultipleSelection = true
+        panel.title = "Select Images"
+        if panel.runModal() == .OK {
+            let valid = panel.urls.filter { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }
+            for url in valid where !params.editImagePaths.contains(url.path) {
+                params.editImagePaths.append(url.path)
+            }
+        }
+    }
+
+    private func pasteEditImage() {
+        let pb = NSPasteboard.general
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           let url = urls.first(where: { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }) {
+            if !params.editImagePaths.contains(url.path) { params.editImagePaths.append(url.path) }
+            return
+        }
+        guard let image = NSImage(pasteboard: pb) else { return }
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("pasted-edit-\(Int(Date().timeIntervalSince1970)).png")
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return }
+        try? png.write(to: tmp)
+        if !params.editImagePaths.contains(tmp.path) { params.editImagePaths.append(tmp.path) }
     }
 }
 

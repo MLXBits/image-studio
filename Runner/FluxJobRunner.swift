@@ -61,9 +61,10 @@ final class FluxJobRunner {
         try? FileManager.default.createDirectory(at: stepDir, withIntermediateDirectories: true)
         startStepwiseWatcher(job: job, dir: stepDir)
 
-        let binaryPath = settings.mfluxBinaryPath()
+        let binaryPath = job.isEditMode ? settings.mfluxEditBinaryPath() : settings.mfluxBinaryPath()
         guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
-            finishJob(job, status: .failed("mflux binary not found. Check Settings → Advanced."), stepDir: stepDir)
+            let name = job.isEditMode ? "mflux-generate-flux2-edit" : "mflux-generate-flux2"
+            finishJob(job, status: .failed("\(name) not found. Check Settings → Advanced."), stepDir: stepDir)
             return
         }
 
@@ -432,7 +433,11 @@ final class FluxJobRunner {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }
 
-        if !job.imagePath.isEmpty {
+        if job.isEditMode {
+            if !job.editImagePaths.isEmpty {
+                args += ["--image-paths"] + job.editImagePaths
+            }
+        } else if !job.imagePath.isEmpty {
             args += ["--image-path", job.imagePath,
                      "--image-strength", String(format: "%.2f", job.imageStrength)]
         }
