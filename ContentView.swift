@@ -52,6 +52,7 @@ final class ParamsPanelState {
         imagePath       = meta.imagePath
         imageStrength   = meta.imageStrength
         loras           = meta.loras
+        board           = meta.board ?? ""
         seed            = newSeed ? -1 : meta.seed
     }
 

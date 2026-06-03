@@ -16,6 +16,7 @@ struct GenerationMetadata: Codable {
     var imagePath: String
     var imageStrength: Double
     var loras: [LoraEntry]
+    var board: String?
     var generatedAt: Date
     var log: String?
 
@@ -36,6 +37,7 @@ struct GenerationMetadata: Codable {
             imagePath: job.imagePath,
             imageStrength: job.imageStrength,
             loras: job.loras,
+            board: job.board.isEmpty ? nil : job.board,
             generatedAt: job.completedAt ?? Date(),
             log: job.log.isEmpty ? nil : job.log
         )
