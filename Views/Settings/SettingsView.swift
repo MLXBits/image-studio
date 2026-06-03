@@ -10,6 +10,9 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
 
+    private enum SetupPhase { case idle, installing, failed(String) }
+    @State private var mfluxSetupPhase: SetupPhase = .idle
+
     enum SettingsTab: String, CaseIterable, Identifiable {
         case generation = "Generation"
         case models = "Models"
@@ -52,7 +55,15 @@ struct SettingsView: View {
 
     private var generationTab: some View {
         @Bindable var s = settings
-        return Form {
+        let mfluxMissing = BinaryDetector.mfluxGenerateFlux2(in: s.mfluxBinaryDir).isEmpty
+        return VStack(spacing: 0) {
+            if mfluxMissing {
+                mfluxSetupBanner
+                    .padding(.horizontal, 16)
+                    .padding(.top, 12)
+                    .padding(.bottom, 4)
+            }
+            Form {
             Section {
                 Picker("Default model", selection: $s.defaultModel) {
                     ForEach(FluxModelVariant.builtIn, id: \.self) { v in
@@ -99,7 +110,56 @@ struct SettingsView: View {
                     .font(.caption).foregroundStyle(.tertiary)
             }
         }
-        .formStyle(.grouped)
+            .formStyle(.grouped)
+        }
+    }
+
+    @ViewBuilder
+    private var mfluxSetupBanner: some View {
+        HStack(spacing: 12) {
+            Image(systemName: "exclamationmark.triangle.fill")
+                .foregroundStyle(.orange)
+                .font(.title3)
+            VStack(alignment: .leading, spacing: 2) {
+                Text("mflux not found")
+                    .font(.callout.weight(.medium))
+                Text("mflux is required to run generations.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            switch mfluxSetupPhase {
+            case .idle:
+                Button("Install Automatically") { Task { await installMflux() } }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.small)
+            case .installing:
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    Text("Installing…").font(.caption).foregroundStyle(.secondary)
+                }
+            case .failed(let msg):
+                HStack(spacing: 8) {
+                    Text(msg).font(.caption).foregroundStyle(.red).lineLimit(2)
+                    Button("Retry") { Task { await installMflux() } }
+                        .buttonStyle(.bordered).controlSize(.small)
+                }
+            }
+        }
+        .padding(12)
+        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
+        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange.opacity(0.25), lineWidth: 1))
+    }
+
+    @MainActor
+    private func installMflux() async {
+        mfluxSetupPhase = .installing
+        do {
+            settings.mfluxBinaryDir = try await MfluxInstaller.install()
+            mfluxSetupPhase = .idle
+        } catch {
+            mfluxSetupPhase = .failed(error.localizedDescription)
+        }
     }
 
     // MARK: - LoRAs
