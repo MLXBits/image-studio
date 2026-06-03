@@ -11,6 +11,7 @@ struct GenerationGalleryView: View {
     let onUseInImg2Img: (String) -> Void
     var onSelectBoard: ((String) -> Void)? = nil
     var onClearPreview: (() -> Void)? = nil
+    var isFullSizeShowing: Bool = false
 
     @State private var deleteTarget: GalleryItem? = nil   // nil = batch, non-nil = single item
     @State private var showingDeleteConfirm: Bool = false
@@ -349,19 +350,28 @@ struct GenerationGalleryView: View {
 
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            // Escape in a non-main window: let SwiftUI-managed sheets handle themselves
-            // (they have sheetParent set and their own keyboard shortcuts); close everything else.
-            if event.keyCode == 53,
-               NSApp.mainWindow != nil,
-               let keyWin = NSApp.keyWindow,
-               !keyWin.isMainWindow {
-                if keyWin.sheetParent != nil {
-                    return event   // let sheet's own .keyboardShortcut(.cancelAction/.escape) fire
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
+            guard event.keyCode == 53 || event.keyCode != 53 else { return event }  // always enter
+
+            if event.keyCode == 53 {
+                // 1. Non-main key window (Settings, etc.): close it — sheets handle themselves.
+                if let keyWin = NSApp.keyWindow, !keyWin.isMainWindow {
+                    if keyWin.sheetParent != nil { return event }
+                    keyWin.performClose(nil)
+                    return nil
                 }
-                keyWin.performClose(nil)
-                return nil
+                // 2. Auxiliary window visible but main window has focus (e.g. Settings opened via
+                //    menu without clicking into it): close the auxiliary window first.
+                if let auxWin = NSApp.windows.first(where: {
+                    !$0.isMainWindow && $0.isVisible && !$0.isMiniaturized && $0.sheetParent == nil
+                }) {
+                    auxWin.performClose(nil)
+                    return nil
+                }
+                // 3. Full-size image overlay: yield to FullSizeImageView's own monitor.
+                if isFullSizeShowing { return event }
             }
+
             guard !Self.isEditingText() else { return event }
             switch event.keyCode {
             case 123, 126:  // ← ↑
@@ -394,7 +404,7 @@ struct GenerationGalleryView: View {
                     return nil
                 }
                 return event
-            case 53:        // Escape — clear multi-selection, close preview
+            case 53:        // Escape — clear multi-selection, then close preview
                 if !multiSelection.isEmpty {
                     multiSelection.removeAll()
                     return nil
