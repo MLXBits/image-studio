@@ -4,6 +4,7 @@ struct LoraManagerView: View {
     @Binding var loras: [LoraEntry]
     var showNotes: Bool = false
     var alwaysExpanded: Bool = false
+    var showAdd: Bool = true
     var defaultLoras: [LoraEntry] = []
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
@@ -42,11 +43,13 @@ struct LoraManagerView: View {
                     .background(.blue.opacity(0.2), in: Capsule())
             }
             Spacer()
-            Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
-                Image(systemName: "plus")
-                    .font(.caption)
+            if showAdd {
+                Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
+                    Image(systemName: "plus")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
         }
     }
 
@@ -54,7 +57,12 @@ struct LoraManagerView: View {
     private var loraList: some View {
         VStack(spacing: 4) {
             ForEach($loras) { $lora in
-                LoraRowView(lora: $lora, showNotes: showNotes, onDelete: { remove(id: lora.id) })
+                LoraRowView(
+                    lora: $lora,
+                    showNotes: showNotes,
+                    showDelete: showAdd,
+                    onDelete: { remove(id: lora.id) }
+                )
             }
             .onMove { from, to in loras.move(fromOffsets: from, toOffset: to) }
         }
@@ -139,6 +147,7 @@ struct LoraManagerView: View {
 private struct LoraRowView: View {
     @Binding var lora: LoraEntry
     var showNotes: Bool = false
+    var showDelete: Bool = true
     let onDelete: () -> Void
 
     var body: some View {
@@ -155,11 +164,13 @@ private struct LoraRowView: View {
                     .truncationMode(.middle)
                     .padding(.leading, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
-                Button { onDelete() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .foregroundStyle(.red)
+                if showDelete {
+                    Button { onDelete() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .foregroundStyle(.red)
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
             }
             HStack(spacing: 6) {
                 Slider(value: $lora.strength, in: 0...2)
