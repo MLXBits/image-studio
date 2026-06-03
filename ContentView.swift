@@ -260,6 +260,10 @@ struct ContentView: View {
             for i in params.loras.indices where notesByPath[params.loras[i].path] != nil {
                 params.loras[i].notes = notesByPath[params.loras[i].path]!
             }
+            let currentPaths = Set(params.loras.map(\.path))
+            for entry in updated where !currentPaths.contains(entry.path) {
+                params.loras.append(entry)
+            }
         }
         .onChange(of: showingOutputDirPrompt) { _, showing in
             if !showing, !settings.outputDir.isEmpty {

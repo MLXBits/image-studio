@@ -47,6 +47,8 @@ struct LoraManagerView: View {
                 Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
                     Image(systemName: "plus")
                         .font(.caption)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
             }
