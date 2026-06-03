@@ -33,11 +33,20 @@ final class ParamsPanelState {
         seed           = -1
         lowRam         = d.lowRam
         negativePrompt = d.negativePrompt
-        // Show all global loras; restore last-used enabled/strength per path when available.
-        // New loras added to the LoRAs tab appear with their default state.
-        // Loras removed from the LoRAs tab disappear even if they were in lastLoras.
-        let lastByPath = Dictionary(uniqueKeysWithValues: settings.lastLoras.map { ($0.path, $0) })
-        loras          = settings.defaultLoras.map { global in lastByPath[global.path] ?? global }
+        // Build last-run lookup (safe against duplicate paths).
+        let lastByPath = Dictionary(
+            settings.lastLoras.map { ($0.path, $0) },
+            uniquingKeysWith: { first, _ in first }
+        )
+        let defaultPaths = Set(settings.defaultLoras.map(\.path))
+        // Global defaults with enabled/strength restored from last run (notes stay from defaults).
+        var loraResult = settings.defaultLoras.map { global -> LoraEntry in
+            guard let last = lastByPath[global.path] else { return global }
+            var e = global; e.enabled = last.enabled; e.strength = last.strength; return e
+        }
+        // Session-only loras (added during a run but not in global defaults) persist across launches.
+        loraResult += settings.lastLoras.filter { !defaultPaths.contains($0.path) }
+        loras = loraResult
         prompt         = settings.lastPrompt
     }
 
