@@ -5,6 +5,15 @@ struct ModelDefaultsView: View {
     @Environment(AppSettings.self) private var settings
     @State private var selectedModel: FluxModelVariant = FluxModelVariant.builtIn[0]
 
+    private enum CachePhase: Equatable {
+        case idle, running, done, failed(String)
+    }
+    @State private var cachePhase: CachePhase = .idle
+    @State private var cacheLog: String = ""
+    @State private var cacheProcess: Process?
+    @State private var cacheRevision: UUID = UUID()
+    @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)? = nil
+
     var body: some View {
         HStack(spacing: 0) {
             // Left: model list
@@ -14,6 +23,29 @@ struct ModelDefaultsView: View {
             // Right: settings for selected model
             modelForm
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        }
+        .onChange(of: selectedModel) { _, _ in
+            cachePhase = .idle
+            cacheLog = ""
+            cacheProcess?.terminate()
+            cacheProcess = nil
+        }
+        .alert("Delete cached weights?", isPresented: Binding(
+            get: { pendingDeleteVariant != nil },
+            set: { if !$0 { pendingDeleteVariant = nil } }
+        )) {
+            Button("Delete", role: .destructive) {
+                if let pending = pendingDeleteVariant {
+                    deleteCachedVariant(model: pending.model, quantize: pending.quantize)
+                }
+                pendingDeleteVariant = nil
+            }
+            Button("Cancel", role: .cancel) { pendingDeleteVariant = nil }
+        } message: {
+            if let pending = pendingDeleteVariant {
+                let qLabel = pending.quantize == 0 ? "BF16" : "Q\(pending.quantize)"
+                Text("This will permanently delete the \(qLabel) weights for \(pending.model.displayName) from disk. You can re-download them later.")
+            }
         }
     }
 
@@ -80,12 +112,86 @@ struct ModelDefaultsView: View {
                 }
             }
 
+            cacheStatusRow(model: selectedModel, quantize: quantize)
+
             Text("Overrides global defaults when this model is selected. The memory estimate above reflects your current quantize setting.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .padding()
+    }
+
+    @ViewBuilder
+    private func cacheStatusRow(model: FluxModelVariant, quantize: Int) -> some View {
+        switch cachePhase {
+        case .running:
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    ProgressView().controlSize(.small)
+                    Text(isCachedOnDisk(model: model, quantize: 0) && quantize != 0
+                         ? "Converting…" : "Downloading…")
+                        .font(.caption).foregroundStyle(.secondary)
+                    Spacer()
+                    Button("Cancel") { cacheProcess?.terminate() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                }
+                Text("You can close Settings — this continues in the background.")
+                    .font(.caption2).foregroundStyle(.tertiary)
+            }
+        case .failed:
+            HStack(spacing: 8) {
+                Label("Download failed", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption).foregroundStyle(.red)
+                Button("Retry") { startCache(model: model, quantize: quantize) }
+                    .buttonStyle(.bordered).controlSize(.small)
+                Spacer()
+            }
+        case .idle, .done:
+            HStack(spacing: 6) {
+                let _ = cacheRevision  // invalidates view when cache changes on disk
+                let cachedVariants = [0, 4, 8].filter { isCachedOnDisk(model: model, quantize: $0) }
+                if cachedVariants.isEmpty {
+                    Label("Not downloaded", systemImage: "arrow.down.circle")
+                        .font(.caption).foregroundStyle(.secondary)
+                } else {
+                    ForEach(cachedVariants, id: \.self) { qLevel in
+                        HStack(spacing: 3) {
+                            Text(qLevel == 0 ? "BF16" : "Q\(qLevel)")
+                                .font(.caption2).fontWeight(.medium)
+                            Button {
+                                pendingDeleteVariant = (model, qLevel)
+                            } label: {
+                                Image(systemName: "xmark")
+                                    .font(.system(size: 7, weight: .bold))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                        .padding(.horizontal, 6).padding(.vertical, 2)
+                        .background(.green.opacity(0.15), in: Capsule())
+                        .foregroundStyle(.green)
+                    }
+                }
+                ForEach([0, 4, 8].filter { !isCachedOnDisk(model: model, quantize: $0) }, id: \.self) { qLevel in
+                    let qLabel = qLevel == 0 ? "BF16" : "Q\(qLevel)"
+                    let canConvert = qLevel != 0 && isCachedOnDisk(model: model, quantize: 0)
+                    Button(canConvert ? "Convert to \(qLabel)" : "Download \(qLabel)") {
+                        startCache(model: model, quantize: qLevel)
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
+                }
+                Spacer()
+            }
+        }
+    }
+
+    private func deleteCachedVariant(model: FluxModelVariant, quantize: Int) {
+        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
+        try? FileManager.default.removeItem(at: savePath)
+        if let hfURL = model.onDiskURL(quantize: quantize) {
+            try? FileManager.default.removeItem(at: hfURL)
+        }
+        cacheRevision = UUID()
     }
 
     @ViewBuilder
@@ -135,6 +241,24 @@ struct ModelDefaultsView: View {
             } footer: {
                 Text("Adjusts which LoRAs from the LoRAs tab are enabled and at what strength for this model. Add or remove LoRAs in Settings → LoRAs.")
                     .font(.caption).foregroundStyle(.tertiary)
+            }
+
+            if cachePhase != .idle {
+                Section("Download Log") {
+                    ScrollViewReader { proxy in
+                        ScrollView {
+                            Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
+                                .font(.system(size: 11, design: .monospaced))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(4)
+                                .textSelection(.enabled)
+                            Color.clear.frame(height: 1).id("cacheLogEnd")
+                        }
+                        .frame(height: 150)
+                        .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
+                        .onAppear { proxy.scrollTo("cacheLogEnd") }
+                    }
+                }
             }
 
             Section {
@@ -430,6 +554,108 @@ struct ModelDefaultsView: View {
         }
         var d = settings.defaults(for: model); d.loras = list
         settings.updateDefaults(d, for: model)
+    }
+
+    // MARK: - Model caching
+
+    private func isCachedOnDisk(model: FluxModelVariant, quantize: Int) -> Bool {
+        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
+        if FluxModelVariant.hasSavedWeights(at: savePath) { return true }
+        return model.isOnDisk(quantize: quantize)
+    }
+
+    private func startCache(model: FluxModelVariant, quantize: Int) {
+        cachePhase = .running
+        cacheLog = ""
+        Task { await runMfluxSave(model: model, quantize: quantize) }
+    }
+
+    private func runMfluxSave(model: FluxModelVariant, quantize: Int) async {
+        let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
+        guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
+            cachePhase = .failed("mflux-save not found. Check Settings → Advanced.")
+            return
+        }
+        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
+        try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
+
+        var args: [String]
+        if quantize != 0 {
+            // Prefer local BF16 as source (no download needed); fall back to pre-quantized repo or HF ID.
+            let bf16Saved = model.savedModelPath(quantize: 0, in: settings.effectiveMfluxCacheDir)
+            if FluxModelVariant.hasSavedWeights(at: bf16Saved) {
+                args = ["--model", bf16Saved.path, "--quantize", "\(quantize)", "--path", savePath.path]
+            } else if model.isOnDisk(quantize: 0), let bf16Repo = model.bf16HFRepoID {
+                args = ["--model", bf16Repo, "--quantize", "\(quantize)", "--path", savePath.path]
+            } else if let preRepo = model.preQuantizedRepoID(quantize: quantize) {
+                args = ["--model", preRepo, "--path", savePath.path]
+            } else {
+                args = ["--model", model.mfluxModelID, "--quantize", "\(quantize)", "--path", savePath.path]
+            }
+        } else if let preRepo = model.preQuantizedRepoID(quantize: quantize) {
+            args = ["--model", preRepo, "--path", savePath.path]
+        } else {
+            args = ["--model", model.mfluxModelID, "--path", savePath.path]
+        }
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: saveBinary)
+        process.arguments = args
+        process.environment = settings.buildEnvironment()
+        cacheProcess = process
+
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        let stream = AsyncStream<String> { continuation in
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty { continuation.finish() }
+                else if let text = String(data: data, encoding: .utf8) { continuation.yield(text) }
+            }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
+
+        do { try process.run() } catch {
+            cacheProcess = nil
+            cachePhase = .failed(error.localizedDescription)
+            return
+        }
+
+        for await chunk in stream { cacheLog = appendCacheLog(chunk, to: cacheLog) }
+        process.waitUntilExit()
+        cacheProcess = nil
+
+        if process.terminationStatus == 0 {
+            cachePhase = .done
+        } else if process.terminationReason == .uncaughtSignal {
+            cachePhase = .idle
+            try? FileManager.default.removeItem(at: savePath)
+        } else {
+            cachePhase = .failed("mflux-save exited with status \(process.terminationStatus)")
+        }
+    }
+
+    private func appendCacheLog(_ chunk: String, to log: String) -> String {
+        var result = log
+        for char in chunk {
+            if char == "\r" {
+                if let nl = result.lastIndex(of: "\n") {
+                    result = String(result[...nl])
+                } else {
+                    result = ""
+                }
+            } else {
+                result.append(char)
+            }
+        }
+        return result
     }
 
     private func browseModelDir(binding: Binding<String>) {
