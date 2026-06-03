@@ -154,6 +154,10 @@ class AppSettings {
         BinaryDetector.mfluxGenerateFlux2(in: mfluxBinaryDir)
     }
 
+    func mfluxEditBinaryPath() -> String {
+        BinaryDetector.mfluxGenerateFlux2Edit(in: mfluxBinaryDir)
+    }
+
     func buildEnvironment() -> [String: String] {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment

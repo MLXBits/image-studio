@@ -17,6 +17,8 @@ final class ParamsPanelState {
     var loras: [LoraEntry] = []
     var imagePath: String = ""
     var imageStrength: Double = 0.75
+    var isEditMode: Bool = false
+    var editImagePaths: [String] = []
     var board: String = ""
     var batchCount: Int = 1
 
@@ -90,6 +92,8 @@ final class ParamsPanelState {
             lowRam: lowRam,
             imagePath: imagePath,
             imageStrength: imageStrength,
+            isEditMode: isEditMode,
+            editImagePaths: editImagePaths,
             board: board
         )
     }
@@ -131,7 +135,13 @@ struct ContentView: View {
                     state: previewState,
                     onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
                     onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in params.imagePath = path },
+                    onUseInImg2Img: { path in
+                        if params.isEditMode {
+                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                        } else {
+                            params.imagePath = path
+                        }
+                    },
                     onCancel: { runner.cancel() },
                     onClear: {
                         selectedGalleryItem = nil
@@ -153,7 +163,13 @@ struct ContentView: View {
                     selectedItem: $selectedGalleryItem,
                     onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
                     onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in params.imagePath = path },
+                    onUseInImg2Img: { path in
+                        if params.isEditMode {
+                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                        } else {
+                            params.imagePath = path
+                        }
+                    },
                     onSelectBoard: { name in params.board = name },
                     onClearPreview: {
                         selectedGalleryItem = nil
@@ -298,6 +314,7 @@ struct ContentView: View {
             Spacer()
             HStack(spacing: 12) {
                 let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
+                    && (!params.isEditMode || !params.editImagePaths.isEmpty)
                 Button(action: generate) {
                     Label("Generate  ⌘↵", systemImage: "wand.and.stars")
                 }

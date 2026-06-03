@@ -73,6 +73,8 @@ final class FluxJob: Identifiable {
     var lowRam: Bool
     var imagePath: String
     var imageStrength: Double
+    var isEditMode: Bool
+    var editImagePaths: [String]
     var board: String
 
     var seeds: [Int]
@@ -122,6 +124,8 @@ final class FluxJob: Identifiable {
         lowRam: Bool = false,
         imagePath: String = "",
         imageStrength: Double = 0.75,
+        isEditMode: Bool = false,
+        editImagePaths: [String] = [],
         board: String = "Default",
         createdAt: Date = Date()
     ) {
@@ -142,6 +146,8 @@ final class FluxJob: Identifiable {
         self.lowRam          = lowRam
         self.imagePath       = imagePath
         self.imageStrength   = imageStrength
+        self.isEditMode      = isEditMode
+        self.editImagePaths  = editImagePaths
         self.board           = board
         self.status          = .pending
         self.log             = ""
@@ -155,7 +161,7 @@ extension FluxJob: Codable {
     enum CodingKeys: String, CodingKey {
         case id, model, customModelRepo, customBaseModel, prompt, negativePrompt
         case width, height, seed, seeds, steps, guidance, loras, quantize, lowRam
-        case imagePath, imageStrength, board
+        case imagePath, imageStrength, isEditMode, editImagePaths, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
@@ -180,6 +186,8 @@ extension FluxJob: Codable {
             lowRam:          (try? c.decode(Bool.self,            forKey: .lowRam)) ?? false,
             imagePath:       (try? c.decode(String.self,          forKey: .imagePath)) ?? "",
             imageStrength:   (try? c.decode(Double.self,          forKey: .imageStrength)) ?? 0.75,
+            isEditMode:      (try? c.decode(Bool.self,            forKey: .isEditMode)) ?? false,
+            editImagePaths:  (try? c.decode([String].self,        forKey: .editImagePaths)) ?? [],
             board:           (try? c.decode(String.self,          forKey: .board)) ?? "Default",
             createdAt:       (try? c.decode(Date.self,            forKey: .createdAt)) ?? Date()
         )
@@ -214,6 +222,8 @@ extension FluxJob: Codable {
         try c.encode(lowRam,          forKey: .lowRam)
         try c.encode(imagePath,       forKey: .imagePath)
         try c.encode(imageStrength,   forKey: .imageStrength)
+        try c.encode(isEditMode,      forKey: .isEditMode)
+        try c.encode(editImagePaths,  forKey: .editImagePaths)
         try c.encode(board,           forKey: .board)
         try c.encode(status,          forKey: .status)
         try c.encode(log,             forKey: .log)
