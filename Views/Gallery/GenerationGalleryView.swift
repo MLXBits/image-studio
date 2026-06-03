@@ -204,7 +204,11 @@ struct GenerationGalleryView: View {
                                 onApplySettings: onApplySettings,
                                 onUseInImg2Img: onUseInImg2Img,
                                 onMoveToBoard: { newBoard in
-                                    gallery.moveItem(item, toBoard: newBoard, outputDir: settings.outputDir)
+                                    if multiSelection.contains(item.id) {
+                                        batchMove(to: newBoard)
+                                    } else {
+                                        gallery.moveItem(item, toBoard: newBoard, outputDir: settings.outputDir)
+                                    }
                                 },
                                 onDelete: {
                                     deleteTarget = item
