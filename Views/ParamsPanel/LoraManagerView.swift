@@ -145,18 +145,21 @@ private struct LoraRowView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 6) {
                 Toggle("", isOn: $lora.enabled)
-                    .toggleStyle(.checkbox)
+                    .toggleStyle(.switch)
                     .labelsHidden()
+                    .scaleEffect(0.7)
+                    .frame(width: 32, height: 20)
                 Text(lora.displayName)
                     .font(.caption)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .padding(.leading, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 Button { onDelete() } label: {
-                    Image(systemName: "trash").font(.caption2)
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.red)
                 }
                 .buttonStyle(.plain)
-                .foregroundStyle(.red.opacity(0.7))
             }
             HStack(spacing: 6) {
                 Slider(value: $lora.strength, in: 0...2)
@@ -164,8 +167,6 @@ private struct LoraRowView: View {
                     .font(.caption2)
                     .monospacedDigit()
                     .frame(width: 34, alignment: .trailing)
-                Stepper("", value: $lora.strength, in: 0...2, step: 0.05)
-                    .labelsHidden()
             }
             if showNotes {
                 TextField("Notes (trigger words, recommended strength…)", text: $lora.notes)
