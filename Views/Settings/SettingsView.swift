@@ -67,16 +67,6 @@ struct SettingsView: View {
             }
 
             Section {
-                DimensionSliderRow(label: "Width",  value: $s.defaultWidth)
-                DimensionSliderRow(label: "Height", value: $s.defaultHeight)
-            } header: {
-                Text("Global canvas fallback")
-            } footer: {
-                Text("Used when a model has no per-model canvas override set in the Models tab.")
-                    .font(.caption).foregroundStyle(.tertiary)
-            }
-
-            Section {
                 HStack {
                     TextField("Output folder", text: $s.outputDir)
                         .textFieldStyle(.roundedBorder)

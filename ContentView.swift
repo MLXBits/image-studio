@@ -26,8 +26,8 @@ final class ParamsPanelState {
         model          = m
         quantize       = d.quantize
         board          = settings.defaultBoard
-        width          = d.width
-        height         = d.height
+        width          = settings.lastWidth
+        height         = settings.lastHeight
         steps          = d.steps
         guidance       = d.guidance
         seed           = -1
@@ -354,6 +354,8 @@ struct ContentView: View {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
         settings.lastPrompt = params.prompt
+        settings.lastWidth  = params.width
+        settings.lastHeight = params.height
         let job = params.makeJob(count: params.batchCount)
         store.add(job)
         if runner.activeJob == nil {

@@ -16,7 +16,7 @@ struct ModelDefaults: Codable, Equatable {
 
 extension ModelDefaults {
     /// Resolves all values, using global fallbacks for width/height.
-    func resolved(for model: FluxModelVariant, globalWidth: Int, globalHeight: Int) -> Resolved {
+    func resolved(for model: FluxModelVariant) -> Resolved {
         Resolved(
             steps:             steps    ?? model.defaultSteps,
             guidance:          model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
@@ -24,8 +24,8 @@ extension ModelDefaults {
             lowRam:            lowRam   ?? false,
             negativePrompt:    model.isDistilled ? "" : (negativePrompt ?? ""),
             loras:             loras    ?? [],
-            width:             width    ?? globalWidth,
-            height:            height   ?? globalHeight,
+            width:             width    ?? 1024,
+            height:            height   ?? 1024,
             modelRepoOverride: modelRepoOverride.flatMap { $0.isEmpty ? nil : $0 }
         )
     }
@@ -69,6 +69,8 @@ class AppSettings {
     var hfToken: String               { didSet { KeychainHelper.set(hfToken, key: "hf_token") } }
     var logFontSize: Double           { didSet { save() } }
     var lastPrompt: String            { didSet { save() } }
+    var lastWidth: Int                { didSet { save() } }
+    var lastHeight: Int               { didSet { save() } }
 
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
@@ -92,6 +94,8 @@ class AppSettings {
         hfToken         = KeychainHelper.get("hf_token")
         logFontSize     = s.logFontSize     ?? 12.0
         lastPrompt      = s.lastPrompt      ?? ""
+        lastWidth       = s.lastWidth       ?? 1024
+        lastHeight      = s.lastHeight      ?? 1024
         modelDefaults   = s.modelDefaults   ?? [:]
     }
 
@@ -103,7 +107,7 @@ class AppSettings {
     }
 
     func resolvedDefaults(for model: FluxModelVariant) -> ModelDefaults.Resolved {
-        defaults(for: model).resolved(for: model, globalWidth: defaultWidth, globalHeight: defaultHeight)
+        defaults(for: model).resolved(for: model)
     }
 
     func updateDefaults(_ d: ModelDefaults, for model: FluxModelVariant) {
@@ -121,6 +125,7 @@ class AppSettings {
             mlxCacheLimitGB: mlxCacheLimitGB, hfHome: hfHome,
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
             logFontSize: logFontSize, lastPrompt: lastPrompt,
+            lastWidth: lastWidth, lastHeight: lastHeight,
             modelDefaults: modelDefaults
         )
         try? FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
@@ -172,6 +177,7 @@ class AppSettings {
         var defaultLoras: [LoraEntry]?
         var mlxCacheLimitGB: Double?; var hfHome: String?; var mfluxCacheDir: String?
         var hfOffline: Bool?; var logFontSize: Double?; var lastPrompt: String?
+        var lastWidth: Int?; var lastHeight: Int?
         var modelDefaults: [String: ModelDefaults]?
 
         init() {}
@@ -181,6 +187,7 @@ class AppSettings {
             defaultLoras: [LoraEntry],
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
             hfOffline: Bool, logFontSize: Double, lastPrompt: String,
+            lastWidth: Int, lastHeight: Int,
             modelDefaults: [String: ModelDefaults]
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
@@ -190,7 +197,8 @@ class AppSettings {
             self.defaultLoras   = defaultLoras; self.mlxCacheLimitGB = mlxCacheLimitGB
             self.hfHome = hfHome; self.mfluxCacheDir = mfluxCacheDir
             self.hfOffline = hfOffline; self.logFontSize = logFontSize
-            self.lastPrompt = lastPrompt; self.modelDefaults = modelDefaults
+            self.lastPrompt = lastPrompt; self.lastWidth = lastWidth; self.lastHeight = lastHeight
+            self.modelDefaults = modelDefaults
         }
     }
 }
