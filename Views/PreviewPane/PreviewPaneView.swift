@@ -104,14 +104,13 @@ struct PreviewPaneView: View {
             ? job.model.hfRepoURL(quantize: job.quantize)
             : nil
 
-        return VStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle")
-                .font(.system(size: 40))
-                .foregroundStyle(.red)
-            Text("Generation failed")
-                .font(.title3)
-
-            if isGatedRepo {
+        if isGatedRepo {
+            return AnyView(VStack(spacing: 12) {
+                Image(systemName: "exclamationmark.triangle")
+                    .font(.system(size: 40))
+                    .foregroundStyle(.red)
+                Text("Generation failed")
+                    .font(.title3)
                 VStack(spacing: 10) {
                     Text("This model is gated on HuggingFace.\nAccept the terms and add an access token to continue.")
                         .font(.callout)
@@ -141,19 +140,34 @@ struct PreviewPaneView: View {
                     .padding(.horizontal)
                 }
                 .padding(.top, 4)
-            } else {
-                ScrollView {
-                    Text(message)
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .padding()
-                }
-                .frame(maxHeight: 120)
-                .background(.secondary.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
             }
+            .padding())
+        } else {
+            return AnyView(VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 8) {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                        .foregroundStyle(.red)
+                    Text("Generation failed")
+                        .font(.headline)
+                    Spacer()
+                }
+                .padding()
+                Divider()
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        Text(job.log.isEmpty ? message : job.log)
+                            .font(.system(.caption, design: .monospaced))
+                            .foregroundStyle(.secondary)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding()
+                        Color.clear.frame(height: 1).id("errEnd")
+                    }
+                    .onAppear { proxy.scrollTo("errEnd") }
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
         }
-        .padding()
     }
 
     private var cancelledView: some View {

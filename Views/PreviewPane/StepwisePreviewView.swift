@@ -4,42 +4,57 @@ struct StepwisePreviewView: View {
     let job: FluxJob
     let onCancel: () -> Void
 
+    @Environment(AppSettings.self) private var settings
     @State private var displayedImage: NSImage? = nil
+    @State private var showLog: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
-            // Image area
-            ZStack {
-                Color.black.opacity(0.05)
+            if showLog {
+                logView
+            } else {
+                ZStack {
+                    Color.black.opacity(0.05)
 
-                if let img = displayedImage {
-                    Image(nsImage: img)
-                        .resizable()
-                        .aspectRatio(contentMode: .fit)
-                        .animation(.easeInOut(duration: 0.2), value: displayedImage)
-                } else {
-                    generatingPlaceholder
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .clipShape(RoundedRectangle(cornerRadius: 8))
-            .padding()
-
-            // Progress bar + controls
-            VStack(spacing: 8) {
-                Group {
-                    if job.currentStep > 0 {
-                        ProgressView(value: job.progressFraction)
+                    if let img = displayedImage {
+                        Image(nsImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                            .animation(.easeInOut(duration: 0.2), value: displayedImage)
                     } else {
-                        ProgressView()
+                        generatingPlaceholder
                     }
                 }
-                .progressViewStyle(.linear)
-                .padding(.horizontal)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding()
+            }
+
+            VStack(spacing: 8) {
+                if !showLog {
+                    Group {
+                        if job.currentStep > 0 {
+                            ProgressView(value: job.progressFraction)
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                    .progressViewStyle(.linear)
+                    .padding(.horizontal)
+                }
 
                 HStack(spacing: 12) {
                     progressLabel
                     Spacer()
+                    Button {
+                        showLog.toggle()
+                    } label: {
+                        Image(systemName: showLog ? "photo" : "text.alignleft")
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .foregroundStyle(.secondary)
+                    .help(showLog ? "Show step preview" : "Show log")
                     Button("Cancel") { onCancel() }
                         .buttonStyle(.borderless)
                         .controlSize(.small)
@@ -52,6 +67,22 @@ struct StepwisePreviewView: View {
         .onChange(of: job.latestStepwisePath) { _, path in
             loadStepwiseImage(path: path)
         }
+    }
+
+    private var logView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                Text(job.log.isEmpty ? "No output yet." : job.log)
+                    .font(.system(size: settings.logFontSize, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+                    .textSelection(.enabled)
+                Color.clear.frame(height: 1).id("logBottom")
+            }
+            .onChange(of: job.log) { _, _ in proxy.scrollTo("logBottom") }
+            .onAppear { proxy.scrollTo("logBottom") }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private var generatingPlaceholder: some View {
