@@ -128,8 +128,13 @@ struct ModelDefaultsView: View {
                     .font(.caption).foregroundStyle(.tertiary)
             }
 
-            Section("Default LoRAs") {
-                loraSection(model: model, current: d.loras)
+            Section {
+                loraOverrideSection(model: model, current: d.loras)
+            } header: {
+                Text("LoRAs")
+            } footer: {
+                Text("Adjusts which LoRAs from the LoRAs tab are enabled and at what strength for this model. Add or remove LoRAs in Settings → LoRAs.")
+                    .font(.caption).foregroundStyle(.tertiary)
             }
 
             Section {
@@ -339,16 +344,92 @@ struct ModelDefaultsView: View {
         .accessibilityLabel("Default \(label.lowercased()) for \(model.displayName)")
     }
 
-    private func loraSection(model: FluxModelVariant, current: [LoraEntry]?) -> some View {
-        let bound = Binding<[LoraEntry]>(
-            get: { current ?? [] },
-            set: { newVal in
-                var d = settings.defaults(for: model)
-                d.loras = newVal.isEmpty ? nil : newVal
-                settings.updateDefaults(d, for: model)
+    @ViewBuilder
+    private func loraOverrideSection(model: FluxModelVariant, current: [LoraEntry]?) -> some View {
+        let globals = settings.defaultLoras
+        if globals.isEmpty {
+            Text("No LoRAs configured. Add them in the LoRAs tab.")
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        } else {
+            VStack(spacing: 6) {
+                ForEach(globals) { global in
+                    let eff = current?.first(where: { $0.path == global.path }) ?? global
+                    VStack(alignment: .leading, spacing: 4) {
+                        HStack(spacing: 8) {
+                            Toggle("", isOn: Binding(
+                                get: { eff.enabled },
+                                set: { v in setLoraEnabled(v, path: global.path, model: model, globals: globals, current: current) }
+                            ))
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                            .scaleEffect(0.7)
+                            .frame(width: 32, height: 20)
+                            Text(global.displayName)
+                                .font(.caption)
+                                .lineLimit(1)
+                                .truncationMode(.middle)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        HStack(spacing: 6) {
+                            Slider(value: Binding(
+                                get: { eff.strength },
+                                set: { v in setLoraStrength(v, path: global.path, model: model, globals: globals, current: current) }
+                            ), in: 0...2)
+                            Text(String(format: "%.2f", eff.strength))
+                                .font(.caption2)
+                                .monospacedDigit()
+                                .frame(width: 34, alignment: .trailing)
+                        }
+                    }
+                    .padding(8)
+                    .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 8))
+                }
+                if current != nil {
+                    HStack {
+                        Spacer()
+                        Button("Reset to LoRAs tab defaults") {
+                            var d = settings.defaults(for: model)
+                            d.loras = nil
+                            settings.updateDefaults(d, for: model)
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                    }
+                    .padding(.top, 2)
+                }
             }
-        )
-        return LoraManagerView(loras: bound, showNotes: true, alwaysExpanded: true)
+            .padding(.vertical, 4)
+        }
+    }
+
+    private func setLoraEnabled(
+        _ enabled: Bool, path: String, model: FluxModelVariant,
+        globals: [LoraEntry], current: [LoraEntry]?
+    ) {
+        var list = current ?? globals
+        if let idx = list.firstIndex(where: { $0.path == path }) {
+            list[idx].enabled = enabled
+        } else if let global = globals.first(where: { $0.path == path }) {
+            var entry = global; entry.enabled = enabled; list.append(entry)
+        }
+        var d = settings.defaults(for: model); d.loras = list
+        settings.updateDefaults(d, for: model)
+    }
+
+    private func setLoraStrength(
+        _ strength: Double, path: String, model: FluxModelVariant,
+        globals: [LoraEntry], current: [LoraEntry]?
+    ) {
+        let rounded = round(strength / 0.05) * 0.05
+        var list = current ?? globals
+        if let idx = list.firstIndex(where: { $0.path == path }) {
+            list[idx].strength = rounded
+        } else if let global = globals.first(where: { $0.path == path }) {
+            var entry = global; entry.strength = rounded; list.append(entry)
+        }
+        var d = settings.defaults(for: model); d.loras = list
+        settings.updateDefaults(d, for: model)
     }
 
     private func browseModelDir(binding: Binding<String>) {

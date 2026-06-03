@@ -32,7 +32,7 @@ struct ParamsPanelView: View {
                     params.negativePrompt = d.negativePrompt
                     params.width          = d.width
                     params.height         = d.height
-                    if !d.loras.isEmpty { params.loras = d.loras }
+                    params.loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
                 }
 
                 Divider()
@@ -73,10 +73,8 @@ struct ParamsPanelView: View {
                 // LoRAs
                 LoraManagerView(
                     loras: $params.loras,
-                    defaultLoras: {
-                        let d = settings.resolvedDefaults(for: params.model)
-                        return d.loras.isEmpty ? settings.defaultLoras : d.loras
-                    }()
+                    showAdd: false,
+                    defaultLoras: settings.defaultLoras
                 )
                     .padding(.bottom, 8)
             }

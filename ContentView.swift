@@ -33,7 +33,11 @@ final class ParamsPanelState {
         seed           = -1
         lowRam         = d.lowRam
         negativePrompt = d.negativePrompt
-        loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
+        // Show all global loras; restore last-used enabled/strength per path when available.
+        // New loras added to the LoRAs tab appear with their default state.
+        // Loras removed from the LoRAs tab disappear even if they were in lastLoras.
+        let lastByPath = Dictionary(uniqueKeysWithValues: settings.lastLoras.map { ($0.path, $0) })
+        loras          = settings.defaultLoras.map { global in lastByPath[global.path] ?? global }
         prompt         = settings.lastPrompt
     }
 
@@ -356,6 +360,7 @@ struct ContentView: View {
         settings.lastPrompt = params.prompt
         settings.lastWidth  = params.width
         settings.lastHeight = params.height
+        settings.lastLoras  = params.loras
         let job = params.makeJob(count: params.batchCount)
         store.add(job)
         if runner.activeJob == nil {
