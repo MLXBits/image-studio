@@ -347,7 +347,8 @@ final class FluxJobRunner {
             var found = Set<String>()
             while found.count < paths.count, !Task.isCancelled {
                 for item in paths where !found.contains(item.path) {
-                    guard FileManager.default.fileExists(atPath: item.path) else { continue }
+                    guard FileManager.default.fileExists(atPath: item.path),
+                          isPNGComplete(at: item.path) else { continue }
                     found.insert(item.path)
                     var meta = GenerationMetadata.from(job: job)
                     meta.seed = item.seed
@@ -462,6 +463,17 @@ final class FluxJobRunner {
         }
         let seedLabel = job.seed == -1 ? "rnd" : "\(job.seed)"
         return "\(dir)/image_\(ts)_\(seedLabel).png"
+    }
+
+    private func isPNGComplete(at path: String) -> Bool {
+        guard let handle = FileHandle(forReadingAtPath: path) else { return false }
+        defer { handle.closeFile() }
+        let size = handle.seekToEndOfFile()
+        guard size >= 12 else { return false }
+        handle.seek(toFileOffset: size - 4)
+        let tail = handle.readDataToEndOfFile()
+        // PNG IEND chunk CRC — present only in a fully written PNG
+        return tail.count == 4 && tail[0] == 0xAE && tail[1] == 0x42 && tail[2] == 0x60 && tail[3] == 0x82
     }
 
     private func loadThumbnail(at path: String) -> Data? {
