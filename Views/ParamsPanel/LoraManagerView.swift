@@ -55,7 +55,7 @@ struct LoraManagerView: View {
 
     @ViewBuilder
     private var loraList: some View {
-        VStack(spacing: 4) {
+        VStack(spacing: 19) {
             ForEach($loras) { $lora in
                 LoraRowView(
                     lora: $lora,
