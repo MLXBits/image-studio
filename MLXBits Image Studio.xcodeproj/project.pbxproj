@@ -8,49 +8,53 @@
 
 /* Begin PBXBuildFile section */
 		005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */; };
-		EA474B9A2B2A480F891C614F /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */; };
 		01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */; };
-		030A9E1E3E7B24EC8F29C1DB /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */; };
+		01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		1A51944FE9ED093F9E7E4C1E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
-		3C0AE7C8FB34064BEE086D42 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_6C414C73-9CC7-4B38-BE1B-1F068481ABCA" /* Assets.xcassets */; };
+		2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D923D32E0D737D888C711FE7 /* KeychainHelper.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
+		5F1A71E6C2699BE818677E5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
+		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
+		85F9CE48A521A2FD0B767EB9 /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
+		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
-		B1D2E3F4A5C6D7E8F9A0B1C2 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
+		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
+		D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */; };
 		DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */; };
 		E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */; };
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
-		EFCAF3DC8DBED0EC33159F40 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
-		84B3B8653D3549C199D2A484 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD5DE1B0784F4B7AB4EB29C9 /* InsetTextEditor.swift */; };
-		4A87F152C2C542779C9E41E0 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
+		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
-		4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
+		562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UvInstaller.swift; sourceTree = "<group>"; };
 		64A7412A576F846395336217 /* ModelDefaultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDefaultsView.swift; sourceTree = "<group>"; };
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
@@ -58,27 +62,28 @@
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		9135F9C12F493D9C0C50F9C0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
+		96B20E83673119F893B43BBB /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
-		DD5DE1B0784F4B7AB4EB29C9 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
-		DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
+		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
 		B4AC7D434D66D9191658D727 /* MLXBits_Image_Studio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MLXBits_Image_Studio.entitlements; sourceTree = "<group>"; };
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
+		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepwisePreviewView.swift; sourceTree = "<group>"; };
 		DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
-		C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
-		"TEMP_6C414C73-9CC7-4B38-BE1B-1F068481ABCA" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		"TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		"TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
+		"TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		"TEMP_50CF2794-A0A4-4181-BB0F-D8A238E9D4D1" /* .gitignore */ = {isa = PBXFileReference; path = .gitignore; sourceTree = "<group>"; };
+		"TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		"TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -95,8 +100,10 @@
 			children = (
 				A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
-				C2D3E4F5A6B7C8D9E0F1A2B3 /* KeychainHelper.swift */,
+				D923D32E0D737D888C711FE7 /* KeychainHelper.swift */,
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
+				014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */,
+				562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */,
 			);
 			path = Utilities;
 			sourceTree = "<group>";
@@ -107,8 +114,8 @@
 				86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */,
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
-				DD5DE1B0784F4B7AB4EB29C9 /* InsetTextEditor.swift */,
-				DC859AE6220F43A08C4D37EB /* PassiveTextField.swift */,
+				AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */,
+				221656805C1026EDD0D6B9EA /* PassiveTextField.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -138,7 +145,7 @@
 			isa = PBXGroup;
 			children = (
 				B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */,
-				4CD55F5D6FE84622A2C11A5B /* FolderComboBox.swift */,
+				96B20E83673119F893B43BBB /* FolderComboBox.swift */,
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
@@ -225,12 +232,13 @@
 			path = Stores;
 			sourceTree = "<group>";
 		};
-		"TEMP_F4E4046D-B4B3-4ECE-A913-CD4D3EAD672F" /* . */ = {
+		"TEMP_54BF5815-F40E-43E4-AFEF-BDC365C4159C" /* . */ = {
 			isa = PBXGroup;
 			children = (
-				"TEMP_6C414C73-9CC7-4B38-BE1B-1F068481ABCA" /* Assets.xcassets */,
-				"TEMP_DEA7E3AE-0203-47CD-93D6-44AC87FC1772" /* MLXBitsImageStudioApp.swift */,
-				"TEMP_860C6500-3E10-4D6A-93AE-14371BAD9312" /* ContentView.swift */,
+				"TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */,
+				"TEMP_50CF2794-A0A4-4181-BB0F-D8A238E9D4D1" /* .gitignore */,
+				"TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */,
+				"TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */,
 				9F6BCBE28C9814EF7779D261 /* Runner */,
 				AB119E2514CE274AB18259A7 /* Resources */,
 				F0AE2F196D188960303A9263 /* Stores */,
@@ -301,7 +309,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				3C0AE7C8FB34064BEE086D42 /* Assets.xcassets in Resources */,
+				5F1A71E6C2699BE818677E5B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -315,35 +323,37 @@
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
 				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
 				4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */,
-				EFCAF3DC8DBED0EC33159F40 /* ContentView.swift in Sources */,
+				1A51944FE9ED093F9E7E4C1E /* ContentView.swift in Sources */,
 				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
 				DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */,
 				9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */,
 				C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */,
 				6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */,
+				A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */,
 				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
-				84B3B8653D3549C199D2A484 /* InsetTextEditor.swift in Sources */,
-				4A87F152C2C542779C9E41E0 /* PassiveTextField.swift in Sources */,
+				66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */,
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
-				B1D2E3F4A5C6D7E8F9A0B1C2 /* KeychainHelper.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
+				2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
-				EA474B9A2B2A480F891C614F /* FolderComboBox.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
-				030A9E1E3E7B24EC8F29C1DB /* MLXBitsImageStudioApp.swift in Sources */,
+				85F9CE48A521A2FD0B767EB9 /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
+				01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */,
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
 				6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */,
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,
+				C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */,
 				2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */,
 				A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */,
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
+				D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
