@@ -284,7 +284,11 @@ private struct GalleryItemDetailView: View {
                 if let meta = item.metadata {
                     Divider()
                     Button("Remix (new seed)") { onRemix(meta) }
-                    Button("Apply Settings") { onApplySettings(meta) }
+                    Button("Apply Settings") {
+                        var corrected = meta
+                        corrected.board = item.board == "Default" ? nil : item.board
+                        onApplySettings(corrected)
+                    }
                     Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
                 }
                 if info.log != nil {
@@ -300,7 +304,11 @@ private struct GalleryItemDetailView: View {
             ImageMetadataPanel(
                 info: info,
                 onRemix: item.metadata.map { meta in { onRemix(meta) } },
-                onApplySettings: item.metadata.map { meta in { onApplySettings(meta) } },
+                onApplySettings: item.metadata.map { meta in {
+                    var corrected = meta
+                    corrected.board = item.board == "Default" ? nil : item.board
+                    onApplySettings(corrected)
+                } },
                 onUseInImg2Img: { onUseInImg2Img(item.path) },
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")

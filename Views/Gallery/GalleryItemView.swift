@@ -101,7 +101,11 @@ struct GalleryItemView: View {
 
         if let meta = item.metadata {
             Button("Remix (new seed)") { onRemix(meta) }
-            Button("Apply Settings") { onApplySettings(meta) }
+            Button("Apply Settings") {
+                var corrected = meta
+                corrected.board = item.board == "Default" ? nil : item.board
+                onApplySettings(corrected)
+            }
             Button("Use as Img2Img input") { onUseInImg2Img(item.path) }
             Divider()
         }

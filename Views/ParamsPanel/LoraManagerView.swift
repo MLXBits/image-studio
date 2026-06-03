@@ -6,6 +6,7 @@ struct LoraManagerView: View {
     var alwaysExpanded: Bool = false
     var showAdd: Bool = true
     var defaultLoras: [LoraEntry] = []
+    var onReset: (() -> Void)? = nil
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
     @State private var newPath: String = ""
@@ -43,6 +44,12 @@ struct LoraManagerView: View {
                     .background(.blue.opacity(0.2), in: Capsule())
             }
             Spacer()
+            if let onReset {
+                Button("Reset", action: onReset)
+                    .font(.caption2)
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+            }
             if showAdd {
                 Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
                     Image(systemName: "plus")
