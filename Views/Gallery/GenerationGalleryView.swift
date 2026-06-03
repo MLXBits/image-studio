@@ -451,38 +451,14 @@ struct GenerationGalleryView: View {
     // MARK: - Overlay scroller
 
     private struct OverlayScrollerStyle: NSViewRepresentable {
-        func makeCoordinator() -> Coordinator { Coordinator() }
+        func makeNSView(context: Context) -> ScrollStyleFixerView { ScrollStyleFixerView() }
+        func updateNSView(_ nsView: ScrollStyleFixerView, context: Context) { }
 
-        func makeNSView(context: Context) -> NSView {
-            let view = NSView()
-            context.coordinator.install(in: view)
-            return view
-        }
-
-        func updateNSView(_ nsView: NSView, context: Context) {
-            context.coordinator.apply()
-        }
-
-        final class Coordinator {
-            private weak var nsView: NSView?
-            private var observer: NSObjectProtocol?
-
-            func install(in view: NSView) {
-                nsView = view
-                observer = NotificationCenter.default.addObserver(
-                    forName: NSScroller.preferredScrollerStyleDidChangeNotification,
-                    object: nil,
-                    queue: .main
-                ) { [weak self] _ in self?.apply() }
-                DispatchQueue.main.async { self.apply() }
-            }
-
-            func apply() {
-                nsView?.enclosingScrollView?.scrollerStyle = .overlay
-            }
-
-            deinit {
-                if let observer { NotificationCenter.default.removeObserver(observer) }
+        final class ScrollStyleFixerView: NSView {
+            override func layout() {
+                super.layout()
+                guard let scrollView = enclosingScrollView, scrollView.scrollerStyle != .overlay else { return }
+                scrollView.scrollerStyle = .overlay
             }
         }
     }
