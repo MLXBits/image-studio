@@ -153,7 +153,8 @@ struct ContentView: View {
                         } else {
                             previewState = .idle
                         }
-                    }
+                    },
+                    isFullSizeShowing: fullSizeImage != nil
                 )
                 .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
             }
