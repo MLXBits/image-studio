@@ -199,30 +199,44 @@ struct SettingsView: View {
                 }
             }
 
-            Section {
-                LabeledContent("HF_TOKEN") {
-                    SecureField("Hugging Face access token", text: $s.hfToken)
+            Section("HuggingFace") {
+                VStack(alignment: .leading, spacing: 4) {
+                    SecureField("Paste token here…", text: $s.hfToken)
                         .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 3) {
+                        Text("Required for gated and private models (e.g. Flux.1 Pro). Stored in the system Keychain. Create one at")
+                            .font(.caption).foregroundStyle(.secondary)
+                        Link("huggingface.co/settings/tokens",
+                             destination: URL(string: "https://huggingface.co/settings/tokens")!)
+                            .font(.caption)
+                    }
+                    .fixedSize(horizontal: false, vertical: true)
                 }
-                LabeledContent("HF_HOME") {
-                    TextField("default (~/.cache/huggingface)", text: $s.hfHome)
-                        .textFieldStyle(.roundedBorder)
+                .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        TextField("", text: $s.hfHome)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Browse…") { browseHFHome() }
+                    }
+                    Text("Where HuggingFace caches downloaded model files. Default: ~/.cache/huggingface")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
-                LabeledContent("MFLUX_CACHE_DIR") {
-                    TextField("default (~/Library/Caches/mflux)", text: $s.mfluxCacheDir)
-                        .textFieldStyle(.roundedBorder)
+                .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        TextField("", text: $s.mfluxCacheDir)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Browse…") { browseMfluxCacheDir() }
+                    }
+                    Text("Where mflux stores converted weight files. Default: ~/Library/Caches/mflux")
+                        .font(.caption).foregroundStyle(.secondary)
                 }
+                .padding(.vertical, 2)
+
                 Toggle("Offline mode (HF_HUB_OFFLINE=1)", isOn: $s.hfOffline)
-            } header: {
-                Text("HuggingFace")
-            } footer: {
-                Text(
-                    "HF_TOKEN grants access to gated/private models. Stored in the system Keychain. " +
-                    "HF_HOME is where HuggingFace caches model files (default: ~/.cache/huggingface). " +
-                    "MFLUX_CACHE_DIR is where mflux stores converted weight files (default: ~/Library/Caches/mflux). " +
-                    "Leave blank to use the system defaults."
-                )
-                .font(.caption).foregroundStyle(.tertiary)
             }
 
             Section {
@@ -278,6 +292,28 @@ struct SettingsView: View {
         panel.title = "Choose mflux Binary Directory"
         if panel.runModal() == .OK, let url = panel.url {
             settings.mfluxBinaryDir = url.path
+        }
+    }
+
+    private func browseHFHome() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.title = "Choose HuggingFace Cache Directory"
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.hfHome = url.path
+        }
+    }
+
+    private func browseMfluxCacheDir() {
+        let panel = NSOpenPanel()
+        panel.canChooseDirectories = true
+        panel.canChooseFiles = false
+        panel.canCreateDirectories = true
+        panel.title = "Choose mflux Cache Directory"
+        if panel.runModal() == .OK, let url = panel.url {
+            settings.mfluxCacheDir = url.path
         }
     }
 }
