@@ -85,7 +85,11 @@ struct ParamsPanelView: View {
                 LoraManagerView(
                     loras: $params.loras,
                     showAdd: false,
-                    defaultLoras: settings.defaultLoras
+                    defaultLoras: settings.defaultLoras,
+                    onReset: {
+                        let d = settings.resolvedDefaults(for: params.model)
+                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                    }
                 )
                     .padding(.bottom, 8)
             }
