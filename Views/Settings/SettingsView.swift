@@ -171,8 +171,10 @@ struct SettingsView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
-            LoraManagerView(loras: $s.defaultLoras, showNotes: true, alwaysExpanded: true)
-                .frame(maxHeight: .infinity, alignment: .top)
+            ScrollView {
+                LoraManagerView(loras: $s.defaultLoras, showNotes: true, alwaysExpanded: true)
+                    .frame(maxWidth: .infinity, alignment: .top)
+            }
         }
         .padding()
     }
