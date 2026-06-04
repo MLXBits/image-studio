@@ -50,10 +50,22 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     // Returns true if mflux-saved weights already exist at the given path.
+    // mflux-save writes component subdirectories (transformer/, text_encoder/, vae/, tokenizer/)
+    // each containing .safetensors files, so we check one level deep.
     static func hasSavedWeights(at url: URL) -> Bool {
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: url, includingPropertiesForKeys: nil) else { return false }
-        return files.contains { $0.pathExtension.lowercased() == "safetensors" }
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: url, includingPropertiesForKeys: [.isDirectoryKey]) else { return false }
+        for entry in entries {
+            let ext = entry.pathExtension.lowercased()
+            if ext == "safetensors" { return true }
+            let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
+            if isDir,
+               let sub = try? FileManager.default.contentsOfDirectory(at: entry, includingPropertiesForKeys: nil),
+               sub.contains(where: { $0.pathExtension.lowercased() == "safetensors" }) {
+                return true
+            }
+        }
+        return false
     }
 
     // Returns the HuggingFace repo URL for this model + quantize combination, if known.
@@ -110,6 +122,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         let key = rawValue.lowercased()
         return entries.contains { $0.lowercased().contains(key) }
             || (!bf16CacheKey.isEmpty && entries.contains { $0.lowercased().contains(bf16CacheKey) })
+    }
+
+    // Returns true for a specific quantize level, checking the mflux saved-weights dir first,
+    // then falling back to the HuggingFace hub cache.
+    func isOnDisk(quantize: Int, savedIn cacheDir: URL) -> Bool {
+        let savePath = savedModelPath(quantize: quantize, in: cacheDir)
+        if Self.hasSavedWeights(at: savePath) { return true }
+        return isOnDisk(quantize: quantize)
     }
 
     // Returns true for a specific quantize level (0=bf16, 4=q4, 8=q8).
