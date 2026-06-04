@@ -14,7 +14,7 @@ struct StepwisePreviewView: View {
                 logView
             } else {
                 ZStack {
-                    Color.black.opacity(0.05)
+                    Color(nsColor: .windowBackgroundColor)
 
                     if let img = displayedImage {
                         Image(nsImage: img)
