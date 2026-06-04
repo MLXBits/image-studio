@@ -21,6 +21,9 @@ struct MLXBitsImageStudioApp: App {
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)
+        .commands {
+            CommandGroup(replacing: .newItem) { }
+        }
 
         Settings {
             SettingsView()

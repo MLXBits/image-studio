@@ -5,6 +5,7 @@ struct ModelPickerView: View {
     @Binding var customModelRepo: String
     @Binding var customBaseModel: FluxModelVariant
     @Binding var quantize: Int
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -33,7 +34,7 @@ struct ModelPickerView: View {
                 .accessibilityLabel("Quantization")
                 .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
 
-                if model != .custom && model.isOnDisk(quantize: quantize) {
+                if model != .custom && model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -148,7 +149,7 @@ struct ModelPickerView: View {
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
         let color: Color = gb > 30 ? .orange : gb > 18 ? .yellow : .green
-        let onDisk = model.isOnDisk(quantize: quantize)
+        let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
         let diskLabel = "≈\(String(format: "%.0f", gb)) GB disk"
         let diskColor: Color = onDisk ? .green : (gb > 30 ? .orange : gb > 18 ? .yellow : .secondary)
         let quantName = quantize == 0 ? "BF16" : "Q\(quantize)"

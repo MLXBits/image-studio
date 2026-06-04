@@ -13,6 +13,7 @@ struct ModelDefaultsView: View {
     @State private var cacheLog: String = ""
     @State private var cacheProcess: Process?
     @State private var cacheRevision = UUID()
+    @State private var userCancelledCache = false
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
 
     var body: some View {
@@ -118,6 +119,10 @@ struct ModelDefaultsView: View {
 
             cacheStatusRow(model: selectedModel, quantize: quantize)
 
+            if cachePhase != .idle {
+                cacheLogView
+            }
+
             Text("Overrides global defaults when this model is selected. The memory estimate above reflects your current quantize setting.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
@@ -133,36 +138,39 @@ struct ModelDefaultsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text(isCachedOnDisk(model: model, quantize: 0) && quantize != 0
+                    Text(model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
                          ? "Converting…" : "Downloading…")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
-                    Button("Cancel") { cacheProcess?.terminate() }
-                        .buttonStyle(.bordered).controlSize(.small)
+                    Button("Cancel") {
+                        userCancelledCache = true
+                        cacheProcess?.terminate()
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
                 }
                 Text("You can close Settings — this continues in the background.")
                     .font(.caption2).foregroundStyle(.tertiary)
             }
 
-        case .failed:
-            HStack(spacing: 8) {
-                Label("Download failed", systemImage: "exclamationmark.triangle.fill")
-                    .font(.caption).foregroundStyle(.red)
-                Button("Retry") { startCache(model: model, quantize: quantize) }
-                    .buttonStyle(.bordered).controlSize(.small)
-                Spacer()
+        case .failed(let message):
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 8) {
+                    Label("Failed", systemImage: "exclamationmark.triangle.fill")
+                        .font(.caption).foregroundStyle(.red)
+                    Button("Retry") { startCache(model: model, quantize: quantize) }
+                        .buttonStyle(.bordered).controlSize(.small)
+                    Spacer()
+                }
+                Text(message)
+                    .font(.caption2).foregroundStyle(.red.opacity(0.8))
             }
 
         case .idle, .done:
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = cacheRevision  // invalidates view when cache changes on disk
-                let cachedVariants = [0, 4, 8].filter { isCachedOnDisk(model: model, quantize: $0) }
-                if cachedVariants.isEmpty {
-                    Label("Not downloaded", systemImage: "arrow.down.circle")
-                        .font(.caption).foregroundStyle(.secondary)
-                } else {
-                    ForEach(cachedVariants, id: \.self) { qLevel in
+                let cachedVariants = [0, 4, 8].filter { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir) }
+                ForEach(cachedVariants, id: \.self) { qLevel in
                         HStack(spacing: 3) {
                             Text(qLevel == 0 ? "BF16" : "Q\(qLevel)")
                                 .font(.caption2).fontWeight(.medium)
@@ -177,11 +185,11 @@ struct ModelDefaultsView: View {
                         .padding(.horizontal, 6).padding(.vertical, 2)
                         .background(.green.opacity(0.15), in: Capsule())
                         .foregroundStyle(.green)
-                    }
                 }
-                ForEach([0, 4, 8].filter { !isCachedOnDisk(model: model, quantize: $0) }, id: \.self) { qLevel in
+                let cacheDir = settings.effectiveMfluxCacheDir
+                ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
                     let qLabel = qLevel == 0 ? "BF16" : "Q\(qLevel)"
-                    let canConvert = qLevel != 0 && isCachedOnDisk(model: model, quantize: 0)
+                    let canConvert = qLevel != 0 && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir)
                     Button(canConvert ? "Convert to \(qLabel)" : "Download \(qLabel)") {
                         startCache(model: model, quantize: qLevel)
                     }
@@ -248,24 +256,6 @@ struct ModelDefaultsView: View {
                         + " strength for this model. Add or remove LoRAs in Settings → LoRAs."
                 )
                 .font(.caption).foregroundStyle(.tertiary)
-            }
-
-            if cachePhase != .idle {
-                Section("Download Log") {
-                    ScrollViewReader { proxy in
-                        ScrollView {
-                            Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
-                                .font(.system(size: 11, design: .monospaced))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(4)
-                                .textSelection(.enabled)
-                            Color.clear.frame(height: 1).id("cacheLogEnd")
-                        }
-                        .frame(height: 150)
-                        .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
-                        .onAppear { proxy.scrollTo("cacheLogEnd") }
-                    }
-                }
             }
 
             Section {
@@ -563,17 +553,31 @@ struct ModelDefaultsView: View {
         settings.updateDefaults(d, for: model)
     }
 
-    // MARK: - Model caching
+    // MARK: - Cache log
 
-    private func isCachedOnDisk(model: FluxModelVariant, quantize: Int) -> Bool {
-        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
-        if FluxModelVariant.hasSavedWeights(at: savePath) { return true }
-        return model.isOnDisk(quantize: quantize)
+    private var cacheLogView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
+                    .font(.system(size: 10, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(6)
+                    .textSelection(.enabled)
+                Color.clear.frame(height: 1).id("cacheLogEnd")
+            }
+            .frame(height: 120)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
+            .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
+            .onAppear { proxy.scrollTo("cacheLogEnd") }
+        }
     }
+
+    // MARK: - Model caching
 
     private func startCache(model: FluxModelVariant, quantize: Int) {
         cachePhase = .running
         cacheLog = ""
+        userCancelledCache = false
         Task { await runMfluxSave(model: model, quantize: quantize) }
     }
 
@@ -643,19 +647,46 @@ struct ModelDefaultsView: View {
         cacheProcess = nil
 
         if process.terminationStatus == 0 {
+            let savedFiles = (try? FileManager.default.contentsOfDirectory(
+                at: savePath, includingPropertiesForKeys: nil))?.map(\.lastPathComponent) ?? []
+            cacheLog += "\nSaved to: \(savePath.path)\nFiles: \(savedFiles.isEmpty ? "(none found)" : savedFiles.joined(separator: ", "))"
             cachePhase = .done
+            cacheRevision = UUID()
         } else if process.terminationReason == .uncaughtSignal {
-            cachePhase = .idle
             try? FileManager.default.removeItem(at: savePath)
+            if userCancelledCache {
+                cachePhase = .idle
+            } else {
+                cachePhase = .failed("Process crashed (signal \(process.terminationStatus)). Check the log below.")
+            }
         } else {
-            cachePhase = .failed("mflux-save exited with status \(process.terminationStatus)")
+            cachePhase = .failed("mflux-save exited with status \(process.terminationStatus). Check the log below.")
         }
     }
 
     private func appendCacheLog(_ chunk: String, to log: String) -> String {
         var result = log
-        for char in chunk {
-            if char == "\r" {
+        var idx = chunk.startIndex
+        while idx < chunk.endIndex {
+            let char = chunk[idx]
+            idx = chunk.index(after: idx)
+            if char == "\u{1B}" {
+                // ESC — consume the full CSI sequence \x1b[<params><letter>
+                guard idx < chunk.endIndex, chunk[idx] == "[" else { continue }
+                idx = chunk.index(after: idx)
+                while idx < chunk.endIndex && !chunk[idx].isLetter { idx = chunk.index(after: idx) }
+                guard idx < chunk.endIndex else { continue }
+                let cmd = chunk[idx]
+                idx = chunk.index(after: idx)
+                if cmd == "A" {
+                    // Cursor up: remove current line and the \n above it, moving to end of previous line
+                    if let nl = result.lastIndex(of: "\n") {
+                        result = String(result[result.startIndex..<nl])
+                    } else {
+                        result = ""
+                    }
+                }
+            } else if char == "\r" {
                 if let nl = result.lastIndex(of: "\n") {
                     result = String(result[...nl])
                 } else {
