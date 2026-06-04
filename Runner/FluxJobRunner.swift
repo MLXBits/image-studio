@@ -2,6 +2,12 @@
 import AppKit
 import Foundation
 
+/// Executes image generation jobs by driving the `mflux-generate-flux2` CLI.
+///
+/// `FluxJobRunner` picks pending jobs from ``JobStore`` one at a time, spawns the `mflux`
+/// process, streams its output into the job's ``FluxJob/log``, and updates job status as the
+/// run progresses. Call ``runNext(in:settings:)`` after each job completes to drive the queue
+/// forward. Cancel the active job via ``cancel()``.
 @Observable
 @MainActor
 final class FluxJobRunner {

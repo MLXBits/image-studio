@@ -45,6 +45,14 @@ extension ModelDefaults {
 
 // MARK: - AppSettings
 
+/// Persistent user preferences for the application.
+///
+/// Every settable property calls ``save()`` in its `didSet` observer, so the JSON file on
+/// disk is always up to date after a mutation. The HuggingFace token is the only value stored
+/// in the system Keychain rather than the JSON file.
+///
+/// `AppSettings` is injected into the SwiftUI environment at the app root and accessed
+/// via `@Environment(AppSettings.self)` throughout the view hierarchy.
 @Observable
 class AppSettings {
     static let appSupportURL: URL = {

@@ -1,5 +1,10 @@
 import Foundation
 
+/// Persists and manages the image generation queue.
+///
+/// `JobStore` owns the authoritative list of ``FluxJob`` objects, serializes them to disk after
+/// every mutation, and exposes helpers for adding, cancelling, restarting, and pruning jobs.
+/// It does not execute jobs — that is handled by ``FluxJobRunner``.
 @Observable
 @MainActor
 final class JobStore {
