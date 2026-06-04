@@ -72,6 +72,14 @@ struct GenerationGalleryView: View {
         .onChange(of: collapsedBoards) { _, newValue in
             UserDefaults.standard.set(Array(newValue), forKey: Self.collapsedBoardsKey)
         }
+        .alert("Could not delete", isPresented: Binding(
+            get: { gallery.deleteError != nil },
+            set: { if !$0 { gallery.deleteError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gallery.deleteError ?? "")
+        }
         .confirmationDialog(
             deleteTarget != nil
                 ? "Delete image?"

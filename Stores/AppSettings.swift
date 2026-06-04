@@ -77,6 +77,10 @@ class AppSettings {
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
 
+    /// Set to a human-readable message when ``save()`` fails; cleared on the next
+    /// successful save. Observed by ``SettingsView`` to display an alert.
+    var saveError: String?
+
     init() {
         let home = NSHomeDirectory()
         let s = Self.loadStored()
@@ -131,9 +135,16 @@ class AppSettings {
             lastWidth: lastWidth, lastHeight: lastHeight,
             lastLoras: lastLoras, modelDefaults: modelDefaults
         )
-        try? FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
-        let enc = JSONEncoder(); enc.outputFormatting = .prettyPrinted
-        if let data = try? enc.encode(s) { try? data.write(to: Self.settingsURL, options: .atomic) }
+        do {
+            try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
+            let enc = JSONEncoder()
+            enc.outputFormatting = .prettyPrinted
+            let data = try enc.encode(s)
+            try data.write(to: Self.settingsURL, options: .atomic)
+            saveError = nil
+        } catch {
+            saveError = "Could not save settings: \(error.localizedDescription)"
+        }
     }
 
     // The mflux cache dir: honours user override, otherwise matches mflux's own default

@@ -248,7 +248,7 @@ struct ContentView: View {
             } else {
                 gallery.scan(outputDir: settings.outputDir)
             }
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 NSApp.keyWindow?.makeFirstResponder(nil)
             }
         }
