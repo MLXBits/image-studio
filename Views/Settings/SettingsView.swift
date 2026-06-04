@@ -109,7 +109,7 @@ struct SettingsView: View {
                 Text("Tip: choose a folder outside ~/Pictures and ~/Documents to avoid automatic iCloud sync of generated images.")
                     .font(.caption).foregroundStyle(.tertiary)
             }
-        }
+            }
             .formStyle(.grouped)
         }
     }
@@ -133,11 +133,13 @@ struct SettingsView: View {
                 Button("Install Automatically") { Task { await installMflux() } }
                     .buttonStyle(.borderedProminent)
                     .controlSize(.small)
+
             case .installing:
                 HStack(spacing: 6) {
                     ProgressView().controlSize(.small)
                     Text("Installing…").font(.caption).foregroundStyle(.secondary)
                 }
+
             case .failed(let msg):
                 HStack(spacing: 8) {
                     Text(msg).font(.caption).foregroundStyle(.red).lineLimit(2)
@@ -208,9 +210,10 @@ struct SettingsView: View {
                     HStack(spacing: 3) {
                         Text("Required for gated and private models (e.g. Flux.1 Pro). Stored in the system Keychain. Create one at")
                             .font(.caption).foregroundStyle(.secondary)
-                        Link("huggingface.co/settings/tokens",
-                             destination: URL(string: "https://huggingface.co/settings/tokens")!)
-                            .font(.caption)
+                        if let tokenURL = URL(string: "https://huggingface.co/settings/tokens") {
+                            Link("huggingface.co/settings/tokens", destination: tokenURL)
+                                .font(.caption)
+                        }
                     }
                     .fixedSize(horizontal: false, vertical: true)
                 }

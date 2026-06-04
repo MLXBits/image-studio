@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 struct ParamsPanelView: View {
@@ -45,7 +46,11 @@ struct ParamsPanelView: View {
                 Divider()
 
                 // Prompt
-                sectionHeader("Prompt", info: "Describe what you want to generate. Be specific about subjects, lighting, style, and mood. More detail generally produces better results.")
+                sectionHeader(
+                    "Prompt",
+                    info: "Describe what you want to generate. Be specific about subjects,"
+                        + " lighting, style, and mood. More detail generally produces better results."
+                )
                 promptEditor
                 if !isDistilled {
                     negativePromptEditor
@@ -85,13 +90,12 @@ struct ParamsPanelView: View {
                 LoraManagerView(
                     loras: $params.loras,
                     showAdd: false,
-                    defaultLoras: settings.defaultLoras,
-                    onReset: {
-                        let d = settings.resolvedDefaults(for: params.model)
-                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                    }
-                )
-                    .padding(.bottom, 8)
+                    defaultLoras: settings.defaultLoras
+                ) {
+                    let d = settings.resolvedDefaults(for: params.model)
+                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                }
+                .padding(.bottom, 8)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -173,7 +177,9 @@ struct ParamsPanelView: View {
                     Text("Steps").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
                     InfoButton(
                         title: "Denoising Steps",
-                        description: "Number of denoising iterations. Distilled models (Klein 4B/9B) work well at 4 steps. Base models need 30–50. More steps = more compute time with diminishing quality returns."
+                        description: "Number of denoising iterations. Distilled models (Klein 4B/9B) work"
+                            + " well at 4 steps. Base models need 30–50. More steps = more compute"
+                            + " time with diminishing quality returns."
                     )
                 }
                 Stepper(value: $params.steps, in: 1...150) {
@@ -197,7 +203,9 @@ struct ParamsPanelView: View {
                     Text("Seed").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
                     InfoButton(
                         title: "Random Seed",
-                        description: "Controls the randomness of generation. The same seed + prompt produces the same image every time — great for iteration. Use -1 for a unique result each run."
+                        description: "Controls the randomness of generation. The same seed + prompt"
+                            + " produces the same image every time — great for iteration."
+                            + " Use -1 for a unique result each run."
                     )
                 }
                 HStack(spacing: 4) {
@@ -235,7 +243,9 @@ struct ParamsPanelView: View {
                 Text("Guidance").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
                 InfoButton(
                     title: "Guidance Scale",
-                    description: "How closely the model follows your prompt. Higher = stricter adherence but can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
+                    description: "How closely the model follows your prompt. Higher = stricter"
+                        + " adherence but can over-saturate. 3–7 is typical for base models."
+                        + " Distilled Klein models always use 1.0."
                 )
             }
             HStack(spacing: 6) {
@@ -255,7 +265,12 @@ struct ParamsPanelView: View {
     private var img2ImgSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
-                sectionHeader("Image Input", info: "Optional reference image for image-to-image generation. Drag an image here or click to browse. Higher strength = closer to the original image. Lower strength = more creative, prompt dominates.")
+                sectionHeader(
+                    "Image Input",
+                    info: "Optional reference image for image-to-image generation. Drag an image"
+                        + " here or click to browse. Higher strength = closer to the original"
+                        + " image. Lower strength = more creative, prompt dominates."
+                )
                 Spacer()
                 if !params.imagePath.isEmpty {
                     Button {
@@ -314,7 +329,10 @@ struct ParamsPanelView: View {
                             Text("Strength").font(.caption2).foregroundStyle(.secondary)
                             InfoButton(
                                 title: "Image Strength",
-                                description: "How faithfully the output follows the original image. High strength (75–95%) = stays close to the original, subtle changes. Low strength (15–30%) = more creative freedom, prompt dominates. Counter-intuitive name: think of it as image preservation, not prompt strength."
+                                description: "How faithfully the output follows the original image."
+                                    + " High strength (75–95%) = stays close to the original, subtle"
+                                    + " changes. Low strength (15–30%) = more creative freedom, prompt"
+                                    + " dominates. Think of it as image preservation, not prompt strength."
                             )
                             Slider(value: $params.imageStrength, in: 0.05...0.95)
                                 .onChange(of: params.imageStrength) { _, v in params.imageStrength = round(v / 0.05) * 0.05 }
@@ -365,7 +383,8 @@ struct ParamsPanelView: View {
                 .foregroundStyle(.secondary)
             InfoButton(
                 title: "Group",
-                description: "Organizes generated images into named subfolders inside your output directory. Leave as Default to keep everything in one place."
+                description: "Organizes generated images into named subfolders inside your output"
+                    + " directory. Leave as Default to keep everything in one place."
             )
             FolderComboBox(
                 text: $params.board,
@@ -398,15 +417,15 @@ struct ParamsPanelView: View {
         let pb = NSPasteboard.general
         return pb.canReadObject(forClasses: [NSImage.self], options: nil)
             || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
-                .compactMap({ $0 as? URL })
-                .first(where: { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }) != nil
+                .compactMap { $0 as? URL }
+                .first { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) } != nil
     }
 
     private func pasteImage() {
         let pb = NSPasteboard.general
         // Prefer a file URL so we keep the original file on disk
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }) {
+           let url = urls.first(where: { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }) {
             params.imagePath = url.path
             return
         }
@@ -428,7 +447,7 @@ struct ParamsPanelView: View {
         panel.title = "Select Reference Image"
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
-            if ["png","jpg","jpeg","webp"].contains(ext) {
+            if ["png", "jpg", "jpeg", "webp"].contains(ext) {
                 params.imagePath = url.path
             }
         }
@@ -442,7 +461,9 @@ struct ParamsPanelView: View {
                 .font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
             InfoButton(
                 title: "Generation Mode",
-                description: "Generate: create or modify images from text + optional reference (img2img).\n\nEdit: compose multiple images with instructions — e.g. two images plus \"make her wear the glasses\". Works with a single image too for general edits."
+                description: "Generate: create or modify images from text + optional reference"
+                    + " (img2img).\n\nEdit: compose multiple images with instructions — e.g. two"
+                    + " images plus \"make her wear the glasses\". Works with a single image too."
             )
             Picker("", selection: $params.isEditMode) {
                 Text("Generate").tag(false)
@@ -466,7 +487,12 @@ struct ParamsPanelView: View {
     private var editImagesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
-                sectionHeader("Images", info: "One or more reference images for editing. Order matters: list the primary subject first. Prompt describes the edit — e.g. \"make her wear the glasses\".")
+                sectionHeader(
+                    "Images",
+                    info: "One or more reference images for editing. Order matters: list the"
+                        + " primary subject first. Prompt describes the edit — e.g. \"make her"
+                        + " wear the glasses\"."
+                )
                 Spacer()
                 if !params.editImagePaths.isEmpty {
                     Button {
@@ -520,7 +546,7 @@ struct ParamsPanelView: View {
             }
         }
         .dropDestination(for: String.self, action: { paths, _ in
-            let valid = paths.filter { ["png","jpg","jpeg","webp"].contains(($0 as NSString).pathExtension.lowercased()) }
+            let valid = paths.filter { ["png", "jpg", "jpeg", "webp"].contains(($0 as NSString).pathExtension.lowercased()) }
             guard !valid.isEmpty else { return false }
             for path in valid where !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
             return true
@@ -529,7 +555,7 @@ struct ParamsPanelView: View {
             for provider in providers {
                 provider.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
                     guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                    guard ["png","jpg","jpeg","webp"].contains(url.pathExtension.lowercased()) else { return }
+                    guard ["png", "jpg", "jpeg", "webp"].contains(url.pathExtension.lowercased()) else { return }
                     DispatchQueue.main.async {
                         if !self.params.editImagePaths.contains(url.path) { self.params.editImagePaths.append(url.path) }
                     }
@@ -583,7 +609,7 @@ struct ParamsPanelView: View {
         panel.allowsMultipleSelection = true
         panel.title = "Select Images"
         if panel.runModal() == .OK {
-            let valid = panel.urls.filter { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }
+            let valid = panel.urls.filter { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }
             for url in valid where !params.editImagePaths.contains(url.path) {
                 params.editImagePaths.append(url.path)
             }
@@ -593,7 +619,7 @@ struct ParamsPanelView: View {
     private func pasteEditImage() {
         let pb = NSPasteboard.general
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { ["png","jpg","jpeg","webp"].contains($0.pathExtension.lowercased()) }) {
+           let url = urls.first(where: { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }) {
             if !params.editImagePaths.contains(url.path) { params.editImagePaths.append(url.path) }
             return
         }
@@ -607,4 +633,3 @@ struct ParamsPanelView: View {
         if !params.editImagePaths.contains(tmp.path) { params.editImagePaths.append(tmp.path) }
     }
 }
-

@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 /// Per-model settings form. Shows inside the Settings "Models" tab.
@@ -11,8 +12,8 @@ struct ModelDefaultsView: View {
     @State private var cachePhase: CachePhase = .idle
     @State private var cacheLog: String = ""
     @State private var cacheProcess: Process?
-    @State private var cacheRevision: UUID = UUID()
-    @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)? = nil
+    @State private var cacheRevision = UUID()
+    @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
 
     var body: some View {
         HStack(spacing: 0) {
@@ -44,7 +45,10 @@ struct ModelDefaultsView: View {
         } message: {
             if let pending = pendingDeleteVariant {
                 let qLabel = pending.quantize == 0 ? "BF16" : "Q\(pending.quantize)"
-                Text("This will permanently delete the \(qLabel) weights for \(pending.model.displayName) from disk. You can re-download them later.")
+                Text(
+                    "This will permanently delete the \(qLabel) weights for"
+                        + " \(pending.model.displayName) from disk. You can re-download them later."
+                )
             }
         }
     }
@@ -139,6 +143,7 @@ struct ModelDefaultsView: View {
                 Text("You can close Settings — this continues in the background.")
                     .font(.caption2).foregroundStyle(.tertiary)
             }
+
         case .failed:
             HStack(spacing: 8) {
                 Label("Download failed", systemImage: "exclamationmark.triangle.fill")
@@ -147,8 +152,10 @@ struct ModelDefaultsView: View {
                     .buttonStyle(.bordered).controlSize(.small)
                 Spacer()
             }
+
         case .idle, .done:
             HStack(spacing: 6) {
+                // swiftlint:disable:next redundant_discardable_let
                 let _ = cacheRevision  // invalidates view when cache changes on disk
                 let cachedVariants = [0, 4, 8].filter { isCachedOnDisk(model: model, quantize: $0) }
                 if cachedVariants.isEmpty {
@@ -239,8 +246,11 @@ struct ModelDefaultsView: View {
             } header: {
                 Text("LoRAs")
             } footer: {
-                Text("Adjusts which LoRAs from the LoRAs tab are enabled and at what strength for this model. Add or remove LoRAs in Settings → LoRAs.")
-                    .font(.caption).foregroundStyle(.tertiary)
+                Text(
+                    "Adjusts which LoRAs from the LoRAs tab are enabled and at what"
+                        + " strength for this model. Add or remove LoRAs in Settings → LoRAs."
+                )
+                .font(.caption).foregroundStyle(.tertiary)
             }
 
             if cachePhase != .idle {
@@ -449,6 +459,7 @@ struct ModelDefaultsView: View {
         )
     }
 
+    // swiftlint:disable:next function_parameter_count
     private func dimensionRow(
         label: String, model: FluxModelVariant, current: Int?,
         get: KeyPath<ModelDefaults, Int?>,
@@ -478,7 +489,7 @@ struct ModelDefaultsView: View {
         } else {
             VStack(spacing: 6) {
                 ForEach(globals) { global in
-                    let eff = current?.first(where: { $0.path == global.path }) ?? global
+                    let eff = current?.first { $0.path == global.path } ?? global
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Toggle("", isOn: Binding(
@@ -611,8 +622,11 @@ struct ModelDefaultsView: View {
         let stream = AsyncStream<String> { continuation in
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if data.isEmpty { continuation.finish() }
-                else if let text = String(data: data, encoding: .utf8) { continuation.yield(text) }
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
             }
             process.terminationHandler = { _ in
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {

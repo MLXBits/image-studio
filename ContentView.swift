@@ -37,9 +37,8 @@ final class ParamsPanelState {
         negativePrompt = d.negativePrompt
         // Build last-run lookup (safe against duplicate paths).
         let lastByPath = Dictionary(
-            settings.lastLoras.map { ($0.path, $0) },
-            uniquingKeysWith: { first, _ in first }
-        )
+            settings.lastLoras.map { ($0.path, $0) }
+        ) { first, _ in first }
         let defaultPaths = Set(settings.defaultLoras.map(\.path))
         // Global defaults with enabled/strength restored from last run (notes stay from defaults).
         var loraResult = settings.defaultLoras.map { global -> LoraEntry in
@@ -49,7 +48,7 @@ final class ParamsPanelState {
         // Session-only loras (added during a run but not in global defaults) persist across launches.
         loraResult += settings.lastLoras.filter { !defaultPaths.contains($0.path) }
         loras = loraResult
-        prompt         = settings.lastPrompt
+        prompt = settings.lastPrompt
     }
 
     func apply(metadata meta: GenerationMetadata, newSeed: Bool) {
@@ -110,17 +109,17 @@ struct ContentView: View {
     @Environment(\.openSettings) private var openSettings
 
     @State private var previewState: PreviewState = .idle
-    @State private var selectedGalleryItem: GalleryItem? = nil
+    @State private var selectedGalleryItem: GalleryItem?
     @State private var showingQueue: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
-    @State private var fullSizeImage: NSImage? = nil
+    @State private var fullSizeImage: NSImage?
 
     private var batchCountBinding: Binding<Int> {
         Binding(get: { params.batchCount }, set: { params.batchCount = $0 })
     }
     @State private var showingParams: Bool = true
-    @State private var pendingSelectPath: String? = nil
+    @State private var pendingSelectPath: String?
 
     var body: some View {
         ZStack {
@@ -189,9 +188,9 @@ struct ContentView: View {
             }
 
             if let img = fullSizeImage {
-                FullSizeImageView(image: img, onDismiss: {
+                FullSizeImageView(image: img) {
                     withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil }
-                })
+                }
                 .transition(.opacity)
                 .zIndex(1)
             }
@@ -257,8 +256,10 @@ struct ContentView: View {
             let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
                 e.notes.isEmpty ? nil : (e.path, e.notes)
             })
-            for i in params.loras.indices where notesByPath[params.loras[i].path] != nil {
-                params.loras[i].notes = notesByPath[params.loras[i].path]!
+            for i in params.loras.indices {
+                if let note = notesByPath[params.loras[i].path] {
+                    params.loras[i].notes = note
+                }
             }
             let currentPaths = Set(params.loras.map(\.path))
             for entry in updated where !currentPaths.contains(entry.path) {
@@ -331,9 +332,8 @@ struct ContentView: View {
                 HStack(spacing: 4) {
                     PassiveTextField(
                         value: batchCountBinding,
-                        format: .number,
-                        onSubmit: { params.batchCount = max(1, min(99, params.batchCount)) }
-                    )
+                        format: .number
+                    ) { params.batchCount = max(1, min(99, params.batchCount)) }
                     .frame(width: 46, height: 22)
                     Stepper("", value: batchCountBinding, in: 1...99)
                         .labelsHidden()

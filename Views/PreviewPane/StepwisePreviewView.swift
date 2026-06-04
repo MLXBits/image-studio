@@ -5,7 +5,7 @@ struct StepwisePreviewView: View {
     let onCancel: () -> Void
 
     @Environment(AppSettings.self) private var settings
-    @State private var displayedImage: NSImage? = nil
+    @State private var displayedImage: NSImage?
     @State private var showLog: Bool = false
 
     var body: some View {

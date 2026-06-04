@@ -16,7 +16,8 @@ enum UvInstaller {
     }
 
     static var installPath: URL {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("MLXBits Image Studio/bin/uv")
     }
 
@@ -29,8 +30,9 @@ enum UvInstaller {
         throw InstallError.unsupportedArch
         #endif
 
-        let url = URL(string:
-            "https://github.com/astral-sh/uv/releases/latest/download/uv-\(archName)-apple-darwin.tar.gz")!
+        guard let url = URL(string:
+            "https://github.com/astral-sh/uv/releases/latest/download/uv-\(archName)-apple-darwin.tar.gz")
+        else { throw InstallError.downloadFailed(URLError(.badURL)) }
 
         let (tmpFile, _): (URL, URLResponse)
         do {

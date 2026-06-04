@@ -1,11 +1,11 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// A text editor backed directly by NSTextView, with explicit content insets
 /// so cursor, entered text, and placeholder can all start at the same x/y position.
 struct InsetTextEditor: NSViewRepresentable {
     @Binding var text: String
-    var insets: NSSize = NSSize(width: 5, height: 8)
+    var insets = NSSize(width: 5, height: 8)
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()

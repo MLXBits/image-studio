@@ -16,7 +16,7 @@ struct GalleryItemView: View {
     @Environment(GalleryStore.self) private var gallery
 
     var body: some View {
-        Button(action: {
+        Button {
             let flags = NSEvent.modifierFlags
             if flags.contains(.shift) {
                 onRangeSelect()
@@ -25,7 +25,7 @@ struct GalleryItemView: View {
             } else {
                 onSelect()
             }
-        }) {
+        } label: {
             ZStack(alignment: .bottom) {
                 thumbnailImage
                     .frame(maxWidth: .infinity)

@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 struct GalleryItem: Identifiable, Equatable {
     let id: UUID
@@ -12,7 +12,7 @@ struct GalleryItem: Identifiable, Equatable {
     var url: URL { URL(fileURLWithPath: path) }
     var filename: String { url.lastPathComponent }
 
-    static func == (lhs: GalleryItem, rhs: GalleryItem) -> Bool { lhs.id == rhs.id }
+    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
 @Observable
@@ -33,7 +33,7 @@ final class GalleryStore {
     func scan(outputDir: String) {
         guard !outputDir.isEmpty else { return }
         isScanning = true
-        let exts = GalleryStore.imageExtensions
+        let exts = Self.imageExtensions
         // Snapshot existing items so the detached task can preserve UUIDs and cached thumbnails.
         let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
         Task.detached(priority: .userInitiated) { [weak self] in

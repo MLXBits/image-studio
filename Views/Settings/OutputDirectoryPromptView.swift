@@ -17,11 +17,14 @@ struct OutputDirectoryPromptView: View {
                     .font(.headline)
                     .multilineTextAlignment(.center)
 
-                Text("Choose any folder you control. Avoid iCloud-synced folders like ~/Pictures or ~/Documents if you don't want generated images uploaded to iCloud.")
-                    .font(.callout)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-                    .fixedSize(horizontal: false, vertical: true)
+                Text(
+                    "Choose any folder you control. Avoid iCloud-synced folders like ~/Pictures"
+                        + " or ~/Documents if you don't want generated images uploaded to iCloud."
+                )
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(spacing: 10) {

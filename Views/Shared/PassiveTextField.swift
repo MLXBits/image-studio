@@ -1,15 +1,14 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 /// A numeric text field that never becomes first responder via tab or programmatic
 /// responder search — only responds to direct mouse clicks. Prevents accidental
 /// focus capture when nearby plain-style buttons are clicked.
 struct PassiveTextField<F: ParseableFormatStyle>: NSViewRepresentable
     where F.FormatOutput == String {
-
     @Binding var value: F.FormatInput
     let format: F
-    var onSubmit: (() -> Void)? = nil
+    var onSubmit: (() -> Void)?
 
     func makeNSView(context: Context) -> PassiveNSTextField {
         let field = PassiveNSTextField()

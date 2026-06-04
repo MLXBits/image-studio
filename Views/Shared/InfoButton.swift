@@ -6,7 +6,7 @@ struct InfoButton: View {
     let title: String
     let description: String
     var actionLabel: String = ""
-    var action: (() -> Void)? = nil
+    var action: (() -> Void)?
     @State private var showing = false
 
     var body: some View {

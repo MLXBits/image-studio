@@ -1,0 +1,102 @@
+# .swiftlint.yml
+# Aligned with Kodeco Swift Style Guide and SwiftLint best practices
+# https://github.com/kodecocodes/swift-style-guide
+# https://github.com/realm/SwiftLint/blob/main/RULES.md
+
+excluded:
+  - "**/.build"
+  - "**/DerivedData"
+  - "**/*.generated.swift"
+
+# ── Disabled rules ─────────────────────────────────────────────────────────────
+
+disabled_rules:
+  # SwiftUI view bodies legitimately exceed default thresholds
+  - function_body_length
+  - type_body_length
+  # Xcode-generated app entry point name contains underscores
+  - type_name
+
+# ── Opt-in rules ───────────────────────────────────────────────────────────────
+
+opt_in_rules:
+  # Formatting
+  - closure_end_indentation        # closing brace aligns with opening line
+  - closure_spacing                # { x in } not {x in}
+  - literal_expression_end_indentation
+  - operator_usage_whitespace      # spaces around =, +, etc.
+  - vertical_whitespace_between_cases
+  - vertical_whitespace_closing_braces
+  - vertical_whitespace_opening_braces
+
+  # Idiomatic Swift
+  - empty_count                    # use .isEmpty not .count == 0
+  - explicit_init                  # avoid calling .init() explicitly
+  - implicit_optional_initialization # var x: T? not var x: T? = nil
+  - implicit_return                # omit return in single-expression closures/computed props
+  - joined_default_parameter       # .joined() not .joined(separator: "")
+  - optional_enum_case_matching    # cleaner pattern matching
+  - prefer_self_in_static_references
+  - prefer_self_type_over_type_of_self
+  - prefer_zero_over_explicit_init # .zero not CGPoint(x: 0, y: 0)
+  - self_binding                   # guard let self (Swift 5.3+)
+  - shorthand_optional_binding     # if let x (Swift 5.7+)
+  - superfluous_else               # remove else after return/throw/break
+  - toggle_bool                    # .toggle() not = !x
+  - trailing_closure               # trailing closure syntax when possible
+  - trailing_comma                 # trailing comma in multiline literals (Kodeco)
+  - unneeded_break_in_switch
+  - unneeded_escaping
+  - unneeded_override              # remove trivial overrides
+  - unneeded_parentheses_in_closure_argument
+  - unneeded_synthesized_initializer
+  - untyped_error_in_catch         # catch error as SomeType not untyped
+
+  # Access control (Kodeco: prefer private over fileprivate)
+  - lower_acl_than_parent
+  - modifier_order
+  - private_over_fileprivate
+  - private_swiftui_state          # @State should be private
+
+  # Safety
+  - force_unwrapping
+
+  # Dead code / redundancy
+  - redundant_discardable_let      # remove let _ =
+  - redundant_nil_coalescing       # catch ?? nil
+  - redundant_objc_attribute
+  - redundant_sendable
+  - redundant_type_annotation      # don't annotate obvious types
+  - redundant_void_return
+  - sorted_imports
+  - void_return                    # -> Void not -> ()
+
+# ── Rule configuration ─────────────────────────────────────────────────────────
+
+identifier_name:
+  min_length: 1           # single-letter loop vars and SwiftUI params are fine
+  max_length:
+    warning: 60
+    error: 80
+  validates_start_with_lowercase: true
+
+line_length:
+  warning: 140
+  error: 200
+  ignores_comments: true
+  ignores_urls: true
+
+file_length:
+  warning: 500
+  error: 1100
+
+analyzer_rules:
+  - unused_import
+
+cyclomatic_complexity:
+  ignores_case_statements: true
+  warning: 15
+  error: 25
+
+trailing_comma:
+  mandatory_comma: true

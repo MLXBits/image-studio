@@ -18,14 +18,14 @@ extension ModelDefaults {
     /// Resolves all values, using global fallbacks for width/height.
     func resolved(for model: FluxModelVariant) -> Resolved {
         Resolved(
-            steps:             steps    ?? model.defaultSteps,
-            guidance:          model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
-            quantize:          quantize ?? model.recommendedQuantize,
-            lowRam:            lowRam   ?? false,
-            negativePrompt:    model.isDistilled ? "" : (negativePrompt ?? ""),
-            loras:             loras    ?? [],
-            width:             width    ?? 1024,
-            height:            height   ?? 1024,
+            steps: steps ?? model.defaultSteps,
+            guidance: model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
+            quantize: quantize ?? model.recommendedQuantize,
+            lowRam: lowRam ?? false,
+            negativePrompt: model.isDistilled ? "" : (negativePrompt ?? ""),
+            loras: loras ?? [],
+            width: width ?? 1024,
+            height: height ?? 1024,
             modelRepoOverride: modelRepoOverride.flatMap { $0.isEmpty ? nil : $0 }
         )
     }
@@ -48,30 +48,31 @@ extension ModelDefaults {
 @Observable
 class AppSettings {
     static let appSupportURL: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("MLXBits Image Studio", isDirectory: true)
     }()
 
     private static let settingsURL: URL = appSupportURL.appendingPathComponent("settings.json")
 
     // Global
-    var mfluxBinaryDir: String        { didSet { save() } }
-    var outputDir: String             { didSet { save() } }
+    var mfluxBinaryDir: String { didSet { save() } }
+    var outputDir: String { didSet { save() } }
     var defaultModel: FluxModelVariant { didSet { save() } }
-    var defaultBoard: String          { didSet { save() } }
-    var defaultWidth: Int             { didSet { save() } }
-    var defaultHeight: Int            { didSet { save() } }
-    var defaultLoras: [LoraEntry]     { didSet { save() } }
-    var mlxCacheLimitGB: Double       { didSet { save() } }
-    var hfHome: String                { didSet { save() } }
-    var mfluxCacheDir: String         { didSet { save() } }
-    var hfOffline: Bool               { didSet { save() } }
-    var hfToken: String               { didSet { KeychainHelper.set(hfToken, key: "hf_token") } }
-    var logFontSize: Double           { didSet { save() } }
-    var lastPrompt: String            { didSet { save() } }
-    var lastWidth: Int                { didSet { save() } }
-    var lastHeight: Int               { didSet { save() } }
-    var lastLoras: [LoraEntry]        { didSet { save() } }
+    var defaultBoard: String { didSet { save() } }
+    var defaultWidth: Int { didSet { save() } }
+    var defaultHeight: Int { didSet { save() } }
+    var defaultLoras: [LoraEntry] { didSet { save() } }
+    var mlxCacheLimitGB: Double { didSet { save() } }
+    var hfHome: String { didSet { save() } }
+    var mfluxCacheDir: String { didSet { save() } }
+    var hfOffline: Bool { didSet { save() } }
+    var hfToken: String { didSet { KeychainHelper.set(hfToken, key: "hf_token") } }
+    var logFontSize: Double { didSet { save() } }
+    var lastPrompt: String { didSet { save() } }
+    var lastWidth: Int { didSet { save() } }
+    var lastHeight: Int { didSet { save() } }
+    var lastLoras: [LoraEntry] { didSet { save() } }
 
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
@@ -81,24 +82,24 @@ class AppSettings {
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
 
-        mfluxBinaryDir  = s.mfluxBinaryDir  ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
-        outputDir       = s.outputDir       ?? ""   // empty = not yet chosen; app will prompt on first use
+        mfluxBinaryDir  = s.mfluxBinaryDir ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
+        outputDir       = s.outputDir ?? ""   // empty = not yet chosen; app will prompt on first use
         defaultModel    = model
-        defaultBoard    = s.defaultBoard    ?? ""
-        defaultWidth    = s.defaultWidth    ?? 1024
-        defaultHeight   = s.defaultHeight   ?? 1024
-        defaultLoras    = s.defaultLoras    ?? []
+        defaultBoard    = s.defaultBoard ?? ""
+        defaultWidth    = s.defaultWidth ?? 1024
+        defaultHeight   = s.defaultHeight ?? 1024
+        defaultLoras    = s.defaultLoras ?? []
         mlxCacheLimitGB = s.mlxCacheLimitGB ?? 0
-        hfHome          = s.hfHome          ?? ""
-        mfluxCacheDir   = s.mfluxCacheDir   ?? ""
-        hfOffline       = s.hfOffline       ?? false
+        hfHome          = s.hfHome ?? ""
+        mfluxCacheDir   = s.mfluxCacheDir ?? ""
+        hfOffline       = s.hfOffline ?? false
         hfToken         = KeychainHelper.get("hf_token")
-        logFontSize     = s.logFontSize     ?? 12.0
-        lastPrompt      = s.lastPrompt      ?? ""
-        lastWidth       = s.lastWidth       ?? 1024
-        lastHeight      = s.lastHeight      ?? 1024
-        lastLoras       = s.lastLoras       ?? []
-        modelDefaults   = s.modelDefaults   ?? [:]
+        logFontSize     = s.logFontSize ?? 12.0
+        lastPrompt      = s.lastPrompt ?? ""
+        lastWidth       = s.lastWidth ?? 1024
+        lastHeight      = s.lastHeight ?? 1024
+        lastLoras       = s.lastLoras ?? []
+        modelDefaults   = s.modelDefaults ?? [:]
     }
 
     // MARK: - Per-model helpers
@@ -141,7 +142,8 @@ class AppSettings {
         if !mfluxCacheDir.isEmpty {
             return URL(fileURLWithPath: mfluxCacheDir)
         }
-        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return caches.appendingPathComponent("mflux")
     }
 
@@ -162,10 +164,10 @@ class AppSettings {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        if !hfHome.isEmpty        { env["HF_HOME"]         = hfHome }
+        if !hfHome.isEmpty { env["HF_HOME"] = hfHome }
         if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"] = mfluxCacheDir }
-        if hfOffline              { env["HF_HUB_OFFLINE"]  = "1" }
-        if !hfToken.isEmpty       { env["HF_TOKEN"]        = hfToken }
+        if hfOffline { env["HF_HUB_OFFLINE"] = "1" }
+        if !hfToken.isEmpty { env["HF_TOKEN"] = hfToken }
         return env
     }
 

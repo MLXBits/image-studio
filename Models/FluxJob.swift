@@ -1,5 +1,5 @@
-import Foundation
 import AppKit
+import Foundation
 
 enum JobStatus: Equatable {
     case pending
@@ -37,6 +37,7 @@ extension JobStatus: Codable {
         case "running":   self = .running
         case "completed": self = .completed
         case "cancelled": self = .cancelled
+
         default:
             let msg = (try? c.decode(String.self, forKey: .message)) ?? type
             self = .failed(msg)
@@ -46,11 +47,11 @@ extension JobStatus: Codable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKey.self)
         switch self {
-        case .pending:       try c.encode("pending",   forKey: .type)
-        case .running:       try c.encode("running",   forKey: .type)
+        case .pending:       try c.encode("pending", forKey: .type)
+        case .running:       try c.encode("running", forKey: .type)
         case .completed:     try c.encode("completed", forKey: .type)
         case .cancelled:     try c.encode("cancelled", forKey: .type)
-        case .failed(let m): try c.encode("failed",    forKey: .type); try c.encode(m, forKey: .message)
+        case .failed(let m): try c.encode("failed", forKey: .type); try c.encode(m, forKey: .message)
         }
     }
 }
@@ -169,71 +170,71 @@ extension FluxJob: Codable {
     convenience init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         self.init(
-            id:              try c.decode(UUID.self,              forKey: .id),
-            model:           (try? c.decode(FluxModelVariant.self, forKey: .model)) ?? .flux2Klein9B,
-            customModelRepo: (try? c.decode(String.self,          forKey: .customModelRepo)) ?? "",
+            id: try c.decode(UUID.self, forKey: .id),
+            model: (try? c.decode(FluxModelVariant.self, forKey: .model)) ?? .flux2Klein9B,
+            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             customBaseModel: (try? c.decode(FluxModelVariant.self, forKey: .customBaseModel)) ?? .flux2Klein9B,
-            prompt:          (try? c.decode(String.self,          forKey: .prompt)) ?? "",
-            negativePrompt:  (try? c.decode(String.self,          forKey: .negativePrompt)) ?? "",
-            width:           (try? c.decode(Int.self,             forKey: .width)) ?? 1024,
-            height:          (try? c.decode(Int.self,             forKey: .height)) ?? 1024,
-            seed:            (try? c.decode(Int.self,             forKey: .seed)) ?? -1,
-            seeds:           (try? c.decode([Int].self,           forKey: .seeds)) ?? [],
-            steps:           (try? c.decode(Int.self,             forKey: .steps)) ?? 4,
-            guidance:        (try? c.decode(Double.self,          forKey: .guidance)) ?? 1.0,
-            loras:           (try? c.decode([LoraEntry].self,     forKey: .loras)) ?? [],
-            quantize:        (try? c.decode(Int.self,             forKey: .quantize)) ?? 8,
-            lowRam:          (try? c.decode(Bool.self,            forKey: .lowRam)) ?? false,
-            imagePath:       (try? c.decode(String.self,          forKey: .imagePath)) ?? "",
-            imageStrength:   (try? c.decode(Double.self,          forKey: .imageStrength)) ?? 0.75,
-            isEditMode:      (try? c.decode(Bool.self,            forKey: .isEditMode)) ?? false,
-            editImagePaths:  (try? c.decode([String].self,        forKey: .editImagePaths)) ?? [],
-            board:           (try? c.decode(String.self,          forKey: .board)) ?? "Default",
-            createdAt:       (try? c.decode(Date.self,            forKey: .createdAt)) ?? Date()
+            prompt: (try? c.decode(String.self, forKey: .prompt)) ?? "",
+            negativePrompt: (try? c.decode(String.self, forKey: .negativePrompt)) ?? "",
+            width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,
+            height: (try? c.decode(Int.self, forKey: .height)) ?? 1024,
+            seed: (try? c.decode(Int.self, forKey: .seed)) ?? -1,
+            seeds: (try? c.decode([Int].self, forKey: .seeds)) ?? [],
+            steps: (try? c.decode(Int.self, forKey: .steps)) ?? 4,
+            guidance: (try? c.decode(Double.self, forKey: .guidance)) ?? 1.0,
+            loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
+            quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 8,
+            lowRam: (try? c.decode(Bool.self, forKey: .lowRam)) ?? false,
+            imagePath: (try? c.decode(String.self, forKey: .imagePath)) ?? "",
+            imageStrength: (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75,
+            isEditMode: (try? c.decode(Bool.self, forKey: .isEditMode)) ?? false,
+            editImagePaths: (try? c.decode([String].self, forKey: .editImagePaths)) ?? [],
+            board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
+            createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
         status       = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log          = (try? c.decode(String.self,    forKey: .log)) ?? ""
-        outputPath   = try? c.decode(String.self,    forKey: .outputPath)
-        resolvedSeed = try? c.decode(Int.self,       forKey: .resolvedSeed)
-        thumbnailData = try? c.decode(Data.self,     forKey: .thumbnailData)
-        currentStep  = (try? c.decode(Int.self,      forKey: .currentStep)) ?? 0
-        totalSteps   = (try? c.decode(Int.self,      forKey: .totalSteps)) ?? steps
-        startedAt    = try? c.decode(Date.self,      forKey: .startedAt)
-        completedAt  = try? c.decode(Date.self,      forKey: .completedAt)
+        log          = (try? c.decode(String.self, forKey: .log)) ?? ""
+        outputPath   = try? c.decode(String.self, forKey: .outputPath)
+        resolvedSeed = try? c.decode(Int.self, forKey: .resolvedSeed)
+        thumbnailData = try? c.decode(Data.self, forKey: .thumbnailData)
+        currentStep  = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
+        totalSteps   = (try? c.decode(Int.self, forKey: .totalSteps)) ?? steps
+        startedAt    = try? c.decode(Date.self, forKey: .startedAt)
+        completedAt  = try? c.decode(Date.self, forKey: .completedAt)
         // latestStepwisePath is not persisted — it's transient
     }
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        try c.encode(id,              forKey: .id)
-        try c.encode(model,           forKey: .model)
+        try c.encode(id, forKey: .id)
+        try c.encode(model, forKey: .model)
         try c.encode(customModelRepo, forKey: .customModelRepo)
         try c.encode(customBaseModel, forKey: .customBaseModel)
-        try c.encode(prompt,          forKey: .prompt)
-        try c.encode(negativePrompt,  forKey: .negativePrompt)
-        try c.encode(width,           forKey: .width)
-        try c.encode(height,          forKey: .height)
-        try c.encode(seed,            forKey: .seed)
-        try c.encode(seeds,           forKey: .seeds)
-        try c.encode(steps,           forKey: .steps)
-        try c.encode(guidance,        forKey: .guidance)
-        try c.encode(loras,           forKey: .loras)
-        try c.encode(quantize,        forKey: .quantize)
-        try c.encode(lowRam,          forKey: .lowRam)
-        try c.encode(imagePath,       forKey: .imagePath)
-        try c.encode(imageStrength,   forKey: .imageStrength)
-        try c.encode(isEditMode,      forKey: .isEditMode)
-        try c.encode(editImagePaths,  forKey: .editImagePaths)
-        try c.encode(board,           forKey: .board)
-        try c.encode(status,          forKey: .status)
-        try c.encode(log,             forKey: .log)
-        try c.encode(currentStep,     forKey: .currentStep)
-        try c.encode(totalSteps,      forKey: .totalSteps)
-        try c.encode(createdAt,       forKey: .createdAt)
-        try c.encodeIfPresent(outputPath,    forKey: .outputPath)
-        try c.encodeIfPresent(resolvedSeed,  forKey: .resolvedSeed)
+        try c.encode(prompt, forKey: .prompt)
+        try c.encode(negativePrompt, forKey: .negativePrompt)
+        try c.encode(width, forKey: .width)
+        try c.encode(height, forKey: .height)
+        try c.encode(seed, forKey: .seed)
+        try c.encode(seeds, forKey: .seeds)
+        try c.encode(steps, forKey: .steps)
+        try c.encode(guidance, forKey: .guidance)
+        try c.encode(loras, forKey: .loras)
+        try c.encode(quantize, forKey: .quantize)
+        try c.encode(lowRam, forKey: .lowRam)
+        try c.encode(imagePath, forKey: .imagePath)
+        try c.encode(imageStrength, forKey: .imageStrength)
+        try c.encode(isEditMode, forKey: .isEditMode)
+        try c.encode(editImagePaths, forKey: .editImagePaths)
+        try c.encode(board, forKey: .board)
+        try c.encode(status, forKey: .status)
+        try c.encode(log, forKey: .log)
+        try c.encode(currentStep, forKey: .currentStep)
+        try c.encode(totalSteps, forKey: .totalSteps)
+        try c.encode(createdAt, forKey: .createdAt)
+        try c.encodeIfPresent(outputPath, forKey: .outputPath)
+        try c.encodeIfPresent(resolvedSeed, forKey: .resolvedSeed)
         try c.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
-        try c.encodeIfPresent(startedAt,     forKey: .startedAt)
-        try c.encodeIfPresent(completedAt,   forKey: .completedAt)
+        try c.encodeIfPresent(startedAt, forKey: .startedAt)
+        try c.encodeIfPresent(completedAt, forKey: .completedAt)
     }
 }

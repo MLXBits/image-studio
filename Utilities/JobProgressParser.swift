@@ -3,7 +3,7 @@ import Foundation
 enum JobProgressParser {
     static func parseStep(from log: String) -> (current: Int, total: Int)? {
         // tqdm: "  3/4 [" — grab last occurrence
-        var best: (Int, Int)? = nil
+        var best: (Int, Int)?
         let lines = log.components(separatedBy: "\n")
         for line in lines {
             // Simple scan: look for "N/M" where M looks like a step count
@@ -20,5 +20,4 @@ enum JobProgressParser {
         }
         return best
     }
-
 }
