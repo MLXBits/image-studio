@@ -98,6 +98,16 @@ final class GalleryStore {
         scan(outputDir: outputDir)
     }
 
+    func renameBoard(_ oldName: String, to newName: String, outputDir: String) {
+        guard oldName != "Default", !newName.trimmingCharacters(in: .whitespaces).isEmpty,
+              newName != oldName else { return }
+        let outputURL = URL(fileURLWithPath: outputDir)
+        let oldDir = outputURL.appendingPathComponent(oldName)
+        let newDir = outputURL.appendingPathComponent(newName)
+        try? FileManager.default.moveItem(at: oldDir, to: newDir)
+        scan(outputDir: outputDir)
+    }
+
     func moveItems(_ items: [GalleryItem], toBoard board: String, outputDir: String) {
         for item in items {
             guard item.board != board else { continue }

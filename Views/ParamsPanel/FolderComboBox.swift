@@ -11,7 +11,8 @@ struct FolderComboBox: View {
 
     private var suggestions: [String] {
         let trimmed = text.trimmingCharacters(in: .whitespaces)
-        return trimmed.isEmpty ? options : options.filter { $0.localizedCaseInsensitiveContains(trimmed) }
+        let filtered = trimmed.isEmpty ? options : options.filter { $0.localizedCaseInsensitiveContains(trimmed) }
+        return filtered.sorted { $0.localizedStandardCompare($1) == .orderedAscending }
     }
 
     var body: some View {
@@ -44,6 +45,7 @@ struct FolderComboBox: View {
                                         .contentShape(Rectangle())
                                 }
                                 .buttonStyle(.plain)
+                                .focusEffectDisabled()
                                 .onHover { hoveredItem = $0 ? item : nil }
                             }
                         }
