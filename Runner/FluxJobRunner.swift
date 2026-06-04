@@ -341,6 +341,7 @@ final class FluxJobRunner {
                 $0.pathExtension.lowercased() == "png"
                     && !$0.lastPathComponent.contains("composite")
                     && !$0.lastPathComponent.hasPrefix(".")
+                    && isPNGComplete(at: $0.path)
             }
             .max {
                 let a = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
