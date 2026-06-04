@@ -23,7 +23,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     var defaultSteps: Int { isDistilled ? 4 : 50 }
     var defaultGuidance: Double { isDistilled ? 1.0 : 3.5 }
-    var supportsNegativePrompt: Bool { !isDistilled }
+    var supportsNegativePrompt: Bool { self == .custom }
 
     var approximateBF16SizeGB: Double {
         switch self {

@@ -419,7 +419,7 @@ final class FluxJobRunner {
 
         args += ["--prompt", job.prompt]
 
-        let supportsNeg = job.model == .custom || !job.model.isDistilled
+        let supportsNeg = job.model.supportsNegativePrompt
         if supportsNeg, !job.negativePrompt.isEmpty {
             args += ["--negative-prompt", job.negativePrompt]
         }

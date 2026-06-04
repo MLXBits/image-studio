@@ -52,7 +52,7 @@ struct ParamsPanelView: View {
                         + " lighting, style, and mood. More detail generally produces better results."
                 )
                 promptEditor
-                if !isDistilled {
+                if params.model.supportsNegativePrompt {
                     negativePromptEditor
                 }
 
