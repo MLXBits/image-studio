@@ -37,13 +37,13 @@ enum AspectPreset: String, CaseIterable, Identifiable {
         case .free:  return nil
         case .sq1h1: return (1024, 1024)  // 1.05 MP
         case .w16h9: return (1360, 768)   // 1.04 MP
-        case .w9h16: return (768,  1360)
+        case .w9h16: return (768, 1360)
         case .w3h2:  return (1248, 832)   // 1.04 MP
-        case .w2h3:  return (832,  1248)
+        case .w2h3:  return (832, 1248)
         case .w4h3:  return (1152, 864)   // 0.99 MP
-        case .w3h4:  return (864,  1152)
+        case .w3h4:  return (864, 1152)
         case .w21h9: return (1568, 672)   // 1.05 MP
-        case .w9h21: return (672,  1568)
+        case .w9h21: return (672, 1568)
         }
     }
 
@@ -79,9 +79,9 @@ enum AspectPreset: String, CaseIterable, Identifiable {
 private let dimSoloPreset: AspectPreset = .sq1h1
 
 private let dimPresetPairs: [(AspectPreset, AspectPreset)] = [
-    (.w3h2,  .w2h3),
+    (.w3h2, .w2h3),
     (.w16h9, .w9h16),
-    (.w4h3,  .w3h4),
+    (.w4h3, .w3h4),
     (.w21h9, .w9h21),
 ]
 
@@ -116,7 +116,7 @@ struct DimensionPickerView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
-            DimensionSliderRow(label: "Width",  value: widthBinding)
+            DimensionSliderRow(label: "Width", value: widthBinding)
             DimensionSliderRow(label: "Height", value: heightBinding)
         }
     }
@@ -159,7 +159,8 @@ struct DimensionPickerView: View {
 
                 InfoButton(
                     title: "Dimensions",
-                    description: "Output image size. Preset buttons set common aspect ratios. Width and height snap to multiples of 16. The grid preview animates on hover."
+                    description: "Output image size. Preset buttons set common aspect ratios."
+                        + " Width and height snap to multiples of 16. The grid preview animates on hover."
                 )
             }
         }

@@ -16,7 +16,7 @@ struct PreviewPaneView: View {
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
-    var onShowFullSize: ((NSImage) -> Void)? = nil
+    var onShowFullSize: ((NSImage) -> Void)?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -28,6 +28,7 @@ struct PreviewPaneView: View {
                 switch job.status {
                 case .running:
                     StepwisePreviewView(job: job, onCancel: onCancel)
+
                 case .completed:
                     CompletedImageView(
                         job: job,
@@ -36,10 +37,13 @@ struct PreviewPaneView: View {
                         onUseInImg2Img: onUseInImg2Img,
                         onShowFullSize: onShowFullSize
                     )
+
                 case .failed(let msg):
                     failedView(message: msg, job: job)
+
                 case .cancelled:
                     cancelledView
+
                 case .pending:
                     pendingView(job: job)
                 }
@@ -72,9 +76,11 @@ struct PreviewPaneView: View {
     private var showsClearButton: Bool {
         switch state {
         case .idle: return false
+
         case .activeJob(let job):
             if case .running = job.status { return false }
             return true
+
         case .galleryItem: return true
         }
     }
@@ -142,32 +148,31 @@ struct PreviewPaneView: View {
                 .padding(.top, 4)
             }
             .padding())
-        } else {
-            return AnyView(VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    Image(systemName: "exclamationmark.triangle.fill")
-                        .foregroundStyle(.red)
-                    Text("Generation failed")
-                        .font(.headline)
-                    Spacer()
-                }
-                .padding()
-                Divider()
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        Text(job.log.isEmpty ? message : job.log)
-                            .font(.system(.caption, design: .monospaced))
-                            .foregroundStyle(.secondary)
-                            .textSelection(.enabled)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .padding()
-                        Color.clear.frame(height: 1).id("errEnd")
-                    }
-                    .onAppear { proxy.scrollTo("errEnd") }
-                }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
         }
+        return AnyView(VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text("Generation failed")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(job.log.isEmpty ? message : job.log)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                    Color.clear.frame(height: 1).id("errEnd")
+                }
+                .onAppear { proxy.scrollTo("errEnd") }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
     }
 
     private var cancelledView: some View {
@@ -201,7 +206,7 @@ struct PreviewPaneView: View {
 struct FullSizeImageView: View {
     let image: NSImage
     let onDismiss: () -> Void
-    @State private var keyMonitor: Any? = nil
+    @State private var keyMonitor: Any?
 
     var body: some View {
         ZStack(alignment: .topTrailing) {
@@ -251,9 +256,9 @@ private struct GalleryItemDetailView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
-    var onShowFullSize: ((NSImage) -> Void)? = nil
+    var onShowFullSize: ((NSImage) -> Void)?
 
-    @State private var image: NSImage? = nil
+    @State private var image: NSImage?
     @State private var showingLog: Bool = false
 
     var body: some View {
@@ -308,7 +313,8 @@ private struct GalleryItemDetailView: View {
                     var corrected = meta
                     corrected.board = item.board == "Default" ? nil : item.board
                     onApplySettings(corrected)
-                } },
+                }
+                },
                 onUseInImg2Img: { onUseInImg2Img(item.path) },
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")

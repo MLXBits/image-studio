@@ -1,11 +1,12 @@
-import Foundation
+// swiftlint:disable file_length
 import AppKit
+import Foundation
 
 @Observable
 @MainActor
 final class FluxJobRunner {
     private(set) var activeJob: FluxJob?
-    private(set) var lastCompletedOutputPath: String? = nil
+    private(set) var lastCompletedOutputPath: String?
     private(set) var batchImageLanded: Int = 0   // incremented per-seed; ContentView scans gallery on change
     private(set) var sessionCompleted: Int = 0
     private(set) var inSession: Bool = false
@@ -15,7 +16,8 @@ final class FluxJobRunner {
     private var batchPollingTask: Task<Void, Never>?
 
     private static let cacheBase: URL = {
-        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first!
+        let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("MLXBits Image Studio/stepwise", isDirectory: true)
     }()
 
@@ -50,6 +52,7 @@ final class FluxJobRunner {
 
     // MARK: - Private execution
 
+    // swiftlint:disable:next cyclomatic_complexity
     private func run(_ job: FluxJob, settings: AppSettings) async {
         activeJob = job
         job.status = .running
@@ -78,9 +81,11 @@ final class FluxJobRunner {
                 switch await runSave(job: job, savePath: savedPath, settings: settings) {
                 case .success:
                     job.statusLine = ""
+
                 case .cancelled:
                     finishJob(job, status: .cancelled, stepDir: stepDir)
                     return
+
                 case .failed:
                     finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
                     return
@@ -119,8 +124,11 @@ final class FluxJobRunner {
         let stream = AsyncStream<String> { continuation in
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if data.isEmpty { continuation.finish() }
-                else if let text = String(data: data, encoding: .utf8) { continuation.yield(text) }
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
             }
             process.terminationHandler = { _ in
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
@@ -150,18 +158,17 @@ final class FluxJobRunner {
 
         var seenFirstStep = false
         var seenLastStep = false
-        var loadEndTime: Date? = nil
-        var denoiseEndTime: Date? = nil
+        var loadEndTime: Date?
+        var denoiseEndTime: Date?
 
         for await chunk in stream {
             job.log = appendLog(chunk, to: job.log)
             if let progress = JobProgressParser.parseStep(from: job.log),
                progress.total == job.steps {
-
                 if !seenFirstStep {
                     seenFirstStep = true
                     loadEndTime = Date()
-                    let loadSecs = loadEndTime!.timeIntervalSince(jobStartTime)
+                    let loadSecs = loadEndTime.map { $0.timeIntervalSince(jobStartTime) } ?? 0
                     let label = "▸ Encoding prompt...  (loaded in \(formatDuration(loadSecs)))\n"
                     job.log = insertBeforeLastLine(job.log, text: label)
                 }
@@ -211,7 +218,8 @@ final class FluxJobRunner {
         } else if process.terminationReason == .uncaughtSignal {
             finishJob(job, status: .cancelled, stepDir: stepDir)
         } else {
-            let lastLine = job.log.components(separatedBy: "\n").last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty }) ?? "Unknown error"
+            let lastLine = job.log.components(separatedBy: "\n")
+                .last { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? "Unknown error"
             finishJob(job, status: .failed(lastLine), stepDir: stepDir)
         }
     }
@@ -258,8 +266,11 @@ final class FluxJobRunner {
         let stream = AsyncStream<String> { continuation in
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if data.isEmpty { continuation.finish() }
-                else if let text = String(data: data, encoding: .utf8) { continuation.yield(text) }
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
             }
             process.terminationHandler = { _ in
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
@@ -289,14 +300,14 @@ final class FluxJobRunner {
         if process.terminationStatus == 0 {
             job.log += "▸ Weights saved.\n"
             return .success
-        } else if process.terminationReason == .uncaughtSignal {
+        }
+        if process.terminationReason == .uncaughtSignal {
             try? FileManager.default.removeItem(at: savePath)
             return .cancelled
-        } else {
-            job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
-            try? FileManager.default.removeItem(at: savePath)
-            return .failed
         }
+        job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
+        try? FileManager.default.removeItem(at: savePath)
+        return .failed
     }
 
     // MARK: - Stepwise watcher
@@ -320,7 +331,11 @@ final class FluxJobRunner {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.creationDateKey]) else { return }
         let latest = files
-            .filter { $0.pathExtension.lowercased() == "png" && !$0.lastPathComponent.contains("composite") && !$0.lastPathComponent.hasPrefix(".") }
+            .filter {
+                $0.pathExtension.lowercased() == "png"
+                    && !$0.lastPathComponent.contains("composite")
+                    && !$0.lastPathComponent.hasPrefix(".")
+            }
             .max {
                 let a = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
                 let b = (try? $1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
@@ -404,11 +419,11 @@ final class FluxJobRunner {
         }
 
         args += [
-            "--width",    "\(job.width)",
-            "--height",   "\(job.height)",
-            "--steps",    "\(job.steps)",
+            "--width", "\(job.width)",
+            "--height", "\(job.height)",
+            "--steps", "\(job.steps)",
             "--guidance", String(format: "%.2f", job.guidance),
-            "--output",   outputFile,
+            "--output", outputFile,
         ]
 
         if job.seeds.isEmpty {
@@ -438,8 +453,10 @@ final class FluxJobRunner {
                 args += ["--image-paths"] + job.editImagePaths
             }
         } else if !job.imagePath.isEmpty {
-            args += ["--image-path", job.imagePath,
-                     "--image-strength", String(format: "%.2f", job.imageStrength)]
+            args += [
+                "--image-path", job.imagePath,
+                "--image-strength", String(format: "%.2f", job.imageStrength),
+            ]
         }
 
         let enabledLoras = job.loras.filter { $0.enabled && $0.isValid }

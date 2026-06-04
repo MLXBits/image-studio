@@ -5,9 +5,9 @@ struct CompletedImageView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
-    var onShowFullSize: ((NSImage) -> Void)? = nil
+    var onShowFullSize: ((NSImage) -> Void)?
 
-    @State private var image: NSImage? = nil
+    @State private var image: NSImage?
     @State private var showingLog: Bool = false
 
     var body: some View {
@@ -58,9 +58,9 @@ struct CompletedImageView: View {
                 onUseInImg2Img: job.outputPath.map { path in { onUseInImg2Img(path) } },
                 onRevealInFinder: job.outputPath.map { path in {
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
-                }},
-                onShowLog: { showingLog = true }
-            )
+                }
+                }
+            ) { showingLog = true }
         }
         .onAppear { loadImage() }
         .onChange(of: job.outputPath) { _, _ in loadImage() }

@@ -116,8 +116,8 @@ struct QueueDrawerView: View {
 
 private struct QueueJobRow: View {
     let job: FluxJob
-    var onRestart: (() -> Void)? = nil
-    var onCancel: (() -> Void)? = nil
+    var onRestart: (() -> Void)?
+    var onCancel: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 8) {
@@ -162,18 +162,22 @@ private struct QueueJobRow: View {
             Image(systemName: "clock")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+
         case .running:
             ProgressView()
                 .scaleEffect(0.6)
                 .frame(width: 14, height: 14)
+
         case .completed:
             Image(systemName: "checkmark.circle.fill")
                 .font(.caption)
                 .foregroundStyle(.green)
+
         case .failed:
             Image(systemName: "exclamationmark.circle.fill")
                 .font(.caption)
                 .foregroundStyle(.red)
+
         case .cancelled:
             Image(systemName: "stop.circle.fill")
                 .font(.caption)

@@ -85,7 +85,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    static var builtIn: [FluxModelVariant] {
+    static var builtIn: [Self] {
         [.flux2Klein9B, .flux2Klein4B, .flux2KleinBase9B, .flux2KleinBase4B]
     }
 
@@ -122,9 +122,11 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case 8:
             let key = rawValue.lowercased()
             return entries.contains { $0.lowercased().contains(key) && $0.contains("8bit") }
+
         case 4:
             let key = rawValue.lowercased()
             return entries.contains { $0.lowercased().contains(key) && $0.contains("4bit") }
+
         default:  // BF16: original org repo uses "FLUX.2-…" with a dot
             guard !bf16CacheKey.isEmpty else { return false }
             return entries.contains { $0.lowercased().contains(bf16CacheKey) }
@@ -142,9 +144,11 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case 8:
             let key = rawValue.lowercased()
             match = entries.first { $0.lowercased().contains(key) && $0.contains("8bit") }
+
         case 4:
             let key = rawValue.lowercased()
             match = entries.first { $0.lowercased().contains(key) && $0.contains("4bit") }
+
         default:
             guard !bf16CacheKey.isEmpty else { return nil }
             match = entries.first { $0.lowercased().contains(bf16CacheKey) }

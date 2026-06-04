@@ -42,7 +42,9 @@ struct ModelPickerView: View {
 
                 InfoButton(
                     title: "Model & Precision",
-                    description: "Choose your Flux.2 model variant and weight precision. Q8 recommended — cuts memory roughly in half with minimal quality loss. Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
+                    description: "Choose your Flux.2 model variant and weight precision."
+                        + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
+                        + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
                 )
             }
 
@@ -74,9 +76,8 @@ struct ModelPickerView: View {
                         InfoButton(
                             title: estimate.diskInfoTitle,
                             description: estimate.diskInfoBody,
-                            actionLabel: "Reveal in Finder",
-                            action: { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: diskURL.path) }
-                        )
+                            actionLabel: "Reveal in Finder"
+                        ) { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: diskURL.path) }
                     }
                     Spacer(minLength: 0)
                 }
@@ -94,7 +95,9 @@ struct ModelPickerView: View {
                 Text("Repo / path").font(.caption2).foregroundStyle(.secondary)
                 InfoButton(
                     title: "Custom Model",
-                    description: "Enter a HuggingFace repo ID (e.g. org/my-fine-tune) or an absolute local path to a directory containing MLX-format weights. Must be compatible with Flux.2 Klein architecture."
+                    description: "Enter a HuggingFace repo ID (e.g. org/my-fine-tune) or an"
+                        + " absolute local path to a directory containing MLX-format weights."
+                        + " Must be compatible with Flux.2 Klein architecture."
                 )
             }
             TextField("org/repo or /path/to/model", text: $customModelRepo)
@@ -114,10 +117,11 @@ struct ModelPickerView: View {
                 .labelsHidden()
                 .font(.caption)
                 .accessibilityLabel("Base model for custom repo")
-                .accessibilityHint("Tells mflux which Flux architecture to use when loading the custom model")
+                .accessibilityHint("Tells mflux which Flux architecture to use when loading the model")
                 InfoButton(
                     title: "Base Model",
-                    description: "Specifies the base architecture for your custom model — passed as --base-model. Most Flux.2 fine-tunes are built on Klein 9B."
+                    description: "Specifies the base architecture for your custom model —"
+                        + " passed as --base-model. Most Flux.2 fine-tunes are built on Klein 9B."
                 )
             }
         }

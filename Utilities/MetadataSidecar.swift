@@ -20,8 +20,8 @@ struct GenerationMetadata: Codable {
     var generatedAt: Date
     var log: String?
 
-    static func from(job: FluxJob) -> GenerationMetadata {
-        GenerationMetadata(
+    static func from(job: FluxJob) -> Self {
+        Self(
             prompt: job.prompt,
             negativePrompt: job.negativePrompt,
             model: job.model,

@@ -1,5 +1,5 @@
-import SwiftUI
 import AppKit
+import SwiftUI
 
 struct GenerationGalleryView: View {
     @Environment(GalleryStore.self) private var gallery
@@ -9,20 +9,20 @@ struct GenerationGalleryView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
-    var onSelectBoard: ((String) -> Void)? = nil
-    var onClearPreview: (() -> Void)? = nil
+    var onSelectBoard: ((String) -> Void)?
+    var onClearPreview: (() -> Void)?
     var isFullSizeShowing: Bool = false
 
-    @State private var deleteTarget: GalleryItem? = nil   // nil = batch, non-nil = single item
+    @State private var deleteTarget: GalleryItem?   // nil = batch, non-nil = single item
     @State private var showingDeleteConfirm: Bool = false
-    @State private var keyMonitor: Any? = nil
+    @State private var keyMonitor: Any?
     @State private var showingNewGroup: Bool = false
     @State private var newGroupName: String = ""
     // Inverted logic: we store collapsed boards. New boards are not in the set → auto-expanded.
     @State private var collapsedBoards: Set<String> = []
-    @State private var dropTargetBoard: String? = nil
+    @State private var dropTargetBoard: String?
     @State private var multiSelection: Set<UUID> = []
-    @State private var anchorItemId: UUID? = nil  // last plain-click anchor for shift+click range
+    @State private var anchorItemId: UUID?  // last plain-click anchor for shift+click range
 
     private static let collapsedBoardsKey = "gallery.collapsedBoards"
     private let columns = [GridItem(.adaptive(minimum: 80, maximum: 120), spacing: 4)]
@@ -96,7 +96,8 @@ struct GenerationGalleryView: View {
             if deleteTarget != nil {
                 Text("This will permanently delete the image and its sidecar file.")
             } else {
-                Text("This will permanently delete \(multiSelection.count) image\(multiSelection.count == 1 ? "" : "s") and their sidecar files.")
+                let plural = multiSelection.count == 1 ? "" : "s"
+                Text("This will permanently delete \(multiSelection.count) image\(plural) and their sidecar files.")
             }
         }
     }
@@ -285,8 +286,7 @@ struct GenerationGalleryView: View {
         Binding(
             get: { !collapsedBoards.contains(board) },
             set: { expanded in
-                if expanded { collapsedBoards.remove(board) }
-                else { collapsedBoards.insert(board) }
+                if expanded { collapsedBoards.remove(board) } else { collapsedBoards.insert(board) }
             }
         )
     }
@@ -370,9 +370,11 @@ struct GenerationGalleryView: View {
             case 123, 126:  // ← ↑
                 guard selectedItem != nil else { return event }
                 navigate(-1); return nil
+
             case 124, 125:  // → ↓
                 guard selectedItem != nil else { return event }
                 navigate(+1); return nil
+
             case 51, 117:   // Delete / Forward Delete
                 let shift = event.modifierFlags.contains(.shift)
                 if !multiSelection.isEmpty {
@@ -386,7 +388,8 @@ struct GenerationGalleryView: View {
                         showingDeleteConfirm = true
                     }
                     return nil
-                } else if let item = selectedItem {
+                }
+                if let item = selectedItem {
                     if shift {
                         selectedItem = adjacentItem(to: item)
                         gallery.delete(item, outputDir: settings.outputDir)
@@ -397,6 +400,7 @@ struct GenerationGalleryView: View {
                     return nil
                 }
                 return event
+
             case 53:        // Escape — clear multi-selection, then close preview
                 if !multiSelection.isEmpty {
                     multiSelection.removeAll()
@@ -407,6 +411,7 @@ struct GenerationGalleryView: View {
                     return nil
                 }
                 return event
+
             default: return event
             }
         }
@@ -454,6 +459,7 @@ struct GenerationGalleryView: View {
         func makeNSView(context: Context) -> ScrollStyleFixerView { ScrollStyleFixerView() }
         func updateNSView(_ nsView: ScrollStyleFixerView, context: Context) { }
 
+        // swiftlint:disable:next nesting
         final class ScrollStyleFixerView: NSView {
             override func layout() {
                 super.layout()

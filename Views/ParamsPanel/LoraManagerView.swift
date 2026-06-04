@@ -6,11 +6,11 @@ struct LoraManagerView: View {
     var alwaysExpanded: Bool = false
     var showAdd: Bool = true
     var defaultLoras: [LoraEntry] = []
-    var onReset: (() -> Void)? = nil
+    var onReset: (() -> Void)?
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
     @State private var newPath: String = ""
-    @State private var editingID: UUID? = nil
+    @State private var editingID: UUID?
 
     var body: some View {
         if alwaysExpanded {
@@ -69,9 +69,8 @@ struct LoraManagerView: View {
                 LoraRowView(
                     lora: $lora,
                     showNotes: showNotes,
-                    showDelete: showAdd,
-                    onDelete: { remove(id: lora.id) }
-                )
+                    showDelete: showAdd
+                ) { remove(id: lora.id) }
             }
             .onMove { from, to in loras.move(fromOffsets: from, toOffset: to) }
         }
