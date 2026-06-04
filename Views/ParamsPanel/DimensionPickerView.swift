@@ -125,7 +125,12 @@ struct DimensionPickerView: View {
 
     private func resyncAspect(w: Int, h: Int) {
         let detected = AspectPreset.detect(w: w, h: h)
-        if detected != .free { selectedAspect = detected }
+        if detected != .free {
+            selectedAspect = detected
+            aspectLocked = true
+        } else {
+            aspectLocked = false
+        }
     }
 
     // MARK: - Header row
