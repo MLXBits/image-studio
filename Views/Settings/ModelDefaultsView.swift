@@ -220,14 +220,11 @@ struct ModelDefaultsView: View {
                 lowRamToggle(model: model, current: d.lowRam)
             }
 
-            Section {
-                negativePromptField(model: model, current: d.negativePrompt)
-            } header: {
-                Text("Negative Prompt")
-            } footer: {
-                if model.isDistilled {
-                    Text("Negative prompts are not supported by distilled Klein 4B/9B models.")
-                        .font(.caption).foregroundStyle(.tertiary)
+            if model.supportsNegativePrompt {
+                Section {
+                    negativePromptField(model: model, current: d.negativePrompt)
+                } header: {
+                    Text("Negative Prompt")
                 }
             }
 
@@ -432,10 +429,9 @@ struct ModelDefaultsView: View {
             TextEditor(text: bound)
                 .font(.caption)
                 .frame(minHeight: 60)
-                .disabled(model.isDistilled)
                 .accessibilityLabel("Default negative prompt for \(model.displayName)")
                 .accessibilityHint("Applied automatically when this model is selected")
-            if current != nil && !model.isDistilled {
+            if current != nil {
                 resetButton { var d = settings.defaults(for: model); d.negativePrompt = nil; settings.updateDefaults(d, for: model) }
             }
         }

@@ -22,7 +22,7 @@ extension ModelDefaults {
             guidance: model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
             quantize: quantize ?? model.recommendedQuantize,
             lowRam: lowRam ?? false,
-            negativePrompt: model.isDistilled ? "" : (negativePrompt ?? ""),
+            negativePrompt: model.supportsNegativePrompt ? (negativePrompt ?? "") : "",
             loras: loras ?? [],
             width: width ?? 1024,
             height: height ?? 1024,
