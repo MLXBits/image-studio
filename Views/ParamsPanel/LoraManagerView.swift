@@ -181,11 +181,11 @@ private struct LoraRowView: View {
                 }
             }
             HStack(spacing: 6) {
-                Slider(value: $lora.strength, in: 0...2)
+                Slider(value: $lora.strength, in: -10...10)
                 Text(String(format: "%.2f", lora.strength))
                     .font(.caption2)
                     .monospacedDigit()
-                    .frame(width: 34, alignment: .trailing)
+                    .frame(width: 44, alignment: .trailing)
             }
             if showNotes {
                 TextField("Notes (trigger words, recommended strength…)", text: $lora.notes)
