@@ -23,10 +23,10 @@ final class ParamsPanelState {
     var batchCount: Int = 1
 
     func applyDefaults(from settings: AppSettings) {
-        let m = settings.defaultModel
+        let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
         model          = m
-        quantize       = d.quantize
+        quantize       = settings.lastQuantize
         board          = settings.defaultBoard
         width          = settings.lastWidth
         height         = settings.lastHeight
@@ -388,10 +388,12 @@ struct ContentView: View {
     private func generate() {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
-        settings.lastPrompt = params.prompt
-        settings.lastWidth  = params.width
-        settings.lastHeight = params.height
-        settings.lastLoras  = params.loras
+        settings.lastPrompt    = params.prompt
+        settings.lastWidth     = params.width
+        settings.lastHeight    = params.height
+        settings.lastLoras     = params.loras
+        settings.lastModel     = params.model
+        settings.lastQuantize  = params.quantize
         let job = params.makeJob(count: params.batchCount)
         store.add(job)
         if runner.activeJob == nil {

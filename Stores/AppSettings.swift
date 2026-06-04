@@ -81,6 +81,8 @@ class AppSettings {
     var lastWidth: Int { didSet { save() } }
     var lastHeight: Int { didSet { save() } }
     var lastLoras: [LoraEntry] { didSet { save() } }
+    var lastModel: FluxModelVariant { didSet { save() } }
+    var lastQuantize: Int { didSet { save() } }
 
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
@@ -112,6 +114,10 @@ class AppSettings {
         lastHeight      = s.lastHeight ?? 1024
         lastLoras       = s.lastLoras ?? []
         modelDefaults   = s.modelDefaults ?? [:]
+        let lastM       = s.lastModel ?? s.defaultModel ?? .flux2Klein9B
+        lastModel       = lastM
+        lastQuantize    = s.lastQuantize
+            ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
     }
 
     // MARK: - Per-model helpers
@@ -141,7 +147,8 @@ class AppSettings {
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
             logFontSize: logFontSize, lastPrompt: lastPrompt,
             lastWidth: lastWidth, lastHeight: lastHeight,
-            lastLoras: lastLoras, modelDefaults: modelDefaults
+            lastLoras: lastLoras, modelDefaults: modelDefaults,
+            lastModel: lastModel, lastQuantize: lastQuantize
         )
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
@@ -205,6 +212,7 @@ class AppSettings {
         var mlxCacheLimitGB: Double?; var hfHome: String?; var mfluxCacheDir: String?
         var hfOffline: Bool?; var logFontSize: Double?; var lastPrompt: String?
         var lastWidth: Int?; var lastHeight: Int?; var lastLoras: [LoraEntry]?
+        var lastModel: FluxModelVariant?; var lastQuantize: Int?
         var modelDefaults: [String: ModelDefaults]?
 
         init() {}
@@ -215,7 +223,8 @@ class AppSettings {
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
             hfOffline: Bool, logFontSize: Double, lastPrompt: String,
             lastWidth: Int, lastHeight: Int, lastLoras: [LoraEntry],
-            modelDefaults: [String: ModelDefaults]
+            modelDefaults: [String: ModelDefaults],
+            lastModel: FluxModelVariant, lastQuantize: Int
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
             self.defaultModel   = defaultModel
@@ -226,6 +235,7 @@ class AppSettings {
             self.hfOffline = hfOffline; self.logFontSize = logFontSize
             self.lastPrompt = lastPrompt; self.lastWidth = lastWidth; self.lastHeight = lastHeight
             self.lastLoras = lastLoras; self.modelDefaults = modelDefaults
+            self.lastModel = lastModel; self.lastQuantize = lastQuantize
         }
     }
 }
