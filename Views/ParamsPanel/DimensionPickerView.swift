@@ -119,6 +119,13 @@ struct DimensionPickerView: View {
             DimensionSliderRow(label: "Width", value: widthBinding)
             DimensionSliderRow(label: "Height", value: heightBinding)
         }
+        .onChange(of: width) { _, w in resyncAspect(w: w, h: height) }
+        .onChange(of: height) { _, h in resyncAspect(w: width, h: h) }
+    }
+
+    private func resyncAspect(w: Int, h: Int) {
+        let detected = AspectPreset.detect(w: w, h: h)
+        if detected != .free { selectedAspect = detected }
     }
 
     // MARK: - Header row
