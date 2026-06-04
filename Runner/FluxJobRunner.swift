@@ -18,7 +18,7 @@ final class FluxJobRunner {
     private(set) var inSession: Bool = false
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
-    private var stepwiseTimer: Timer?
+    private var stepwiseSource: (any DispatchSourceProtocol)?
     private var batchPollingTask: Task<Void, Never>?
 
     private static let cacheBase: URL = {
@@ -186,8 +186,12 @@ final class FluxJobRunner {
                     job.log += "▸ Decoding image...\n"
                 }
 
+                job.isDenoising = true
                 job.currentStep = progress.current
                 job.totalSteps  = progress.total
+                if let elapsed = progress.elapsed, let remaining = progress.remaining {
+                    job.stepTiming = "\(elapsed) elapsed · \(remaining) left"
+                }
             }
         }
 
@@ -238,6 +242,8 @@ final class FluxJobRunner {
         job.status = status
         job.completedAt = Date()
         job.latestStepwisePath = nil
+        job.stepTiming = nil
+        job.isDenoising = false
         if case .running = status { } else {
             activeJob = nil
             sessionCompleted += 1
@@ -320,17 +326,23 @@ final class FluxJobRunner {
 
     private func startStepwiseWatcher(job: FluxJob, dir: URL) {
         stopStepwiseWatcher()
-        let timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self, weak job] _ in
+        let fd = open(dir.path, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd, eventMask: .write, queue: .main)
+        source.setEventHandler { [weak self, weak job] in
             guard let self, let job else { return }
-            Task { @MainActor in self.pollStepwise(job: job, dir: dir) }
+            self.pollStepwise(job: job, dir: dir)
         }
-        RunLoop.main.add(timer, forMode: .common)
-        stepwiseTimer = timer
+        source.setCancelHandler { close(fd) }
+        source.resume()
+        stepwiseSource = source
+        pollStepwise(job: job, dir: dir)  // check immediately for any pre-existing files
     }
 
     private func stopStepwiseWatcher() {
-        stepwiseTimer?.invalidate()
-        stepwiseTimer = nil
+        stepwiseSource?.cancel()
+        stepwiseSource = nil
     }
 
     private func pollStepwise(job: FluxJob, dir: URL) {
