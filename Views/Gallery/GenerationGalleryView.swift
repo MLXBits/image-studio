@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -15,6 +16,9 @@ struct GenerationGalleryView: View {
 
     @State private var deleteTarget: GalleryItem?   // nil = batch, non-nil = single item
     @State private var showingDeleteConfirm: Bool = false
+    @State private var renamingBoard: String?
+    @State private var renameNameDraft: String = ""
+    @State private var showingRenameAlert: Bool = false
     @State private var keyMonitor: Any?
     @State private var showingNewGroup: Bool = false
     @State private var newGroupName: String = ""
@@ -79,6 +83,23 @@ struct GenerationGalleryView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(gallery.deleteError ?? "")
+        }
+        .alert("Rename Folder", isPresented: $showingRenameAlert) {
+            TextField("Folder name", text: $renameNameDraft)
+            Button("Rename") {
+                let trimmed = renameNameDraft.trimmingCharacters(in: .whitespaces)
+                if let old = renamingBoard, !trimmed.isEmpty, trimmed != old {
+                    if collapsedBoards.contains(old) {
+                        collapsedBoards.remove(old)
+                        collapsedBoards.insert(trimmed)
+                    }
+                    gallery.renameBoard(old, to: trimmed, outputDir: settings.outputDir)
+                }
+                renamingBoard = nil
+            }
+            Button("Cancel", role: .cancel) { renamingBoard = nil }
+        } message: {
+            Text("Enter a new name for \"\(renamingBoard ?? "")\".")
         }
         .confirmationDialog(
             deleteTarget != nil
@@ -241,6 +262,15 @@ struct GenerationGalleryView: View {
                         .contentShape(Rectangle())
                         .onTapGesture {
                             withAnimation(.easeInOut(duration: 0.3)) { isExpanded(for: board).wrappedValue.toggle() }
+                        }
+                        .contextMenu {
+                            if board != "Default" {
+                                Button("Rename Folder…") {
+                                    renamingBoard = board
+                                    renameNameDraft = board
+                                    showingRenameAlert = true
+                                }
+                            }
                         }
                 }
                 .padding(.leading, 14)
