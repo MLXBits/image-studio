@@ -56,6 +56,13 @@ extension JobStatus: Codable {
     }
 }
 
+/// A single image generation request managed by ``JobStore``.
+///
+/// `FluxJob` holds both the *input parameters* submitted by the user and the
+/// *runtime state* updated while the job executes. All properties are observable;
+/// views bind to them directly.
+///
+/// Jobs are persisted to disk via ``JobStore/save()`` and survive app restarts.
 @Observable
 final class FluxJob: Identifiable {
     let id: UUID
@@ -66,27 +73,35 @@ final class FluxJob: Identifiable {
     var negativePrompt: String
     var width: Int
     var height: Int
+    /// Requested seed. Use `-1` to let the runner pick a random seed at execution time.
     var seed: Int
     var steps: Int
     var guidance: Double
     var loras: [LoraEntry]
     var quantize: Int
+    /// When `true`, transformer blocks are streamed from disk to keep peak Metal memory low.
     var lowRam: Bool
+    /// Absolute path to the conditioning image, or empty string for text-to-image.
     var imagePath: String
     var imageStrength: Double
     var isEditMode: Bool
     var editImagePaths: [String]
+    /// Output subfolder within the global output directory. Empty string = root.
     var board: String
-
+    /// Multiple seeds for batch generation. Empty array = single-seed run.
     var seeds: [Int]
 
     var status: JobStatus
+    /// Raw stdout/stderr from the generation process. Appended in real time during a run.
     var log: String
+    /// Absolute path to the finished image file. Set when the run succeeds.
     var outputPath: String?
     var outputPaths: [String] = []          // transient — multi-seed outputs, not persisted
     var outputThumbnails: [Data] = []       // transient — thumbnails for fan-out, not persisted
     var completedSeedsInBatch: Int = 0      // transient — incremented as each seed's image lands
+    /// The seed that was actually used. Differs from ``seed`` when ``seed`` is `-1`.
     var resolvedSeed: Int?
+    /// JPEG thumbnail cached in memory and persisted with the job.
     var thumbnailData: Data?
     var currentStep: Int
     var totalSteps: Int

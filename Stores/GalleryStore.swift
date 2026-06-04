@@ -15,6 +15,12 @@ struct GalleryItem: Identifiable, Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
 }
 
+/// Manages the image gallery by scanning the output directory for image files.
+///
+/// The gallery is filesystem-driven: ``scan(outputDir:)`` enumerates the output directory and
+/// updates ``items`` accordingly. Thumbnails are generated lazily on demand via
+/// ``loadThumbnail(for:)``. Sidecar `.json` files are read alongside each image to populate
+/// metadata shown in the gallery detail view.
 @Observable
 @MainActor
 final class GalleryStore {
