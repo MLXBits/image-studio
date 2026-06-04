@@ -24,6 +24,9 @@ final class GalleryStore {
     private(set) var isScanning: Bool = false
 
     private static let imageExtensions = Set(["png", "jpg", "jpeg", "webp"])
+    /// Set when a deletion fails; cleared by the next successful delete operation.
+    /// Observed by ``GenerationGalleryView`` to display an alert.
+    var deleteError: String?
 
     var displayedItems: [GalleryItem] {
         if selectedBoard == "All" { return items }
@@ -80,7 +83,11 @@ final class GalleryStore {
     }
 
     func delete(_ item: GalleryItem, outputDir: String) {
-        try? FileManager.default.removeItem(atPath: item.path)
+        do {
+            try FileManager.default.removeItem(atPath: item.path)
+        } catch {
+            deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
+        }
         try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         scan(outputDir: outputDir)
     }
@@ -105,9 +112,17 @@ final class GalleryStore {
     }
 
     func deleteItems(_ items: [GalleryItem], outputDir: String) {
+        var failures: [String] = []
         for item in items {
-            try? FileManager.default.removeItem(atPath: item.path)
+            do {
+                try FileManager.default.removeItem(atPath: item.path)
+            } catch {
+                failures.append(item.filename)
+            }
             try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+        }
+        if !failures.isEmpty {
+            deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }
         scan(outputDir: outputDir)
     }

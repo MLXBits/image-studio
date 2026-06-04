@@ -14,6 +14,7 @@ enum KeychainHelper {
         guard !value.isEmpty else { return }
         var attributes = query
         attributes[kSecValueData as String] = Data(value.utf8)
+        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
         SecItemAdd(attributes as CFDictionary, nil)
     }
 

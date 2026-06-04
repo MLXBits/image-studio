@@ -49,6 +49,14 @@ struct SettingsView: View {
             OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                 .environment(settings)
         }
+        .alert("Could not save settings", isPresented: Binding(
+            get: { settings.saveError != nil },
+            set: { if !$0 { settings.saveError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(settings.saveError ?? "")
+        }
     }
 
     // MARK: - Generation
