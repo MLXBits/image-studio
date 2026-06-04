@@ -43,22 +43,18 @@ struct StepwisePreviewView: View {
                     .padding(.horizontal)
                 }
 
-                HStack(spacing: 12) {
+                HStack(spacing: 8) {
                     progressLabel
                     Spacer()
-                    Button {
+                    Button(showLog ? "Hide Log" : "View Log") {
                         showLog.toggle()
-                    } label: {
-                        Image(systemName: showLog ? "photo" : "text.alignleft")
                     }
-                    .buttonStyle(.borderless)
+                    .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .foregroundStyle(.secondary)
-                    .help(showLog ? "Show step preview" : "Show log")
                     Button("Cancel") { onCancel() }
-                        .buttonStyle(.borderless)
+                        .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .foregroundStyle(.secondary)
+                        .tint(.red)
                 }
                 .padding(.horizontal)
             }
