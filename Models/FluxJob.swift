@@ -107,6 +107,8 @@ final class FluxJob: Identifiable {
     var totalSteps: Int
     var latestStepwisePath: String?
     var statusLine: String = ""     // transient: live CLI status for display during load/download
+    var stepTiming: String?         // transient: "1:23 elapsed · 0:05 left" from tqdm
+    var isDenoising: Bool = false   // transient: true once the denoising loop emits its first 0/N line
     let createdAt: Date
     var startedAt: Date?
     var completedAt: Date?
