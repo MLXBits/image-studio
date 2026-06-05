@@ -12,6 +12,7 @@ struct ImageMetadataInfo {
     var loras: [LoraEntry]
     var filePath: String?
     var log: String?
+    var generationTime: String?
 
     init(job: FluxJob) {
         prompt        = job.prompt
@@ -25,6 +26,10 @@ struct ImageMetadataInfo {
         loras         = job.loras
         filePath      = job.outputPath
         log           = job.log.isEmpty ? nil : job.log
+        if let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
     }
 
     init?(item: GalleryItem) {
@@ -40,12 +45,16 @@ struct ImageMetadataInfo {
         loras         = meta.loras
         filePath      = item.path
         log           = meta.log
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
     }
 
     init(path: String) {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []
-        filePath = path; log = nil
+        filePath = path; log = nil; generationTime = nil
     }
 }
 
@@ -56,6 +65,8 @@ struct ImageMetadataPanel: View {
     let onUseInImg2Img: (() -> Void)?
     let onRevealInFinder: (() -> Void)?
     let onShowLog: (() -> Void)?
+
+    @State private var promptExpanded = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -68,16 +79,30 @@ struct ImageMetadataPanel: View {
     }
 
     private var promptRow: some View {
-        HStack(alignment: .top, spacing: 8) {
-            Text("Prompt")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .frame(width: 60, alignment: .leading)
-            Text(info.prompt.isEmpty ? "–" : info.prompt)
-                .font(.caption)
-                .fixedSize(horizontal: false, vertical: true)
-                .textSelection(.enabled)
-            Spacer(minLength: 0)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 8) {
+                Text("Prompt")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .frame(width: 60, alignment: .leading)
+                Text(info.prompt.isEmpty ? "–" : info.prompt)
+                    .font(.caption)
+                    .lineLimit(promptExpanded ? nil : 4)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .textSelection(.enabled)
+                Spacer(minLength: 0)
+            }
+            if !info.prompt.isEmpty {
+                HStack {
+                    Spacer()
+                    Button(promptExpanded ? "Show less" : "Show more") {
+                        promptExpanded.toggle()
+                    }
+                    .buttonStyle(.plain)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                }
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
@@ -94,6 +119,9 @@ struct ImageMetadataPanel: View {
                 metaField("Steps", "\(info.steps)")
                 if info.guidance != 1.0 {
                     metaField("Guidance", String(format: "%.2f", info.guidance))
+                }
+                if let t = info.generationTime {
+                    metaField("Time", t)
                 }
             }
             if !enabledLoras.isEmpty {
