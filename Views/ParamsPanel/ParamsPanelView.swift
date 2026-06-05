@@ -8,6 +8,7 @@ struct ParamsPanelView: View {
 
     @State private var isImageDropTargeted: Bool = false
     @State private var isEditDropTargeted: Bool = false
+    @State private var showingTemplatePicker: Bool = false
 
     private var isDistilled: Bool {
         params.model.isDistilled
@@ -42,6 +43,8 @@ struct ParamsPanelView: View {
                 if params.model != .custom {
                     modePickerRow
                 }
+
+                styleRow
 
                 Divider()
 
@@ -101,6 +104,90 @@ struct ParamsPanelView: View {
             .padding(.vertical, 12)
         }
         .scrollIndicators(.automatic)
+    }
+
+    // MARK: - Style (template) row
+
+    private var styleRow: some View {
+        HStack(alignment: .center, spacing: 6) {
+            Text("Style")
+                .font(.caption2)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+            InfoButton(
+                title: "Style Templates",
+                description: "Stacks preset style additions on your prompt — lighting, camera,"
+                    + " detail level, shot type. Select multiple. Applied at generation time;"
+                    + " your prompt text stays clean."
+            )
+            Spacer(minLength: 4)
+            styleChips
+        }
+    }
+
+    @ViewBuilder
+    private var styleChips: some View {
+        let active = settings.activeTemplates
+        if active.isEmpty {
+            Button("None") { showingTemplatePicker = true }
+                .font(.caption2)
+                .buttonStyle(.bordered)
+                .controlSize(.mini)
+                .foregroundStyle(.secondary)
+                .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
+        } else {
+            HStack(spacing: 4) {
+                // Show up to 2 chip names, then +N overflow
+                let shown = Array(active.prefix(2))
+                let overflow = active.count - shown.count
+                ForEach(shown) { template in
+                    styleChip(name: template.name, templateID: template.id)
+                }
+                if overflow > 0 {
+                    styleChip(name: "+\(overflow)", templateID: nil)
+                }
+                Button { showingTemplatePicker = true } label: {
+                    Image(systemName: "pencil")
+                        .font(.system(size: 9))
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .help("Edit style selection")
+                .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
+            }
+        }
+    }
+
+    private func styleChip(name: String, templateID: UUID?) -> some View {
+        HStack(spacing: 3) {
+            Text(name)
+                .font(.system(size: 10))
+                .lineLimit(1)
+            if let id = templateID {
+                Button {
+                    settings.activeTemplateIDs.removeAll { $0 == id }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .foregroundStyle(Color.accentColor)
+    }
+
+    private var templatePickerPopover: some View {
+        PromptTemplatePickerView(
+            currentPrompt: params.prompt,
+            currentNegative: params.negativePrompt
+        )
+        .environment(settings)
     }
 
     // MARK: - Prompt editor (auto-expanding)

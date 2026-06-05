@@ -87,6 +87,11 @@ class AppSettings {
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
 
+    /// User-created prompt templates (built-ins live in `BuiltInTemplates.all`).
+    var customTemplates: [PromptTemplate] { didSet { save() } }
+    /// IDs of the currently active prompt templates, in selection order.
+    var activeTemplateIDs: [UUID] { didSet { save() } }
+
     /// Set to a human-readable message when ``save()`` fails; cleared on the next
     /// successful save. Observed by ``SettingsView`` to display an alert.
     var saveError: String?
@@ -118,6 +123,15 @@ class AppSettings {
         lastModel       = lastM
         lastQuantize    = s.lastQuantize
             ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
+        customTemplates = s.customTemplates ?? []
+        // Migrate single-ID storage (written by earlier builds) to array.
+        if let ids = s.activeTemplateIDs {
+            activeTemplateIDs = ids
+        } else if let id = s.activeTemplateID {
+            activeTemplateIDs = [id]
+        } else {
+            activeTemplateIDs = []
+        }
     }
 
     // MARK: - Per-model helpers
@@ -135,6 +149,25 @@ class AppSettings {
         modelDefaults[model.rawValue] = d
     }
 
+    // MARK: - Template helpers
+
+    /// All templates: built-ins first, then user customs.
+    var allTemplates: [PromptTemplate] { BuiltInTemplates.all + customTemplates }
+
+    /// The currently active templates in selection order, excluding stale IDs.
+    var activeTemplates: [PromptTemplate] {
+        activeTemplateIDs.compactMap { id in allTemplates.first { $0.id == id } }
+    }
+
+    /// Toggles `id` in or out of the active selection.
+    func toggleTemplate(_ id: UUID) {
+        if let idx = activeTemplateIDs.firstIndex(of: id) {
+            activeTemplateIDs.remove(at: idx)
+        } else {
+            activeTemplateIDs.append(id)
+        }
+    }
+
     // MARK: - Persistence
 
     func save() {
@@ -148,7 +181,8 @@ class AppSettings {
             logFontSize: logFontSize, lastPrompt: lastPrompt,
             lastWidth: lastWidth, lastHeight: lastHeight,
             lastLoras: lastLoras, modelDefaults: modelDefaults,
-            lastModel: lastModel, lastQuantize: lastQuantize
+            lastModel: lastModel, lastQuantize: lastQuantize,
+            customTemplates: customTemplates, activeTemplateIDs: activeTemplateIDs
         )
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
@@ -214,6 +248,10 @@ class AppSettings {
         var lastWidth: Int?; var lastHeight: Int?; var lastLoras: [LoraEntry]?
         var lastModel: FluxModelVariant?; var lastQuantize: Int?
         var modelDefaults: [String: ModelDefaults]?
+        var customTemplates: [PromptTemplate]?
+        /// Legacy single-ID field kept for migration only; new writes use activeTemplateIDs.
+        var activeTemplateID: UUID?
+        var activeTemplateIDs: [UUID]?
 
         init() {}
         init(
@@ -224,7 +262,8 @@ class AppSettings {
             hfOffline: Bool, logFontSize: Double, lastPrompt: String,
             lastWidth: Int, lastHeight: Int, lastLoras: [LoraEntry],
             modelDefaults: [String: ModelDefaults],
-            lastModel: FluxModelVariant, lastQuantize: Int
+            lastModel: FluxModelVariant, lastQuantize: Int,
+            customTemplates: [PromptTemplate], activeTemplateIDs: [UUID]
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
             self.defaultModel   = defaultModel
@@ -236,6 +275,7 @@ class AppSettings {
             self.lastPrompt = lastPrompt; self.lastWidth = lastWidth; self.lastHeight = lastHeight
             self.lastLoras = lastLoras; self.modelDefaults = modelDefaults
             self.lastModel = lastModel; self.lastQuantize = lastQuantize
+            self.customTemplates = customTemplates; self.activeTemplateIDs = activeTemplateIDs
         }
     }
 }
