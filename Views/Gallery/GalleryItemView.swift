@@ -1,6 +1,6 @@
 import SwiftUI
 
-struct GalleryItemView: View {
+struct GalleryItemView: View, Equatable {
     let item: GalleryItem
     let isSelected: Bool
     let isInMultiSelection: Bool
@@ -27,7 +27,7 @@ struct GalleryItemView: View {
             }
         } label: {
             ZStack(alignment: .bottom) {
-                thumbnailImage
+                thumbnailView
                     .frame(maxWidth: .infinity)
                     .aspectRatio(1, contentMode: .fill)
                     .clipped()
@@ -76,8 +76,8 @@ struct GalleryItemView: View {
     }
 
     @ViewBuilder
-    private var thumbnailImage: some View {
-        if let data = item.thumbnailData, let img = NSImage(data: data) {
+    private var thumbnailView: some View {
+        if let img = item.thumbnailImage {
             Image(nsImage: img)
                 .resizable()
                 .aspectRatio(contentMode: .fill)
@@ -89,6 +89,17 @@ struct GalleryItemView: View {
                     .foregroundStyle(.tertiary)
             }
         }
+    }
+
+    // Intentionally ignores closure props — they capture reference types by reference so
+    // semantically-identical closures from different parent renders behave the same.
+    // Compares thumbnailImage presence so re-render fires when the image first loads.
+    static func == (lhs: GalleryItemView, rhs: GalleryItemView) -> Bool {
+        lhs.item.id == rhs.item.id &&
+        (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
+        lhs.isSelected == rhs.isSelected &&
+        lhs.isInMultiSelection == rhs.isInMultiSelection &&
+        lhs.hasAnySelection == rhs.hasAnySelection
     }
 
     @ViewBuilder

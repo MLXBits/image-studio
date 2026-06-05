@@ -7,6 +7,7 @@ struct GalleryItem: Identifiable, Equatable {
     let board: String
     let modifiedAt: Date
     var thumbnailData: Data?
+    var thumbnailImage: NSImage?  // decoded from thumbnailData; not persisted
     var metadata: GenerationMetadata?
 
     var url: URL { URL(fileURLWithPath: path) }
@@ -57,16 +58,24 @@ final class GalleryStore {
     }
 
     func loadThumbnail(for item: GalleryItem) {
-        guard item.thumbnailData == nil else { return }
+        guard item.thumbnailImage == nil else { return }
         let path = item.path
+        let existingData = item.thumbnailData
         Task.detached(priority: .background) { [weak self] in
-            let size = CGSize(width: 200, height: 200)
-            guard let img = NSImage(contentsOfFile: path) else { return }
-            let thumbnail = img.thumbnailData(size: size)
+            let thumbnailData: Data?
+            if let data = existingData {
+                thumbnailData = data
+            } else {
+                let size = CGSize(width: 200, height: 200)
+                guard let img = NSImage(contentsOfFile: path) else { return }
+                thumbnailData = img.thumbnailData(size: size)
+            }
+            let nsImage = thumbnailData.flatMap { NSImage(data: $0) }
             await MainActor.run {
                 guard let self else { return }
                 if let idx = self.items.firstIndex(where: { $0.path == path }) {
-                    self.items[idx].thumbnailData = thumbnail
+                    self.items[idx].thumbnailData = thumbnailData
+                    self.items[idx].thumbnailImage = nsImage
                 }
             }
         }
@@ -173,6 +182,7 @@ private func scanDirectory(
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
+            thumbnailImage: prior?.thumbnailImage,
             metadata: MetadataSidecar.read(for: url.path)
         ))
     }

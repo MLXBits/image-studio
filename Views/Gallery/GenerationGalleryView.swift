@@ -61,7 +61,7 @@ struct GenerationGalleryView: View {
                         }
                     }
                 }
-                .background(OverlayScrollerStyle())
+                .background(ScrollInsetNeutralizer())
             }
         }
         .onAppear {
@@ -245,6 +245,7 @@ struct GenerationGalleryView: View {
                                     showingDeleteConfirm = true
                                 }
                             )
+                            .equatable()
                             .draggable(
                                 multiSelection.contains(item.id)
                                     ? gallery.items
@@ -491,18 +492,20 @@ struct GenerationGalleryView: View {
         return nextIdx >= 0 ? boardItems[nextIdx] : nil
     }
 
-    // MARK: - Overlay scroller
+    // MARK: - Scroll inset neutralizer
 
-    private struct OverlayScrollerStyle: NSViewRepresentable {
-        func makeNSView(context: Context) -> ScrollStyleFixerView { ScrollStyleFixerView() }
-        func updateNSView(_ nsView: ScrollStyleFixerView, context: Context) { }
+    // Prevents NSScrollView from shrinking the content width when the overlay scrollbar
+    // appears, which would cause the LazyVGrid to reflow and destroy/recreate cells.
+    // Uses viewDidMoveToWindow (fires once) rather than layout() to avoid feedback loops.
+    private struct ScrollInsetNeutralizer: NSViewRepresentable {
+        func makeNSView(context: Context) -> InsetFixerView { InsetFixerView() }
+        func updateNSView(_ nsView: InsetFixerView, context: Context) {}
 
         // swiftlint:disable:next nesting
-        final class ScrollStyleFixerView: NSView {
-            override func layout() {
-                super.layout()
-                guard let scrollView = enclosingScrollView, scrollView.scrollerStyle != .overlay else { return }
-                scrollView.scrollerStyle = .overlay
+        final class InsetFixerView: NSView {
+            override func viewDidMoveToWindow() {
+                super.viewDidMoveToWindow()
+                enclosingScrollView?.automaticallyAdjustsContentInsets = false
             }
         }
     }

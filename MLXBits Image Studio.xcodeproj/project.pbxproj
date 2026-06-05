@@ -39,6 +39,8 @@
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
+		EE1A2B3C4D5E6F7A8B9C0D1E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE2A2B3C4D5E6F7A8B9C0D1E /* ContentView.swift */; };
+		EE3A2B3C4D5E6F7A8B9C0D1E /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = EE4A2B3C4D5E6F7A8B9C0D1E /* MLXBitsImageStudioApp.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -71,12 +73,15 @@
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		DA254ABF2FD267E900AC3532 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepwisePreviewView.swift; sourceTree = "<group>"; };
 		DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
+		EE2A2B3C4D5E6F7A8B9C0D1E /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		EE4A2B3C4D5E6F7A8B9C0D1E /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -116,6 +121,7 @@
 		488186364822998F1551919C = {
 			isa = PBXGroup;
 			children = (
+				DA254ABF2FD267E900AC3532 /* Assets.xcassets */,
 				EF16D0F619C4921D0A476F26 /* Models */,
 				AB119E2514CE274AB18259A7 /* Resources */,
 				9F6BCBE28C9814EF7779D261 /* Runner */,
@@ -326,6 +332,8 @@
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
 				D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */,
+				EE1A2B3C4D5E6F7A8B9C0D1E /* ContentView.swift in Sources */,
+				EE3A2B3C4D5E6F7A8B9C0D1E /* MLXBitsImageStudioApp.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
