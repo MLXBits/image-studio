@@ -258,11 +258,12 @@ struct GenerationGalleryView: View {
                     }
                     .padding(.horizontal, 8)
                     .padding(.bottom, 8)
+                    .clipped()
                 } label: {
                     sectionLabel(board: board, count: items.count)
                         .contentShape(Rectangle())
                         .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.3)) { isExpanded(for: board).wrappedValue.toggle() }
+                            withAnimation(.easeInOut(duration: 0.25)) { isExpanded(for: board).wrappedValue.toggle() }
                         }
                         .contextMenu {
                             if board != "Default" {
