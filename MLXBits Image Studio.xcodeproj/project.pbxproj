@@ -13,20 +13,17 @@
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
-		1A51944FE9ED093F9E7E4C1E /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
 		2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D923D32E0D737D888C711FE7 /* KeychainHelper.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
-		5F1A71E6C2699BE818677E5B /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
-		85F9CE48A521A2FD0B767EB9 /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = "TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
 		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
@@ -80,10 +77,6 @@
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
-		"TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		"TEMP_50CF2794-A0A4-4181-BB0F-D8A238E9D4D1" /* .gitignore */ = {isa = PBXFileReference; path = .gitignore; sourceTree = "<group>"; };
-		"TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
-		"TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -232,24 +225,6 @@
 			path = Stores;
 			sourceTree = "<group>";
 		};
-		"TEMP_54BF5815-F40E-43E4-AFEF-BDC365C4159C" /* . */ = {
-			isa = PBXGroup;
-			children = (
-				"TEMP_45DD9B9D-7C5E-4756-932F-90F938A0A1AD" /* Assets.xcassets */,
-				"TEMP_50CF2794-A0A4-4181-BB0F-D8A238E9D4D1" /* .gitignore */,
-				"TEMP_EF1DDDED-00FD-4592-8380-F1E275261F9D" /* MLXBitsImageStudioApp.swift */,
-				"TEMP_9215528C-DEA5-48D8-8B4C-27CD28A237ED" /* ContentView.swift */,
-				9F6BCBE28C9814EF7779D261 /* Runner */,
-				AB119E2514CE274AB18259A7 /* Resources */,
-				F0AE2F196D188960303A9263 /* Stores */,
-				EF16D0F619C4921D0A476F26 /* Models */,
-				117682124434130DAFA9B142 /* Utilities */,
-				B710AC1696FB0682EE9DD323 /* Views */,
-			);
-			name = .;
-			path = .;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -278,7 +253,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2650;
 				TargetAttributes = {
 					FD361358DA78AED467EBF531 = {
 						ProvisioningStyle = Automatic;
@@ -309,7 +284,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				5F1A71E6C2699BE818677E5B /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -323,7 +297,6 @@
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
 				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
 				4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */,
-				1A51944FE9ED093F9E7E4C1E /* ContentView.swift in Sources */,
 				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
 				DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */,
 				9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */,
@@ -341,7 +314,6 @@
 				2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
-				85F9CE48A521A2FD0B767EB9 /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
 				01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */,
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
@@ -366,6 +338,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -383,6 +356,7 @@
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio.entitlements;
 				COMBINE_HIDPI_IMAGES = YES;
+				DEAD_CODE_STRIPPING = YES;
 				INFOPLIST_FILE = Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -429,10 +403,13 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 39TQC8LANW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_DYNAMIC_NO_PIC = NO;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -453,6 +430,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_STRICT_CONCURRENCY = minimal;
@@ -495,10 +473,13 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
+				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 39TQC8LANW;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
@@ -512,6 +493,7 @@
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_STRICT_CONCURRENCY = minimal;
