@@ -1,1 +1,29 @@
+# macOS
 .DS_Store
+.AppleDouble
+.LSOverride
+*.icloud
+
+# Xcode user state (machine/person-specific, never commit)
+xcuserdata/
+*.xcuserstate
+*.xccheckout
+*.moved-aside
+*.pbxuser
+
+# Xcode build output
+build/
+DerivedData/
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Swift Package Manager
+.build/
+.swiftpm/xcode/package.xcworkspace/contents.xcworkspacedata
+
+# CocoaPods
+Pods/
+
+# Carthage
+Carthage/Build/
