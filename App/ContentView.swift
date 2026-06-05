@@ -70,16 +70,27 @@ final class ParamsPanelState {
         seed            = newSeed ? -1 : meta.seed
     }
 
-    func makeJob(count: Int = 1) -> FluxJob {
+    func makeJob(count: Int = 1, templates: [PromptTemplate] = []) -> FluxJob {
         let seeds: [Int] = count > 1
             ? (0..<count).map { _ in Int(UInt32.random(in: 0..<UInt32.max)) }
             : []
+        var finalPrompt = prompt
+        var finalNegative = negativePrompt
+        for template in templates {
+            let applied = template.apply(
+                to: finalPrompt,
+                negativePrompt: finalNegative,
+                supportsNegativePrompt: model.supportsNegativePrompt
+            )
+            finalPrompt = applied.positive
+            finalNegative = applied.negative
+        }
         return FluxJob(
             model: model,
             customModelRepo: customModelRepo,
             customBaseModel: customBaseModel,
-            prompt: prompt,
-            negativePrompt: negativePrompt,
+            prompt: finalPrompt,
+            negativePrompt: finalNegative,
             width: width,
             height: height,
             seed: seed,
@@ -394,7 +405,7 @@ struct ContentView: View {
         settings.lastLoras     = params.loras
         settings.lastModel     = params.model
         settings.lastQuantize  = params.quantize
-        let job = params.makeJob(count: params.batchCount)
+        let job = params.makeJob(count: params.batchCount, templates: settings.activeTemplates)
         store.add(job)
         if runner.activeJob == nil {
             selectedGalleryItem = nil
