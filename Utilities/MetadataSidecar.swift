@@ -18,6 +18,7 @@ struct GenerationMetadata: Codable {
     var loras: [LoraEntry]
     var board: String?
     var generatedAt: Date
+    var startedAt: Date?
     var log: String?
 
     static func from(job: FluxJob) -> Self {
@@ -39,6 +40,7 @@ struct GenerationMetadata: Codable {
             loras: job.loras,
             board: job.board.isEmpty ? nil : job.board,
             generatedAt: job.completedAt ?? Date(),
+            startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
         )
     }
