@@ -121,7 +121,8 @@ struct ParamsPanelView: View {
                     + " detail level, shot type. Select multiple. Applied at generation time;"
                     + " your prompt text stays clean."
             )
-            Spacer(minLength: 4)
+            // styleChips is a single stable view at this position so the popover
+            // anchor survives the empty → active transition without dismissing.
             styleChips
                 .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
         }
@@ -131,13 +132,22 @@ struct ParamsPanelView: View {
     private var styleChips: some View {
         let active = settings.activeTemplates
         if active.isEmpty {
-            Button("None") { showingTemplatePicker = true }
-                .font(.caption2)
-                .buttonStyle(.bordered)
-                .controlSize(.mini)
-                .foregroundStyle(.secondary)
+            // Entire trailing area is the tap target; + is the visual affordance.
+            Button { showingTemplatePicker = true } label: {
+                HStack(spacing: 0) {
+                    Spacer(minLength: 4)
+                    Image(systemName: "plus")
+                        .font(.system(size: 9))
+                        .frame(width: 18, height: 18)
+                        .foregroundStyle(.secondary)
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
         } else {
             HStack(spacing: 4) {
+                Spacer(minLength: 4)
                 // Show up to 2 chip names, then +N overflow
                 let shown = Array(active.prefix(2))
                 let overflow = active.count - shown.count
