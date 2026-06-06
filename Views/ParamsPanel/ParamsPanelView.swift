@@ -122,6 +122,7 @@ struct ParamsPanelView: View {
             )
             Spacer(minLength: 4)
             styleChips
+                .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
         }
     }
 
@@ -134,7 +135,6 @@ struct ParamsPanelView: View {
                 .buttonStyle(.bordered)
                 .controlSize(.mini)
                 .foregroundStyle(.secondary)
-                .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
         } else {
             HStack(spacing: 4) {
                 // Show up to 2 chip names, then +N overflow
@@ -155,7 +155,6 @@ struct ParamsPanelView: View {
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .help("Edit style selection")
-                .popover(isPresented: $showingTemplatePicker) { templatePickerPopover }
             }
         }
     }
