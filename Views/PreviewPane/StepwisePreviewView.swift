@@ -82,7 +82,7 @@ struct StepwisePreviewView: View {
                     .buttonStyle(.bordered)
                     .controlSize(.small)
                     Button("Cancel") { onCancel() }
-                        .buttonStyle(.bordered)
+                        .buttonStyle(.borderedProminent)
                         .controlSize(.small)
                         .tint(.red)
                 }
