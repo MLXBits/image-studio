@@ -4,44 +4,36 @@ import Security
 enum KeychainHelper {
     private static let service = "MLXBits Image Studio"
 
+    // kSecUseDataProtectionKeychain opts into the modern iOS-style keychain:
+    // no per-binary-hash ACL binding, so new builds never re-trigger access prompts.
+    private static let baseAttributes: [String: Any] = [
+        kSecClass as String: kSecClassGenericPassword,
+        kSecAttrService as String: service,
+        kSecUseDataProtectionKeychain as String: true,
+    ]
+
     static func set(_ value: String, key: String) {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecAttrService as String: service,
-        ]
+        var query = baseAttributes
+        query[kSecAttrAccount as String] = key
         SecItemDelete(query as CFDictionary)
         guard !value.isEmpty else { return }
-        var attributes = query
-        attributes[kSecValueData as String] = Data(value.utf8)
-        // SecAccess with nil trusted apps allows any application signed with
-        // our certificate to read the item without a keychain password prompt.
-        // The default ACL binds access to the specific binary hash, so every
-        // new build re-triggers "wants to use your confidential information".
-        var access: SecAccess?
-        if SecAccessCreate(service as CFString, nil, &access) == errSecSuccess, let access {
-            attributes[kSecAttrAccess as String] = access
-        } else {
-            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        }
-        SecItemAdd(attributes as CFDictionary, nil)
+        query[kSecValueData as String] = Data(value.utf8)
+        query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(query as CFDictionary, nil)
     }
 
     static func get(_ key: String) -> String {
-        let query: [String: Any] = [
-            kSecClass as String: kSecClassGenericPassword,
-            kSecAttrAccount as String: key,
-            kSecAttrService as String: service,
-            kSecReturnData as String: true,
-            kSecMatchLimit as String: kSecMatchLimitOne,
-        ]
+        var query = baseAttributes
+        query[kSecAttrAccount as String] = key
+        query[kSecReturnData as String] = true
+        query[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data,
               let value = String(data: data, encoding: .utf8),
               !value.isEmpty else { return "" }
-        // Rewrite with the permissive SecAccess ACL so subsequent reads on
-        // any build never prompt again (one-time migration for existing items).
+        // Rewrite to migrate legacy items (traditional keychain) into the
+        // data-protection keychain so subsequent reads never prompt again.
         set(value, key: key)
         return value
     }
