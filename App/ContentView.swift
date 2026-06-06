@@ -163,7 +163,11 @@ struct ContentView: View {
                     },
                     onShowFullSize: { img in
                         withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
-                    }
+                    },
+                    hasPrev: galleryNavInfo.hasPrev,
+                    hasNext: galleryNavInfo.hasNext,
+                    onNavigatePrev: { navigateGallery(-1) },
+                    onNavigateNext: { navigateGallery(+1) }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -199,9 +203,14 @@ struct ContentView: View {
             }
 
             if let img = fullSizeImage {
-                FullSizeImageView(image: img) {
-                    withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil }
-                }
+                FullSizeImageView(
+                    image: img,
+                    onDismiss: { withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil } },
+                    hasPrev: galleryNavInfo.hasPrev,
+                    hasNext: galleryNavInfo.hasNext,
+                    onNavigatePrev: { navigateGallery(-1) },
+                    onNavigateNext: { navigateGallery(+1) }
+                )
                 .transition(.opacity)
                 .zIndex(1)
             }
@@ -391,6 +400,25 @@ struct ContentView: View {
             }
         } else {
             Label("Queue", systemImage: "list.bullet")
+        }
+    }
+
+    // MARK: - Gallery navigation
+
+    private var galleryNavInfo: (hasPrev: Bool, hasNext: Bool) {
+        guard let item = selectedGalleryItem else { return (false, false) }
+        let items = gallery.items.filter { $0.board == item.board }
+        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return (false, false) }
+        return (idx > 0, idx < items.count - 1)
+    }
+
+    private func navigateGallery(_ delta: Int) {
+        guard let current = selectedGalleryItem else { return }
+        let items = gallery.items.filter { $0.board == current.board }
+        guard !items.isEmpty else { return }
+        if let idx = items.firstIndex(where: { $0.id == current.id }) {
+            let next = max(0, min(items.count - 1, idx + delta))
+            if next != idx { selectedGalleryItem = items[next] }
         }
     }
 

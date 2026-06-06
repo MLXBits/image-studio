@@ -17,56 +17,92 @@ struct PreviewPaneView: View {
     let onCancel: () -> Void
     let onClear: () -> Void
     var onShowFullSize: ((NSImage) -> Void)?
+    var hasPrev: Bool = false
+    var hasNext: Bool = false
+    var onNavigatePrev: (() -> Void)?
+    var onNavigateNext: (() -> Void)?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            switch state {
-            case .idle:
-                idleView
+        ZStack {
+            ZStack(alignment: .topTrailing) {
+                switch state {
+                case .idle:
+                    idleView
 
-            case .activeJob(let job):
-                switch job.status {
-                case .running:
-                    StepwisePreviewView(job: job, onCancel: onCancel)
+                case .activeJob(let job):
+                    switch job.status {
+                    case .running:
+                        StepwisePreviewView(job: job, onCancel: onCancel)
 
-                case .completed:
-                    CompletedImageView(
-                        job: job,
+                    case .completed:
+                        CompletedImageView(
+                            job: job,
+                            onRemix: onRemix,
+                            onApplySettings: onApplySettings,
+                            onUseInImg2Img: onUseInImg2Img,
+                            onShowFullSize: onShowFullSize
+                        )
+
+                    case .failed(let msg):
+                        failedView(message: msg, job: job)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        pendingView(job: job)
+                    }
+
+                case .galleryItem(let item):
+                    GalleryItemDetailView(
+                        item: item,
                         onRemix: onRemix,
                         onApplySettings: onApplySettings,
                         onUseInImg2Img: onUseInImg2Img,
                         onShowFullSize: onShowFullSize
                     )
-
-                case .failed(let msg):
-                    failedView(message: msg, job: job)
-
-                case .cancelled:
-                    cancelledView
-
-                case .pending:
-                    pendingView(job: job)
                 }
 
-            case .galleryItem(let item):
-                GalleryItemDetailView(
-                    item: item,
-                    onRemix: onRemix,
-                    onApplySettings: onApplySettings,
-                    onUseInImg2Img: onUseInImg2Img,
-                    onShowFullSize: onShowFullSize
-                )
+                if showsClearButton {
+                    Button { onClear() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title3)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.secondary)
+                    }
+                    .buttonStyle(.plain)
+                    .padding(10)
+                }
             }
 
-            if showsClearButton {
-                Button { onClear() } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.title3)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.secondary)
+            // Navigation arrows — always visible, shown when prev/next exist
+            if hasPrev || hasNext {
+                HStack(spacing: 0) {
+                    if hasPrev {
+                        Button { onNavigatePrev?() } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30, height: 30)
+                                .background(.secondary.opacity(0.1), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 14)
+                    }
+                    Spacer()
+                    if hasNext {
+                        Button { onNavigateNext?() } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 15, weight: .semibold))
+                                .foregroundStyle(.secondary)
+                                .frame(width: 30, height: 30)
+                                .background(.secondary.opacity(0.1), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 14)
+                    }
                 }
-                .buttonStyle(.plain)
-                .padding(10)
+                .frame(maxWidth: .infinity)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -206,10 +242,17 @@ struct PreviewPaneView: View {
 struct FullSizeImageView: View {
     let image: NSImage
     let onDismiss: () -> Void
+    var hasPrev: Bool = false
+    var hasNext: Bool = false
+    var onNavigatePrev: (() -> Void)?
+    var onNavigateNext: (() -> Void)?
+
     @State private var keyMonitor: Any?
+    @State private var chromeVisible: Bool = true
+    @State private var hideTask: Task<Void, Never>?
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
+        ZStack {
             Color.black
 
             Image(nsImage: image)
@@ -219,17 +262,90 @@ struct FullSizeImageView: View {
                 .padding(20)
                 .onTapGesture(count: 2) { onDismiss() }
 
-            Button { onDismiss() } label: {
-                Image(systemName: "xmark.circle.fill")
-                    .font(.title2)
-                    .symbolRenderingMode(.hierarchical)
-                    .foregroundStyle(.white.opacity(0.8))
+            // Close button — top-right, fades with chrome
+            VStack {
+                HStack {
+                    Spacer()
+                    Button { onDismiss() } label: {
+                        Image(systemName: "xmark.circle.fill")
+                            .font(.title2)
+                            .symbolRenderingMode(.hierarchical)
+                            .foregroundStyle(.white.opacity(0.8))
+                    }
+                    .buttonStyle(.plain)
+                    .padding(12)
+                }
+                Spacer()
             }
-            .buttonStyle(.plain)
-            .padding(12)
+            .opacity(chromeVisible ? 1 : 0)
+            .animation(.easeOut(duration: 0.5), value: chromeVisible)
+
+            // Navigation arrows — vertically centered, fade with chrome
+            if hasPrev || hasNext {
+                HStack(spacing: 0) {
+                    if hasPrev {
+                        Button {
+                            showChrome()
+                            onNavigatePrev?()
+                        } label: {
+                            Image(systemName: "chevron.left")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(.white.opacity(0.18), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.leading, 20)
+                    }
+                    Spacer()
+                    if hasNext {
+                        Button {
+                            showChrome()
+                            onNavigateNext?()
+                        } label: {
+                            Image(systemName: "chevron.right")
+                                .font(.system(size: 20, weight: .medium))
+                                .foregroundStyle(.white)
+                                .frame(width: 44, height: 44)
+                                .background(.white.opacity(0.18), in: Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.trailing, 20)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .opacity(chromeVisible ? 1 : 0)
+                .animation(.easeOut(duration: 0.5), value: chromeVisible)
+            }
         }
-        .onAppear { installKeyMonitor() }
-        .onDisappear { removeKeyMonitor() }
+        .onContinuousHover { phase in
+            if case .active = phase { showChrome() }
+        }
+        .onAppear {
+            installKeyMonitor()
+            scheduleHide()
+        }
+        .onDisappear {
+            removeKeyMonitor()
+            hideTask?.cancel()
+        }
+    }
+
+    private func showChrome() {
+        chromeVisible = true
+        scheduleHide()
+    }
+
+    private func scheduleHide() {
+        hideTask?.cancel()
+        hideTask = Task { @MainActor in
+            do {
+                try await Task.sleep(for: .seconds(2.5))
+                chromeVisible = false
+            } catch {
+                // Cancelled — leave chrome visible
+            }
+        }
     }
 
     private func installKeyMonitor() {
