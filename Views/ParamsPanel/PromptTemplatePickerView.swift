@@ -4,9 +4,6 @@ struct PromptTemplatePickerView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
-    let currentPrompt: String
-    let currentNegative: String
-
     @State private var showingAddSheet: Bool = false
     @State private var editingTemplate: PromptTemplate?
 
@@ -144,9 +141,7 @@ struct PromptTemplatePickerView: View {
                     Text(template.useCases)
                         .font(.caption2)
                         .foregroundStyle(.secondary)
-                        .lineLimit(1)
                 }
-                previewText(for: template)
             }
         }
         .padding(.horizontal, 12)
@@ -191,56 +186,6 @@ struct PromptTemplatePickerView: View {
             .foregroundStyle(.secondary)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .background(.fill.quaternary)
-    }
-
-    @ViewBuilder
-    private func previewText(for template: PromptTemplate) -> some View {
-        let preview = template.apply(
-            to: currentPrompt,
-            negativePrompt: currentNegative,
-            supportsNegativePrompt: true
-        )
-        let base = currentPrompt.isEmpty ? "(your prompt)" : currentPrompt
-        let appended = appendedPart(
-            positive: preview.positive,
-            base: base,
-            template: template
-        )
-
-        Group {
-            if appended.isEmpty {
-                Text(base)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(2)
-            } else {
-                // Bold = user text, regular = template additions
-                (boldBase(base) + Text(", \(appended)").font(.caption).foregroundStyle(.tertiary))
-                    .lineLimit(2)
-            }
-        }
-    }
-
-    private func boldBase(_ text: String) -> Text {
-        Text(text)
-            .font(.caption)
-            .fontWeight(.semibold)
-            .foregroundStyle(.secondary)
-    }
-
-    // Extracts the template-contributed text for display.
-    private func appendedPart(positive: String, base: String, template: PromptTemplate) -> String {
-        let trimmed = template.positiveTemplate.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return "" }
-        if trimmed.contains("{prompt}") {
-            // Anything after the substituted base
-            let resolved = trimmed.replacingOccurrences(of: "{prompt}", with: "")
-            return resolved
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-                .trimmingCharacters(in: CharacterSet(charactersIn: ","))
-                .trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-        return trimmed
     }
 
     @ViewBuilder
