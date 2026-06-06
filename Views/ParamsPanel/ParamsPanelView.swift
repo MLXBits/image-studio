@@ -1,5 +1,15 @@
 // swiftlint:disable file_length
+import AppKit
 import SwiftUI
+
+private struct OverlayScrollerApplicator: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            nsView.enclosingScrollView?.scrollerStyle = .overlay
+        }
+    }
+}
 
 struct ParamsPanelView: View {
     @Bindable var params: ParamsPanelState
@@ -102,9 +112,10 @@ struct ParamsPanelView: View {
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
+            .background(OverlayScrollerApplicator())
         }
         .scrollIndicators(.automatic)
-        .contentMargins(.trailing, 16, for: .scrollContent)
+        .contentMargins(.trailing, 5, for: .scrollContent)
     }
 
     // MARK: - Style (template) row
