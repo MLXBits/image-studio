@@ -97,7 +97,6 @@ class AppSettings {
     var saveError: String?
 
     init() {
-        let home = NSHomeDirectory()
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
 

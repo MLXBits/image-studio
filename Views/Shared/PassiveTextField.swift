@@ -22,7 +22,7 @@ struct PassiveTextField<F: ParseableFormatStyle>: NSViewRepresentable
     }
 
     func updateNSView(_ field: PassiveNSTextField, context: Context) {
-        let formatted = (try? format.format(value)) ?? ""
+        let formatted = format.format(value)
         if field.stringValue != formatted, !field.isEditing {
             field.stringValue = formatted
         }
@@ -40,7 +40,7 @@ struct PassiveTextField<F: ParseableFormatStyle>: NSViewRepresentable
                 parent.value = parsed
             } else {
                 // revert to current value on bad input
-                field.stringValue = (try? parent.format.format(parent.value)) ?? ""
+                field.stringValue = parent.format.format(parent.value)
             }
             parent.onSubmit?()
         }
