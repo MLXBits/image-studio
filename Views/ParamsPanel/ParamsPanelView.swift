@@ -104,6 +104,7 @@ struct ParamsPanelView: View {
             .padding(.vertical, 12)
         }
         .scrollIndicators(.automatic)
+        .contentMargins(.trailing, 16, for: .scrollContent)
     }
 
     // MARK: - Style (template) row
@@ -182,11 +183,8 @@ struct ParamsPanelView: View {
     }
 
     private var templatePickerPopover: some View {
-        PromptTemplatePickerView(
-            currentPrompt: params.prompt,
-            currentNegative: params.negativePrompt
-        )
-        .environment(settings)
+        PromptTemplatePickerView()
+            .environment(settings)
     }
 
     // MARK: - Prompt editor (auto-expanding)
@@ -194,13 +192,18 @@ struct ParamsPanelView: View {
     // An invisible Text drives the height: it grows with content (fixedSize vertical),
     // and the TextEditor overlays it exactly. .background() would be constrained to the
     // TextEditor's existing height — useless. The overlay approach is the correct pattern.
+    //
+    // When style templates are active, ghost text (template additions) is appended in
+    // tertiaryLabelColor and is non-editable. The height driver includes the ghost text
+    // so the field expands to show the full combined content.
 
     private var promptEditor: some View {
         promptField(
             text: $params.prompt,
             placeholder: "Describe your image…",
             label: "Prompt",
-            hint: "Describe the image you want to generate"
+            hint: "Describe the image you want to generate",
+            ghostSuffix: resolvedPositiveGhost
         )
     }
 
@@ -209,17 +212,44 @@ struct ParamsPanelView: View {
             text: $params.negativePrompt,
             placeholder: "Negative prompt (optional)…",
             label: "Negative prompt",
-            hint: "Describe elements to avoid or suppress in the generated image"
+            hint: "Describe elements to avoid or suppress in the generated image",
+            ghostSuffix: resolvedNegativeGhost
         )
+    }
+
+    // Chains active templates on the positive prompt and returns the suffix they add.
+    // Returns "" when templates are inactive or when the result can't be represented
+    // as a simple suffix (e.g. templates that reorder text around {prompt}).
+    private var resolvedPositiveGhost: String {
+        guard !settings.activeTemplates.isEmpty else { return "" }
+        var resolved = params.prompt
+        for template in settings.activeTemplates {
+            resolved = template.apply(to: resolved, negativePrompt: "", supportsNegativePrompt: false).positive
+        }
+        guard resolved.hasPrefix(params.prompt) else { return "" }
+        return String(resolved.dropFirst(params.prompt.count))
+    }
+
+    private var resolvedNegativeGhost: String {
+        guard !settings.activeTemplates.isEmpty else { return "" }
+        guard params.model.supportsNegativePrompt else { return "" }
+        var resolved = params.negativePrompt
+        for template in settings.activeTemplates {
+            resolved = template.apply(to: "", negativePrompt: resolved, supportsNegativePrompt: true).negative
+        }
+        guard resolved.hasPrefix(params.negativePrompt) else { return "" }
+        return String(resolved.dropFirst(params.negativePrompt.count))
     }
 
     private func promptField(
         text: Binding<String>,
         placeholder: String,
         label: String,
-        hint: String
+        hint: String,
+        ghostSuffix: String = ""
     ) -> some View {
-        Text(text.wrappedValue.isEmpty ? " " : text.wrappedValue)
+        let displayText = text.wrappedValue + ghostSuffix
+        return Text(displayText.isEmpty ? " " : displayText)
             .font(.body)
             .padding(.horizontal, 5)
             .padding(.vertical, 8)
@@ -229,10 +259,11 @@ struct ParamsPanelView: View {
             .opacity(0)
             .allowsHitTesting(false)
             .overlay(alignment: .topLeading) {
-                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8))
+                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
             }
             .overlay(alignment: .topLeading) {
-                if text.wrappedValue.isEmpty {
+                // Hide placeholder when ghost text is present — ghost is more informative.
+                if text.wrappedValue.isEmpty && ghostSuffix.isEmpty {
                     Text(placeholder)
                         .foregroundStyle(.tertiary)
                         .font(.body)
@@ -246,7 +277,10 @@ struct ParamsPanelView: View {
             .clipShape(RoundedRectangle(cornerRadius: 6))
             .overlay(
                 RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(Color.secondary.opacity(0.25), lineWidth: 1)
+                    .strokeBorder(
+                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
+                        lineWidth: 1
+                    )
             )
             .accessibilityLabel(label)
             .accessibilityHint(hint)

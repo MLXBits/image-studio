@@ -106,6 +106,7 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, golden hour lighting, warm sunlight, long soft shadows, amber glow",
             category: .lighting,
             isBuiltIn: true,
+            useCases: "Outdoor portraits, travel, landscapes, romantic or editorial scenes where warmth and depth matter",
             exampleImageName: "template_goldenhour"
         ),
         PromptTemplate(
@@ -114,6 +115,7 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, professional studio lighting, soft box, clean white background, even illumination",
             category: .lighting,
             isBuiltIn: true,
+            useCases: "Headshots, product shots, e-commerce, catalog and editorial work requiring clean, controlled light",
             exampleImageName: "template_studiolight"
         ),
         PromptTemplate(
@@ -122,6 +124,7 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, cinematic lighting, dramatic shadows, high contrast, moody atmosphere",
             category: .lighting,
             isBuiltIn: true,
+            useCases: "Film stills, dramatic portraits, narrative scenes, concept art, anything that needs mood and tension",
             exampleImageName: "template_cinematic"
         ),
         PromptTemplate(
@@ -130,6 +133,7 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, neon lighting, vivid colors, dark environment, cyberpunk glow, reflective surfaces",
             category: .lighting,
             isBuiltIn: true,
+            useCases: "Cyberpunk, nightlife, tech and gaming visuals, music, futuristic editorial",
             exampleImageName: "template_neonglow"
         ),
 
@@ -140,7 +144,8 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, 85mm portrait lens, shallow depth of field, creamy bokeh background, f/1.8",
             category: .camera,
             isBuiltIn: true,
-            useCases: "Headshots, professional portraits, dating profiles, flattering face compression"
+            useCases: "Headshots, professional portraits, dating profiles, flattering face compression",
+            exampleImageName: "template_portrait85mm"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000012"),
@@ -148,7 +153,8 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, wide angle lens, 24mm, expansive environment, full scene context",
             category: .camera,
             isBuiltIn: true,
-            useCases: "Architecture, interiors, landscapes, group shots where context matters"
+            useCases: "Architecture, interiors, landscapes, group shots where context matters",
+            exampleImageName: "template_wideangle"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000013"),
@@ -156,15 +162,17 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, macro photography, extreme close-up, ultra-fine detail, shallow depth of field",
             category: .camera,
             isBuiltIn: true,
-            useCases: "Jewelry, insects, flowers, textures, skin detail, food photography"
+            useCases: "Jewelry, insects, flowers, textures, skin detail, food photography",
+            exampleImageName: "template_macro"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000014"),
-            name: "35mm Film",
+            name: "Film 35mm",
             positiveTemplate: "{prompt}, shot on 35mm film, film grain, analog photography, Kodak Portra, warm tones",
             category: .camera,
             isBuiltIn: true,
-            useCases: "Travel, street photography, documentary, nostalgic editorial"
+            useCases: "Travel, street photography, documentary, nostalgic editorial",
+            exampleImageName: "template_film35mm"
         ),
 
         // ── Detail ────────────────────────────────────────────────────────────
@@ -174,7 +182,9 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, photorealistic, 8K resolution, skin pores visible, ultra-detailed, sharp focus, RAW photo",
             negativeTemplate: "illustration, cartoon, painting, anime, sketch, cgi, 3d render",
             category: .detail,
-            isBuiltIn: true
+            isBuiltIn: true,
+            useCases: "high attention to detail, ultra realistic",
+            exampleImageName: "template_photorealistic8k"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000022"),
@@ -182,7 +192,9 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, oil painting, painterly brushstrokes, impasto, sfumato, high contrast palette",
             negativeTemplate: "photo, photorealistic, photography, camera",
             category: .detail,
-            isBuiltIn: true
+            isBuiltIn: true,
+            useCases: "Makes an image look like an oil painting",
+            exampleImageName: "template_painterly"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000023"),
@@ -190,7 +202,9 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, digital illustration, clean lines, stylized, concept art, professional artwork",
             negativeTemplate: "photo, photorealistic, photography",
             category: .detail,
-            isBuiltIn: true
+            isBuiltIn: true,
+            useCases: "digital artwork",
+            exampleImageName: "template_illustration"
         ),
 
         // ── Shot Type ─────────────────────────────────────────────────────────
@@ -200,7 +214,8 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, point of view shot, first person perspective, immersive, POV",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Action sequences, first-person experiences, immersive storytelling"
+            useCases: "Action sequences, first-person experiences, immersive storytelling",
+            exampleImageName: "template_pov"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000032"),
