@@ -345,6 +345,9 @@ struct ParamsPanelView: View {
                         .frame(width: 100)
                         .accessibilityLabel("Seed")
                         .accessibilityHint("Use -1 for random")
+                        .onChange(of: params.seed) { _, new in
+                            if new != -1 { params.batchCount = 1 }
+                        }
                     Button {
                         params.seed = Int.random(in: 0..<1_000_000_000)
                     } label: {
