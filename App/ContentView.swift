@@ -143,7 +143,7 @@ struct ContentView: View {
 
                 PreviewPaneView(
                     state: previewState,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
                     onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
                     onUseInImg2Img: { path in
                         if params.isEditMode {
@@ -171,7 +171,7 @@ struct ContentView: View {
 
                 GenerationGalleryView(
                     selectedItem: $selectedGalleryItem,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true) },
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
                     onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
                     onUseInImg2Img: { path in
                         if params.isEditMode {
@@ -209,7 +209,7 @@ struct ContentView: View {
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button { showingParams.toggle() } label: {
-                    Label("Toggle Sidebar", systemImage: "sidebar.leading")
+                    Label("Toggle Params Panel", systemImage: "sidebar.leading")
                 }
                 .help("Toggle params panel")
             }
