@@ -223,7 +223,8 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, extreme close-up shot, XCU, filling the frame, intense detail",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Eyes, lips, skin texture — maximum emotional intensity or fine detail"
+            useCases: "Eyes, lips, skin texture — maximum emotional intensity or fine detail",
+            exampleImageName: "template_extremecloseup"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000033"),
@@ -231,31 +232,35 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, close-up portrait, face-centered, intimate framing, head and shoulders",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Headshots, emotion-forward portraits, social media profile photos"
+            useCases: "Headshots, emotion-forward portraits, social media profile photos",
+            exampleImageName: "template_closeupportrait"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000034"),
             name: "Profile",
-            positiveTemplate: "{prompt}, side profile view, lateral angle, silhouette",
+            positiveTemplate: "{prompt}, side profile view, lateral angle",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Silhouettes, dramatic reveals, coin-style character portraits"
+            useCases: "side views, dramatic reveals, coin-style character portraits",
+            exampleImageName: "template_profile"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000035"),
             name: "¾ Portrait",
-            positiveTemplate: "{prompt}, three-quarter view, 3/4 angle portrait, slight turn, classic portrait framing",
+            positiveTemplate: "{prompt}, three-quarter view, 3/4 angle portrait, slight turn",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Classic editorial, LinkedIn, most flattering angle for most faces"
+            useCases: "Classic editorial, LinkedIn, most flattering angle for most faces",
+            exampleImageName: "template_threequarterportrait"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000036"),
             name: "Full Body",
-            positiveTemplate: "{prompt}, full body shot, head to toe, full figure, standing",
+            positiveTemplate: "{prompt}, full body shot, head to toe, standing",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Fashion, fitness, costume/cosplay, character design reference"
+            useCases: "Fashion, fitness, costume/cosplay, character design reference",
+            exampleImageName: "template_fullbody"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000037"),
@@ -263,15 +268,17 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, aerial view, bird's eye perspective, drone shot, top-down",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Cityscapes, nature, real estate, events, maps, overhead food"
+            useCases: "Cityscapes, nature, real estate, events, maps, overhead food",
+            exampleImageName: "template_aerial"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000038"),
-            name: "Action Shot",
+            name: "Action",
             positiveTemplate: "{prompt}, action shot, motion blur, dynamic pose, high shutter speed, energy",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Sports, dance, wildlife, anything requiring conveyed movement"
+            useCases: "Sports, dance, wildlife, anything requiring conveyed movement",
+            exampleImageName: "template_action"
         ),
         PromptTemplate(
             id: UUID(fixed: "A1000001-0000-0000-0000-000000000039"),
@@ -279,7 +286,8 @@ enum BuiltInTemplates {
             positiveTemplate: "{prompt}, landscape photography, wide vista, environmental storytelling, horizon",
             category: .shotType,
             isBuiltIn: true,
-            useCases: "Travel, nature, environmental context, wide scene-setting shots"
+            useCases: "Travel, nature, environmental context, wide scene-setting shots",
+            exampleImageName: "template_landscape"
         ),
     ]
 }
