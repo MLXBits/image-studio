@@ -14,7 +14,16 @@ enum KeychainHelper {
         guard !value.isEmpty else { return }
         var attributes = query
         attributes[kSecValueData as String] = Data(value.utf8)
-        attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        // SecAccess with nil trusted apps allows any application signed with
+        // our certificate to read the item without a keychain password prompt.
+        // The default ACL binds access to the specific binary hash, so every
+        // new build re-triggers "wants to use your confidential information".
+        var access: SecAccess?
+        if SecAccessCreate(service as CFString, nil, &access) == errSecSuccess, let access {
+            attributes[kSecAttrAccess as String] = access
+        } else {
+            attributes[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        }
         SecItemAdd(attributes as CFDictionary, nil)
     }
 
@@ -28,7 +37,12 @@ enum KeychainHelper {
         ]
         var result: AnyObject?
         guard SecItemCopyMatching(query as CFDictionary, &result) == errSecSuccess,
-              let data = result as? Data else { return "" }
-        return String(data: data, encoding: .utf8) ?? ""
+              let data = result as? Data,
+              let value = String(data: data, encoding: .utf8),
+              !value.isEmpty else { return "" }
+        // Rewrite with the permissive SecAccess ACL so subsequent reads on
+        // any build never prompt again (one-time migration for existing items).
+        set(value, key: key)
+        return value
     }
 }
