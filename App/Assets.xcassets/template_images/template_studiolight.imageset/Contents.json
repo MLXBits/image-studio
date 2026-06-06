@@ -1,10 +1,12 @@
 {
   "images" : [
     {
+      "filename" : "template_studiolight@3x 2.png",
       "idiom" : "universal",
       "scale" : "1x"
     },
     {
+      "filename" : "template_studiolight@3x 1.png",
       "idiom" : "universal",
       "scale" : "2x"
     },
