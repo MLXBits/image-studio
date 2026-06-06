@@ -46,9 +46,9 @@ final class GalleryStore {
         let exts = Self.imageExtensions
         // Snapshot existing items so the detached task can preserve UUIDs and cached thumbnails.
         let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
-        Task.detached(priority: .userInitiated) { [weak self] in
+        Task.detached(priority: .userInitiated) {
             let found = scanDirectory(outputDir, imageExtensions: exts, existing: existing)
-            await MainActor.run {
+            await MainActor.run { [weak self] in
                 guard let self else { return }
                 self.items = found
                 self.boards = Array(Set(found.map(\.board))).sorted()
@@ -61,7 +61,7 @@ final class GalleryStore {
         guard item.thumbnailImage == nil else { return }
         let path = item.path
         let existingData = item.thumbnailData
-        Task.detached(priority: .background) { [weak self] in
+        Task.detached(priority: .background) {
             let thumbnailData: Data?
             if let data = existingData {
                 thumbnailData = data
@@ -71,7 +71,7 @@ final class GalleryStore {
                 thumbnailData = img.thumbnailData(size: size)
             }
             let nsImage = thumbnailData.flatMap { NSImage(data: $0) }
-            await MainActor.run {
+            await MainActor.run { [weak self] in
                 guard let self else { return }
                 if let idx = self.items.firstIndex(where: { $0.path == path }) {
                     self.items[idx].thumbnailData = thumbnailData
