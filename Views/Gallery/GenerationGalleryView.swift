@@ -60,8 +60,8 @@ struct GenerationGalleryView: View {
                             boardSection(board)
                         }
                     }
+                    .background(ScrollInsetNeutralizer())
                 }
-                .background(ScrollInsetNeutralizer())
             }
         }
         .onAppear {
@@ -507,6 +507,7 @@ struct GenerationGalleryView: View {
             override func viewDidMoveToWindow() {
                 super.viewDidMoveToWindow()
                 enclosingScrollView?.automaticallyAdjustsContentInsets = false
+                enclosingScrollView?.scrollerStyle = .overlay
             }
         }
     }
