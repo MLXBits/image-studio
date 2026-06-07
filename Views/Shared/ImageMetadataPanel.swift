@@ -1,5 +1,14 @@
 import SwiftUI
 
+private enum PromptFullHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+private enum PromptLimitedHeightKey: PreferenceKey {
+    static var defaultValue: CGFloat = 0
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+}
+
 struct ImageMetadataInfo {
     var prompt: String
     var negativePrompt: String
@@ -67,6 +76,9 @@ struct ImageMetadataPanel: View {
     let onShowLog: (() -> Void)?
 
     @State private var promptExpanded = false
+    @State private var promptFullHeight: CGFloat = 0
+    @State private var promptLimitedHeight: CGFloat = 0
+    private var isPromptTruncated: Bool { promptFullHeight > promptLimitedHeight + 1 }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -76,6 +88,7 @@ struct ImageMetadataPanel: View {
             Divider()
             footerRow
         }
+        .onChange(of: info.prompt) { promptExpanded = false }
     }
 
     private var promptRow: some View {
@@ -90,9 +103,27 @@ struct ImageMetadataPanel: View {
                     .lineLimit(promptExpanded ? nil : 4)
                     .fixedSize(horizontal: false, vertical: true)
                     .textSelection(.enabled)
+                    .background(
+                        GeometryReader { g in
+                            Color.clear
+                                .preference(key: PromptLimitedHeightKey.self, value: g.size.height)
+                                .overlay(alignment: .topLeading) {
+                                    Text(info.prompt)
+                                        .font(.caption)
+                                        .lineLimit(nil)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .hidden()
+                                        .background(GeometryReader { g2 in
+                                            Color.clear.preference(key: PromptFullHeightKey.self, value: g2.size.height)
+                                        })
+                                }
+                        }
+                    )
+                    .onPreferenceChange(PromptLimitedHeightKey.self) { promptLimitedHeight = $0 }
+                    .onPreferenceChange(PromptFullHeightKey.self) { promptFullHeight = $0 }
                 Spacer(minLength: 0)
             }
-            if !info.prompt.isEmpty {
+            if !info.prompt.isEmpty && (isPromptTruncated || promptExpanded) {
                 HStack {
                     Spacer()
                     Button(promptExpanded ? "Show less" : "Show more") {
