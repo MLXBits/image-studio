@@ -349,22 +349,13 @@ struct ContentView: View {
                         Rectangle()
                             .fill(.white.opacity(0.35))
                             .frame(width: 1, height: 16)
-                        Menu {
-                            batchMenuItem(3)
-                            batchMenuItem(5)
-                            batchMenuItem(10)
-                            if settings.batchShortcutPreset == 0 {
-                                batchMenuItem(settings.batchShortcutCustomCount)
-                            }
-                        } label: {
-                            Image(systemName: "chevron.down")
-                                .imageScale(.small)
-                                .padding(.horizontal, 8)
-                                .padding(.vertical, 5)
-                        }
-                        .menuIndicator(.hidden)
-                        .buttonStyle(.plain)
-                        .disabled(!canGenerate)
+                        BatchMenuButton(
+                            counts: [3, 5, 10] + (settings.batchShortcutPreset == 0
+                                ? [settings.batchShortcutCustomCount] : []),
+                            shortcutCount: settings.batchShortcutCount,
+                            isDisabled: !canGenerate
+                        ) { count in generate(count: count) }
+                        .frame(width: 28, height: 28)
                     }
                 }
                 .foregroundStyle(.white)
@@ -394,24 +385,34 @@ struct ContentView: View {
 
     @ViewBuilder
     private var queueStatusLabel: some View {
-        if store.isRunning {
+        ZStack {
+            // Invisible anchor sized to the widest running state so the
+            // button never shifts when text changes.
             HStack(spacing: 6) {
                 ProgressView().controlSize(.small)
-                if let job = runner.activeJob, job.seeds.count > 1 {
-                    let done = job.completedSeedsInBatch
-                    let total = job.seeds.count
-                    Text("\(done)/\(total) images")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                } else {
-                    let remaining = store.pendingJobs.count + 1
-                    Text("\(remaining) left")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
+                Text("99/99 images").monospacedDigit()
             }
-        } else {
-            Label("Queue", systemImage: "list.bullet")
+            .hidden()
+
+            if store.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = runner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = store.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else {
+                Label("Queue", systemImage: "list.bullet")
+            }
         }
     }
 
