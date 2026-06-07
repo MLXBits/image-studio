@@ -20,7 +20,6 @@ final class ParamsPanelState {
     var isEditMode: Bool = false
     var editImagePaths: [String] = []
     var board: String = ""
-    var batchCount: Int = 1
 
     func applyDefaults(from settings: AppSettings) {
         let m = settings.lastModel
@@ -126,9 +125,6 @@ struct ContentView: View {
     @State private var params = ParamsPanelState()
     @State private var fullSizeImage: NSImage?
 
-    private var batchCountBinding: Binding<Int> {
-        Binding(get: { params.batchCount }, set: { params.batchCount = $0 })
-    }
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
 
@@ -340,26 +336,42 @@ struct ContentView: View {
             HStack(spacing: 12) {
                 let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
                     && (!params.isEditMode || !params.editImagePaths.isEmpty)
-                Button(action: generate) {
-                    Label("Generate  ⌘↵", systemImage: "wand.and.stars")
+                HStack(spacing: 0) {
+                    Button { generate() } label: {
+                        Label("Generate  ⌘↵", systemImage: "wand.and.stars")
+                            .padding(.horizontal, 10)
+                            .padding(.vertical, 5)
+                    }
+                    .buttonStyle(.plain)
+                    .keyboardShortcut(.return, modifiers: .command)
+                    .disabled(!canGenerate)
+                    if params.seed == -1 {
+                        Rectangle()
+                            .fill(.white.opacity(0.35))
+                            .frame(width: 1, height: 16)
+                        Menu {
+                            batchMenuItem(3)
+                            batchMenuItem(5)
+                            batchMenuItem(10)
+                            if settings.batchShortcutPreset == 0 {
+                                batchMenuItem(settings.batchShortcutCustomCount)
+                            }
+                        } label: {
+                            Image(systemName: "chevron.down")
+                                .imageScale(.small)
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 5)
+                        }
+                        .menuIndicator(.hidden)
+                        .buttonStyle(.plain)
+                        .disabled(!canGenerate)
+                    }
                 }
-                .buttonStyle(.borderedProminent)
+                .foregroundStyle(.white)
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.purple))
+                .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
-                .disabled(!canGenerate)
-                .keyboardShortcut(.return, modifiers: .command)
                 .help("Generate (⌘↵)")
-
-                HStack(spacing: 4) {
-                    PassiveTextField(
-                        value: batchCountBinding,
-                        format: .number
-                    ) { params.batchCount = max(1, min(99, params.batchCount)) }
-                    .frame(width: 46, height: 22)
-                    Stepper("", value: batchCountBinding, in: 1...99)
-                        .labelsHidden()
-                        .focusEffectDisabled()
-                }
-                .help("Number of images to queue")
 
                 Divider().frame(height: 18)
 
@@ -424,7 +436,17 @@ struct ContentView: View {
 
     // MARK: - Generate
 
-    private func generate() {
+    @ViewBuilder
+    private func batchMenuItem(_ count: Int) -> some View {
+        if settings.batchShortcutCount == count {
+            Button("Generate \(count)") { generate(count: count) }
+                .keyboardShortcut(.return, modifiers: [.command, .option])
+        } else {
+            Button("Generate \(count)") { generate(count: count) }
+        }
+    }
+
+    private func generate(count: Int = 1) {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
         settings.lastPrompt    = params.prompt
@@ -433,7 +455,7 @@ struct ContentView: View {
         settings.lastLoras     = params.loras
         settings.lastModel     = params.model
         settings.lastQuantize  = params.quantize
-        let job = params.makeJob(count: params.batchCount, templates: settings.activeTemplates)
+        let job = params.makeJob(count: count, templates: settings.activeTemplates)
         store.add(job)
         if runner.activeJob == nil {
             selectedGalleryItem = nil

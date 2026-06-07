@@ -86,6 +86,33 @@ struct SettingsView: View {
             }
 
             Section {
+                LabeledContent("Batch Size Shortcut") {
+                    HStack(spacing: 8) {
+                        Picker("", selection: $s.batchShortcutPreset) {
+                            Text("3").tag(3)
+                            Text("5").tag(5)
+                            Text("10").tag(10)
+                            Text("Custom").tag(0)
+                        }
+                        .pickerStyle(.segmented)
+                        .fixedSize()
+                        if s.batchShortcutPreset == 0 {
+                            TextField("", value: $s.batchShortcutCustomCount, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 56)
+                                .onChange(of: s.batchShortcutCustomCount) { _, v in
+                                    s.batchShortcutCustomCount = max(2, min(100, v))
+                                }
+                        }
+                    }
+                }
+                Text("⌘⌥↵ generates this many images at once.")
+                    .font(.caption).foregroundStyle(.secondary)
+            } header: {
+                Text("Iteration")
+            }
+
+            Section {
                 HStack {
                     TextField("Output folder", text: $s.outputDir)
                         .textFieldStyle(.roundedBorder)
