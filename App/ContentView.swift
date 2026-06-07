@@ -128,6 +128,9 @@ struct ContentView: View {
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
 
+    // Static so the token outlives any view identity change and is never deallocated.
+    private static var batchEventMonitor: Any?
+
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
@@ -266,6 +269,17 @@ struct ContentView: View {
             }
             Task { @MainActor in
                 NSApp.keyWindow?.makeFirstResponder(nil)
+            }
+            guard Self.batchEventMonitor == nil else { return }
+            Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                guard event.keyCode == 36, // return key
+                      event.modifierFlags.contains(.command),
+                      event.modifierFlags.contains(.option),
+                      !event.modifierFlags.contains(.shift),
+                      !event.modifierFlags.contains(.control)
+                else { return event }
+                generate(count: settings.batchShortcutCount)
+                return nil
             }
         }
         .onChange(of: settings.defaultLoras) { _, updated in
@@ -436,16 +450,6 @@ struct ContentView: View {
     }
 
     // MARK: - Generate
-
-    @ViewBuilder
-    private func batchMenuItem(_ count: Int) -> some View {
-        if settings.batchShortcutCount == count {
-            Button("Generate \(count)") { generate(count: count) }
-                .keyboardShortcut(.return, modifiers: [.command, .option])
-        } else {
-            Button("Generate \(count)") { generate(count: count) }
-        }
-    }
 
     private func generate(count: Int = 1) {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
