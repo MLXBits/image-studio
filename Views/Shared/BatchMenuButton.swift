@@ -46,10 +46,10 @@ struct BatchMenuButton: NSViewRepresentable {
                 let item = NSMenuItem(
                     title: "Generate \(count)",
                     action: #selector(selected(_:)),
-                    keyEquivalent: count == parent.shortcutCount ? "g" : ""
+                    keyEquivalent: count == parent.shortcutCount ? "\r" : ""
                 )
                 if count == parent.shortcutCount {
-                    item.keyEquivalentModifierMask = [.command, .shift]
+                    item.keyEquivalentModifierMask = [.command, .option]
                 }
                 item.target = self
                 item.tag = count
