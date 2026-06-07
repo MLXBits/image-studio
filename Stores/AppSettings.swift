@@ -84,6 +84,13 @@ class AppSettings {
     var lastModel: FluxModelVariant { didSet { save() } }
     var lastQuantize: Int { didSet { save() } }
 
+    /// Batch shortcut preset: 3, 5, or 10 for fixed sizes; 0 for custom.
+    var batchShortcutPreset: Int { didSet { save() } }
+    /// Custom batch count used when ``batchShortcutPreset`` is 0. Clamped to 11–100.
+    var batchShortcutCustomCount: Int { didSet { save() } }
+    /// The effective count triggered by ⌘⌥↵.
+    var batchShortcutCount: Int { batchShortcutPreset == 0 ? batchShortcutCustomCount : batchShortcutPreset }
+
     /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] { didSet { save() } }
 
@@ -122,6 +129,8 @@ class AppSettings {
         lastModel       = lastM
         lastQuantize    = s.lastQuantize
             ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
+        batchShortcutPreset      = s.batchShortcutPreset ?? 3
+        batchShortcutCustomCount = s.batchShortcutCustomCount ?? 25
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -181,7 +190,9 @@ class AppSettings {
             lastWidth: lastWidth, lastHeight: lastHeight,
             lastLoras: lastLoras, modelDefaults: modelDefaults,
             lastModel: lastModel, lastQuantize: lastQuantize,
-            customTemplates: customTemplates, activeTemplateIDs: activeTemplateIDs
+            customTemplates: customTemplates, activeTemplateIDs: activeTemplateIDs,
+            batchShortcutPreset: batchShortcutPreset,
+            batchShortcutCustomCount: batchShortcutCustomCount
         )
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
@@ -251,6 +262,8 @@ class AppSettings {
         /// Legacy single-ID field kept for migration only; new writes use activeTemplateIDs.
         var activeTemplateID: UUID?
         var activeTemplateIDs: [UUID]?
+        var batchShortcutPreset: Int?
+        var batchShortcutCustomCount: Int?
 
         init() {}
         init(
@@ -262,7 +275,8 @@ class AppSettings {
             lastWidth: Int, lastHeight: Int, lastLoras: [LoraEntry],
             modelDefaults: [String: ModelDefaults],
             lastModel: FluxModelVariant, lastQuantize: Int,
-            customTemplates: [PromptTemplate], activeTemplateIDs: [UUID]
+            customTemplates: [PromptTemplate], activeTemplateIDs: [UUID],
+            batchShortcutPreset: Int, batchShortcutCustomCount: Int
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
             self.defaultModel   = defaultModel
@@ -275,6 +289,8 @@ class AppSettings {
             self.lastLoras = lastLoras; self.modelDefaults = modelDefaults
             self.lastModel = lastModel; self.lastQuantize = lastQuantize
             self.customTemplates = customTemplates; self.activeTemplateIDs = activeTemplateIDs
+            self.batchShortcutPreset = batchShortcutPreset
+            self.batchShortcutCustomCount = batchShortcutCustomCount
         }
     }
 }
