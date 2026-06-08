@@ -355,6 +355,7 @@ struct ContentView: View {
                         Label("Generate  ⌘↵", systemImage: "wand.and.stars")
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
+                            .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: .command)
@@ -377,8 +378,6 @@ struct ContentView: View {
                 .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
                 .help("Generate (⌘↵)")
-
-                Divider().frame(height: 18)
 
                 Button { showingQueue.toggle() } label: {
                     queueStatusLabel
@@ -452,7 +451,8 @@ struct ContentView: View {
     // MARK: - Generate
 
     private func generate(count: Int = 1) {
-        guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty else { return }
+        guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
+              !params.isEditMode || !params.editImagePaths.isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
         settings.lastPrompt    = params.prompt
         settings.lastWidth     = params.width
