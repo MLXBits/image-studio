@@ -380,14 +380,19 @@ final class FluxJobRunner {
         batchPollingTask = Task { @MainActor [weak self] in
             guard let self else { return }
             var found = Set<String>()
+            var perImageStartTime = job.startedAt ?? Date()
             while found.count < paths.count, !Task.isCancelled {
                 for item in paths where !found.contains(item.path) {
                     guard FileManager.default.fileExists(atPath: item.path),
                           isPNGComplete(at: item.path) else { continue }
                     found.insert(item.path)
+                    let imageGeneratedAt = Date()
                     var meta = GenerationMetadata.from(job: job)
                     meta.seed = item.seed
+                    meta.startedAt = perImageStartTime
+                    meta.generatedAt = imageGeneratedAt
                     MetadataSidecar.write(meta, for: item.path)
+                    perImageStartTime = imageGeneratedAt
                     job.completedSeedsInBatch = found.count
                     if found.count == 1 { lastCompletedOutputPath = item.path }
                     batchImageLanded += 1

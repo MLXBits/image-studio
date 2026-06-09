@@ -35,7 +35,7 @@ struct ImageMetadataInfo {
         loras         = job.loras
         filePath      = job.outputPath
         log           = job.log.isEmpty ? nil : job.log
-        if let started = job.startedAt, let ended = job.completedAt {
+        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
             generationTime = "\(secs / 60)m \(secs % 60)s"
         }
@@ -121,6 +121,15 @@ struct ImageMetadataPanel: View {
                     )
                     .onPreferenceChange(PromptLimitedHeightKey.self) { promptLimitedHeight = $0 }
                     .onPreferenceChange(PromptFullHeightKey.self) { promptFullHeight = $0 }
+                    .overlay {
+                        // Intercept taps when collapsed so clicking the text triggers Show More
+                        // instead of the native textSelection focus expanding the view.
+                        if !promptExpanded && isPromptTruncated {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { promptExpanded = true }
+                        }
+                    }
                 Spacer(minLength: 0)
             }
             if !info.prompt.isEmpty && (isPromptTruncated || promptExpanded) {
