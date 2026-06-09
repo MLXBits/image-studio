@@ -42,6 +42,7 @@
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
+		C4D5E6F7A8B9C0D1E2F3A4B5 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5E6F7A8B9C0D1E2F3A4B5C6 /* GalleryCollectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -59,6 +60,7 @@
 		64A7412A576F846395336217 /* ModelDefaultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDefaultsView.swift; sourceTree = "<group>"; };
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
+		D5E6F7A8B9C0D1E2F3A4B5C6 /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
 		0F95D25D0EA146F7952F8836 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
@@ -216,6 +218,7 @@
 		DB23B4F3B654A98909C6B6E3 /* Gallery */ = {
 			isa = PBXGroup;
 			children = (
+				D5E6F7A8B9C0D1E2F3A4B5C6 /* GalleryCollectionView.swift */,
 				EB0CE758913192CEFE013E01 /* GalleryItemView.swift */,
 				B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */,
 			);
@@ -325,6 +328,7 @@
 				C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */,
 				6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */,
 				A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */,
+				C4D5E6F7A8B9C0D1E2F3A4B5 /* GalleryCollectionView.swift in Sources */,
 				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,

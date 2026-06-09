@@ -1,7 +1,5 @@
-// swiftlint:disable file_length
 import AppKit
 import SwiftUI
-
 struct GenerationGalleryView: View {
     @Environment(GalleryStore.self) private var gallery
     @Environment(AppSettings.self) private var settings
@@ -14,29 +12,36 @@ struct GenerationGalleryView: View {
     var onClearPreview: (() -> Void)?
     var isFullSizeShowing: Bool = false
 
-    @State private var deleteTarget: GalleryItem?   // nil = batch, non-nil = single item
+    @State private var deleteTarget: GalleryItem?
     @State private var showingDeleteConfirm: Bool = false
     @State private var renamingBoard: String?
     @State private var renameNameDraft: String = ""
     @State private var showingRenameAlert: Bool = false
-    @State private var keyMonitor: Any?
     @State private var showingNewGroup: Bool = false
     @State private var newGroupName: String = ""
-    // Inverted logic: we store collapsed boards. New boards are not in the set → auto-expanded.
+    // Inverted: we store collapsed boards. New boards are not in the set → auto-expanded.
     @State private var collapsedBoards: Set<String> = []
-    @State private var dropTargetBoard: String?
     @State private var multiSelection: Set<UUID> = []
-    @State private var anchorItemId: UUID?  // last plain-click anchor for shift+click range
+    @State private var anchorItemId: UUID?
 
     private static let collapsedBoardsKey = "gallery.collapsedBoards"
-    private let columns = [GridItem(.adaptive(minimum: 80, maximum: 120), spacing: 4)]
 
-    // Default first, then all others alphabetically — filtered to non-empty boards only.
+    // Default first, then all others alphabetically — non-empty boards only.
     private var orderedBoards: [String] {
         let hasDefault = gallery.items.contains { $0.board == "Default" }
         let others = gallery.boards.filter { $0 != "Default" }.sorted()
         return (hasDefault ? ["Default"] : []) + others
     }
+
+    private var gallerySections: [GallerySection] {
+        orderedBoards.compactMap { board in
+            let items = gallery.items.filter { $0.board == board }
+            guard !items.isEmpty else { return nil }
+            return GallerySection(board: board, items: items, isExpanded: !collapsedBoards.contains(board))
+        }
+    }
+
+    private var hasAnySelection: Bool { selectedItem != nil || !multiSelection.isEmpty }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -54,25 +59,82 @@ struct GenerationGalleryView: View {
             if gallery.items.isEmpty {
                 emptyState
             } else {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 0) {
-                        ForEach(orderedBoards, id: \.self) { board in
-                            boardSection(board)
+                GalleryCollectionView(
+                    sections: gallerySections,
+                    selectedItemId: selectedItem?.id,
+                    multiSelectionIds: multiSelection,
+                    anchorItemId: anchorItemId,
+                    onSelect: { item in
+                        multiSelection.removeAll()
+                        selectedItem = item
+                        anchorItemId = item.id
+                    },
+                    onMultiToggle: { item in
+                        if multiSelection.contains(item.id) {
+                            multiSelection.remove(item.id)
+                        } else {
+                            multiSelection.insert(item.id)
+                        }
+                    },
+                    onRangeSelect: { item in rangeSelect(to: item) },
+                    onItemAppear: { item in gallery.loadThumbnail(for: item) },
+                    onDeleteRequest: { item in
+                        deleteTarget = item
+                        showingDeleteConfirm = true
+                    },
+                    onDeleteImmediate: { item in
+                        selectedItem = adjacentItem(to: item)
+                        gallery.delete(item, outputDir: settings.outputDir)
+                    },
+                    onDeleteMultiRequest: {
+                        deleteTarget = nil
+                        showingDeleteConfirm = true
+                    },
+                    onDeleteMultiImmediate: {
+                        let toDelete = gallery.items.filter { multiSelection.contains($0.id) }
+                        if let sel = selectedItem, multiSelection.contains(sel.id) { selectedItem = nil }
+                        gallery.deleteItems(toDelete, outputDir: settings.outputDir)
+                        multiSelection.removeAll()
+                    },
+                    onRemix: onRemix,
+                    onApplySettings: { _, meta in onApplySettings(meta) },
+                    onUseInImg2Img: onUseInImg2Img,
+                    onMoveToBoard: { item, board in
+                        if multiSelection.contains(item.id) {
+                            batchMove(to: board)
+                        } else {
+                            gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
+                        }
+                    },
+                    onRevealInFinder: { path in
+                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                    },
+                    onToggleSection: { board in
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            if collapsedBoards.contains(board) {
+                                collapsedBoards.remove(board)
+                            } else {
+                                collapsedBoards.insert(board)
+                            }
+                        }
+                    },
+                    onRenameBoard: { board in
+                        renamingBoard = board
+                        renameNameDraft = board
+                        showingRenameAlert = true
+                    },
+                    onEscape: {
+                        if !multiSelection.isEmpty {
+                            multiSelection.removeAll()
+                        } else if selectedItem != nil {
+                            onClearPreview?()
                         }
                     }
-                    .background(ScrollInsetNeutralizer())
-                }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
-        .onAppear {
-            loadCollapsedBoards()
-            installKeyMonitor()
-        }
-        .onDisappear { removeKeyMonitor() }
-        .onChange(of: isFullSizeShowing) { _, _ in
-            removeKeyMonitor()
-            installKeyMonitor()
-        }
+        .onAppear { loadCollapsedBoards() }
         .onChange(of: collapsedBoards) { _, newValue in
             UserDefaults.standard.set(Array(newValue), forKey: Self.collapsedBoardsKey)
         }
@@ -136,13 +198,10 @@ struct GenerationGalleryView: View {
     private var headerRow: some View {
         HStack {
             Text("Gallery")
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
+                .font(.caption).fontWeight(.medium).foregroundStyle(.secondary)
             Spacer()
             Button { showingNewGroup = true } label: {
-                Image(systemName: "plus")
-                    .font(.caption)
+                Image(systemName: "plus").font(.caption)
             }
             .buttonStyle(.plain)
             .help("New group")
@@ -155,8 +214,7 @@ struct GenerationGalleryView: View {
     private var batchActionBar: some View {
         HStack(spacing: 8) {
             Text("\(multiSelection.count) selected")
-                .font(.caption)
-                .foregroundStyle(.secondary)
+                .font(.caption).foregroundStyle(.secondary)
             Spacer()
             Menu {
                 ForEach(orderedBoards, id: \.self) { board in
@@ -165,30 +223,22 @@ struct GenerationGalleryView: View {
                 Divider()
                 Button("New Group…") { showingNewGroup = true }
             } label: {
-                Label("Move", systemImage: "folder")
-                    .font(.caption)
+                Label("Move", systemImage: "folder").font(.caption)
             }
-            .menuStyle(.borderlessButton)
-            .fixedSize()
+            .menuStyle(.borderlessButton).fixedSize()
 
             Button(role: .destructive) {
-                deleteTarget = nil   // nil = batch mode
+                deleteTarget = nil
                 showingDeleteConfirm = true
             } label: {
-                Image(systemName: "trash")
-                    .font(.caption)
+                Image(systemName: "trash").font(.caption)
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.red)
+            .buttonStyle(.borderless).foregroundStyle(.red)
 
-            Button {
-                multiSelection.removeAll()
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.caption)
+            Button { multiSelection.removeAll() } label: {
+                Image(systemName: "xmark").font(.caption)
             }
-            .buttonStyle(.borderless)
-            .foregroundStyle(.secondary)
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
@@ -199,136 +249,6 @@ struct GenerationGalleryView: View {
         let toMove = gallery.items.filter { multiSelection.contains($0.id) }
         gallery.moveItems(toMove, toBoard: board, outputDir: settings.outputDir)
         multiSelection.removeAll()
-    }
-
-    // MARK: - Board section
-
-    @ViewBuilder
-    private func boardSection(_ board: String) -> some View {
-        let items = gallery.items.filter { $0.board == board }
-        if !items.isEmpty {
-            VStack(spacing: 0) {
-                DisclosureGroup(isExpanded: isExpanded(for: board)) {
-                    LazyVGrid(columns: columns, spacing: 4) {
-                        ForEach(items) { item in
-                            GalleryItemView(
-                                item: item,
-                                isSelected: selectedItem?.id == item.id,
-                                isInMultiSelection: multiSelection.contains(item.id),
-                                hasAnySelection: selectedItem != nil || !multiSelection.isEmpty,
-                                onSelect: {
-                                    NSApp.keyWindow?.makeFirstResponder(nil)
-                                    multiSelection.removeAll()
-                                    selectedItem = item
-                                    anchorItemId = item.id
-                                },
-                                onMultiToggle: {
-                                    if multiSelection.contains(item.id) {
-                                        multiSelection.remove(item.id)
-                                    } else {
-                                        multiSelection.insert(item.id)
-                                    }
-                                },
-                                onRangeSelect: { rangeSelect(to: item) },
-                                onRemix: onRemix,
-                                onApplySettings: onApplySettings,
-                                onUseInImg2Img: onUseInImg2Img,
-                                onMoveToBoard: { newBoard in
-                                    if multiSelection.contains(item.id) {
-                                        batchMove(to: newBoard)
-                                    } else {
-                                        gallery.moveItem(item, toBoard: newBoard, outputDir: settings.outputDir)
-                                    }
-                                },
-                                onDelete: {
-                                    deleteTarget = item
-                                    showingDeleteConfirm = true
-                                }
-                            )
-                            .equatable()
-                            .draggable(
-                                multiSelection.contains(item.id)
-                                    ? gallery.items
-                                        .filter { multiSelection.contains($0.id) }
-                                        .map(\.path)
-                                        .joined(separator: "\n")
-                                    : item.path
-                            )
-                        }
-                    }
-                    .padding(.horizontal, 8)
-                    .padding(.bottom, 8)
-                    .clipped()
-                } label: {
-                    sectionLabel(board: board, count: items.count)
-                        .contentShape(Rectangle())
-                        .onTapGesture {
-                            withAnimation(.easeInOut(duration: 0.25)) { isExpanded(for: board).wrappedValue.toggle() }
-                        }
-                        .contextMenu {
-                            if board != "Default" {
-                                Button("Rename Folder…") {
-                                    renamingBoard = board
-                                    renameNameDraft = board
-                                    showingRenameAlert = true
-                                }
-                            }
-                        }
-                }
-                .padding(.leading, 14)
-                .padding(.trailing, 4)
-
-                Divider()
-            }
-            // Entire section (header + grid) is a drop target.
-            .dropDestination(for: String.self) { payloads, _ in
-                let paths = payloads.flatMap { $0.components(separatedBy: "\n") }
-                for path in paths {
-                    if let item = gallery.items.first(where: { $0.path == path }),
-                       item.board != board {
-                        gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
-                    }
-                }
-                return true
-            } isTargeted: { targeted in
-                dropTargetBoard = targeted ? board : nil
-            }
-        }
-    }
-
-    // Section header — shows drop highlight when dropTargetBoard matches.
-    private func sectionLabel(board: String, count: Int) -> some View {
-        HStack(spacing: 6) {
-            Image(systemName: dropTargetBoard == board ? "folder.fill" : "folder")
-                .font(.caption2)
-                .foregroundStyle(dropTargetBoard == board ? Color.accentColor : .secondary)
-            Text(board)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(dropTargetBoard == board ? Color.accentColor : .primary)
-            Spacer()
-            Text("\(count)")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 2)
-                .background(.secondary.opacity(0.12), in: Capsule())
-        }
-        .padding(.vertical, 5)
-        .padding(.horizontal, 4)
-        .background(
-            RoundedRectangle(cornerRadius: 4)
-                .fill(dropTargetBoard == board ? Color.accentColor.opacity(0.12) : Color.clear)
-        )
-    }
-
-    private func isExpanded(for board: String) -> Binding<Bool> {
-        Binding(
-            get: { !collapsedBoards.contains(board) },
-            set: { expanded in
-                if expanded { collapsedBoards.remove(board) } else { collapsedBoards.insert(board) }
-            }
-        )
     }
 
     // MARK: - Range select (shift+click)
@@ -342,7 +262,6 @@ struct GenerationGalleryView: View {
             let hi = max(anchorIdx, targetIdx)
             for i in lo...hi { multiSelection.insert(items[i].id) }
         } else {
-            // No anchor yet — treat like a normal select and set anchor
             multiSelection.removeAll()
             selectedItem = item
             anchorItemId = item.id
@@ -359,10 +278,7 @@ struct GenerationGalleryView: View {
                 .frame(width: 200)
                 .onSubmit { confirmNewGroup() }
             HStack {
-                Button("Cancel") {
-                    showingNewGroup = false
-                    newGroupName = ""
-                }
+                Button("Cancel") { showingNewGroup = false; newGroupName = "" }
                 Spacer()
                 Button("Create") { confirmNewGroup() }
                     .buttonStyle(.borderedProminent)
@@ -391,125 +307,15 @@ struct GenerationGalleryView: View {
         if let saved = UserDefaults.standard.array(forKey: Self.collapsedBoardsKey) as? [String] {
             collapsedBoards = Set(saved)
         }
-        // No saved entry → collapsedBoards stays empty → all boards expanded (correct first-launch default).
-        // New boards created later are also not in the set → auto-expanded.
     }
 
-    // MARK: - Keyboard navigation
+    // MARK: - Helpers
 
-    private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [self] event in
-            if event.keyCode == 53 {
-                // Yield to FullSizeImageView's own monitor when the overlay is showing.
-                if isFullSizeShowing { return event }
-            }
-
-            guard !Self.isEditingText() else { return event }
-            switch event.keyCode {
-            case 123, 126:  // ← ↑
-                guard selectedItem != nil else { return event }
-                navigate(-1); return nil
-
-            case 124, 125:  // → ↓
-                guard selectedItem != nil else { return event }
-                navigate(+1); return nil
-
-            case 51, 117:   // Delete / Forward Delete
-                let shift = event.modifierFlags.contains(.shift)
-                if !multiSelection.isEmpty {
-                    if shift {
-                        let toDelete = gallery.items.filter { multiSelection.contains($0.id) }
-                        if let sel = selectedItem, multiSelection.contains(sel.id) { selectedItem = nil }
-                        gallery.deleteItems(toDelete, outputDir: settings.outputDir)
-                        multiSelection.removeAll()
-                    } else {
-                        deleteTarget = nil
-                        showingDeleteConfirm = true
-                    }
-                    return nil
-                }
-                if let item = selectedItem {
-                    if shift {
-                        selectedItem = adjacentItem(to: item)
-                        gallery.delete(item, outputDir: settings.outputDir)
-                    } else {
-                        deleteTarget = selectedItem
-                        showingDeleteConfirm = true
-                    }
-                    return nil
-                }
-                return event
-
-            case 53:        // Escape — clear multi-selection, then close preview
-                if !multiSelection.isEmpty {
-                    multiSelection.removeAll()
-                    return nil
-                }
-                if selectedItem != nil {
-                    onClearPreview?()
-                    return nil
-                }
-                return event
-
-            default: return event
-            }
-        }
-    }
-
-    private func removeKeyMonitor() {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-            keyMonitor = nil
-        }
-    }
-
-    private static func isEditingText() -> Bool {
-        guard let fr = NSApp.keyWindow?.firstResponder else { return false }
-        if let tv = fr as? NSTextView { return tv.isEditable }
-        return fr is NSTextField
-    }
-
-    @discardableResult
-    private func navigate(_ delta: Int) -> KeyPress.Result {
-        guard let current = selectedItem else {
-            selectedItem = gallery.items.first
-            return gallery.items.isEmpty ? .ignored : .handled
-        }
-        let items = gallery.items.filter { $0.board == current.board }
-        guard !items.isEmpty else { return .ignored }
-        if let idx = items.firstIndex(where: { $0.id == current.id }) {
-            let next = max(0, min(items.count - 1, idx + delta))
-            if next != idx { selectedItem = items[next] }
-        }
-        return .handled
-    }
-
-    // Returns the item before or after `item` within the same board group.
     private func adjacentItem(to item: GalleryItem) -> GalleryItem? {
         let boardItems = gallery.items.filter { $0.board == item.board }
         guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return nil }
         let nextIdx = idx + 1 < boardItems.count ? idx + 1 : idx - 1
         return nextIdx >= 0 ? boardItems[nextIdx] : nil
-    }
-
-    // MARK: - Scroll inset neutralizer
-
-    // Prevents NSScrollView from shrinking the content width when the overlay scrollbar
-    // appears, which would cause the LazyVGrid to reflow and destroy/recreate cells.
-    // Uses viewDidMoveToWindow (fires once) rather than layout() to avoid feedback loops.
-    private struct ScrollInsetNeutralizer: NSViewRepresentable {
-        func makeNSView(context: Context) -> InsetFixerView { InsetFixerView() }
-        func updateNSView(_ nsView: InsetFixerView, context: Context) {}
-
-        // swiftlint:disable:next nesting
-        final class InsetFixerView: NSView {
-            override func viewDidMoveToWindow() {
-                super.viewDidMoveToWindow()
-                enclosingScrollView?.automaticallyAdjustsContentInsets = false
-                enclosingScrollView?.scrollerStyle = .overlay
-            }
-        }
     }
 
     // MARK: - Empty state
@@ -518,11 +324,9 @@ struct GenerationGalleryView: View {
         VStack(spacing: 12) {
             Spacer()
             Image(systemName: "photo.stack")
-                .font(.system(size: 36))
-                .foregroundStyle(.tertiary)
+                .font(.system(size: 36)).foregroundStyle(.tertiary)
             Text("No images yet")
-                .font(.callout)
-                .foregroundStyle(.secondary)
+                .font(.callout).foregroundStyle(.secondary)
             Spacer()
         }
     }
