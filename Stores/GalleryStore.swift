@@ -29,6 +29,7 @@ final class GalleryStore {
     var boards: [String] = []
     var selectedBoard: String = "All"
     private(set) var isScanning: Bool = false
+    private var scanGeneration = 0
 
     private static let imageExtensions = Set(["png", "jpg", "jpeg", "webp"])
     /// Set when a deletion fails; cleared by the next successful delete operation.
@@ -43,16 +44,22 @@ final class GalleryStore {
     func scan(outputDir: String) {
         guard !outputDir.isEmpty else { return }
         isScanning = true
+        scanGeneration += 1
+        let myGeneration = scanGeneration
         let exts = Self.imageExtensions
         // Snapshot existing items so the detached task can preserve UUIDs and cached thumbnails.
         let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
         Task.detached(priority: .userInitiated) {
             let found = scanDirectory(outputDir, imageExtensions: exts, existing: existing)
             await MainActor.run { [weak self] in
-                guard let self else { return }
+                guard let self, self.scanGeneration == myGeneration else { return }
                 self.items = found
                 self.boards = Array(Set(found.map(\.board))).sorted()
                 self.isScanning = false
+                // Proactively load thumbnails for items new to this scan.
+                for item in found where existing[item.path] == nil {
+                    self.loadThumbnail(for: item)
+                }
             }
         }
     }
