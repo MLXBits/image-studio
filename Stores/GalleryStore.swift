@@ -51,10 +51,13 @@ final class GalleryStore {
         let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
         Task.detached(priority: .userInitiated) {
             let found = scanDirectory(outputDir, imageExtensions: exts, existing: existing)
+            // Folders are first-class boards even when empty, so list subdirectories
+            // directly rather than deriving boards solely from the images found.
+            let folders = scanBoardFolders(outputDir)
             await MainActor.run { [weak self] in
                 guard let self, self.scanGeneration == myGeneration else { return }
                 self.items = found
-                self.boards = Array(Set(found.map(\.board))).sorted()
+                self.boards = Array(Set(found.map(\.board) + folders)).sorted()
                 self.isScanning = false
                 // Proactively load thumbnails for items new to this scan.
                 for item in found where existing[item.path] == nil {
@@ -111,6 +114,19 @@ final class GalleryStore {
             deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
         }
         try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+        scan(outputDir: outputDir)
+    }
+
+    /// Deletes a folder (board) and everything inside it — images and sidecars alike.
+    /// The "Default" board maps to the output root and is never deleted.
+    func deleteBoard(_ board: String, outputDir: String) {
+        guard board != "Default" else { return }
+        let dir = URL(fileURLWithPath: outputDir).appendingPathComponent(board)
+        do {
+            try FileManager.default.removeItem(at: dir)
+        } catch {
+            deleteError = "Could not delete folder \(board): \(error.localizedDescription)"
+        }
         scan(outputDir: outputDir)
     }
 
@@ -194,6 +210,21 @@ private func scanDirectory(
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }
+}
+
+/// Lists the top-level subdirectories of the output directory. Each becomes a board,
+/// so empty folders remain visible in the gallery instead of silently disappearing.
+private func scanBoardFolders(_ outputDir: String) -> [String] {
+    let root = URL(fileURLWithPath: outputDir)
+    guard let contents = try? FileManager.default.contentsOfDirectory(
+        at: root,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles]
+    ) else { return [] }
+    return contents.compactMap { url in
+        guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { return nil }
+        return url.lastPathComponent
+    }
 }
 
 private extension NSImage {

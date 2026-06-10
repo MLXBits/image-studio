@@ -210,7 +210,8 @@ final class FluxJobRunner {
                 job.outputPath = paths.first
                 job.thumbnailData = job.outputThumbnails.first
                 // Sidecars written progressively by batchPoller; write any missed ones here.
-                for item in batchPaths where !FileManager.default.fileExists(atPath: item.path + ".json") {
+                for item in batchPaths
+                where !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
                     var meta = GenerationMetadata.from(job: job)
                     meta.seed = item.seed
                     MetadataSidecar.write(meta, for: item.path)
