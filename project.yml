@@ -13,8 +13,14 @@ settings:
     MACOSX_DEPLOYMENT_TARGET: "14.0"
     SWIFT_STRICT_CONCURRENCY: minimal
     CODE_SIGN_STYLE: Automatic
-    DEVELOPMENT_TEAM: K25M5H6GAF
     ENABLE_HARDENED_RUNTIME: YES
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+  configs:
+    # Team only on Release so Debug builds stay unsigned/adhoc and don't
+    # require a provisioning round-trip. release.sh archives Release.
+    Release:
+      DEVELOPMENT_TEAM: 39TQC8LANW
 
 targets:
   MLXBits Image Studio:
@@ -27,13 +33,15 @@ targets:
           - "*.md"
           - ".git/**"
           - "*.xcodeproj/**"
+          - "release.sh"
+          - "ExportOptions.plist"
     info:
       path: Resources/Info.plist
       properties:
         CFBundleName: MLXBits Image Studio
         CFBundleIdentifier: com.mlxbits.image-studio
-        CFBundleShortVersionString: "0.1.0"
-        CFBundleVersion: "1"
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "14.0"
         NSHumanReadableCopyright: ""
         NSPrincipalClass: NSApplication
