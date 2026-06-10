@@ -94,6 +94,7 @@ struct DimensionPickerView: View {
     @State private var selectedAspect: AspectPreset
     @State private var aspectLocked: Bool
     @State private var hoveredPreset: AspectPreset?
+    @State private var halfRes: Bool = false
 
     init(width: Binding<Int>, height: Binding<Int>) {
         _width  = width
@@ -106,6 +107,15 @@ struct DimensionPickerView: View {
     private var effectiveRatio: Double? {
         guard aspectLocked else { return nil }
         return selectedAspect.ratio
+    }
+
+    private func halfResDimensions(for preset: AspectPreset) -> (width: Int, height: Int)? {
+        guard let (w, h) = preset.targetDimensions else { return nil }
+        return (snapTo16(Double(w) / 2), snapTo16(Double(h) / 2))
+    }
+
+    private var halfResDimensions: (width: Int, height: Int)? {
+        halfResDimensions(for: selectedAspect)
     }
 
     private var previewRatio: Double {
@@ -121,6 +131,9 @@ struct DimensionPickerView: View {
         }
         .onChange(of: width) { _, w in resyncAspect(w: w, h: height) }
         .onChange(of: height) { _, h in resyncAspect(w: width, h: h) }
+        .onChange(of: aspectLocked) { _, locked in
+            if !locked { halfRes = false }
+        }
     }
 
     private func resyncAspect(w: Int, h: Int) {
@@ -167,6 +180,15 @@ struct DimensionPickerView: View {
                 .buttonStyle(.plain)
                 .help("Swap width and height")
 
+                Button(action: toggleHalfRes) {
+                    Image(systemName: "bolt.fill")
+                        .font(.caption)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
+                .disabled(!aspectLocked)
+                .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
+
                 canvasPreview
 
                 InfoButton(
@@ -187,7 +209,8 @@ struct DimensionPickerView: View {
         Button {
             selectedAspect = preset
             aspectLocked = true
-            if let (w, h) = preset.targetDimensions {
+            let dims = halfRes ? halfResDimensions(for: preset) : preset.targetDimensions
+            if let (w, h) = dims {
                 width  = w
                 height = h
             }
@@ -275,6 +298,21 @@ struct DimensionPickerView: View {
         Swift.swap(&width, &height)
         if selectedAspect != .free {
             selectedAspect = selectedAspect.swapped
+        }
+    }
+
+    private func toggleHalfRes() {
+        halfRes.toggle()
+        if halfRes {
+            if let (w, h) = halfResDimensions {
+                width = w
+                height = h
+            }
+        } else {
+            if let (w, h) = selectedAspect.targetDimensions {
+                width = w
+                height = h
+            }
         }
     }
 
