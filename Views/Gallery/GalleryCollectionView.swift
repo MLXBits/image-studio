@@ -114,6 +114,7 @@ private struct SectionHeaderContent: View {
     let isDropTarget: Bool
     var onToggle: () -> Void
     var onRename: (() -> Void)?
+    var onDelete: (() -> Void)?
 
     var body: some View {
         HStack(spacing: 6) {
@@ -144,11 +145,22 @@ private struct SectionHeaderContent: View {
             if let fn = onRename {
                 Button("Rename Folder…") { fn() }
             }
+            if let fn = onDelete {
+                Button("Delete Folder…", role: .destructive) { fn() }
+            }
         }
     }
 }
 
 // MARK: - Section header NSView
+
+/// Callbacks a section header invokes; bundled to keep ``GallerySectionHeader/configure``
+/// within a sensible parameter count.
+struct SectionHeaderActions {
+    var onToggle: () -> Void
+    var onRename: (() -> Void)?
+    var onDelete: (() -> Void)?
+}
 
 final class GallerySectionHeader: NSView, NSCollectionViewElement {
     static let reuseID = NSUserInterfaceItemIdentifier("GallerySectionHeader")
@@ -159,10 +171,11 @@ final class GallerySectionHeader: NSView, NSCollectionViewElement {
     private(set) var boardName: String?
 
     func configure(name: String, count: Int, isExpanded: Bool, isDropTarget: Bool,
-                   onToggle: @escaping () -> Void, onRename: (() -> Void)?) {
+                   actions: SectionHeaderActions) {
         boardName = name
         let content = SectionHeaderContent(name: name, count: count, isExpanded: isExpanded,
-                                           isDropTarget: isDropTarget, onToggle: onToggle, onRename: onRename)
+                                           isDropTarget: isDropTarget, onToggle: actions.onToggle,
+                                           onRename: actions.onRename, onDelete: actions.onDelete)
         if let h = hosting {
             h.rootView = content
         } else {
@@ -323,6 +336,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onRevealInFinder: (String) -> Void
     var onToggleSection: (String) -> Void
     var onRenameBoard: (String) -> Void
+    var onDeleteBoard: (String) -> Void
     var onEscape: () -> Void
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -419,8 +433,11 @@ struct GalleryCollectionView: NSViewRepresentable {
                 header.configure(
                     name: sec.board, count: sec.items.count,
                     isExpanded: sec.isExpanded, isDropTarget: coord.dropTargetBoard == sec.board,
-                    onToggle: { coord.parent.onToggleSection(sec.board) },
-                    onRename: sec.board == "Default" ? nil : { coord.parent.onRenameBoard(sec.board) }
+                    actions: SectionHeaderActions(
+                        onToggle: { coord.parent.onToggleSection(sec.board) },
+                        onRename: sec.board == "Default" ? nil : { coord.parent.onRenameBoard(sec.board) },
+                        onDelete: sec.board == "Default" ? nil : { coord.parent.onDeleteBoard(sec.board) }
+                    )
                 )
             }
         }
@@ -473,8 +490,13 @@ struct GalleryCollectionView: NSViewRepresentable {
             header.configure(
                 name: sec.board, count: sec.items.count,
                 isExpanded: sec.isExpanded, isDropTarget: dropTargetBoard == sec.board,
-                onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
-                onRename: sec.board == "Default" ? nil : { [weak self] in self?.parent.onRenameBoard(sec.board) }
+                actions: SectionHeaderActions(
+                    onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
+                    onRename: sec.board == "Default" ? nil
+                        : { [weak self] in self?.parent.onRenameBoard(sec.board) },
+                    onDelete: sec.board == "Default" ? nil
+                        : { [weak self] in self?.parent.onDeleteBoard(sec.board) }
+                )
             )
             return header
         }
@@ -657,9 +679,13 @@ struct GalleryCollectionView: NSViewRepresentable {
                         name: sec.board, count: sec.items.count,
                         isExpanded: sec.isExpanded,
                         isDropTarget: sec.board == newBoard,
-                        onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
-                        onRename: sec.board == "Default" ? nil
-                            : { [weak self] in self?.parent.onRenameBoard(sec.board) }
+                        actions: SectionHeaderActions(
+                            onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
+                            onRename: sec.board == "Default" ? nil
+                                : { [weak self] in self?.parent.onRenameBoard(sec.board) },
+                            onDelete: sec.board == "Default" ? nil
+                                : { [weak self] in self?.parent.onDeleteBoard(sec.board) }
+                        )
                     )
                     found.insert(sec.board)
                 }
@@ -675,9 +701,13 @@ struct GalleryCollectionView: NSViewRepresentable {
                     name: sec.board, count: sec.items.count,
                     isExpanded: sec.isExpanded,
                     isDropTarget: sec.board == newBoard,
-                    onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
-                    onRename: sec.board == "Default" ? nil
-                        : { [weak self] in self?.parent.onRenameBoard(sec.board) }
+                    actions: SectionHeaderActions(
+                        onToggle: { [weak self] in self?.parent.onToggleSection(sec.board) },
+                        onRename: sec.board == "Default" ? nil
+                            : { [weak self] in self?.parent.onRenameBoard(sec.board) },
+                        onDelete: sec.board == "Default" ? nil
+                            : { [weak self] in self?.parent.onDeleteBoard(sec.board) }
+                    )
                 )
             }
         }

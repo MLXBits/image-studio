@@ -251,6 +251,14 @@ struct ContentView: View {
                 }
             }
         }
+        .onChange(of: gallery.items.map(\.id)) { _, ids in
+            // If the previewed item is deleted out from under us (e.g. shift+delete
+            // the last image in a group), drop back to the idle/active-job state
+            // instead of leaving the detail pane spinning on a missing file.
+            guard case .galleryItem(let item) = previewState, !ids.contains(item.id) else { return }
+            selectedGalleryItem = nil
+            previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
+        }
         .background {
             Button("") { showingQueue.toggle() }
                 .keyboardShortcut("k", modifiers: .command)

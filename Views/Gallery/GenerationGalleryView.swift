@@ -17,6 +17,8 @@ struct GenerationGalleryView: View {
     @State private var renamingBoard: String?
     @State private var renameNameDraft: String = ""
     @State private var showingRenameAlert: Bool = false
+    @State private var deletingBoard: String?
+    @State private var showingBoardDeleteConfirm: Bool = false
     @State private var showingNewGroup: Bool = false
     @State private var newGroupName: String = ""
     // Inverted: we store collapsed boards. New boards are not in the set → auto-expanded.
@@ -35,9 +37,11 @@ struct GenerationGalleryView: View {
     }
 
     private var gallerySections: [GallerySection] {
-        orderedBoards.compactMap { board in
+        // Named folders are shown even when empty (their header acts as the drop
+        // target and delete affordance); the implicit "Default" board only appears
+        // when it actually holds loose images at the output root.
+        orderedBoards.map { board in
             let items = gallery.items.filter { $0.board == board }
-            guard !items.isEmpty else { return nil }
             return GallerySection(board: board, items: items, isExpanded: !collapsedBoards.contains(board))
         }
     }
@@ -55,7 +59,7 @@ struct GenerationGalleryView: View {
                 Divider()
             }
 
-            if gallery.items.isEmpty {
+            if gallerySections.isEmpty {
                 emptyState
             } else {
                 GalleryCollectionView(
@@ -134,6 +138,10 @@ struct GenerationGalleryView: View {
                         renameNameDraft = board
                         showingRenameAlert = true
                     },
+                    onDeleteBoard: { board in
+                        deletingBoard = board
+                        showingBoardDeleteConfirm = true
+                    },
                     onEscape: {
                         clearSelection(nextItem: nil)
                         onClearPreview?()
@@ -205,11 +213,38 @@ struct GenerationGalleryView: View {
             Button("Cancel", role: .cancel) { deleteTarget = nil }
         } message: {
             if deleteTarget != nil || selection.count <= 1 {
-                Text("This will permanently delete the image and its sidecar file.")
+                Text("This will permanently delete the image and its metadata file.")
             } else {
-                Text("This will permanently delete \(selection.count) images and their sidecar files.")
+                Text("This will permanently delete \(selection.count) images and their metadata files.")
             }
         }
+        .confirmationDialog(
+            "Delete folder \"\(deletingBoard ?? "")\"?",
+            isPresented: $showingBoardDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                if let board = deletingBoard {
+                    if collapsedBoards.contains(board) { collapsedBoards.remove(board) }
+                    gallery.deleteBoard(board, outputDir: settings.outputDir)
+                }
+                deletingBoard = nil
+            }
+            Button("Cancel", role: .cancel) { deletingBoard = nil }
+        } message: {
+            let count = boardImageCount(deletingBoard)
+            if count == 0 {
+                Text("This empty folder will be permanently deleted.")
+            } else {
+                Text("This will permanently delete the folder and its \(count) "
+                    + "image\(count == 1 ? "" : "s") (plus their metadata files).")
+            }
+        }
+    }
+
+    private func boardImageCount(_ board: String?) -> Int {
+        guard let board else { return 0 }
+        return gallery.items.filter { $0.board == board }.count
     }
 
     // MARK: - Header
