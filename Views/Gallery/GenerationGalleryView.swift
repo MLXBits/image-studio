@@ -143,6 +143,11 @@ struct GenerationGalleryView: View {
             }
         }
         .onAppear { loadCollapsedBoards() }
+        .onChange(of: selectedItem?.id) { _, newId in
+            guard let id = newId, anchorItemId != id else { return }
+            selection = [id]
+            anchorItemId = id
+        }
         .onChange(of: collapsedBoards) { _, newValue in
             UserDefaults.standard.set(Array(newValue), forKey: Self.collapsedBoardsKey)
         }
@@ -185,6 +190,7 @@ struct GenerationGalleryView: View {
                     if anchorItemId == item.id {
                         anchorItemId = adjacent?.id
                         selectedItem = adjacent
+                        if selection.isEmpty, let adj = adjacent { selection.insert(adj.id) }
                     }
                     gallery.delete(item, outputDir: settings.outputDir)
                     deleteTarget = nil
@@ -265,7 +271,7 @@ struct GenerationGalleryView: View {
     }
 
     private func clearSelection(nextItem: GalleryItem?) {
-        selection.removeAll()
+        selection = nextItem.map { [$0.id] } ?? []
         anchorItemId = nextItem?.id
         selectedItem = nextItem
     }
