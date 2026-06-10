@@ -9,7 +9,7 @@ set -eo pipefail
 #   2. notarytool credentials stored once via:
 #      xcrun notarytool store-credentials "notarytool" \
 #        --apple-id "your@email.com" \
-#        --team-id K25M5H6GAF \
+#        --team-id 39TQC8LANW \
 #        --password "xxxx-xxxx-xxxx-xxxx"   # app-specific password from appleid.apple.com
 
 VERSION="${1:?Usage: ./release.sh <version>  e.g. ./release.sh 0.1.0}"
@@ -32,12 +32,20 @@ echo "==> Regenerating Xcode project..."
 cd "$SCRIPT_DIR"
 xcodegen generate
 
+# Build number = total git commit count. Monotonically increases with every
+# commit, so it never collides and never needs a manual bump.
+BUILD_NUMBER="$(git rev-list --count HEAD)"
+echo "==> Version $VERSION, build $BUILD_NUMBER (git commit count)"
+
 echo "==> Archiving (this takes a few minutes)..."
 xcodebuild archive \
   -scheme "$SCHEME" \
   -archivePath "$ARCHIVE" \
   -configuration Release \
   -destination "generic/platform=macOS" \
+  MARKETING_VERSION="$VERSION" \
+  CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  -allowProvisioningUpdates \
   -quiet \
   > "$BUILD_DIR/archive.log" 2>&1 || {
     echo "Archive failed. Last 40 lines of log:"
@@ -50,7 +58,7 @@ echo "==> Exporting with Developer ID..."
 xcodebuild -exportArchive \
   -archivePath "$ARCHIVE" \
   -exportPath "$EXPORT_DIR" \
-  -exportOptionsPlist "$SCRIPT_DIR/Resources/ExportOptions.plist" \
+  -exportOptionsPlist "$SCRIPT_DIR/ExportOptions.plist" \
   > "$BUILD_DIR/export.log" 2>&1 || {
     echo "Export failed. Last 40 lines of log:"
     tail -40 "$BUILD_DIR/export.log"
