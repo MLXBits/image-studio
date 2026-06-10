@@ -21,12 +21,13 @@ struct GenerationGalleryView: View {
     @State private var newGroupName: String = ""
     // Inverted: we store collapsed boards. New boards are not in the set → auto-expanded.
     @State private var collapsedBoards: Set<String> = []
-    @State private var multiSelection: Set<UUID> = []
+    // Unified selection: all selected items live here (plain click and Cmd+click alike).
+    // anchorItemId is the "preview" item shown in the right pane.
+    @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
 
     private static let collapsedBoardsKey = "gallery.collapsedBoards"
 
-    // Default first, then all others alphabetically — non-empty boards only.
     private var orderedBoards: [String] {
         let hasDefault = gallery.items.contains { $0.board == "Default" }
         let others = gallery.boards.filter { $0 != "Default" }.sorted()
@@ -41,8 +42,6 @@ struct GenerationGalleryView: View {
         }
     }
 
-    private var hasAnySelection: Bool { selectedItem != nil || !multiSelection.isEmpty }
-
     var body: some View {
         VStack(spacing: 0) {
             headerRow
@@ -51,7 +50,7 @@ struct GenerationGalleryView: View {
 
             Divider()
 
-            if !multiSelection.isEmpty {
+            if selection.count > 1 {
                 batchActionBar
                 Divider()
             }
@@ -61,19 +60,25 @@ struct GenerationGalleryView: View {
             } else {
                 GalleryCollectionView(
                     sections: gallerySections,
-                    selectedItemId: selectedItem?.id,
-                    multiSelectionIds: multiSelection,
+                    selectedItemId: anchorItemId,
+                    multiSelectionIds: selection,
                     anchorItemId: anchorItemId,
                     onSelect: { item in
-                        multiSelection.removeAll()
-                        selectedItem = item
+                        selection = [item.id]
                         anchorItemId = item.id
+                        selectedItem = item
                     },
                     onMultiToggle: { item in
-                        if multiSelection.contains(item.id) {
-                            multiSelection.remove(item.id)
+                        if selection.contains(item.id) {
+                            selection.remove(item.id)
+                            if anchorItemId == item.id {
+                                anchorItemId = selection.first
+                                selectedItem = gallery.items.first { $0.id == selection.first }
+                            }
                         } else {
-                            multiSelection.insert(item.id)
+                            selection.insert(item.id)
+                            anchorItemId = item.id
+                            selectedItem = item
                         }
                     },
                     onRangeSelect: { item in rangeSelect(to: item) },
@@ -83,7 +88,12 @@ struct GenerationGalleryView: View {
                         showingDeleteConfirm = true
                     },
                     onDeleteImmediate: { item in
-                        selectedItem = adjacentItem(to: item)
+                        let adjacent = adjacentItem(to: item)
+                        selection.remove(item.id)
+                        if anchorItemId == item.id {
+                            anchorItemId = adjacent?.id
+                            selectedItem = adjacent
+                        }
                         gallery.delete(item, outputDir: settings.outputDir)
                     },
                     onDeleteMultiRequest: {
@@ -91,16 +101,17 @@ struct GenerationGalleryView: View {
                         showingDeleteConfirm = true
                     },
                     onDeleteMultiImmediate: {
-                        let toDelete = gallery.items.filter { multiSelection.contains($0.id) }
-                        if let sel = selectedItem, multiSelection.contains(sel.id) { selectedItem = nil }
+                        let anchorItem = gallery.items.first { $0.id == anchorItemId }
+                        let adjacent = anchorItem.flatMap { adjacentItem(to: $0) }
+                        let toDelete = gallery.items.filter { selection.contains($0.id) }
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
-                        multiSelection.removeAll()
+                        clearSelection(nextItem: adjacent)
                     },
                     onRemix: onRemix,
                     onApplySettings: { _, meta in onApplySettings(meta) },
                     onUseInImg2Img: onUseInImg2Img,
                     onMoveToBoard: { item, board in
-                        if multiSelection.contains(item.id) {
+                        if selection.contains(item.id) {
                             batchMove(to: board)
                         } else {
                             gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
@@ -124,11 +135,8 @@ struct GenerationGalleryView: View {
                         showingRenameAlert = true
                     },
                     onEscape: {
-                        if !multiSelection.isEmpty {
-                            multiSelection.removeAll()
-                        } else if selectedItem != nil {
-                            onClearPreview?()
-                        }
+                        clearSelection(nextItem: nil)
+                        onClearPreview?()
                     }
                 )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -164,31 +172,36 @@ struct GenerationGalleryView: View {
             Text("Enter a new name for \"\(renamingBoard ?? "")\".")
         }
         .confirmationDialog(
-            deleteTarget != nil
+            deleteTarget != nil || selection.count <= 1
                 ? "Delete image?"
-                : "Delete \(multiSelection.count) image\(multiSelection.count == 1 ? "" : "s")?",
+                : "Delete \(selection.count) images?",
             isPresented: $showingDeleteConfirm,
             titleVisibility: .visible
         ) {
             Button("Delete", role: .destructive) {
                 if let item = deleteTarget {
-                    selectedItem = adjacentItem(to: item)
+                    let adjacent = adjacentItem(to: item)
+                    selection.remove(item.id)
+                    if anchorItemId == item.id {
+                        anchorItemId = adjacent?.id
+                        selectedItem = adjacent
+                    }
                     gallery.delete(item, outputDir: settings.outputDir)
                     deleteTarget = nil
                 } else {
-                    let toDelete = gallery.items.filter { multiSelection.contains($0.id) }
-                    if let sel = selectedItem, multiSelection.contains(sel.id) { selectedItem = nil }
+                    let anchorItem = gallery.items.first { $0.id == anchorItemId }
+                    let adjacent = anchorItem.flatMap { adjacentItem(to: $0) }
+                    let toDelete = gallery.items.filter { selection.contains($0.id) }
                     gallery.deleteItems(toDelete, outputDir: settings.outputDir)
-                    multiSelection.removeAll()
+                    clearSelection(nextItem: adjacent)
                 }
             }
             Button("Cancel", role: .cancel) { deleteTarget = nil }
         } message: {
-            if deleteTarget != nil {
+            if deleteTarget != nil || selection.count <= 1 {
                 Text("This will permanently delete the image and its sidecar file.")
             } else {
-                let plural = multiSelection.count == 1 ? "" : "s"
-                Text("This will permanently delete \(multiSelection.count) image\(plural) and their sidecar files.")
+                Text("This will permanently delete \(selection.count) images and their sidecar files.")
             }
         }
     }
@@ -209,11 +222,11 @@ struct GenerationGalleryView: View {
         }
     }
 
-    // MARK: - Batch action bar
+    // MARK: - Batch action bar (shown only when 2+ items selected)
 
     private var batchActionBar: some View {
         HStack(spacing: 8) {
-            Text("\(multiSelection.count) selected")
+            Text("\(selection.count) selected")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
             Menu {
@@ -235,7 +248,7 @@ struct GenerationGalleryView: View {
             }
             .buttonStyle(.borderless).foregroundStyle(.red)
 
-            Button { multiSelection.removeAll() } label: {
+            Button { clearSelection(nextItem: nil) } label: {
                 Image(systemName: "xmark").font(.caption)
             }
             .buttonStyle(.borderless).foregroundStyle(.secondary)
@@ -246,9 +259,15 @@ struct GenerationGalleryView: View {
     }
 
     private func batchMove(to board: String) {
-        let toMove = gallery.items.filter { multiSelection.contains($0.id) }
+        let toMove = gallery.items.filter { selection.contains($0.id) }
         gallery.moveItems(toMove, toBoard: board, outputDir: settings.outputDir)
-        multiSelection.removeAll()
+        clearSelection(nextItem: nil)
+    }
+
+    private func clearSelection(nextItem: GalleryItem?) {
+        selection.removeAll()
+        anchorItemId = nextItem?.id
+        selectedItem = nextItem
     }
 
     // MARK: - Range select (shift+click)
@@ -260,11 +279,11 @@ struct GenerationGalleryView: View {
            let anchorIdx = items.firstIndex(where: { $0.id == anchorId }) {
             let lo = min(anchorIdx, targetIdx)
             let hi = max(anchorIdx, targetIdx)
-            for i in lo...hi { multiSelection.insert(items[i].id) }
+            for i in lo...hi { selection.insert(items[i].id) }
         } else {
-            multiSelection.removeAll()
-            selectedItem = item
+            selection = [item.id]
             anchorItemId = item.id
+            selectedItem = item
         }
     }
 
@@ -291,10 +310,10 @@ struct GenerationGalleryView: View {
     private func confirmNewGroup() {
         let name = newGroupName.trimmingCharacters(in: .whitespaces)
         guard !name.isEmpty else { return }
-        if !multiSelection.isEmpty {
-            let toMove = gallery.items.filter { multiSelection.contains($0.id) }
+        if !selection.isEmpty {
+            let toMove = gallery.items.filter { selection.contains($0.id) }
             gallery.moveItems(toMove, toBoard: name, outputDir: settings.outputDir)
-            multiSelection.removeAll()
+            clearSelection(nextItem: nil)
         }
         onSelectBoard?(name)
         showingNewGroup = false
