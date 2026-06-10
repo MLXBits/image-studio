@@ -185,13 +185,27 @@ final class GallerySectionHeader: NSView, NSCollectionViewElement {
 final class GalleryNSCollectionView: NSCollectionView {
     weak var eventDelegate: GalleryCollectionViewEvents?
 
+    // When true, NSCollectionView is allowed to change selectionIndexPaths.
+    // Set only during arrow-key handling so keyboard navigation works normally,
+    // while mouse-click selection changes are blocked (we manage those ourselves).
+    var allowsSelectionChange = false
+
+    // Tracks the plain-click item path so singleClick can be deferred to mouseUp.
+    // NSCollectionView.mouseDown returns immediately (non-blocking); the drag threshold
+    // is detected in mouseDragged. Deferring to mouseUp ensures we don't clear
+    // multiSelection prematurely on what turns out to be the start of a drag.
+    // Drag sessions consume the source view's mouseUp, so mouseUp only fires for
+    // true clicks — exactly when we want singleClick to run.
+    private var pendingClickPath: IndexPath?
+
     override var acceptsFirstResponder: Bool { true }
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 123, 124, 125, 126:   // Arrow keys — NSCollectionView handles 2D navigation
+            allowsSelectionChange = true
             super.keyDown(with: event)
-            // Sync the newly focused item back to SwiftUI
+            allowsSelectionChange = false
             if let path = selectionIndexPaths.first {
                 eventDelegate?.didNavigate(to: path)
             }
@@ -208,6 +222,7 @@ final class GalleryNSCollectionView: NSCollectionView {
     }
 
     override func mouseDown(with event: NSEvent) {
+        pendingClickPath = nil  // clear stale state from any previous drag that consumed mouseUp
         let pt = convert(event.locationInWindow, from: nil)
         guard let path = indexPathForItem(at: pt) else {
             super.mouseDown(with: event)
@@ -221,9 +236,17 @@ final class GalleryNSCollectionView: NSCollectionView {
             eventDelegate?.shiftClick(at: path)
             super.mouseDown(with: event)
         } else {
-            super.mouseDown(with: event)          // sets NSCollectionView focus/selection
+            pendingClickPath = path
+            super.mouseDown(with: event)
+        }
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        if let path = pendingClickPath {
+            pendingClickPath = nil
             eventDelegate?.singleClick(at: path)
         }
+        super.mouseUp(with: event)
     }
 
     override func rightMouseDown(with event: NSEvent) {
@@ -316,7 +339,7 @@ struct GalleryCollectionView: NSViewRepresentable {
         cv.dataSource = context.coordinator
         cv.delegate = context.coordinator
         cv.isSelectable = true
-        cv.allowsMultipleSelection = false
+        cv.allowsMultipleSelection = true  // Native multi-item drag; we block user-driven changes via delegate
         cv.backgroundColors = [.clear]
         cv.register(GalleryCell.self, forItemWithIdentifier: GalleryCell.reuseID)
         cv.register(GallerySectionHeader.self,
@@ -353,25 +376,12 @@ struct GalleryCollectionView: NSViewRepresentable {
         coord.sections = sections
 
         if structureChanged {
-            // Snapshot first-responder state BEFORE reloadData, which can clear selection
-            // and may resign the collection view as first-responder.
             let cvHadFocus = isGalleryInResponderChain(scrollView: scrollView, window: cv.window)
-
             cv.reloadData()
-
-            // Restore selection + focus so arrow-key navigation continues without a click.
-            if let selId = selectedItemId {
-                for (si, sec) in sections.enumerated() {
-                    if let ii = sec.visibleItems.firstIndex(where: { $0.id == selId }) {
-                        cv.selectItems(at: [IndexPath(item: ii, section: si)], scrollPosition: [])
-                        if cvHadFocus { cv.window?.makeFirstResponder(cv) }
-                        break
-                    }
-                }
-            }
+            if cvHadFocus { cv.window?.makeFirstResponder(cv) }
         } else {
             // Refresh visible cells — thumbnail may have loaded or selection changed
-            let hasAny = selectedItemId != nil || !multiSelectionIds.isEmpty
+            let hasAny = !multiSelectionIds.isEmpty
             for path in cv.indexPathsForVisibleItems() {
                 guard path.section < sections.count,
                       path.item < sections[path.section].visibleItems.count else { continue }
@@ -379,10 +389,24 @@ struct GalleryCollectionView: NSViewRepresentable {
                 (cv.item(at: path) as? GalleryCell)?.configure(
                     item: item,
                     selected: item.id == selectedItemId,
-                    multiSelected: multiSelectionIds.contains(item.id),
+                    multiSelected: multiSelectionIds.count > 1 && multiSelectionIds.contains(item.id),
                     hasAny: hasAny
                 )
             }
+        }
+
+        // Keep NSCollectionView's selectionIndexPaths in sync with our unified selection so it
+        // knows which items to include in native multi-item drag sessions.
+        var wantedPaths = Set<IndexPath>()
+        for (si, sec) in sections.enumerated() {
+            for (ii, item) in sec.visibleItems.enumerated() {
+                if multiSelectionIds.contains(item.id) {
+                    wantedPaths.insert(IndexPath(item: ii, section: si))
+                }
+            }
+        }
+        if cv.selectionIndexPaths != wantedPaths {
+            cv.selectionIndexPaths = wantedPaths
         }
 
         // Refresh visible section headers
@@ -427,10 +451,10 @@ struct GalleryCollectionView: NSViewRepresentable {
             // swiftlint:disable:next force_cast
             let cell = cv.makeItem(withIdentifier: GalleryCell.reuseID, for: path) as! GalleryCell
             let item = sections[path.section].visibleItems[path.item]
-            let hasAny = parent.selectedItemId != nil || !parent.multiSelectionIds.isEmpty
+            let hasAny = !parent.multiSelectionIds.isEmpty
             cell.configure(item: item,
                            selected: item.id == parent.selectedItemId,
-                           multiSelected: parent.multiSelectionIds.contains(item.id),
+                           multiSelected: parent.multiSelectionIds.count > 1 && parent.multiSelectionIds.contains(item.id),
                            hasAny: hasAny)
             parent.onItemAppear(item)
             return cell
@@ -493,16 +517,20 @@ struct GalleryCollectionView: NSViewRepresentable {
         }
 
         func deleteKeyPressed(shift: Bool) {
-            if !parent.multiSelectionIds.isEmpty {
-                if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
-                return
-            }
-            guard let selId = parent.selectedItemId,
-                  let item = sections.flatMap(\.visibleItems).first(where: { $0.id == selId }) else { return }
-            if shift { parent.onDeleteImmediate(item) } else { parent.onDeleteRequest(item) }
+            guard !parent.multiSelectionIds.isEmpty else { return }
+            if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
         }
 
         func escapeKeyPressed() { parent.onEscape() }
+
+        // Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
+        // This lets NSCollectionView drive arrow-key navigation while we own click-based selection.
+        func collectionView(_ cv: NSCollectionView, shouldSelectItemsAt paths: Set<IndexPath>) -> Set<IndexPath> {
+            (cv as? GalleryNSCollectionView)?.allowsSelectionChange == true ? paths : []
+        }
+        func collectionView(_ cv: NSCollectionView, shouldDeselectItemsAt paths: Set<IndexPath>) -> Set<IndexPath> {
+            (cv as? GalleryNSCollectionView)?.allowsSelectionChange == true ? paths : []
+        }
 
         func rightClick(at path: IndexPath, event: NSEvent) {
             guard path.section < sections.count,
@@ -520,15 +548,8 @@ struct GalleryCollectionView: NSViewRepresentable {
             guard path.section < sections.count,
                   path.item < sections[path.section].visibleItems.count else { return nil }
             let item = sections[path.section].visibleItems[path.item]
-            let payload: String
-            if parent.multiSelectionIds.contains(item.id), !parent.multiSelectionIds.isEmpty {
-                let all = sections.flatMap(\.visibleItems).filter { parent.multiSelectionIds.contains($0.id) }
-                payload = all.map(\.path).joined(separator: "\n")
-            } else {
-                payload = item.path
-            }
             let pb = NSPasteboardItem()
-            pb.setString(payload, forType: .string)
+            pb.setString(item.path, forType: .string)
             return pb
         }
 
@@ -549,18 +570,30 @@ struct GalleryCollectionView: NSViewRepresentable {
             let old = dropTargetBoard
             dropTargetBoard = nil
             refreshDragHighlight(oldBoard: old, newBoard: nil, in: cv)
-            guard let si = sectionAt(draggingInfo: info, cv: cv), si < sections.count,
-                  let payload = info.draggingPasteboard.string(forType: .string) else { return false }
+            guard let si = sectionAt(draggingInfo: info, cv: cv), si < sections.count else { return false }
             let board = sections[si].board
-            var moved = false
-            for itemPath in payload.components(separatedBy: "\n") {
-                if let item = sections.flatMap(\.visibleItems).first(where: { $0.path == itemPath }),
-                   item.board != board {
-                    parent.onMoveToBoard(item, board)
-                    moved = true
-                }
+
+            // Collect all dragged items (one per NSDraggingItem in native multi-drag).
+            var draggedItems: [GalleryItem] = []
+            let allVisible = sections.flatMap(\.visibleItems)
+            info.enumerateDraggingItems(options: [], for: nil, classes: [NSPasteboardItem.self],
+                                        searchOptions: [:]) { draggingItem, _, _ in
+                guard let pbItem = draggingItem.item as? NSPasteboardItem,
+                      let itemPath = pbItem.string(forType: .string),
+                      let item = allVisible.first(where: { $0.path == itemPath }),
+                      item.board != board else { return }
+                draggedItems.append(item)
             }
-            return moved
+            guard !draggedItems.isEmpty else { return false }
+
+            // If any dragged item is in the selection, let onMoveToBoard trigger batchMove once
+            // (which moves all selected items). Otherwise move each dragged item individually.
+            if draggedItems.contains(where: { parent.multiSelectionIds.contains($0.id) }) {
+                parent.onMoveToBoard(draggedItems[0], board)
+            } else {
+                for item in draggedItems { parent.onMoveToBoard(item, board) }
+            }
+            return true
         }
 
         func dragExited(in cv: GalleryNSCollectionView) {
