@@ -27,3 +27,6 @@ Pods/
 
 # Carthage
 Carthage/Build/
+
+# Code-quality tool output
+.jscpd-report/

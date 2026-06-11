@@ -1,0 +1,17 @@
+{
+  "$schema": "https://raw.githubusercontent.com/kucherenko/jscpd/master/packages/jscpd/schema.json",
+  "format": ["swift"],
+  "minTokens": 50,
+  "minLines": 5,
+  "gitignore": true,
+  "absolute": true,
+  "ignore": [
+    "**/DerivedData/**",
+    "**/.build/**",
+    "**/build/**",
+    "**/*.generated.swift"
+  ],
+  "reporters": ["console", "html"],
+  "output": "./.jscpd-report",
+  "threshold": 2.5
+}
