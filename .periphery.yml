@@ -1,0 +1,9 @@
+project: MLXBits Image Studio.xcodeproj
+schemes:
+  - MLXBits Image Studio
+targets:
+  - MLXBits Image Studio
+# App target (not a library) — flag unused declarations even if `public`.
+retain_public: false
+# Keep @objc / Interface Builder-reachable symbols.
+retain_objc_accessible: true
