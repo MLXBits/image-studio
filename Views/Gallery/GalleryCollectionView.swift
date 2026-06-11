@@ -1,4 +1,4 @@
-// swiftlint:disable file_length type_body_length function_body_length
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -413,10 +413,8 @@ struct GalleryCollectionView: NSViewRepresentable {
         // knows which items to include in native multi-item drag sessions.
         var wantedPaths = Set<IndexPath>()
         for (si, sec) in sections.enumerated() {
-            for (ii, item) in sec.visibleItems.enumerated() {
-                if multiSelectionIds.contains(item.id) {
-                    wantedPaths.insert(IndexPath(item: ii, section: si))
-                }
+            for (ii, item) in sec.visibleItems.enumerated() where multiSelectionIds.contains(item.id) {
+                wantedPaths.insert(IndexPath(item: ii, section: si))
             }
         }
         if cv.selectionIndexPaths != wantedPaths {

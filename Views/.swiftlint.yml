@@ -1,0 +1,8 @@
+# Nested config — MERGES with the root .swiftlint.yml (inherits all opt-in
+# rules, thresholds, etc.). Only the deltas below apply to files under Views/.
+#
+# SwiftUI view files legitimately contain long @ViewBuilder funcs. The root
+# config enforces function_body_length on non-view code (Runner/Stores/Models);
+# we exempt it here so view construction isn't nagged.
+disabled_rules:
+  - function_body_length
