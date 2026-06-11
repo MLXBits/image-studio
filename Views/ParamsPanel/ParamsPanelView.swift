@@ -20,6 +20,8 @@ struct ParamsPanelView: View {
     @State private var isEditDropTargeted: Bool = false
     @State private var showingTemplatePicker: Bool = false
 
+    private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
+
     private var isDistilled: Bool {
         params.model.isDistilled
     }
@@ -490,7 +492,7 @@ struct ParamsPanelView: View {
         .dropDestination(for: String.self, action: { paths, _ in
             guard let path = paths.first else { return false }
             let ext = (path as NSString).pathExtension.lowercased()
-            guard ["png", "jpg", "jpeg", "webp"].contains(ext) else { return false }
+            guard Self.imageExtensions.contains(ext) else { return false }
             params.imagePath = path
             return true
         }, isTargeted: { isImageDropTargeted = $0 })
@@ -499,19 +501,12 @@ struct ParamsPanelView: View {
                 guard let data,
                       let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
                 let ext = url.pathExtension.lowercased()
-                guard ["png", "jpg", "jpeg", "webp"].contains(ext) else { return }
+                guard Self.imageExtensions.contains(ext) else { return }
                 DispatchQueue.main.async { self.params.imagePath = url.path }
             }
             return true
         }
-        .overlay {
-            if isImageDropTargeted {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.accentColor.opacity(0.45))
-                    .padding(-10)
-                    .allowsHitTesting(false)
-            }
-        }
+        .dropHighlight(isImageDropTargeted)
     }
 
     // MARK: - Board row
@@ -559,26 +554,33 @@ struct ParamsPanelView: View {
         return pb.canReadObject(forClasses: [NSImage.self], options: nil)
             || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
                 .compactMap { $0 as? URL }
-                .first { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) } != nil
+                .first { Self.imageExtensions.contains($0.pathExtension.lowercased()) } != nil
     }
 
-    private func pasteImage() {
+    /// Resolves an image path from the general pasteboard, preferring an on-disk file
+    /// URL and otherwise saving raw image data to a temp PNG named with `tempPrefix`.
+    private func imagePathFromPasteboard(tempPrefix: String) -> String? {
         let pb = NSPasteboard.general
         // Prefer a file URL so we keep the original file on disk
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }) {
-            params.imagePath = url.path
-            return
+           let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
+            return url.path
         }
         // Fall back to raw image data — save to a temp PNG
-        guard let image = NSImage(pasteboard: pb) else { return }
+        guard let image = NSImage(pasteboard: pb) else { return nil }
         let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pasted-image-\(Int(Date().timeIntervalSince1970)).png")
+            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return }
+              let png = rep.representation(using: .png, properties: [:]) else { return nil }
         try? png.write(to: tmp)
-        params.imagePath = tmp.path
+        return tmp.path
+    }
+
+    private func pasteImage() {
+        if let path = imagePathFromPasteboard(tempPrefix: "pasted-image") {
+            params.imagePath = path
+        }
     }
 
     private func browseImage() {
@@ -588,7 +590,7 @@ struct ParamsPanelView: View {
         panel.title = "Select Reference Image"
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
-            if ["png", "jpg", "jpeg", "webp"].contains(ext) {
+            if Self.imageExtensions.contains(ext) {
                 params.imagePath = url.path
             }
         }
@@ -687,7 +689,7 @@ struct ParamsPanelView: View {
             }
         }
         .dropDestination(for: String.self, action: { paths, _ in
-            let valid = paths.filter { ["png", "jpg", "jpeg", "webp"].contains(($0 as NSString).pathExtension.lowercased()) }
+            let valid = paths.filter { Self.imageExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
             guard !valid.isEmpty else { return false }
             for path in valid where !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
             return true
@@ -696,7 +698,7 @@ struct ParamsPanelView: View {
             for provider in providers {
                 provider.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
                     guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                    guard ["png", "jpg", "jpeg", "webp"].contains(url.pathExtension.lowercased()) else { return }
+                    guard Self.imageExtensions.contains(url.pathExtension.lowercased()) else { return }
                     DispatchQueue.main.async {
                         if !self.params.editImagePaths.contains(url.path) { self.params.editImagePaths.append(url.path) }
                     }
@@ -704,14 +706,7 @@ struct ParamsPanelView: View {
             }
             return true
         }
-        .overlay {
-            if isEditDropTargeted {
-                RoundedRectangle(cornerRadius: 10)
-                    .fill(Color.accentColor.opacity(0.45))
-                    .padding(-10)
-                    .allowsHitTesting(false)
-            }
-        }
+        .dropHighlight(isEditDropTargeted)
     }
 
     @ViewBuilder
@@ -750,7 +745,7 @@ struct ParamsPanelView: View {
         panel.allowsMultipleSelection = true
         panel.title = "Select Images"
         if panel.runModal() == .OK {
-            let valid = panel.urls.filter { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }
+            let valid = panel.urls.filter { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
             for url in valid where !params.editImagePaths.contains(url.path) {
                 params.editImagePaths.append(url.path)
             }
@@ -758,19 +753,22 @@ struct ParamsPanelView: View {
     }
 
     private func pasteEditImage() {
-        let pb = NSPasteboard.general
-        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { ["png", "jpg", "jpeg", "webp"].contains($0.pathExtension.lowercased()) }) {
-            if !params.editImagePaths.contains(url.path) { params.editImagePaths.append(url.path) }
-            return
+        guard let path = imagePathFromPasteboard(tempPrefix: "pasted-edit") else { return }
+        if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+    }
+}
+
+private extension View {
+    /// Highlights a drop target with an accent-colored rounded overlay while `active`.
+    @ViewBuilder
+    func dropHighlight(_ active: Bool) -> some View {
+        overlay {
+            if active {
+                RoundedRectangle(cornerRadius: 10)
+                    .fill(Color.accentColor.opacity(0.45))
+                    .padding(-10)
+                    .allowsHitTesting(false)
+            }
         }
-        guard let image = NSImage(pasteboard: pb) else { return }
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pasted-edit-\(Int(Date().timeIntervalSince1970)).png")
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return }
-        try? png.write(to: tmp)
-        if !params.editImagePaths.contains(tmp.path) { params.editImagePaths.append(tmp.path) }
     }
 }

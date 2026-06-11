@@ -58,7 +58,9 @@ final class FluxJobRunner {
 
     // MARK: - Private execution
 
-    // swiftlint:disable:next cyclomatic_complexity
+    // Intentionally long until the CLI subprocess is replaced with pure-Python
+    // calls, at which point this method gets split up.
+    // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func run(_ job: FluxJob, settings: AppSettings) async {
         activeJob = job
         job.status = .running
@@ -122,27 +124,7 @@ final class FluxJobRunner {
         process.arguments = args
         process.environment = settings.buildEnvironment()
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        self.currentProcess = process
-
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+        let stream = makeOutputStream(for: process)
 
         // Pre-compute expected output paths for multi-seed so we can poll as each lands.
         let batchPaths: [(seed: Int, path: String)] = isMultiSeed
@@ -235,6 +217,32 @@ final class FluxJobRunner {
         }
     }
 
+    /// Wires `process` to a pipe for combined stdout+stderr, tracks it as the current
+    /// process, and returns an `AsyncStream` yielding decoded output chunks.
+    private func makeOutputStream(for process: Process) -> AsyncStream<String> {
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        self.currentProcess = process
+
+        return AsyncStream<String> { continuation in
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
+            }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
+    }
+
     private func finishJob(_ job: FluxJob, status: JobStatus, stepDir: URL) {
         batchPollingTask?.cancel()
         batchPollingTask = nil
@@ -271,27 +279,7 @@ final class FluxJobRunner {
         process.arguments = args
         process.environment = settings.buildEnvironment()
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        self.currentProcess = process
-
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+        let stream = makeOutputStream(for: process)
 
         do { try process.run() } catch {
             self.currentProcess = nil
