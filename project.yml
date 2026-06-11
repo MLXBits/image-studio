@@ -2,16 +2,17 @@ name: MLXBits Image Studio
 options:
   bundleIdPrefix: com.mlxbits
   deploymentTarget:
-    macOS: "14.0"
-  xcodeVersion: "15.0"
+    macOS: "26.5"
+  xcodeVersion: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MACOSX_DEPLOYMENT_TARGET: "14.0"
-    SWIFT_STRICT_CONCURRENCY: minimal
+    MACOSX_DEPLOYMENT_TARGET: "26.5"
+    SWIFT_APPROACHABLE_CONCURRENCY: YES
+    SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
     MARKETING_VERSION: "0.1.0"
@@ -26,15 +27,19 @@ targets:
   MLXBits Image Studio:
     type: application
     platform: macOS
+    # Explicit source dirs only — `path: .` swept build artifacts, tooling
+    # configs (.swiftlint.yml/.periphery.yml/.jscpd.json), reports, logs, and
+    # the built .app/.dmg into the app bundle (dotfile-blind `*.yml` excludes).
+    # Info.plist + entitlements are wired via the `info:`/`entitlements:` keys.
     sources:
-      - path: .
+      - App
+      - Models
+      - Runner
+      - Stores
+      - Utilities
+      - path: Views
         excludes:
-          - "*.yml"
-          - "*.md"
-          - ".git/**"
-          - "*.xcodeproj/**"
-          - "release.sh"
-          - "ExportOptions.plist"
+          - ".swiftlint.yml"
     info:
       path: Resources/Info.plist
       properties:
@@ -42,7 +47,7 @@ targets:
         CFBundleIdentifier: com.mlxbits.image-studio
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        LSMinimumSystemVersion: "14.0"
+        LSMinimumSystemVersion: "26.5"
         NSHumanReadableCopyright: ""
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
