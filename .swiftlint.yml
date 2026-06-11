@@ -11,11 +11,14 @@ excluded:
 # ── Disabled rules ─────────────────────────────────────────────────────────────
 
 disabled_rules:
-  # SwiftUI view bodies legitimately exceed default thresholds
-  - function_body_length
+  # SwiftUI view structs legitimately exceed type-body thresholds
   - type_body_length
   # Xcode-generated app entry point name contains underscores
   - type_name
+  # NOTE: function_body_length is enabled globally (see config below) and
+  # disabled only for view files via Views/.swiftlint.yml (nested configs
+  # MERGE with this one). It ignores computed properties, so SwiftUI `var
+  # body` is never counted — only real `func` declarations are.
 
 # ── Opt-in rules ───────────────────────────────────────────────────────────────
 
@@ -92,6 +95,12 @@ file_length:
 
 analyzer_rules:
   - unused_import
+
+function_body_length:
+  # Enforced on Runner/Stores/Models; disabled for Views/ (long @ViewBuilder
+  # funcs). Computed properties (SwiftUI `var body`) are exempt by the rule.
+  warning: 80
+  error: 400
 
 cyclomatic_complexity:
   ignores_case_statements: true
