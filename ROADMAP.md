@@ -3,7 +3,7 @@
 ## Planned
 
 ### Keep Model Warm (Persistent Daemon)
-**Plan:** [`~/.claude/plans/image-studio-keep-model-warm-daemon.md`](~/.claude/plans/image-studio-keep-model-warm-daemon.md)
+**Plan:** [`.claude/plans/image-studio-keep-model-warm-daemon.md`](.claude/plans/image-studio-keep-model-warm-daemon.md)
 
 Replace the current one-shot subprocess-per-job architecture with a persistent `mflux-daemon` Python process that keeps the model loaded in Metal memory between generations. Communication via Unix domain socket (newline-delimited JSON). Eliminates the model reload cost on back-to-back jobs.
 
