@@ -37,7 +37,6 @@
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
-		AC34F3BAF72F57E4B369016C /* .swiftlint.yml in Resources */ = {isa = PBXBuildFile; fileRef = "TEMP_8ACF1B3E-FADA-4FD3-BBA5-AD20500C41A4" /* .swiftlint.yml */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
@@ -69,7 +68,6 @@
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
-		9135F9C12F493D9C0C50F9C0 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
 		96B20E83673119F893B43BBB /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
@@ -79,7 +77,6 @@
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
-		B4AC7D434D66D9191658D727 /* MLXBits_Image_Studio.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = MLXBits_Image_Studio.entitlements; sourceTree = "<group>"; };
 		B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
@@ -92,8 +89,6 @@
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
-		"TEMP_01859B0D-AC73-41F3-9D64-A0DC1512761A" /* .gitignore */ = {isa = PBXFileReference; path = .gitignore; sourceTree = "<group>"; };
-		"TEMP_8ACF1B3E-FADA-4FD3-BBA5-AD20500C41A4" /* .swiftlint.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; path = .swiftlint.yml; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -103,13 +98,6 @@
 				B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */,
 			);
 			path = Queue;
-			sourceTree = "<group>";
-		};
-		05E9ADFADCD3139E1E96B66C /* build */ = {
-			isa = PBXGroup;
-			children = (
-			);
-			path = build;
 			sourceTree = "<group>";
 		};
 		117682124434130DAFA9B142 /* Utilities */ = {
@@ -142,9 +130,7 @@
 			isa = PBXGroup;
 			children = (
 				E8F1DFE8F60EE409FB230CA2 /* App */,
-				05E9ADFADCD3139E1E96B66C /* build */,
 				EF16D0F619C4921D0A476F26 /* Models */,
-				AB119E2514CE274AB18259A7 /* Resources */,
 				9F6BCBE28C9814EF7779D261 /* Runner */,
 				F0AE2F196D188960303A9263 /* Stores */,
 				117682124434130DAFA9B142 /* Utilities */,
@@ -180,15 +166,6 @@
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
 			);
 			path = Runner;
-			sourceTree = "<group>";
-		};
-		AB119E2514CE274AB18259A7 /* Resources */ = {
-			isa = PBXGroup;
-			children = (
-				9135F9C12F493D9C0C50F9C0 /* Info.plist */,
-				B4AC7D434D66D9191658D727 /* MLXBits_Image_Studio.entitlements */,
-			);
-			path = Resources;
 			sourceTree = "<group>";
 		};
 		AE6CA2D7C353EC349D6C918D /* Settings */ = {
@@ -265,24 +242,6 @@
 			path = Stores;
 			sourceTree = "<group>";
 		};
-		"TEMP_10C091E5-6673-438F-900B-2FB358F3169F" /* . */ = {
-			isa = PBXGroup;
-			children = (
-				"TEMP_8ACF1B3E-FADA-4FD3-BBA5-AD20500C41A4" /* .swiftlint.yml */,
-				"TEMP_01859B0D-AC73-41F3-9D64-A0DC1512761A" /* .gitignore */,
-				E8F1DFE8F60EE409FB230CA2 /* App */,
-				9F6BCBE28C9814EF7779D261 /* Runner */,
-				AB119E2514CE274AB18259A7 /* Resources */,
-				F0AE2F196D188960303A9263 /* Stores */,
-				EF16D0F619C4921D0A476F26 /* Models */,
-				117682124434130DAFA9B142 /* Utilities */,
-				05E9ADFADCD3139E1E96B66C /* build */,
-				B710AC1696FB0682EE9DD323 /* Views */,
-			);
-			name = .;
-			path = .;
-			sourceTree = "<group>";
-		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -311,7 +270,7 @@
 			isa = PBXProject;
 			attributes = {
 				BuildIndependentTargetsInParallel = YES;
-				LastUpgradeCheck = 1500;
+				LastUpgradeCheck = 2600;
 				TargetAttributes = {
 					FD361358DA78AED467EBF531 = {
 						ProvisioningStyle = Automatic;
@@ -342,7 +301,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				AC34F3BAF72F57E4B369016C /* .swiftlint.yml in Resources */,
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -486,7 +444,7 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				MTL_FAST_MATH = YES;
@@ -494,8 +452,9 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
-				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Debug;
@@ -549,15 +508,16 @@
 				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_VARIABLE = YES;
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 26.5;
 				MARKETING_VERSION = 0.1.0;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
 				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_STRICT_CONCURRENCY = minimal;
 				SWIFT_VERSION = 5.9;
 			};
 			name = Release;
