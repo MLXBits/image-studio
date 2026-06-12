@@ -382,7 +382,7 @@ struct ContentView: View {
                     }
                 }
                 .foregroundStyle(.white)
-                .background(RoundedRectangle(cornerRadius: 6).fill(Color.purple))
+                .background(RoundedRectangle(cornerRadius: 6).fill(Color.accentColor))
                 .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
                 .help("Generate (⌘↵)")
