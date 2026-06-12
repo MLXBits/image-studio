@@ -165,29 +165,39 @@ struct DimensionPickerView: View {
             Spacer(minLength: 4)
 
             HStack(alignment: .center, spacing: 6) {
-                Button { aspectLocked.toggle() } label: {
-                    Image(systemName: aspectLocked ? "lock.fill" : "lock.open")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(aspectLocked ? Color.orange : Color.secondary)
-                .help(aspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio")
+                // Utility toggles stacked in two rows to save horizontal width.
+                VStack(alignment: .leading, spacing: 3) {
+                    HStack(spacing: 4) {
+                        Button { aspectLocked.toggle() } label: {
+                            Image(systemName: aspectLocked ? "lock.fill" : "lock.open")
+                                .font(.caption)
+                                .iconButtonHitTarget()
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(aspectLocked ? Color.orange : Color.secondary)
+                        .help(aspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio")
 
-                Button(action: swapDimensions) {
-                    Image(systemName: "arrow.up.arrow.down")
-                        .font(.caption)
-                }
-                .buttonStyle(.plain)
-                .help("Swap width and height")
+                        Button(action: swapDimensions) {
+                            Image(systemName: "arrow.up.arrow.down")
+                                .font(.caption)
+                                .iconButtonHitTarget()
+                        }
+                        .buttonStyle(.plain)
+                        .help("Swap width and height")
+                    }
 
-                Button(action: toggleHalfRes) {
-                    Image(systemName: "bolt.fill")
-                        .font(.caption)
+                    HStack(spacing: 4) {
+                        Button(action: toggleHalfRes) {
+                            Image(systemName: "bolt.fill")
+                                .font(.caption)
+                                .iconButtonHitTarget()
+                        }
+                        .buttonStyle(.plain)
+                        .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
+                        .disabled(!aspectLocked)
+                        .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
+                    }
                 }
-                .buttonStyle(.plain)
-                .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
-                .disabled(!aspectLocked)
-                .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
 
                 canvasPreview
 
@@ -321,6 +331,18 @@ struct DimensionPickerView: View {
     private func snapTo16(_ val: Double) -> Int {
         guard val.isFinite, val > 0 else { return 64 }
         return max(64, min(2048, Int((val / 16).rounded() * 16)))
+    }
+}
+
+// MARK: - Icon button hit target
+
+extension View {
+    /// Expands a small icon-button glyph to a comfortable, uniform square click
+    /// target so toolbar icons (lock / swap / rapid-mode bolt) are easy to hit
+    /// instead of requiring a pixel-perfect press on the glyph itself.
+    func iconButtonHitTarget(_ side: CGFloat = 16) -> some View {
+        frame(width: side, height: side)
+            .contentShape(Rectangle())
     }
 }
 
