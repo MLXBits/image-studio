@@ -2,12 +2,43 @@
 import AppKit
 import SwiftUI
 
-private struct OverlayScrollerApplicator: NSViewRepresentable {
+// Fixes SwiftUI's ScrollView overriding autohidesScrollers=true regardless of system preference.
+// Sets autohidesScrollers and automaticallyAdjustsContentInsets to match NSScroller.preferredScrollerStyle,
+// then observes preferredScrollerStyleDidChangeNotification so the panel responds live to System Settings changes.
+private struct ScrollViewStyleAdapter: NSViewRepresentable {
     func makeNSView(context: Context) -> NSView { NSView() }
     func updateNSView(_ nsView: NSView, context: Context) {
-        DispatchQueue.main.async {
-            nsView.enclosingScrollView?.scrollerStyle = .overlay
+        context.coordinator.attach(to: nsView)
+    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
+
+    final class Coordinator {
+        private var observer: Any?
+        private weak var scrollView: NSScrollView?
+
+        func attach(to view: NSView) {
+            if scrollView == nil {
+                DispatchQueue.main.async { [weak self, weak view] in
+                    self?.scrollView = view?.enclosingScrollView
+                    self?.applyStyle()
+                }
+            }
+            guard observer == nil else { return }
+            observer = NotificationCenter.default.addObserver(
+                forName: NSScroller.preferredScrollerStyleDidChangeNotification,
+                object: nil,
+                queue: .main
+            ) { [weak self] _ in self?.applyStyle() }
         }
+
+        private func applyStyle() {
+            guard let sv = scrollView else { return }
+            let isOverlay = NSScroller.preferredScrollerStyle == .overlay
+            sv.autohidesScrollers = isOverlay
+            sv.automaticallyAdjustsContentInsets = true
+        }
+
+        deinit { if let o = observer { NotificationCenter.default.removeObserver(o) } }
     }
 }
 
@@ -109,10 +140,9 @@ struct ParamsPanelView: View {
             }
             .padding(.top, 10)
             .padding(.bottom, 16)
-            .background(OverlayScrollerApplicator())
+            .background(ScrollViewStyleAdapter())
         }
         .scrollIndicators(.automatic)
-        .contentMargins(.trailing, 5, for: .scrollContent)
     }
 
     private func panelSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
