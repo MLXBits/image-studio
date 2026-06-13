@@ -80,7 +80,6 @@ struct GalleryItemView: View, Equatable {
         if let img = item.thumbnailImage {
             Image(nsImage: img)
                 .resizable()
-                .aspectRatio(contentMode: .fill)
         } else {
             ZStack {
                 Color.secondary.opacity(0.15)

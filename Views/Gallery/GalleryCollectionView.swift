@@ -36,15 +36,18 @@ private struct ThumbnailCellView: View, Equatable {
 
     var body: some View {
         ZStack(alignment: .bottom) {
-            Group {
-                if let img = item.thumbnailImage {
-                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fill).clipped()
-                } else {
-                    Color.secondary.opacity(0.15)
-                        .overlay { Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary) }
+            Color.clear
+                .overlay {
+                    if let img = item.thumbnailImage {
+                        Image(nsImage: img)
+                            .resizable()
+                            .scaledToFill()
+                    } else {
+                        Color.secondary.opacity(0.15)
+                            .overlay { Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary) }
+                    }
                 }
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipped()
 
             if item.metadata != nil {
                 LinearGradient(colors: [.clear, .black.opacity(0.4)], startPoint: .center, endPoint: .bottom)
