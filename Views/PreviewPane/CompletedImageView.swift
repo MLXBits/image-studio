@@ -38,8 +38,8 @@ struct CompletedImageView: View {
                 }
                 if let meta = remixMeta {
                     Divider()
-                    Button("Remix (new seed)") { onRemix(meta) }
                     Button("Apply Settings") { onApplySettings(meta) }
+                    Button("Remix (new seed)") { onRemix(meta) }
                 }
                 if let path = job.outputPath {
                     Button("Use as Img2Img Input") { onUseInImg2Img(path) }
@@ -53,8 +53,8 @@ struct CompletedImageView: View {
 
             ImageMetadataPanel(
                 info: ImageMetadataInfo(job: job),
-                onRemix: remixMeta.map { meta in { onRemix(meta) } },
                 onApplySettings: remixMeta.map { meta in { onApplySettings(meta) } },
+                onRemix: remixMeta.map { meta in { onRemix(meta) } },
                 onUseInImg2Img: job.outputPath.map { path in { onUseInImg2Img(path) } },
                 onRevealInFinder: job.outputPath.map { path in {
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
