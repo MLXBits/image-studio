@@ -130,6 +130,10 @@ struct ContentView: View {
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
 
+    @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
+    @State private var paramsWidth: Double = 280
+    @State private var paramsDragBase: Double?
+
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
     @State private var galleryWidth: Double = 260
     @State private var galleryDragBase: Double?
@@ -168,6 +172,12 @@ struct ContentView: View {
         )
     }
 
+    private var paramsPane: some View {
+        ParamsPanelView(params: params)
+            .frame(width: CGFloat(paramsWidth))
+            .frame(maxHeight: .infinity)
+    }
+
     private var previewPane: some View {
         previewPaneView.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -197,9 +207,28 @@ struct ContentView: View {
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
-                    ParamsPanelView(params: params)
-                        .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
+                    paramsPane
+
                     Divider()
+                        .padding(.vertical, 3)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { value in
+                                    let base: Double
+                                    if let b = paramsDragBase { base = b } else {
+                                        paramsDragBase = paramsWidth; base = paramsWidth
+                                    }
+                                    paramsWidth = max(220, min(420, base + value.translation.width))
+                                }
+                                .onEnded { _ in
+                                    paramsDragBase = nil
+                                    savedParamsWidth = paramsWidth
+                                }
+                        )
+                        .onHover { hovering in
+                            if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                        }
                 }
 
                 previewPane
@@ -300,6 +329,7 @@ struct ContentView: View {
                 .environment(settings)
         }
         .onAppear {
+            paramsWidth = savedParamsWidth
             galleryWidth = savedGalleryWidth
             params.applyDefaults(from: settings)
             if settings.outputDir.isEmpty {
