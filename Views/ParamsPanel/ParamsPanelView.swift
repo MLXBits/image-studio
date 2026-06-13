@@ -122,7 +122,8 @@ struct ParamsPanelView: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 8))
-        .padding(.horizontal, 18)
+        .padding(.leading, 16)
+        .padding(.trailing, NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay))
     }
 
     // MARK: - Style (template) row
