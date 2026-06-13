@@ -69,8 +69,8 @@ struct ImageMetadataInfo {
 
 struct ImageMetadataPanel: View {
     let info: ImageMetadataInfo
-    let onRemix: (() -> Void)?
     let onApplySettings: (() -> Void)?
+    let onRemix: (() -> Void)?
     let onUseInImg2Img: (() -> Void)?
     let onRevealInFinder: (() -> Void)?
     let onShowLog: (() -> Void)?
@@ -182,15 +182,18 @@ struct ImageMetadataPanel: View {
                     .truncationMode(.middle)
             }
             Spacer()
-            if let fn = onRemix {
-                Button("Remix") { fn() }
-                    .buttonStyle(.bordered).controlSize(.small)
-            }
             if let fn = onApplySettings {
                 Button("Apply Settings") { fn() }
                     .buttonStyle(.bordered).controlSize(.small)
                     .help("Load all generation settings (including seed) without changing the prompt")
             }
+
+            if let fn = onRemix {
+                Button("Remix") { fn() }
+                    .buttonStyle(.bordered).controlSize(.small)
+                    .help("Re-generate this image with a new, random seed.")
+            }
+
             if let fn = onUseInImg2Img {
                 Button { fn() } label: { Image(systemName: "photo.on.rectangle.angled") }
                     .buttonStyle(.bordered).controlSize(.small)
