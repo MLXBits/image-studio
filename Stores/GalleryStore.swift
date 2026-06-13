@@ -54,6 +54,8 @@ final class GalleryStore {
             // Folders are first-class boards even when empty, so list subdirectories
             // directly rather than deriving boards solely from the images found.
             let folders = scanBoardFolders(outputDir)
+            // Safety net for files deleted outside the app (Finder, scripts).
+            ThumbnailCache.sweep(validPaths: Set(found.map(\.path)))
             await MainActor.run { [weak self] in
                 guard let self, self.scanGeneration == myGeneration else { return }
                 self.items = found
@@ -75,10 +77,12 @@ final class GalleryStore {
             let thumbnailData: Data?
             if let data = existingData {
                 thumbnailData = data
+            } else if let cached = ThumbnailCache.read(for: path) {
+                thumbnailData = cached
             } else {
-                let size = CGSize(width: 200, height: 200)
-                guard let img = NSImage(contentsOfFile: path) else { return }
-                thumbnailData = img.thumbnailData(size: size)
+                guard let generated = ThumbnailCache.makeThumbnailData(forSourcePath: path) else { return }
+                ThumbnailCache.store(data: generated, for: path)
+                thumbnailData = generated
             }
             let nsImage = thumbnailData.flatMap { NSImage(data: $0) }
             await MainActor.run { [weak self] in
@@ -104,6 +108,8 @@ final class GalleryStore {
             let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
             try? FileManager.default.moveItem(at: srcJson, to: destJson)
         }
+        // Cache is keyed by absolute path; the moved file regenerates under the new key.
+        ThumbnailCache.purge(path: item.path)
         scan(outputDir: outputDir)
     }
 
@@ -114,6 +120,7 @@ final class GalleryStore {
             deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
         }
         try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+        ThumbnailCache.purge(path: item.path)
         scan(outputDir: outputDir)
     }
 
@@ -122,6 +129,10 @@ final class GalleryStore {
     func deleteBoard(_ board: String, outputDir: String) {
         guard board != "Default" else { return }
         let dir = URL(fileURLWithPath: outputDir).appendingPathComponent(board)
+        // Purge cache entries for every image we know lives under this board
+        // before the folder goes away. The post-scan sweep then catches any we
+        // didn't know about (e.g., images added externally since the last scan).
+        ThumbnailCache.purge(paths: items.filter { $0.board == board }.map(\.path))
         do {
             try FileManager.default.removeItem(at: dir)
         } catch {
@@ -136,11 +147,14 @@ final class GalleryStore {
         let outputURL = URL(fileURLWithPath: outputDir)
         let oldDir = outputURL.appendingPathComponent(oldName)
         let newDir = outputURL.appendingPathComponent(newName)
+        // Every image under the board changes path, so its cache key changes too.
+        ThumbnailCache.purge(paths: items.filter { $0.board == oldName }.map(\.path))
         try? FileManager.default.moveItem(at: oldDir, to: newDir)
         scan(outputDir: outputDir)
     }
 
     func moveItems(_ items: [GalleryItem], toBoard board: String, outputDir: String) {
+        var purgedPaths: [String] = []
         for item in items {
             guard item.board != board else { continue }
             let src = URL(fileURLWithPath: item.path)
@@ -155,7 +169,9 @@ final class GalleryStore {
                 let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
                 try? FileManager.default.moveItem(at: srcJson, to: destJson)
             }
+            purgedPaths.append(item.path)
         }
+        ThumbnailCache.purge(paths: purgedPaths)
         scan(outputDir: outputDir)
     }
 
@@ -169,6 +185,7 @@ final class GalleryStore {
             }
             try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         }
+        ThumbnailCache.purge(paths: items.map(\.path))
         if !failures.isEmpty {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }
@@ -178,7 +195,7 @@ final class GalleryStore {
 
 // MARK: - Free function (nonisolated, safe to call from Task.detached)
 
-private func scanDirectory(
+nonisolated private func scanDirectory(
     _ outputDir: String,
     imageExtensions: Set<String>,
     existing: [String: GalleryItem] = [:]
@@ -214,7 +231,7 @@ private func scanDirectory(
 
 /// Lists the top-level subdirectories of the output directory. Each becomes a board,
 /// so empty folders remain visible in the gallery instead of silently disappearing.
-private func scanBoardFolders(_ outputDir: String) -> [String] {
+nonisolated private func scanBoardFolders(_ outputDir: String) -> [String] {
     let root = URL(fileURLWithPath: outputDir)
     guard let contents = try? FileManager.default.contentsOfDirectory(
         at: root,
@@ -224,27 +241,5 @@ private func scanBoardFolders(_ outputDir: String) -> [String] {
     return contents.compactMap { url in
         guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { return nil }
         return url.lastPathComponent
-    }
-}
-
-private extension NSImage {
-    func thumbnailData(size: CGSize) -> Data? {
-        let imgSize = self.size
-        guard imgSize.width > 0, imgSize.height > 0 else { return nil }
-        // Center-crop to the target aspect ratio before scaling
-        let side = min(imgSize.width, imgSize.height)
-        let srcRect = NSRect(
-            x: (imgSize.width - side) / 2,
-            y: (imgSize.height - side) / 2,
-            width: side,
-            height: side
-        )
-        let thumb = NSImage(size: size)
-        thumb.lockFocus()
-        draw(in: NSRect(origin: .zero, size: size), from: srcRect, operation: .copy, fraction: 1.0)
-        thumb.unlockFocus()
-        guard let tiff = thumb.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff) else { return nil }
-        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
     }
 }

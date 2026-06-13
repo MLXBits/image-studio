@@ -404,12 +404,12 @@ private struct GalleryItemDetailView: View {
                 }
                 if let meta = item.metadata {
                     Divider()
-                    Button("Remix (new seed)") { onRemix(meta) }
                     Button("Apply Settings") {
                         var corrected = meta
                         corrected.board = item.board == "Default" ? nil : item.board
                         onApplySettings(corrected)
                     }
+                    Button("Remix (new seed)") { onRemix(meta) }
                     Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
                 }
                 if info.log != nil {
@@ -424,13 +424,12 @@ private struct GalleryItemDetailView: View {
 
             ImageMetadataPanel(
                 info: info,
-                onRemix: item.metadata.map { meta in { onRemix(meta) } },
                 onApplySettings: item.metadata.map { meta in {
                     var corrected = meta
                     corrected.board = item.board == "Default" ? nil : item.board
                     onApplySettings(corrected)
                 }
-                },
+                }, onRemix: item.metadata.map { meta in { onRemix(meta) } },
                 onUseInImg2Img: { onUseInImg2Img(item.path) },
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
@@ -464,8 +463,9 @@ private struct GalleryItemDetailView: View {
 
     private func loadImage() {
         image = nil
+        let url = item.url
         Task.detached(priority: .userInitiated) {
-            let img = NSImage(contentsOf: item.url)
+            let img = NSImage(contentsOf: url)
             await MainActor.run { image = img }
         }
     }
