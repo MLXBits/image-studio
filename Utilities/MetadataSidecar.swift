@@ -1,6 +1,6 @@
 import Foundation
 
-struct GenerationMetadata: Codable {
+nonisolated struct GenerationMetadata: Codable {
     var prompt: String
     var negativePrompt: String
     var model: FluxModelVariant
@@ -21,7 +21,7 @@ struct GenerationMetadata: Codable {
     var startedAt: Date?
     var log: String?
 
-    static func from(job: FluxJob) -> Self {
+    @MainActor static func from(job: FluxJob) -> Self {
         Self(
             prompt: job.prompt,
             negativePrompt: job.negativePrompt,
@@ -56,7 +56,7 @@ enum MetadataSidecar {
         try? data.write(to: url, options: .atomic)
     }
 
-    static func read(for imagePath: String) -> GenerationMetadata? {
+    nonisolated static func read(for imagePath: String) -> GenerationMetadata? {
         let url = sidecarURL(for: imagePath)
         guard let data = try? Data(contentsOf: url) else { return nil }
         let decoder = JSONDecoder()
@@ -64,7 +64,7 @@ enum MetadataSidecar {
         return try? decoder.decode(GenerationMetadata.self, from: data)
     }
 
-    static func sidecarURL(for imagePath: String) -> URL {
+    nonisolated static func sidecarURL(for imagePath: String) -> URL {
         URL(fileURLWithPath: imagePath).deletingPathExtension().appendingPathExtension("json")
     }
 }

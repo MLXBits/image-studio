@@ -245,8 +245,9 @@ struct ContentView: View {
             }
             previewState = .galleryItem(item)
             if fullSizeImage != nil {
+                let url = item.url
                 Task.detached(priority: .userInitiated) {
-                    let img = NSImage(contentsOf: item.url)
+                    let img = NSImage(contentsOf: url)
                     await MainActor.run { if let img { self.fullSizeImage = img } }
                 }
             }
