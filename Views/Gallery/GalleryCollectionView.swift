@@ -136,7 +136,8 @@ private struct SectionHeaderContent: View {
                 .background(.secondary.opacity(0.12), in: Capsule())
         }
         .padding(.vertical, 5)
-        .padding(.horizontal, 8)
+        .padding(.leading, 8)
+        .padding(.trailing, 20)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 4)
@@ -349,7 +350,7 @@ struct GalleryCollectionView: NSViewRepresentable {
         let layout = NSCollectionViewFlowLayout()
         layout.minimumInteritemSpacing = 4
         layout.minimumLineSpacing = 4
-        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: 8)
+        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: 20)
         layout.headerReferenceSize = NSSize(width: 0, height: 30)
         cv.collectionViewLayout = layout
 
@@ -506,8 +507,8 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func collectionView(_ cv: NSCollectionView, layout: NSCollectionViewLayout,
                             sizeForItemAt path: IndexPath) -> NSSize {
-            let inset = 8.0, spacing = 4.0, minCell = 80.0
-            let available = max(0, cv.bounds.width - inset * 2)
+            let leftInset = 8.0, rightInset = 20.0, spacing = 4.0, minCell = 80.0
+            let available = max(0, cv.bounds.width - leftInset - rightInset)
             let numCols = max(1, floor((available + spacing) / (minCell + spacing)))
             let cellW = floor((available - (numCols - 1) * spacing) / numCols)
             return NSSize(width: cellW, height: cellW)

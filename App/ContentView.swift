@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -150,6 +151,9 @@ struct ContentView: View {
     private static var batchEventMonitor: Any?
 
     var body: some View {
+        VStack(spacing: 0) {
+            topControlBar
+
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
@@ -217,9 +221,6 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .safeAreaInset(edge: .top, spacing: 0) {
-                topControlBar
-            }
 
             if let img = fullSizeImage {
                 FullSizeImageView(
@@ -233,6 +234,8 @@ struct ContentView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {

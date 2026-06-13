@@ -107,7 +107,6 @@ struct ParamsPanelView: View {
                     }
                 }
             }
-            .padding(.horizontal, 10)
             .padding(.top, 10)
             .padding(.bottom, 16)
             .background(OverlayScrollerApplicator())
@@ -123,6 +122,7 @@ struct ParamsPanelView: View {
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, 18)
     }
 
     // MARK: - Style (template) row
