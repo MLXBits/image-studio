@@ -2,6 +2,10 @@
 import AppKit
 import SwiftUI
 
+// Width of the overlay scroll indicator track — keeps content clear without hardcoding.
+// automaticallyAdjustsContentInsets (default true) handles the legacy-scroller case automatically.
+private let kScrollerInset = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
+
 // MARK: - Closure-based NSMenuItem helper
 
 private final class MenuAction: NSObject {
@@ -137,7 +141,7 @@ private struct SectionHeaderContent: View {
         }
         .padding(.vertical, 5)
         .padding(.leading, 8)
-        .padding(.trailing, 20)
+        .padding(.trailing, kScrollerInset)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 4)
@@ -350,7 +354,7 @@ struct GalleryCollectionView: NSViewRepresentable {
         let layout = NSCollectionViewFlowLayout()
         layout.minimumInteritemSpacing = 4
         layout.minimumLineSpacing = 4
-        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: 20)
+        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: kScrollerInset)
         layout.headerReferenceSize = NSSize(width: 0, height: 30)
         cv.collectionViewLayout = layout
 
@@ -376,7 +380,6 @@ struct GalleryCollectionView: NSViewRepresentable {
         scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
         scrollView.drawsBackground = false
-        scrollView.automaticallyAdjustsContentInsets = false
         return scrollView
     }
 
@@ -507,8 +510,9 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func collectionView(_ cv: NSCollectionView, layout: NSCollectionViewLayout,
                             sizeForItemAt path: IndexPath) -> NSSize {
-            let leftInset = 8.0, rightInset = 20.0, spacing = 4.0, minCell = 80.0
-            let available = max(0, cv.bounds.width - leftInset - rightInset)
+            guard let flow = layout as? NSCollectionViewFlowLayout else { return NSSize(width: 80, height: 80) }
+            let spacing = flow.minimumInteritemSpacing, minCell = 80.0
+            let available = max(0, cv.bounds.width - flow.sectionInset.left - flow.sectionInset.right)
             let numCols = max(1, floor((available + spacing) / (minCell + spacing)))
             let cellW = floor((available - (numCols - 1) * spacing) / numCols)
             return NSSize(width: cellW, height: cellW)

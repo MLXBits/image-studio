@@ -79,7 +79,6 @@ struct GalleryItemView: View, Equatable {
     private var thumbnailView: some View {
         if let img = item.thumbnailImage {
             Image(nsImage: img)
-                .resizable()
         } else {
             ZStack {
                 Color.secondary.opacity(0.15)
