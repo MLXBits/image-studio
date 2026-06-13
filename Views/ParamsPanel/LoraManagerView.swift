@@ -200,7 +200,7 @@ private struct LoraRowView: View {
             }
         }
         .padding(8)
-        .background(.fill.tertiary, in: RoundedRectangle(cornerRadius: 8))
+        .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
         .onChange(of: lora.strength) { _, v in
             let rounded = round(v / 0.05) * 0.05
             if abs(v - rounded) > 1e-10 { lora.strength = rounded }

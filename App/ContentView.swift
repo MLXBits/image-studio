@@ -1,4 +1,22 @@
+import AppKit
 import SwiftUI
+
+private struct SplitViewAutosaveName: NSViewRepresentable {
+    let name: String
+    func makeNSView(context: Context) -> NSView { NSView() }
+    func updateNSView(_ nsView: NSView, context: Context) {
+        DispatchQueue.main.async {
+            var view: NSView? = nsView.superview
+            while let v = view {
+                if let split = v as? NSSplitView, split.autosaveName != name {
+                    split.autosaveName = name
+                    return
+                }
+                view = v.superview
+            }
+        }
+    }
+}
 
 @Observable
 final class ParamsPanelState {
@@ -140,61 +158,63 @@ struct ContentView: View {
                     Divider()
                 }
 
-                PreviewPaneView(
-                    state: previewState,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in
-                        if params.isEditMode {
-                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
-                        } else {
-                            params.imagePath = path
-                        }
-                    },
-                    onCancel: { runner.cancel() },
-                    onClear: {
-                        selectedGalleryItem = nil
-                        if let job = runner.activeJob {
-                            previewState = .activeJob(job)
-                        } else {
-                            previewState = .idle
-                        }
-                    },
-                    onShowFullSize: { img in
-                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
-                    },
-                    hasPrev: galleryNavInfo.hasPrev,
-                    hasNext: galleryNavInfo.hasNext,
-                    onNavigatePrev: { navigateGallery(-1) },
-                    onNavigateNext: { navigateGallery(+1) }
-                )
+                HSplitView {
+                    PreviewPaneView(
+                        state: previewState,
+                        onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+                        onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                        onUseInImg2Img: { path in
+                            if params.isEditMode {
+                                if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                            } else {
+                                params.imagePath = path
+                            }
+                        },
+                        onCancel: { runner.cancel() },
+                        onClear: {
+                            selectedGalleryItem = nil
+                            if let job = runner.activeJob {
+                                previewState = .activeJob(job)
+                            } else {
+                                previewState = .idle
+                            }
+                        },
+                        onShowFullSize: { img in
+                            withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
+                        },
+                        hasPrev: galleryNavInfo.hasPrev,
+                        hasNext: galleryNavInfo.hasNext,
+                        onNavigatePrev: { navigateGallery(-1) },
+                        onNavigateNext: { navigateGallery(+1) }
+                    )
+                    .frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+
+                    GenerationGalleryView(
+                        selectedItem: $selectedGalleryItem,
+                        onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+                        onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                        onUseInImg2Img: { path in
+                            if params.isEditMode {
+                                if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                            } else {
+                                params.imagePath = path
+                            }
+                        },
+                        onSelectBoard: { name in params.board = name },
+                        onClearPreview: {
+                            selectedGalleryItem = nil
+                            if let job = runner.activeJob {
+                                previewState = .activeJob(job)
+                            } else {
+                                previewState = .idle
+                            }
+                        },
+                        isFullSizeShowing: fullSizeImage != nil
+                    )
+                    .frame(minWidth: 160, maxHeight: .infinity)
+                    .background(SplitViewAutosaveName(name: "previewGallerySplit"))
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                Divider()
-
-                GenerationGalleryView(
-                    selectedItem: $selectedGalleryItem,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in
-                        if params.isEditMode {
-                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
-                        } else {
-                            params.imagePath = path
-                        }
-                    },
-                    onSelectBoard: { name in params.board = name },
-                    onClearPreview: {
-                        selectedGalleryItem = nil
-                        if let job = runner.activeJob {
-                            previewState = .activeJob(job)
-                        } else {
-                            previewState = .idle
-                        }
-                    },
-                    isFullSizeShowing: fullSizeImage != nil
-                )
-                .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
