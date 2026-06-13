@@ -28,96 +28,101 @@ struct ParamsPanelView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 12) {
-                // Model
-                sectionHeader("Model", info: nil)
-                ModelPickerView(
-                    model: $params.model,
-                    customModelRepo: $params.customModelRepo,
-                    customBaseModel: $params.customBaseModel,
-                    quantize: $params.quantize
-                )
-                .onChange(of: params.model) { _, m in
-                    guard m != .custom else { return }
-                    let d = settings.resolvedDefaults(for: m)
-                    params.steps          = d.steps
-                    params.guidance       = d.guidance
-                    params.quantize       = d.quantize
-                    params.lowRam         = d.lowRam
-                    params.negativePrompt = d.negativePrompt
-                    params.width          = d.width
-                    params.height         = d.height
-                    params.loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                    params.isEditMode     = false
-                    params.editImagePaths = []
+            VStack(alignment: .leading, spacing: 8) {
+                // Model + Mode + Style
+                panelSection {
+                    sectionHeader("Model", info: nil)
+                    ModelPickerView(
+                        model: $params.model,
+                        customModelRepo: $params.customModelRepo,
+                        customBaseModel: $params.customBaseModel,
+                        quantize: $params.quantize
+                    )
+                    .onChange(of: params.model) { _, m in
+                        guard m != .custom else { return }
+                        let d = settings.resolvedDefaults(for: m)
+                        params.steps          = d.steps
+                        params.guidance       = d.guidance
+                        params.quantize       = d.quantize
+                        params.lowRam         = d.lowRam
+                        params.negativePrompt = d.negativePrompt
+                        params.width          = d.width
+                        params.height         = d.height
+                        params.loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                        params.isEditMode     = false
+                        params.editImagePaths = []
+                    }
+                    if params.model != .custom {
+                        modePickerRow
+                    }
+                    styleRow
                 }
 
-                if params.model != .custom {
-                    modePickerRow
+                // Prompt + image input
+                panelSection {
+                    sectionHeader(
+                        "Prompt",
+                        info: "Describe what you want to generate. Be specific about subjects,"
+                            + " lighting, style, and mood. More detail generally produces better results."
+                    )
+                    promptEditor
+                    if params.model.supportsNegativePrompt {
+                        negativePromptEditor
+                    }
+                    if params.isEditMode {
+                        editImagesSection
+                    } else {
+                        img2ImgSection
+                    }
                 }
 
-                styleRow
-
-                Divider()
-
-                // Prompt
-                sectionHeader(
-                    "Prompt",
-                    info: "Describe what you want to generate. Be specific about subjects,"
-                        + " lighting, style, and mood. More detail generally produces better results."
-                )
-                promptEditor
-                if params.model.supportsNegativePrompt {
-                    negativePromptEditor
+                // Output group
+                panelSection {
+                    boardRow
                 }
-
-                // Image input — directly below prompt/negative prompt
-                if params.isEditMode {
-                    editImagesSection
-                } else {
-                    img2ImgSection
-                }
-
-                Divider()
-
-                // Group / board — directly below image input
-                boardRow
-
-                Divider()
 
                 // Dimensions
-                DimensionPickerView(width: $params.width, height: $params.height)
-
-                Divider()
-
-                // Steps + Seed (always shown together)
-                stepsAndSeedRow
-
-                // Guidance — only for base models
-                if !isDistilled {
-                    Divider()
-                    guidanceRow
+                panelSection {
+                    DimensionPickerView(width: $params.width, height: $params.height)
                 }
 
-                Divider()
+                // Steps + Seed + Guidance
+                panelSection {
+                    stepsAndSeedRow
+                    if !isDistilled {
+                        Divider()
+                        guidanceRow
+                    }
+                }
 
                 // LoRAs
-                LoraManagerView(
-                    loras: $params.loras,
-                    showAdd: false,
-                    defaultLoras: settings.defaultLoras
-                ) {
-                    let d = settings.resolvedDefaults(for: params.model)
-                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                panelSection {
+                    LoraManagerView(
+                        loras: $params.loras,
+                        showAdd: false,
+                        defaultLoras: settings.defaultLoras
+                    ) {
+                        let d = settings.resolvedDefaults(for: params.model)
+                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                    }
                 }
-                .padding(.bottom, 8)
             }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 12)
+            .padding(.horizontal, 10)
+            .padding(.top, 10)
+            .padding(.bottom, 16)
             .background(OverlayScrollerApplicator())
         }
         .scrollIndicators(.automatic)
         .contentMargins(.trailing, 5, for: .scrollContent)
+    }
+
+    private func panelSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            content()
+        }
+        .padding(10)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 8))
     }
 
     // MARK: - Style (template) row
