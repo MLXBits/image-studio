@@ -33,73 +33,117 @@ struct ParamsPanelView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
                 // Model
-                sectionHeader("Model", info: nil)
-                ModelPickerView(
-                    model: $params.model,
-                    customModelRepo: $params.customModelRepo,
-                    customBaseModel: $params.customBaseModel,
-                    quantize: $params.quantize
-                )
-                .onChange(of: params.model) { _, m in
-                    guard m != .custom else { return }
-                    let d = settings.resolvedDefaults(for: m)
-                    params.steps = d.steps
-                    params.guidance = d.guidance
-                    params.quantize = d.quantize
-                    params.lowRam = d.lowRam
-                    params.negativePrompt = d.negativePrompt
-                    params.width = d.width
-                    params.height = d.height
-                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                    params.isEditMode = false
-                    params.editImagePaths = []
+                SectionContainerView(title: "Model", info: nil) {
+                    ModelPickerView(
+                        model: $params.model,
+                        customModelRepo: $params.customModelRepo,
+                        customBaseModel: $params.customBaseModel,
+                        quantize: $params.quantize
+                    )
+                    .onChange(of: params.model) { _, m in
+                        guard m != .custom else { return }
+                        let d = settings.resolvedDefaults(for: m)
+                        params.steps = d.steps
+                        params.guidance = d.guidance
+                        params.quantize = d.quantize
+                        params.lowRam = d.lowRam
+                        params.negativePrompt = d.negativePrompt
+                        params.width = d.width
+                        params.height = d.height
+                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                        params.isEditMode = false
+                        params.editImagePaths = []
+                    }
+
+                    // Generation Mode
+                    if params.model != .custom {
+                        modePickerRow
+                    }
                 }
 
-                if params.model != .custom {
-                    modePickerRow
-                }
+                Divider()
 
-                styleRow
+                // Style
+                SectionContainerView(
+                    title: "Style",
+                    info: "Stacks preset style additions on your prompt — lighting, camera," +
+                        " detail level, shot type. Select multiple. Applied at generation time;" +
+                        " your prompt text stays clean."
+                ) {
+                    styleRow
+                }
 
                 Divider()
 
                 // Prompt
-                sectionHeader(
-                    "Prompt",
-                    info: "Describe what you want to generate. Be specific about subjects,"
-                        + " lighting, style, and mood. More detail generally produces better results."
-                )
-                promptEditor
-                if params.model.supportsNegativePrompt {
-                    negativePromptEditor
+                SectionContainerView(
+                    title: "Prompt",
+                    info: "Describe what you want to generate. Be specific about subjects, " +
+                        "lighting, style, and mood. More detail generally produces better results."
+                ) {
+                    promptEditor
+                    if params.model.supportsNegativePrompt {
+                        negativePromptEditor
+                    }
                 }
 
                 // Image input — directly below prompt/negative prompt
                 if params.isEditMode {
-                    editImagesSection
+                    SectionContainerView(
+                        title: "Images",
+                        info: "One or more reference images for editing. Order matters: list the " +
+                            "primary subject first. Prompt describes the edit — " +
+                            "e.g. \"make her wear the glasses\"."
+                    ) {
+                        editImagesSection
+                    }
                 } else {
-                    img2ImgSection
+                    SectionContainerView(
+                        title: "Image Input",
+                        info: "Optional reference image for image-to-image generation. " +
+                            "Drag an image here or click to browse. Higher strength = " +
+                            "closer to the original image. Lower strength = more creative, " +
+                            "prompt dominates."
+                    ) {
+                        img2ImgSection
+                    }
                 }
 
                 Divider()
 
-                // Group / board — directly below image input
-                boardRow
+                // Group
+                SectionContainerView(
+                    title: "Folder",
+                    info: "Organizes generated images into named subfolders inside your output " +
+                        "directory. Leave as Default to keep everything in one place."
+                ) {
+                    boardRow
+                }
 
                 Divider()
 
                 // Dimensions
-                DimensionPickerView(width: $params.width, height: $params.height)
+                SectionContainerView(title: nil, info: nil) {
+                    DimensionPickerView(width: $params.width, height: $params.height)
+                }
 
                 Divider()
 
                 // Steps + Seed (always shown together)
-                stepsAndSeedRow
+                SectionContainerView(title: nil, info: nil) {
+                    stepsAndSeedRow
+                }
 
                 // Guidance — only for base models
                 if !isDistilled {
                     Divider()
-                    guidanceRow
+                    SectionContainerView(
+                        title: "Guidance",
+                        info: "How closely the model follows your prompt. Higher = stricter adherence but" +
+                            "can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
+                    ) {
+                        guidanceRow
+                    }
                 }
 
                 Divider()
@@ -127,16 +171,6 @@ struct ParamsPanelView: View {
 
     private var styleRow: some View {
         HStack(alignment: .center, spacing: 6) {
-            Text("Style")
-                .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-            InfoButton(
-                title: "Style Templates",
-                description: "Stacks preset style additions on your prompt — lighting, camera,"
-                    + " detail level, shot type. Select multiple. Applied at generation time;"
-                    + " your prompt text stays clean."
-            )
             // styleChips is a single stable view at this position so the popover
             // anchor survives the empty → active transition without dismissing.
             styleChips
@@ -318,15 +352,6 @@ struct ParamsPanelView: View {
 
     private var guidanceRow: some View {
         VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 3) {
-                Text("Guidance").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
-                InfoButton(
-                    title: "Guidance Scale",
-                    description: "How closely the model follows your prompt. Higher = stricter"
-                        + " adherence but can over-saturate. 3–7 is typical for base models."
-                        + " Distilled Klein models always use 1.0."
-                )
-            }
             HStack(spacing: 6) {
                 Slider(value: $params.guidance, in: 1.0 ... 15.0, step: 0.5)
                     .accessibilityLabel("Guidance")
@@ -344,13 +369,6 @@ struct ParamsPanelView: View {
     private var img2ImgSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
-                sectionHeader(
-                    "Image Input",
-                    info: "Optional reference image for image-to-image generation. Drag an image"
-                        + " here or click to browse. Higher strength = closer to the original"
-                        + " image. Lower strength = more creative, prompt dominates."
-                )
-                Spacer()
                 if !params.imagePath.isEmpty {
                     Button {
                         params.imagePath = ""
@@ -449,15 +467,6 @@ struct ParamsPanelView: View {
 
     private var boardRow: some View {
         HStack(spacing: 6) {
-            Text("Group")
-                .font(.caption2)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-            InfoButton(
-                title: "Group",
-                description: "Organizes generated images into named subfolders inside your output"
-                    + " directory. Leave as Default to keep everything in one place."
-            )
             FolderComboBox(
                 text: $params.board,
                 options: gallery.boards.filter { $0 != "Default" },
@@ -481,22 +490,17 @@ struct ParamsPanelView: View {
     // MARK: - Mode picker (Generate vs Edit, Flux.2 only)
 
     private var modePickerRow: some View {
-        HStack(spacing: 6) {
-            Text("Mode")
-                .font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
-            InfoButton(
-                title: "Generation Mode",
-                description: "Generate: create or modify images from text + optional reference"
-                    + " (img2img).\n\nEdit: compose multiple images with instructions — e.g. two"
-                    + " images plus \"make her wear the glasses\". Works with a single image too."
-            )
+        let info = "Generate: create or modify images from text + optional reference"
+            + " (img2img).\n\nEdit: compose multiple images with instructions — e.g. two"
+            + " images plus \"make her wear the glasses\". Works with a single image too."
+        return SectionContainerView(title: "Generation Mode", info: info) {
             Picker("", selection: $params.isEditMode) {
                 Text("Generate").tag(false)
                 Text("Edit").tag(true)
             }
             .labelsHidden()
             .pickerStyle(.segmented)
-            .fixedSize()
+            .frame(maxWidth: .infinity)
             .onChange(of: params.isEditMode) { _, editing in
                 if editing {
                     params.imagePath = ""
