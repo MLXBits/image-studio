@@ -18,7 +18,7 @@ final class FluxJobRunner {
     private static let cacheBase: URL = {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("MLXBits Image Studio/stepwise", isDirectory: true)
+        return base.appendingPathComponent("com.mlxbits.image-studio/stepwise", isDirectory: true)
     }()
 
     private(set) var activeJob: FluxJob?
