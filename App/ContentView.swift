@@ -1,3 +1,5 @@
+// swiftlint:disable file_length
+import AppKit
 import SwiftUI
 
 @Observable
@@ -131,70 +133,110 @@ struct ContentView: View {
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
 
+    @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
+    @State private var paramsWidth: Double = 280
+    @State private var paramsDragBase: Double?
+
+    @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
+    @State private var galleryWidth: Double = 260
+    @State private var galleryDragBase: Double?
+
+    private var paramsPane: some View {
+        ParamsPanelView(params: params)
+            .frame(width: CGFloat(paramsWidth))
+            .frame(maxHeight: .infinity)
+    }
+
+    private var previewPaneView: some View {
+        PreviewPaneView(
+            state: previewState,
+            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onUseInImg2Img: useInImg2Img,
+            onCancel: { runner.cancel() },
+            onClear: clearPreview,
+            onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
+            hasPrev: galleryNavInfo.hasPrev,
+            hasNext: galleryNavInfo.hasNext,
+            onNavigatePrev: { navigateGallery(-1) },
+            onNavigateNext: { navigateGallery(+1) }
+        )
+    }
+
+    private var previewPane: some View {
+        previewPaneView.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    private var galleryPaneView: some View {
+        GenerationGalleryView(
+            selectedItem: $selectedGalleryItem,
+            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onUseInImg2Img: useInImg2Img,
+            onSelectBoard: { name in params.board = name },
+            onClearPreview: clearPreview,
+            isFullSizeShowing: fullSizeImage != nil
+        )
+    }
+
+    private var galleryPane: some View {
+        galleryPaneView
+            .frame(width: CGFloat(galleryWidth))
+            .frame(maxHeight: .infinity)
+    }
+
     var body: some View {
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
-                    ParamsPanelView(params: params)
-                        .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
+                    paramsPane
+
                     Divider()
+                        .padding(.vertical, 3)
+                        .contentShape(Rectangle())
+                        .gesture(
+                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                .onChanged { value in
+                                    let base: Double
+                                    if let b = paramsDragBase { base = b } else {
+                                        paramsDragBase = paramsWidth; base = paramsWidth
+                                    }
+                                    paramsWidth = max(220, min(420, base + value.translation.width))
+                                }
+                                .onEnded { _ in
+                                    paramsDragBase = nil
+                                    savedParamsWidth = paramsWidth
+                                }
+                        )
+                        .onHover { hovering in
+                            if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                        }
                 }
 
-                PreviewPaneView(
-                    state: previewState,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in
-                        if params.isEditMode {
-                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
-                        } else {
-                            params.imagePath = path
-                        }
-                    },
-                    onCancel: { runner.cancel() },
-                    onClear: {
-                        selectedGalleryItem = nil
-                        if let job = runner.activeJob {
-                            previewState = .activeJob(job)
-                        } else {
-                            previewState = .idle
-                        }
-                    },
-                    onShowFullSize: { img in
-                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
-                    },
-                    hasPrev: galleryNavInfo.hasPrev,
-                    hasNext: galleryNavInfo.hasNext,
-                    onNavigatePrev: { navigateGallery(-1) },
-                    onNavigateNext: { navigateGallery(+1) }
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                previewPane
 
                 Divider()
+                    .padding(.horizontal, 3)
+                    .contentShape(Rectangle())
+                    .gesture(
+                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                            .onChanged { value in
+                                let base: Double
+                                if let b = galleryDragBase { base = b } else {
+                                    galleryDragBase = galleryWidth; base = galleryWidth
+                                }
+                                galleryWidth = max(160, min(500, base - value.translation.width))
+                            }
+                            .onEnded { _ in
+                                galleryDragBase = nil
+                                savedGalleryWidth = galleryWidth
+                            }
+                    )
+                    .onHover { hovering in
+                        if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                    }
 
-                GenerationGalleryView(
-                    selectedItem: $selectedGalleryItem,
-                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-                    onUseInImg2Img: { path in
-                        if params.isEditMode {
-                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
-                        } else {
-                            params.imagePath = path
-                        }
-                    },
-                    onSelectBoard: { name in params.board = name },
-                    onClearPreview: {
-                        selectedGalleryItem = nil
-                        if let job = runner.activeJob {
-                            previewState = .activeJob(job)
-                        } else {
-                            previewState = .idle
-                        }
-                    },
-                    isFullSizeShowing: fullSizeImage != nil
-                )
-                .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
+                galleryPane
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
@@ -270,6 +312,8 @@ struct ContentView: View {
                 .environment(settings)
         }
         .onAppear {
+            paramsWidth = savedParamsWidth
+            galleryWidth = savedGalleryWidth
             params.applyDefaults(from: settings)
             if settings.outputDir.isEmpty {
                 showingOutputDirPrompt = true
@@ -444,6 +488,19 @@ struct ContentView: View {
         let items = gallery.items.filter { $0.board == item.board }
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return (false, false) }
         return (idx > 0, idx < items.count - 1)
+    }
+
+    private func useInImg2Img(_ path: String) {
+        if params.isEditMode {
+            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+        } else {
+            params.imagePath = path
+        }
+    }
+
+    private func clearPreview() {
+        selectedGalleryItem = nil
+        if let job = runner.activeJob { previewState = .activeJob(job) } else { previewState = .idle }
     }
 
     private func navigateGallery(_ delta: Int) {
