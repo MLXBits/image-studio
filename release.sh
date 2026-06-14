@@ -39,6 +39,7 @@ echo "==> Version $VERSION, build $BUILD_NUMBER (git commit count)"
 
 echo "==> Archiving (this takes a few minutes)..."
 xcodebuild archive \
+  -workspace "$HOME/MLXBits.xcworkspace" \
   -scheme "$SCHEME" \
   -archivePath "$ARCHIVE" \
   -configuration Release \
