@@ -414,7 +414,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             layout _: NSCollectionViewLayout,
             sizeForItemAt _: IndexPath
         ) -> NSSize {
-            let inset = 8.0, spacing = 4.0, minCell = 80.0
+            let inset = 8.0, spacing = 4.0, minCell = 64.0
             let available = max(0, cv.bounds.width - inset * 2)
             let numCols = max(1, floor((available + spacing) / (minCell + spacing)))
             let cellW = floor((available - (numCols - 1) * spacing) / numCols)
