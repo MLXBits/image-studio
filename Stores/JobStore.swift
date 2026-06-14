@@ -16,10 +16,22 @@ final class JobStore {
 
     private static let jobsURL: URL = appSupportURL.appendingPathComponent("jobs.json")
 
+    private static let maxJobs = 100
+
     var jobs: [FluxJob] = []
     var isRunning: Bool = false
 
-    init() { load() }
+    var pendingJobs: [FluxJob] {
+        jobs.filter { $0.status == .pending }
+    }
+
+    var runningJob: FluxJob? {
+        jobs.first { $0.status == .running }
+    }
+
+    init() {
+        load()
+    }
 
     // MARK: - Queue management
 
@@ -30,7 +42,9 @@ final class JobStore {
     }
 
     func addBatch(_ jobs: [FluxJob]) {
-        for job in jobs.reversed() { self.jobs.insert(job, at: 0) }
+        for job in jobs.reversed() {
+            self.jobs.insert(job, at: 0)
+        }
         pruneIfNeeded()
         save()
     }
@@ -69,7 +83,7 @@ final class JobStore {
             job.completedAt = batchJob.completedAt
             return job
         }
-        jobs.replaceSubrange(idx...idx, with: expanded)
+        jobs.replaceSubrange(idx ... idx, with: expanded)
     }
 
     func remove(ids: Set<UUID>, deleteFiles: Bool = false) {
@@ -86,9 +100,6 @@ final class JobStore {
         jobs.removeAll { ids.contains($0.id) }
         save()
     }
-
-    var pendingJobs: [FluxJob] { jobs.filter { $0.status == .pending } }
-    var runningJob: FluxJob? { jobs.first { $0.status == .running } }
 
     func cancelJob(_ job: FluxJob) {
         guard case .pending = job.status else { return }
@@ -126,8 +137,6 @@ final class JobStore {
     }
 
     // MARK: - Persistence
-
-    private static let maxJobs = 100
 
     private func pruneIfNeeded() {
         guard jobs.count > Self.maxJobs else { return }

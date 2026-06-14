@@ -95,7 +95,6 @@ struct PromptTemplatePickerView: View {
         .frame(maxHeight: 520)
     }
 
-    @ViewBuilder
     private func templateSection(
         category: TemplateCategory,
         templates: [PromptTemplate],
@@ -153,7 +152,6 @@ struct PromptTemplatePickerView: View {
         }
     }
 
-    @ViewBuilder
     private func thumbnailView(for template: PromptTemplate) -> some View {
         Group {
             if let name = template.exampleImageName {
@@ -188,7 +186,6 @@ struct PromptTemplatePickerView: View {
             .background(.fill.quaternary)
     }
 
-    @ViewBuilder
     private func editButtons(for template: PromptTemplate) -> some View {
         HStack(spacing: 2) {
             Button {
@@ -246,16 +243,6 @@ struct TemplateEditSheet: View {
     @State private var negativeTemplate: String
     @State private var useCases: String
     @State private var exampleImagePath: String
-
-    init(template: PromptTemplate?, onSave: @escaping (PromptTemplate) -> Void) {
-        self.template = template
-        self.onSave = onSave
-        _name = State(initialValue: template?.name ?? "")
-        _positiveTemplate = State(initialValue: template?.positiveTemplate ?? "")
-        _negativeTemplate = State(initialValue: template?.negativeTemplate ?? "")
-        _useCases = State(initialValue: template?.useCases ?? "")
-        _exampleImagePath = State(initialValue: template?.exampleImageName ?? "")
-    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -402,6 +389,16 @@ struct TemplateEditSheet: View {
                     .controlSize(.small)
             }
         }
+    }
+
+    init(template: PromptTemplate?, onSave: @escaping (PromptTemplate) -> Void) {
+        self.template = template
+        self.onSave = onSave
+        _name = State(initialValue: template?.name ?? "")
+        _positiveTemplate = State(initialValue: template?.positiveTemplate ?? "")
+        _negativeTemplate = State(initialValue: template?.negativeTemplate ?? "")
+        _useCases = State(initialValue: template?.useCases ?? "")
+        _exampleImagePath = State(initialValue: template?.exampleImageName ?? "")
     }
 
     private func save() {

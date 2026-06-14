@@ -5,21 +5,23 @@ extension Notification.Name {
 }
 
 struct SettingsView: View {
-    @Environment(AppSettings.self) private var settings
-    @Environment(GalleryStore.self) private var gallery
-    @State private var selectedTab: SettingsTab = .generation
-    @State private var showingOutputDirPrompt: Bool = false
-
     private enum SetupPhase { case idle, installing, failed(String) }
-    @State private var mfluxSetupPhase: SetupPhase = .idle
 
     enum SettingsTab: String, CaseIterable, Identifiable {
         case generation = "Generation"
         case models = "Models"
         case loras = "LoRAs"
         case advanced = "Advanced"
-        var id: String { rawValue }
+        var id: String {
+            rawValue
+        }
     }
+
+    @Environment(AppSettings.self) private var settings
+    @Environment(GalleryStore.self) private var gallery
+    @State private var selectedTab: SettingsTab = .generation
+    @State private var showingOutputDirPrompt: Bool = false
+    @State private var mfluxSetupPhase: SetupPhase = .idle
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -72,84 +74,83 @@ struct SettingsView: View {
                     .padding(.bottom, 4)
             }
             Form {
-            Section {
-                Picker("Default model", selection: $s.defaultModel) {
-                    ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                        Text(v.displayName).tag(v)
-                    }
-                }
-                .pickerStyle(.menu)
-                Text("Steps, guidance, quantize, low RAM, and canvas size are configured per-model in the Models tab.")
-                    .font(.caption).foregroundStyle(.tertiary)
-            } header: {
-                Text("Model")
-            }
-
-            Section {
-                LabeledContent("Batch Size Shortcut") {
-                    HStack(spacing: 8) {
-                        Picker("", selection: $s.batchShortcutPreset) {
-                            Text("3").tag(3)
-                            Text("5").tag(5)
-                            Text("10").tag(10)
-                            Text("Custom").tag(0)
-                        }
-                        .pickerStyle(.segmented)
-                        .fixedSize()
-                        if s.batchShortcutPreset == 0 {
-                            TextField("", value: $s.batchShortcutCustomCount, format: .number)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 56)
-                                .onChange(of: s.batchShortcutCustomCount) { _, v in
-                                    s.batchShortcutCustomCount = max(2, min(100, v))
-                                }
+                Section {
+                    Picker("Default model", selection: $s.defaultModel) {
+                        ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+                            Text(v.displayName).tag(v)
                         }
                     }
+                    .pickerStyle(.menu)
+                    Text("Steps, guidance, quantize, low RAM, and canvas size are configured per-model in the Models tab.")
+                        .font(.caption).foregroundStyle(.tertiary)
+                } header: {
+                    Text("Model")
                 }
-                Text("⌘⌥↵ generates this many images at once.")
-                    .font(.caption).foregroundStyle(.secondary)
-            } header: {
-                Text("Iteration")
-            }
 
-            Section {
-                HStack {
-                    TextField("Output folder", text: $s.outputDir)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Browse…") { browseOutputDir() }
-                    Button {
-                        showingOutputDirPrompt = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                Section {
+                    LabeledContent("Batch Size Shortcut") {
+                        HStack(spacing: 8) {
+                            Picker("", selection: $s.batchShortcutPreset) {
+                                Text("3").tag(3)
+                                Text("5").tag(5)
+                                Text("10").tag(10)
+                                Text("Custom").tag(0)
+                            }
+                            .pickerStyle(.segmented)
+                            .fixedSize()
+                            if s.batchShortcutPreset == 0 {
+                                TextField("", value: $s.batchShortcutCustomCount, format: .number)
+                                    .textFieldStyle(.roundedBorder)
+                                    .frame(width: 56)
+                                    .onChange(of: s.batchShortcutCustomCount) { _, v in
+                                        s.batchShortcutCustomCount = max(2, min(100, v))
+                                    }
+                            }
+                        }
                     }
-                    .buttonStyle(.plain)
-                    .help("Avoid ~/Pictures and ~/Documents if you don't want iCloud to sync generated images")
+                    Text("⌘⌥↵ generates this many images at once.")
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Text("Iteration")
                 }
-                if s.outputDir.isEmpty {
-                    Label("No output folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.orange)
+
+                Section {
+                    HStack {
+                        TextField("Output folder", text: $s.outputDir)
+                            .textFieldStyle(.roundedBorder)
+                        Button("Browse…") { browseOutputDir() }
+                        Button {
+                            showingOutputDirPrompt = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .help("Avoid ~/Pictures and ~/Documents if you don't want iCloud to sync generated images")
+                    }
+                    if s.outputDir.isEmpty {
+                        Label("No output folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(.orange)
+                    }
+                    LabeledContent("Default group") {
+                        FolderComboBox(
+                            text: $s.defaultBoard,
+                            options: gallery.boards.filter { $0 != "Default" },
+                            placeholder: "Default"
+                        )
+                    }
+                } header: {
+                    Text("Output")
+                } footer: {
+                    Text("Tip: choose a folder outside ~/Pictures and ~/Documents to avoid automatic iCloud sync of generated images.")
+                        .font(.caption).foregroundStyle(.tertiary)
                 }
-                LabeledContent("Default group") {
-                    FolderComboBox(
-                        text: $s.defaultBoard,
-                        options: gallery.boards.filter { $0 != "Default" },
-                        placeholder: "Default"
-                    )
-                }
-            } header: {
-                Text("Output")
-            } footer: {
-                Text("Tip: choose a folder outside ~/Pictures and ~/Documents to avoid automatic iCloud sync of generated images.")
-                    .font(.caption).foregroundStyle(.tertiary)
-            }
             }
             .formStyle(.grouped)
         }
     }
 
-    @ViewBuilder
     private var mfluxSetupBanner: some View {
         HStack(spacing: 12) {
             Image(systemName: "exclamationmark.triangle.fill")
@@ -175,7 +176,7 @@ struct SettingsView: View {
                     Text("Installing…").font(.caption).foregroundStyle(.secondary)
                 }
 
-            case .failed(let msg):
+            case let .failed(msg):
                 HStack(spacing: 8) {
                     Text(msg).font(.caption).foregroundStyle(.red).lineLimit(2)
                     Button("Retry") { Task { await installMflux() } }
@@ -186,17 +187,6 @@ struct SettingsView: View {
         .padding(12)
         .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
         .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange.opacity(0.25), lineWidth: 1))
-    }
-
-    @MainActor
-    private func installMflux() async {
-        mfluxSetupPhase = .installing
-        do {
-            settings.mfluxBinaryDir = try await MfluxInstaller.install()
-            mfluxSetupPhase = .idle
-        } catch {
-            mfluxSetupPhase = .failed(error.localizedDescription)
-        }
     }
 
     // MARK: - LoRAs
@@ -295,7 +285,7 @@ struct SettingsView: View {
             } footer: {
                 Text(
                     "Limits how much GPU memory MLX keeps in its buffer pool between operations. " +
-                    "0 = unlimited (default). Set to 4–8 GB if other apps are competing for memory."
+                        "0 = unlimited (default). Set to 4–8 GB if other apps are competing for memory."
                 )
                 .font(.caption).foregroundStyle(.tertiary)
             }
@@ -303,7 +293,7 @@ struct SettingsView: View {
             Section("UI") {
                 HStack {
                     Text("Log font size")
-                    Slider(value: $s.logFontSize, in: 10...18)
+                    Slider(value: $s.logFontSize, in: 10 ... 18)
                         .onChange(of: s.logFontSize) { _, v in s.logFontSize = round(v) }
                     Text("\(Int(s.logFontSize))pt").monospacedDigit().frame(width: 35)
                 }
@@ -313,6 +303,17 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers
+
+    @MainActor
+    private func installMflux() async {
+        mfluxSetupPhase = .installing
+        do {
+            settings.mfluxBinaryDir = try await MfluxInstaller.install()
+            mfluxSetupPhase = .idle
+        } catch {
+            mfluxSetupPhase = .failed(error.localizedDescription)
+        }
+    }
 
     private func browseOutputDir() {
         let panel = NSOpenPanel()

@@ -2,11 +2,16 @@ import SwiftUI
 
 private enum PromptFullHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
+
 private enum PromptLimitedHeightKey: PreferenceKey {
     static var defaultValue: CGFloat = 0
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) { value = max(value, nextValue()) }
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
 
 struct ImageMetadataInfo {
@@ -24,17 +29,17 @@ struct ImageMetadataInfo {
     var generationTime: String?
 
     init(job: FluxJob) {
-        prompt        = job.prompt
+        prompt = job.prompt
         negativePrompt = job.negativePrompt
-        modelName     = job.model == .custom ? "Custom" : job.model.displayName
-        seed          = job.resolvedSeed
-        width         = job.width
-        height        = job.height
-        steps         = job.steps
-        guidance      = job.guidance
-        loras         = job.loras
-        filePath      = job.outputPath
-        log           = job.log.isEmpty ? nil : job.log
+        modelName = job.model == .custom ? "Custom" : job.model.displayName
+        seed = job.resolvedSeed
+        width = job.width
+        height = job.height
+        steps = job.steps
+        guidance = job.guidance
+        loras = job.loras
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
         if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
             generationTime = "\(secs / 60)m \(secs % 60)s"
@@ -43,17 +48,17 @@ struct ImageMetadataInfo {
 
     init?(item: GalleryItem) {
         guard let meta = item.metadata else { return nil }
-        prompt        = meta.prompt
+        prompt = meta.prompt
         negativePrompt = meta.negativePrompt
-        modelName     = meta.model == .custom ? "Custom" : meta.model.displayName
-        seed          = meta.seed
-        width         = meta.width
-        height        = meta.height
-        steps         = meta.steps
-        guidance      = meta.guidance
-        loras         = meta.loras
-        filePath      = item.path
-        log           = meta.log
+        modelName = meta.model == .custom ? "Custom" : meta.model.displayName
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        loras = meta.loras
+        filePath = item.path
+        log = meta.log
         if let started = meta.startedAt {
             let secs = Int(meta.generatedAt.timeIntervalSince(started))
             generationTime = "\(secs / 60)m \(secs % 60)s"
@@ -78,7 +83,9 @@ struct ImageMetadataPanel: View {
     @State private var promptExpanded = false
     @State private var promptFullHeight: CGFloat = 0
     @State private var promptLimitedHeight: CGFloat = 0
-    private var isPromptTruncated: Bool { promptFullHeight > promptLimitedHeight + 1 }
+    private var isPromptTruncated: Bool {
+        promptFullHeight > promptLimitedHeight + 1
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {

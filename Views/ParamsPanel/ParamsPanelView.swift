@@ -2,47 +2,21 @@
 import AppKit
 import SwiftUI
 
-// Fixes SwiftUI's ScrollView overriding autohidesScrollers=true regardless of system preference.
-// Sets autohidesScrollers and automaticallyAdjustsContentInsets to match NSScroller.preferredScrollerStyle,
-// then observes preferredScrollerStyleDidChangeNotification so the panel responds live to System Settings changes.
-private struct ScrollViewStyleAdapter: NSViewRepresentable {
-    func makeNSView(context: Context) -> NSView { NSView() }
-    func updateNSView(_ nsView: NSView, context: Context) {
-        context.coordinator.attach(to: nsView)
+private struct OverlayScrollerApplicator: NSViewRepresentable {
+    func makeNSView(context _: Context) -> NSView {
+        NSView()
     }
-    func makeCoordinator() -> Coordinator { Coordinator() }
 
-    final class Coordinator {
-        private var observer: Any?
-        private weak var scrollView: NSScrollView?
-
-        func attach(to view: NSView) {
-            if scrollView == nil {
-                DispatchQueue.main.async { [weak self, weak view] in
-                    self?.scrollView = view?.enclosingScrollView
-                    self?.applyStyle()
-                }
-            }
-            guard observer == nil else { return }
-            observer = NotificationCenter.default.addObserver(
-                forName: NSScroller.preferredScrollerStyleDidChangeNotification,
-                object: nil,
-                queue: .main
-            ) { [weak self] _ in self?.applyStyle() }
+    func updateNSView(_ nsView: NSView, context _: Context) {
+        DispatchQueue.main.async {
+            nsView.enclosingScrollView?.scrollerStyle = .overlay
         }
-
-        private func applyStyle() {
-            guard let sv = scrollView else { return }
-            let isOverlay = NSScroller.preferredScrollerStyle == .overlay
-            sv.autohidesScrollers = isOverlay
-            sv.automaticallyAdjustsContentInsets = true
-        }
-
-        deinit { if let o = observer { NotificationCenter.default.removeObserver(o) } }
     }
 }
 
 struct ParamsPanelView: View {
+    private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
+
     @Bindable var params: ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
@@ -51,109 +25,102 @@ struct ParamsPanelView: View {
     @State private var isEditDropTargeted: Bool = false
     @State private var showingTemplatePicker: Bool = false
 
-    private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
-
     private var isDistilled: Bool {
         params.model.isDistilled
     }
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 8) {
-                // Model + Mode + Style
-                panelSection {
-                    sectionHeader("Model", info: nil)
-                    ModelPickerView(
-                        model: $params.model,
-                        customModelRepo: $params.customModelRepo,
-                        customBaseModel: $params.customBaseModel,
-                        quantize: $params.quantize
-                    )
-                    .onChange(of: params.model) { _, m in
-                        guard m != .custom else { return }
-                        let d = settings.resolvedDefaults(for: m)
-                        params.steps          = d.steps
-                        params.guidance       = d.guidance
-                        params.quantize       = d.quantize
-                        params.lowRam         = d.lowRam
-                        params.negativePrompt = d.negativePrompt
-                        params.width          = d.width
-                        params.height         = d.height
-                        params.loras          = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                        params.isEditMode     = false
-                        params.editImagePaths = []
-                    }
-                    if params.model != .custom {
-                        modePickerRow
-                    }
-                    styleRow
+            VStack(alignment: .leading, spacing: 12) {
+                // Model
+                sectionHeader("Model", info: nil)
+                ModelPickerView(
+                    model: $params.model,
+                    customModelRepo: $params.customModelRepo,
+                    customBaseModel: $params.customBaseModel,
+                    quantize: $params.quantize
+                )
+                .onChange(of: params.model) { _, m in
+                    guard m != .custom else { return }
+                    let d = settings.resolvedDefaults(for: m)
+                    params.steps = d.steps
+                    params.guidance = d.guidance
+                    params.quantize = d.quantize
+                    params.lowRam = d.lowRam
+                    params.negativePrompt = d.negativePrompt
+                    params.width = d.width
+                    params.height = d.height
+                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                    params.isEditMode = false
+                    params.editImagePaths = []
                 }
 
-                // Prompt + image input
-                panelSection {
-                    sectionHeader(
-                        "Prompt",
-                        info: "Describe what you want to generate. Be specific about subjects,"
-                            + " lighting, style, and mood. More detail generally produces better results."
-                    )
-                    promptEditor
-                    if params.model.supportsNegativePrompt {
-                        negativePromptEditor
-                    }
-                    if params.isEditMode {
-                        editImagesSection
-                    } else {
-                        img2ImgSection
-                    }
+                if params.model != .custom {
+                    modePickerRow
                 }
 
-                // Output group
-                panelSection {
-                    boardRow
+                styleRow
+
+                Divider()
+
+                // Prompt
+                sectionHeader(
+                    "Prompt",
+                    info: "Describe what you want to generate. Be specific about subjects,"
+                        + " lighting, style, and mood. More detail generally produces better results."
+                )
+                promptEditor
+                if params.model.supportsNegativePrompt {
+                    negativePromptEditor
                 }
+
+                // Image input — directly below prompt/negative prompt
+                if params.isEditMode {
+                    editImagesSection
+                } else {
+                    img2ImgSection
+                }
+
+                Divider()
+
+                // Group / board — directly below image input
+                boardRow
+
+                Divider()
 
                 // Dimensions
-                panelSection {
-                    DimensionPickerView(width: $params.width, height: $params.height)
+                DimensionPickerView(width: $params.width, height: $params.height)
+
+                Divider()
+
+                // Steps + Seed (always shown together)
+                stepsAndSeedRow
+
+                // Guidance — only for base models
+                if !isDistilled {
+                    Divider()
+                    guidanceRow
                 }
 
-                // Steps + Seed + Guidance
-                panelSection {
-                    stepsAndSeedRow
-                    if !isDistilled {
-                        Divider()
-                        guidanceRow
-                    }
-                }
+                Divider()
 
                 // LoRAs
-                panelSection {
-                    LoraManagerView(
-                        loras: $params.loras,
-                        showAdd: false,
-                        defaultLoras: settings.defaultLoras
-                    ) {
-                        let d = settings.resolvedDefaults(for: params.model)
-                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                    }
+                LoraManagerView(
+                    loras: $params.loras,
+                    showAdd: false,
+                    defaultLoras: settings.defaultLoras
+                ) {
+                    let d = settings.resolvedDefaults(for: params.model)
+                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
                 }
+                .padding(.bottom, 8)
             }
-            .padding(.top, 10)
-            .padding(.bottom, 16)
-            .background(ScrollViewStyleAdapter())
+            .padding(.horizontal, 12)
+            .padding(.vertical, 12)
+            .background(OverlayScrollerApplicator())
         }
         .scrollIndicators(.automatic)
-    }
-
-    private func panelSection<Content: View>(@ViewBuilder _ content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 10) {
-            content()
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 8))
-        .padding(.leading, 16)
-        .padding(.trailing, NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay))
+        .contentMargins(.trailing, 5, for: .scrollContent)
     }
 
     // MARK: - Style (template) row
@@ -219,28 +186,6 @@ struct ParamsPanelView: View {
         }
     }
 
-    private func styleChip(name: String, templateID: UUID?) -> some View {
-        HStack(spacing: 3) {
-            Text(name)
-                .font(.system(size: 10))
-                .lineLimit(1)
-            if let id = templateID {
-                Button {
-                    settings.activeTemplateIDs.removeAll { $0 == id }
-                } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .semibold))
-                }
-                .buttonStyle(.plain)
-                .foregroundStyle(.secondary)
-            }
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 3)
-        .background(Color.accentColor.opacity(0.12), in: Capsule())
-        .foregroundStyle(Color.accentColor)
-    }
-
     private var templatePickerPopover: some View {
         PromptTemplatePickerView()
             .environment(settings)
@@ -276,9 +221,9 @@ struct ParamsPanelView: View {
         )
     }
 
-    // Chains active templates on the positive prompt and returns the suffix they add.
-    // Returns "" when templates are inactive or when the result can't be represented
-    // as a simple suffix (e.g. templates that reorder text around {prompt}).
+    /// Chains active templates on the positive prompt and returns the suffix they add.
+    /// Returns "" when templates are inactive or when the result can't be represented
+    /// as a simple suffix (e.g. templates that reorder text around {prompt}).
     private var resolvedPositiveGhost: String {
         guard !settings.activeTemplates.isEmpty else { return "" }
         var resolved = params.prompt
@@ -300,51 +245,6 @@ struct ParamsPanelView: View {
         return String(resolved.dropFirst(params.negativePrompt.count))
     }
 
-    private func promptField(
-        text: Binding<String>,
-        placeholder: String,
-        label: String,
-        hint: String,
-        ghostSuffix: String = ""
-    ) -> some View {
-        let displayText = text.wrappedValue + ghostSuffix
-        return Text(displayText.isEmpty ? " " : displayText)
-            .font(.body)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(minHeight: 60)
-            .opacity(0)
-            .allowsHitTesting(false)
-            .overlay(alignment: .topLeading) {
-                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
-            }
-            .overlay(alignment: .topLeading) {
-                // Hide placeholder when ghost text is present — ghost is more informative.
-                if text.wrappedValue.isEmpty && ghostSuffix.isEmpty {
-                    Text(placeholder)
-                        .foregroundStyle(.tertiary)
-                        .font(.body)
-                        .padding(.leading, 5)
-                        .padding(.trailing, 8)
-                        .padding(.vertical, 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(
-                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
-                        lineWidth: 1
-                    )
-            )
-            .accessibilityLabel(label)
-            .accessibilityHint(hint)
-    }
-
     // MARK: - Steps + Seed (one row, always visible)
 
     private var stepsAndSeedRow: some View {
@@ -361,7 +261,7 @@ struct ParamsPanelView: View {
                             + " time with diminishing quality returns."
                     )
                 }
-                Stepper(value: $params.steps, in: 1...150) {
+                Stepper(value: $params.steps, in: 1 ... 150) {
                     TextField("", value: $params.steps, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
@@ -395,7 +295,7 @@ struct ParamsPanelView: View {
                         .accessibilityLabel("Seed")
                         .accessibilityHint("Use -1 for random")
                     Button {
-                        params.seed = Int.random(in: 0..<1_000_000_000)
+                        params.seed = Int.random(in: 0 ..< 1_000_000_000)
                     } label: {
                         Image(systemName: "dice").font(.caption)
                     }
@@ -428,7 +328,7 @@ struct ParamsPanelView: View {
                 )
             }
             HStack(spacing: 6) {
-                Slider(value: $params.guidance, in: 1.0...15.0, step: 0.5)
+                Slider(value: $params.guidance, in: 1.0 ... 15.0, step: 0.5)
                     .accessibilityLabel("Guidance")
                     .accessibilityValue(String(format: "%.1f", params.guidance))
                     .accessibilityHint("Higher = follows prompt more strictly")
@@ -513,7 +413,7 @@ struct ParamsPanelView: View {
                                     + " changes. Low strength (15–30%) = more creative freedom, prompt"
                                     + " dominates. Think of it as image preservation, not prompt strength."
                             )
-                            Slider(value: $params.imageStrength, in: 0.05...0.95)
+                            Slider(value: $params.imageStrength, in: 0.05 ... 0.95)
                                 .onChange(of: params.imageStrength) { _, v in params.imageStrength = round(v / 0.05) * 0.05 }
                                 .accessibilityLabel("Image strength")
                                 .accessibilityValue(String(format: "%.0f%%", params.imageStrength * 100))
@@ -570,66 +470,12 @@ struct ParamsPanelView: View {
 
     // MARK: - Helpers
 
-    @ViewBuilder
-    private func sectionHeader(_ title: String, info: String?) -> some View {
-        HStack(spacing: 4) {
-            Text(title)
-                .font(.caption)
-                .fontWeight(.medium)
-                .foregroundStyle(.secondary)
-            if let info {
-                InfoButton(title: title, description: info)
-            }
-        }
-    }
-
-    // MARK: - Helpers
-
     private var clipboardHasImage: Bool {
         let pb = NSPasteboard.general
         return pb.canReadObject(forClasses: [NSImage.self], options: nil)
             || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
-                .compactMap { $0 as? URL }
-                .first { Self.imageExtensions.contains($0.pathExtension.lowercased()) } != nil
-    }
-
-    /// Resolves an image path from the general pasteboard, preferring an on-disk file
-    /// URL and otherwise saving raw image data to a temp PNG named with `tempPrefix`.
-    private func imagePathFromPasteboard(tempPrefix: String) -> String? {
-        let pb = NSPasteboard.general
-        // Prefer a file URL so we keep the original file on disk
-        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
-            return url.path
-        }
-        // Fall back to raw image data — save to a temp PNG
-        guard let image = NSImage(pasteboard: pb) else { return nil }
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return nil }
-        try? png.write(to: tmp)
-        return tmp.path
-    }
-
-    private func pasteImage() {
-        if let path = imagePathFromPasteboard(tempPrefix: "pasted-image") {
-            params.imagePath = path
-        }
-    }
-
-    private func browseImage() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = []
-        panel.allowsOtherFileTypes = true
-        panel.title = "Select Reference Image"
-        if panel.runModal() == .OK, let url = panel.url {
-            let ext = url.pathExtension.lowercased()
-            if Self.imageExtensions.contains(ext) {
-                params.imagePath = url.path
-            }
-        }
+            .compactMap { $0 as? URL }
+            .first { Self.imageExtensions.contains($0.pathExtension.lowercased()) } != nil
     }
 
     // MARK: - Mode picker (Generate vs Edit, Flux.2 only)
@@ -727,7 +573,9 @@ struct ParamsPanelView: View {
         .dropDestination(for: String.self, action: { paths, _ in
             let valid = paths.filter { Self.imageExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
             guard !valid.isEmpty else { return false }
-            for path in valid where !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+            for path in valid where !params.editImagePaths.contains(path) {
+                params.editImagePaths.append(path)
+            }
             return true
         }, isTargeted: { isEditDropTargeted = $0 })
         .onDrop(of: [.fileURL], isTargeted: $isEditDropTargeted) { providers in
@@ -745,7 +593,124 @@ struct ParamsPanelView: View {
         .dropHighlight(isEditDropTargeted)
     }
 
-    @ViewBuilder
+    private func styleChip(name: String, templateID: UUID?) -> some View {
+        HStack(spacing: 3) {
+            Text(name)
+                .font(.system(size: 10))
+                .lineLimit(1)
+            if let id = templateID {
+                Button {
+                    settings.activeTemplateIDs.removeAll { $0 == id }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .semibold))
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+            }
+        }
+        .padding(.horizontal, 6)
+        .padding(.vertical, 3)
+        .background(Color.accentColor.opacity(0.12), in: Capsule())
+        .foregroundStyle(Color.accentColor)
+    }
+
+    private func promptField(
+        text: Binding<String>,
+        placeholder: String,
+        label: String,
+        hint: String,
+        ghostSuffix: String = ""
+    ) -> some View {
+        let displayText = text.wrappedValue + ghostSuffix
+        return Text(displayText.isEmpty ? " " : displayText)
+            .font(.body)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: 60)
+            .opacity(0)
+            .allowsHitTesting(false)
+            .overlay(alignment: .topLeading) {
+                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
+            }
+            .overlay(alignment: .topLeading) {
+                // Hide placeholder when ghost text is present — ghost is more informative.
+                if text.wrappedValue.isEmpty && ghostSuffix.isEmpty {
+                    Text(placeholder)
+                        .foregroundStyle(.tertiary)
+                        .font(.body)
+                        .padding(.leading, 5)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .background(Color(nsColor: .textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(
+                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
+                        lineWidth: 1
+                    )
+            )
+            .accessibilityLabel(label)
+            .accessibilityHint(hint)
+    }
+
+    private func sectionHeader(_ title: String, info: String?) -> some View {
+        HStack(spacing: 4) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundStyle(.secondary)
+            if let info {
+                InfoButton(title: title, description: info)
+            }
+        }
+    }
+
+    /// Resolves an image path from the general pasteboard, preferring an on-disk file
+    /// URL and otherwise saving raw image data to a temp PNG named with `tempPrefix`.
+    private func imagePathFromPasteboard(tempPrefix: String) -> String? {
+        let pb = NSPasteboard.general
+        // Prefer a file URL so we keep the original file on disk
+        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
+            return url.path
+        }
+        // Fall back to raw image data — save to a temp PNG
+        guard let image = NSImage(pasteboard: pb) else { return nil }
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
+        guard let tiff = image.tiffRepresentation,
+              let rep = NSBitmapImageRep(data: tiff),
+              let png = rep.representation(using: .png, properties: [:]) else { return nil }
+        try? png.write(to: tmp)
+        return tmp.path
+    }
+
+    private func pasteImage() {
+        if let path = imagePathFromPasteboard(tempPrefix: "pasted-image") {
+            params.imagePath = path
+        }
+    }
+
+    private func browseImage() {
+        let panel = NSOpenPanel()
+        panel.allowedContentTypes = []
+        panel.allowsOtherFileTypes = true
+        panel.title = "Select Reference Image"
+        if panel.runModal() == .OK, let url = panel.url {
+            let ext = url.pathExtension.lowercased()
+            if Self.imageExtensions.contains(ext) {
+                params.imagePath = url.path
+            }
+        }
+    }
+
     private func editImageRow(path: String, index: Int) -> some View {
         HStack(spacing: 8) {
             Image(systemName: "line.3.horizontal")
@@ -796,7 +761,6 @@ struct ParamsPanelView: View {
 
 private extension View {
     /// Highlights a drop target with an accent-colored rounded overlay while `active`.
-    @ViewBuilder
     func dropHighlight(_ active: Bool) -> some View {
         overlay {
             if active {

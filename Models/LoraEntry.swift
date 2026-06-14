@@ -14,5 +14,7 @@ struct LoraEntry: Identifiable, Codable, Equatable, Hashable {
         return path.isEmpty ? "Unnamed LoRA" : path
     }
 
-    var isValid: Bool { !path.trimmingCharacters(in: .whitespaces).isEmpty }
+    var isValid: Bool {
+        !path.trimmingCharacters(in: .whitespaces).isEmpty
+    }
 }

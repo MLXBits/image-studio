@@ -5,7 +5,7 @@ import SwiftUI
 struct DimensionSliderRow: View {
     let label: String
     @Binding var value: Int
-    var range: ClosedRange<Int> = 64...2048
+    var range: ClosedRange<Int> = 64 ... 2048
     var step: Int = 16
 
     var body: some View {
@@ -20,7 +20,7 @@ struct DimensionSliderRow: View {
                     get: { Double(value) },
                     set: { value = snap(Int($0)) }
                 ),
-                in: Double(range.lowerBound)...Double(range.upperBound)
+                in: Double(range.lowerBound) ... Double(range.upperBound)
             )
             .accessibilityLabel(label)
             .accessibilityValue("\(value) pixels")

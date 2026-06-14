@@ -29,7 +29,7 @@ struct PreviewPaneView: View {
                 case .idle:
                     idleView
 
-                case .activeJob(let job):
+                case let .activeJob(job):
                     switch job.status {
                     case .running:
                         StepwisePreviewView(job: job, onCancel: onCancel)
@@ -43,7 +43,7 @@ struct PreviewPaneView: View {
                             onShowFullSize: onShowFullSize
                         )
 
-                    case .failed(let msg):
+                    case let .failed(msg):
                         failedView(message: msg, job: job)
 
                     case .cancelled:
@@ -53,7 +53,7 @@ struct PreviewPaneView: View {
                         pendingView(job: job)
                     }
 
-                case .galleryItem(let item):
+                case let .galleryItem(item):
                     GalleryItemDetailView(
                         item: item,
                         onRemix: onRemix,
@@ -113,7 +113,7 @@ struct PreviewPaneView: View {
         switch state {
         case .idle: return false
 
-        case .activeJob(let job):
+        case let .activeJob(job):
             if case .running = job.status { return false }
             return true
 
@@ -132,6 +132,17 @@ struct PreviewPaneView: View {
             Text("Write a prompt and press ⌘↵")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var cancelledView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "stop.circle")
+                .font(.system(size: 40))
+                .foregroundStyle(.secondary)
+            Text("Cancelled")
+                .font(.title3)
+                .foregroundStyle(.secondary)
         }
     }
 
@@ -209,17 +220,6 @@ struct PreviewPaneView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
-    }
-
-    private var cancelledView: some View {
-        VStack(spacing: 12) {
-            Image(systemName: "stop.circle")
-                .font(.system(size: 40))
-                .foregroundStyle(.secondary)
-            Text("Cancelled")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-        }
     }
 
     private func pendingView(job: FluxJob) -> some View {
@@ -351,9 +351,9 @@ struct FullSizeImageView: View {
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 53 else { return event }  // Escape
+            guard event.keyCode == 53 else { return event } // Escape
             onDismiss()
-            return nil  // consume — prevents system from exiting tiled/zoomed window state
+            return nil // consume — prevents system from exiting tiled/zoomed window state
         }
     }
 

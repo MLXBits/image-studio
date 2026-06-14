@@ -24,7 +24,7 @@ struct QueueDrawerView: View {
             Text("Queue")
                 .font(.headline)
             Spacer()
-            if store.jobs.contains(where: { $0.status.isTerminal }) {
+            if store.jobs.contains(where: \.status.isTerminal) {
                 Button {
                     store.purgeTerminal()
                 } label: {
@@ -88,15 +88,15 @@ struct QueueDrawerView: View {
 
     private func isRestartable(_ job: FluxJob) -> Bool {
         switch job.status {
-        case .failed, .cancelled: return true
-        default: return false
+        case .failed, .cancelled: true
+        default: false
         }
     }
 
     private func isCancellable(_ job: FluxJob) -> Bool {
         switch job.status {
-        case .pending, .running: return true
-        default: return false
+        case .pending, .running: true
+        default: false
         }
     }
 

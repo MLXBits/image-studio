@@ -1,6 +1,9 @@
 import AppKit
 import SwiftUI
+
 struct GenerationGalleryView: View {
+    private static let collapsedBoardsKey = "gallery.collapsedBoards"
+
     @Environment(GalleryStore.self) private var gallery
     @Environment(AppSettings.self) private var settings
 
@@ -27,8 +30,6 @@ struct GenerationGalleryView: View {
     // anchorItemId is the "preview" item shown in the right pane.
     @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
-
-    private static let collapsedBoardsKey = "gallery.collapsedBoards"
 
     private var orderedBoards: [String] {
         let hasDefault = gallery.items.contains { $0.board == "Default" }
@@ -242,11 +243,6 @@ struct GenerationGalleryView: View {
         }
     }
 
-    private func boardImageCount(_ board: String?) -> Int {
-        guard let board else { return 0 }
-        return gallery.items.filter { $0.board == board }.count
-    }
-
     // MARK: - Header
 
     private var headerRow: some View {
@@ -299,6 +295,46 @@ struct GenerationGalleryView: View {
         .background(Color.accentColor.opacity(0.06))
     }
 
+    // MARK: - New group popover
+
+    private var newGroupPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("New Group").font(.headline)
+            TextField("Group name", text: $newGroupName)
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 200)
+                .onSubmit { confirmNewGroup() }
+            HStack {
+                Button("Cancel") { showingNewGroup = false; newGroupName = "" }
+                Spacer()
+                Button("Create") { confirmNewGroup() }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+        }
+        .padding()
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        VStack(spacing: 12) {
+            Spacer()
+            Image(systemName: "photo.stack")
+                .font(.system(size: 36)).foregroundStyle(.tertiary)
+            Text("No images yet")
+                .font(.callout).foregroundStyle(.secondary)
+            Spacer()
+        }
+    }
+
+    // MARK: - Helpers
+
+    private func boardImageCount(_ board: String?) -> Int {
+        guard let board else { return 0 }
+        return gallery.items.filter { $0.board == board }.count
+    }
+
     private func batchMove(to board: String) {
         let toMove = gallery.items.filter { selection.contains($0.id) }
         gallery.moveItems(toMove, toBoard: board, outputDir: settings.outputDir)
@@ -320,32 +356,14 @@ struct GenerationGalleryView: View {
            let anchorIdx = items.firstIndex(where: { $0.id == anchorId }) {
             let lo = min(anchorIdx, targetIdx)
             let hi = max(anchorIdx, targetIdx)
-            for i in lo...hi { selection.insert(items[i].id) }
+            for i in lo ... hi {
+                selection.insert(items[i].id)
+            }
         } else {
             selection = [item.id]
             anchorItemId = item.id
             selectedItem = item
         }
-    }
-
-    // MARK: - New group popover
-
-    private var newGroupPopover: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            Text("New Group").font(.headline)
-            TextField("Group name", text: $newGroupName)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 200)
-                .onSubmit { confirmNewGroup() }
-            HStack {
-                Button("Cancel") { showingNewGroup = false; newGroupName = "" }
-                Spacer()
-                Button("Create") { confirmNewGroup() }
-                    .buttonStyle(.borderedProminent)
-                    .disabled(newGroupName.trimmingCharacters(in: .whitespaces).isEmpty)
-            }
-        }
-        .padding()
     }
 
     private func confirmNewGroup() {
@@ -369,25 +387,10 @@ struct GenerationGalleryView: View {
         }
     }
 
-    // MARK: - Helpers
-
     private func adjacentItem(to item: GalleryItem) -> GalleryItem? {
         let boardItems = gallery.items.filter { $0.board == item.board }
         guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return nil }
         let nextIdx = idx + 1 < boardItems.count ? idx + 1 : idx - 1
         return nextIdx >= 0 ? boardItems[nextIdx] : nil
-    }
-
-    // MARK: - Empty state
-
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "photo.stack")
-                .font(.system(size: 36)).foregroundStyle(.tertiary)
-            Text("No images yet")
-                .font(.callout).foregroundStyle(.secondary)
-            Spacer()
-        }
     }
 }

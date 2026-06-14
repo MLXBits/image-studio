@@ -2,18 +2,25 @@ import AppKit
 import Foundation
 
 struct GalleryItem: Identifiable, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id
+    }
+
     let id: UUID
     let path: String
     let board: String
     let modifiedAt: Date
     var thumbnailData: Data?
-    var thumbnailImage: NSImage?  // decoded from thumbnailData; not persisted
+    var thumbnailImage: NSImage? // decoded from thumbnailData; not persisted
     var metadata: GenerationMetadata?
 
-    var url: URL { URL(fileURLWithPath: path) }
-    var filename: String { url.lastPathComponent }
+    var url: URL {
+        URL(fileURLWithPath: path)
+    }
 
-    static func == (lhs: Self, rhs: Self) -> Bool { lhs.id == rhs.id }
+    var filename: String {
+        url.lastPathComponent
+    }
 }
 
 /// Manages the image gallery by scanning the output directory for image files.
@@ -25,13 +32,13 @@ struct GalleryItem: Identifiable, Equatable {
 @Observable
 @MainActor
 final class GalleryStore {
+    private static let imageExtensions = Set(["png", "jpg", "jpeg", "webp"])
+
     var items: [GalleryItem] = []
     var boards: [String] = []
     var selectedBoard: String = "All"
     private(set) var isScanning: Bool = false
     private var scanGeneration = 0
-
-    private static let imageExtensions = Set(["png", "jpg", "jpeg", "webp"])
     /// Set when a deletion fails; cleared by the next successful delete operation.
     /// Observed by ``GenerationGalleryView`` to display an alert.
     var deleteError: String?

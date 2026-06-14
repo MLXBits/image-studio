@@ -5,6 +5,40 @@ import SwiftUI
 /// SwiftUI's Menu hit-testing is AppKit-controlled and doesn't respect SwiftUI padding,
 /// so this wrapper gives us reliable full-frame click targets.
 struct BatchMenuButton: NSViewRepresentable {
+    class Coordinator: NSObject {
+        var parent: BatchMenuButton
+
+        init(parent: BatchMenuButton) {
+            self.parent = parent
+        }
+
+        @objc func clicked(_ sender: NSButton) {
+            let menu = NSMenu()
+            for count in parent.counts {
+                let item = NSMenuItem(
+                    title: "Generate \(count)",
+                    action: #selector(selected(_:)),
+                    keyEquivalent: count == parent.shortcutCount ? "\r" : ""
+                )
+                if count == parent.shortcutCount {
+                    item.keyEquivalentModifierMask = [.command, .option]
+                }
+                item.target = self
+                item.tag = count
+                menu.addItem(item)
+            }
+            menu.popUp(
+                positioning: nil,
+                at: NSPoint(x: 0, y: sender.bounds.height),
+                in: sender
+            )
+        }
+
+        @objc func selected(_ sender: NSMenuItem) {
+            parent.onSelect(sender.tag)
+        }
+    }
+
     let counts: [Int]
     let shortcutCount: Int
     let isDisabled: Bool
@@ -33,37 +67,7 @@ struct BatchMenuButton: NSViewRepresentable {
         )?.withSymbolConfiguration(config)
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(parent: self) }
-
-    class Coordinator: NSObject {
-        var parent: BatchMenuButton
-
-        init(parent: BatchMenuButton) { self.parent = parent }
-
-        @objc func clicked(_ sender: NSButton) {
-            let menu = NSMenu()
-            for count in parent.counts {
-                let item = NSMenuItem(
-                    title: "Generate \(count)",
-                    action: #selector(selected(_:)),
-                    keyEquivalent: count == parent.shortcutCount ? "\r" : ""
-                )
-                if count == parent.shortcutCount {
-                    item.keyEquivalentModifierMask = [.command, .option]
-                }
-                item.target = self
-                item.tag = count
-                menu.addItem(item)
-            }
-            menu.popUp(
-                positioning: nil,
-                at: NSPoint(x: 0, y: sender.bounds.height),
-                in: sender
-            )
-        }
-
-        @objc func selected(_ sender: NSMenuItem) {
-            parent.onSelect(sender.tag)
-        }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(parent: self)
     }
 }

@@ -4,8 +4,8 @@ import Security
 enum KeychainHelper {
     private static let service = "MLXBits Image Studio"
 
-    // kSecUseDataProtectionKeychain opts into the modern iOS-style keychain:
-    // no per-binary-hash ACL binding, so new builds never re-trigger access prompts.
+    /// kSecUseDataProtectionKeychain opts into the modern iOS-style keychain:
+    /// no per-binary-hash ACL binding, so new builds never re-trigger access prompts.
     private static let baseAttributes: [String: Any] = [
         kSecClass as String: kSecClassGenericPassword,
         kSecAttrService as String: service,

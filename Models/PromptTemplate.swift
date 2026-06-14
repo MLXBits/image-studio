@@ -22,7 +22,9 @@ enum TemplateCategory: String, CaseIterable, Codable {
     case shotType = "Shot Type"
     case custom = "Custom"
 
-    var displayName: String { rawValue }
+    var displayName: String {
+        rawValue
+    }
 }
 
 // MARK: - PromptTemplate

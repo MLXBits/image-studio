@@ -62,7 +62,6 @@ struct LoraManagerView: View {
         }
     }
 
-    @ViewBuilder
     private var loraList: some View {
         VStack(spacing: 19) {
             ForEach($loras) { $lora in
@@ -181,7 +180,7 @@ private struct LoraRowView: View {
                 }
             }
             HStack(spacing: 6) {
-                Slider(value: $lora.strength, in: -1...1)
+                Slider(value: $lora.strength, in: -1 ... 1)
                 TextField("", value: $lora.strength, format: .number.precision(.fractionLength(2)))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 48)

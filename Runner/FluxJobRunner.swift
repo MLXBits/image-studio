@@ -11,21 +11,25 @@ import Foundation
 @Observable
 @MainActor
 final class FluxJobRunner {
-    private(set) var activeJob: FluxJob?
-    private(set) var lastCompletedOutputPath: String?
-    private(set) var batchImageLanded: Int = 0   // incremented per-seed; ContentView scans gallery on change
-    private(set) var sessionCompleted: Int = 0
-    private(set) var inSession: Bool = false
-    private var runTask: Task<Void, Never>?
-    private var currentProcess: Process?
-    private var stepwiseSource: (any DispatchSourceProtocol)?
-    private var batchPollingTask: Task<Void, Never>?
+    // MARK: - One-time quantized model save
+
+    private enum SaveResult { case success, cancelled, failed }
 
     private static let cacheBase: URL = {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("MLXBits Image Studio/stepwise", isDirectory: true)
     }()
+
+    private(set) var activeJob: FluxJob?
+    private(set) var lastCompletedOutputPath: String?
+    private(set) var batchImageLanded: Int = 0 // incremented per-seed; ContentView scans gallery on change
+    private(set) var sessionCompleted: Int = 0
+    private(set) var inSession: Bool = false
+    private var runTask: Task<Void, Never>?
+    private var currentProcess: Process?
+    private var stepwiseSource: (any DispatchSourceProtocol)?
+    private var batchPollingTask: Task<Void, Never>?
 
     // MARK: - Public
 
@@ -170,7 +174,7 @@ final class FluxJobRunner {
 
                 job.isDenoising = true
                 job.currentStep = progress.current
-                job.totalSteps  = progress.total
+                job.totalSteps = progress.total
                 if let elapsed = progress.elapsed, let remaining = progress.remaining {
                     job.stepTiming = "\(elapsed) elapsed · \(remaining) left"
                 }
@@ -195,7 +199,7 @@ final class FluxJobRunner {
                 // Gate on the image existing so a cancelled batch (seeds whose PNG never
                 // landed) doesn't leave orphaned sidecars.
                 for item in batchPaths
-                where FileManager.default.fileExists(atPath: item.path)
+                    where FileManager.default.fileExists(atPath: item.path)
                     && isPNGComplete(at: item.path)
                     && !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
                     var meta = GenerationMetadata.from(job: job)
@@ -263,15 +267,11 @@ final class FluxJobRunner {
         }
     }
 
-    // MARK: - One-time quantized model save
-
-    private enum SaveResult { case success, cancelled, failed }
-
     private func runSave(job: FluxJob, savePath: URL, settings: AppSettings) async -> SaveResult {
         let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
         guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
             job.log += "⚠️  mflux-save not found — falling back to in-memory quantization.\n"
-            return .success  // non-fatal: generate will quantize in-memory instead
+            return .success // non-fatal: generate will quantize in-memory instead
         }
         try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
         job.log += "▸ Downloading and saving Q\(job.quantize) weights (one-time)...\n"
@@ -322,7 +322,8 @@ final class FluxJobRunner {
         let fd = open(dir.path, O_EVTONLY)
         guard fd >= 0 else { return }
         let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd, eventMask: .write, queue: .main)
+            fileDescriptor: fd, eventMask: .write, queue: .main
+        )
         source.setEventHandler { [weak self, weak job] in
             guard let self, let job else { return }
             self.pollStepwise(job: job, dir: dir)
@@ -330,7 +331,7 @@ final class FluxJobRunner {
         source.setCancelHandler { close(fd) }
         source.resume()
         stepwiseSource = source
-        pollStepwise(job: job, dir: dir)  // check immediately for any pre-existing files
+        pollStepwise(job: job, dir: dir) // check immediately for any pre-existing files
     }
 
     private func stopStepwiseWatcher() {
@@ -340,7 +341,8 @@ final class FluxJobRunner {
 
     private func pollStepwise(job: FluxJob, dir: URL) {
         guard let files = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.creationDateKey]) else { return }
+            at: dir, includingPropertiesForKeys: [.creationDateKey]
+        ) else { return }
         let latest = files
             .filter {
                 $0.pathExtension.lowercased() == "png"
@@ -492,7 +494,8 @@ final class FluxJobRunner {
         let dir = useBoard ? "\(settings.outputDir)/\(job.board)" : settings.outputDir
         do {
             try FileManager.default.createDirectory(
-                at: URL(fileURLWithPath: dir), withIntermediateDirectories: true)
+                at: URL(fileURLWithPath: dir), withIntermediateDirectories: true
+            )
         } catch { return nil }
         let ts = Int(Date().timeIntervalSince1970)
         if multiSeed {
@@ -540,13 +543,13 @@ final class FluxJobRunner {
         return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
     }
 
-    // Insert `text` immediately before the last (possibly incomplete) line.
-    // Used to place stage markers ahead of tqdm output that has no trailing newline.
+    /// Insert `text` immediately before the last (possibly incomplete) line.
+    /// Used to place stage markers ahead of tqdm output that has no trailing newline.
     private func insertBeforeLastLine(_ log: String, text: String) -> String {
         if let lastNewline = log.lastIndex(of: "\n") {
             let split = log.index(after: lastNewline)
-            let head = String(log[...lastNewline])   // includes the \n
-            let tail = String(log[split...])          // "" when \n was the last char
+            let head = String(log[...lastNewline]) // includes the \n
+            let tail = String(log[split...]) // "" when \n was the last char
             return head + text + tail
         }
         return text + log

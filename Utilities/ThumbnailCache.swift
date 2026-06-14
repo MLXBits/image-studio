@@ -63,7 +63,9 @@ enum ThumbnailCache {
     }
 
     nonisolated static func purge(paths: [String]) {
-        for path in paths { purge(path: path) }
+        for path in paths {
+            purge(path: path)
+        }
     }
 
     /// Removes any cache entry whose hash isn't present in ``validPaths``.
