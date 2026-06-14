@@ -43,7 +43,7 @@ private struct ThumbnailCellView: View, Equatable {
         ZStack(alignment: .bottom) {
             Group {
                 if let img = item.thumbnailImage {
-                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fill).clipped()
+                    Image(nsImage: img).resizable().scaledToFit()
                 } else {
                     Color.secondary.opacity(0.15)
                         .overlay { Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary) }
