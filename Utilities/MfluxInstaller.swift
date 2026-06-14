@@ -8,19 +8,18 @@ enum MfluxInstaller {
 
         var errorDescription: String? {
             switch self {
-            case .uvInstallFailed(let err):    return "uv install failed: \(err.localizedDescription)"
-            case .mfluxInstallFailed(let msg): return "mflux install failed: \(msg)"
-            case .binaryNotFound:              return "mflux installed but binary not found in PATH"
+            case let .uvInstallFailed(err): "uv install failed: \(err.localizedDescription)"
+            case let .mfluxInstallFailed(msg): "mflux install failed: \(msg)"
+            case .binaryNotFound: "mflux installed but binary not found in PATH"
             }
         }
     }
 
     static func install() async throws -> String {
-        let uvPath: String
-        if let found = resolveUv() {
-            uvPath = found
+        let uvPath: String = if let found = resolveUv() {
+            found
         } else {
-            uvPath = try await installUv()
+            try await installUv()
         }
 
         let errPipe = Pipe()

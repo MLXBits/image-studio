@@ -1,0 +1,48 @@
+# .swiftformat
+# SwiftFormat 0.61+ config for MLXBits Image Studio
+# Handles formatting autocorrect that SwiftLint flags but cannot fix.
+# Member ordering is handled by SwiftLint type_contents_order + manual MARKs.
+# https://github.com/nicklockwood/SwiftFormat/blob/main/Rules.md
+
+--swiftversion 5.9
+
+# ── Exclusions ────────────────────────────────────────────────────────────────
+
+--exclude .build,DerivedData
+
+# ── Disabled rules ────────────────────────────────────────────────────────────
+
+--disable andOperator               # && vs , in if-let — SwiftLint handles this
+--disable blankLinesAroundMark      # too aggressive with nested MARKs
+--disable markTypes                 # auto-MARK insertion — placed manually
+--disable organizeDeclarations      # complex config; type_contents_order covers ordering
+--disable redundantSelf             # SwiftUI requires explicit self in some contexts
+--disable sortDeclarations          # ordering managed by SwiftLint + MARKs
+--disable sortedSwitchCases         # ordering matters semantically
+--disable wrapMultilineStatementBraces  # conflicts with SwiftLint brace style
+
+# ── Enabled rules ─────────────────────────────────────────────────────────────
+
+--enable blankLinesBetweenImports   # blank line between import groups
+--enable docComments                # /// not /* */ for doc comments
+--enable extensionAccessControl     # prefer extension-level ACL over per-member
+--enable genericExtensions          # Array<T> → [T] in extension where clauses
+--enable isEmpty                    # .count == 0 → .isEmpty
+--disable modifierOrder             # conflicts with SwiftLint modifier_order on nonisolated
+--enable preferKeyPath              # { $0.name } → \.name where unambiguous
+--enable redundantClosure           # remove unnecessary closure wrappers
+--enable redundantOptionalBinding   # if let x = x → if let x (Swift 5.7)
+--enable semicolons                 # remove semicolons
+--enable trailingCommas             # trailing comma in multi-line literals
+--enable unusedArguments            # _ for unused closure params
+
+# ── Formatting ────────────────────────────────────────────────────────────────
+
+--indent 4
+--indentcase false
+--trimwhitespace always
+--linebreaks lf
+--maxwidth 140                      # matches SwiftLint line_length warning
+--wrapcollections before-first      # multi-line array/dict aligns with [
+--wraparguments before-first        # func args align with (
+--closingparen balanced

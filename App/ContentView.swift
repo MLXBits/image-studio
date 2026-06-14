@@ -1,5 +1,3 @@
-// swiftlint:disable file_length
-import AppKit
 import SwiftUI
 
 @Observable
@@ -26,15 +24,15 @@ final class ParamsPanelState {
     func applyDefaults(from settings: AppSettings) {
         let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
-        model          = m
-        quantize       = settings.lastQuantize
-        board          = settings.defaultBoard
-        width          = settings.lastWidth
-        height         = settings.lastHeight
-        steps          = d.steps
-        guidance       = d.guidance
-        seed           = -1
-        lowRam         = d.lowRam
+        model = m
+        quantize = settings.lastQuantize
+        board = settings.defaultBoard
+        width = settings.lastWidth
+        height = settings.lastHeight
+        steps = d.steps
+        guidance = d.guidance
+        seed = -1
+        lowRam = d.lowRam
         negativePrompt = d.negativePrompt
         // Build last-run lookup (safe against duplicate paths).
         let lastByPath = Dictionary(
@@ -53,27 +51,27 @@ final class ParamsPanelState {
     }
 
     func apply(metadata meta: GenerationMetadata, newSeed: Bool) {
-        model           = meta.model
+        model = meta.model
         customModelRepo = meta.customModelRepo
         customBaseModel = meta.customBaseModel
-        prompt          = meta.prompt
-        negativePrompt  = meta.negativePrompt
-        width           = meta.width
-        height          = meta.height
-        steps           = meta.steps
-        guidance        = meta.guidance
-        quantize        = meta.quantize
-        lowRam          = meta.lowRam
-        imagePath       = meta.imagePath
-        imageStrength   = meta.imageStrength
-        loras           = meta.loras
-        board           = meta.board ?? ""
-        seed            = newSeed ? -1 : meta.seed
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        quantize = meta.quantize
+        lowRam = meta.lowRam
+        imagePath = meta.imagePath
+        imageStrength = meta.imageStrength
+        loras = meta.loras
+        board = meta.board ?? ""
+        seed = newSeed ? -1 : meta.seed
     }
 
     func makeJob(count: Int = 1, templates: [PromptTemplate] = []) -> FluxJob {
         let seeds: [Int] = count > 1
-            ? (0..<count).map { _ in Int(UInt32.random(in: 0..<UInt32.max)) }
+            ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
             : []
         var finalPrompt = prompt
         var finalNegative = negativePrompt
@@ -113,6 +111,9 @@ final class ParamsPanelState {
 // MARK: - ContentView
 
 struct ContentView: View {
+    /// Static so the token outlives any view identity change and is never deallocated.
+    private static var batchEventMonitor: Any?
+
     @Environment(AppSettings.self) private var settings
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
@@ -130,133 +131,75 @@ struct ContentView: View {
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
 
-    @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
-    @State private var paramsWidth: Double = 280
-    @State private var paramsDragBase: Double?
-
-    @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
-    @State private var galleryWidth: Double = 260
-    @State private var galleryDragBase: Double?
-
-    // Static so the token outlives any view identity change and is never deallocated.
-    private static var batchEventMonitor: Any?
-
-    // MARK: - Helpers
-
-    private func useInImg2Img(_ path: String) {
-        if params.isEditMode {
-            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
-        } else {
-            params.imagePath = path
-        }
-    }
-
-    private func clearPreview() {
-        selectedGalleryItem = nil
-        if let job = runner.activeJob { previewState = .activeJob(job) } else { previewState = .idle }
-    }
-
-    private var previewPaneView: some View {
-        PreviewPaneView(
-            state: previewState,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-            onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel() },
-            onClear: clearPreview,
-            onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
-            hasPrev: galleryNavInfo.hasPrev,
-            hasNext: galleryNavInfo.hasNext,
-            onNavigatePrev: { navigateGallery(-1) },
-            onNavigateNext: { navigateGallery(+1) }
-        )
-    }
-
-    private var paramsPane: some View {
-        ParamsPanelView(params: params)
-            .frame(width: CGFloat(paramsWidth))
-            .frame(maxHeight: .infinity)
-    }
-
-    private var previewPane: some View {
-        previewPaneView.frame(minWidth: 320, maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var galleryPaneView: some View {
-        GenerationGalleryView(
-            selectedItem: $selectedGalleryItem,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
-            onUseInImg2Img: useInImg2Img,
-            onSelectBoard: { name in params.board = name },
-            onClearPreview: clearPreview,
-            isFullSizeShowing: fullSizeImage != nil
-        )
-    }
-
-    private var galleryPane: some View {
-        galleryPaneView
-            .frame(width: CGFloat(galleryWidth))
-            .frame(maxHeight: .infinity)
-    }
-
     var body: some View {
-        VStack(spacing: 0) {
-            topControlBar
-
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
-                    paramsPane
-
+                    ParamsPanelView(params: params)
+                        .frame(minWidth: 240, idealWidth: 260, maxWidth: 320, maxHeight: .infinity)
                     Divider()
-                        .padding(.vertical, 3)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                                .onChanged { value in
-                                    let base: Double
-                                    if let b = paramsDragBase { base = b } else {
-                                        paramsDragBase = paramsWidth; base = paramsWidth
-                                    }
-                                    paramsWidth = max(220, min(420, base + value.translation.width))
-                                }
-                                .onEnded { _ in
-                                    paramsDragBase = nil
-                                    savedParamsWidth = paramsWidth
-                                }
-                        )
-                        .onHover { hovering in
-                            if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                        }
                 }
 
-                previewPane
+                PreviewPaneView(
+                    state: previewState,
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                    onUseInImg2Img: { path in
+                        if params.isEditMode {
+                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                        } else {
+                            params.imagePath = path
+                        }
+                    },
+                    onCancel: { runner.cancel() },
+                    onClear: {
+                        selectedGalleryItem = nil
+                        if let job = runner.activeJob {
+                            previewState = .activeJob(job)
+                        } else {
+                            previewState = .idle
+                        }
+                    },
+                    onShowFullSize: { img in
+                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img }
+                    },
+                    hasPrev: galleryNavInfo.hasPrev,
+                    hasNext: galleryNavInfo.hasNext,
+                    onNavigatePrev: { navigateGallery(-1) },
+                    onNavigateNext: { navigateGallery(+1) }
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 Divider()
-                    .padding(.horizontal, 3)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                            .onChanged { value in
-                                let base: Double
-                                if let b = galleryDragBase { base = b } else {
-                                    galleryDragBase = galleryWidth; base = galleryWidth
-                                }
-                                galleryWidth = max(160, min(500, base - value.translation.width))
-                            }
-                            .onEnded { _ in
-                                galleryDragBase = nil
-                                savedGalleryWidth = galleryWidth
-                            }
-                    )
-                    .onHover { hovering in
-                        if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                    }
 
-                galleryPane
+                GenerationGalleryView(
+                    selectedItem: $selectedGalleryItem,
+                    onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
+                    onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+                    onUseInImg2Img: { path in
+                        if params.isEditMode {
+                            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+                        } else {
+                            params.imagePath = path
+                        }
+                    },
+                    onSelectBoard: { name in params.board = name },
+                    onClearPreview: {
+                        selectedGalleryItem = nil
+                        if let job = runner.activeJob {
+                            previewState = .activeJob(job)
+                        } else {
+                            previewState = .idle
+                        }
+                    },
+                    isFullSizeShowing: fullSizeImage != nil
+                )
+                .frame(minWidth: 180, idealWidth: 260, maxWidth: 360, maxHeight: .infinity)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .top, spacing: 0) {
+                topControlBar
+            }
 
             if let img = fullSizeImage {
                 FullSizeImageView(
@@ -270,8 +213,6 @@ struct ContentView: View {
                 .transition(.opacity)
                 .zIndex(1)
             }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -315,7 +256,7 @@ struct ContentView: View {
             // If the previewed item is deleted out from under us (e.g. shift+delete
             // the last image in a group), drop back to the idle/active-job state
             // instead of leaving the detail pane spinning on a missing file.
-            guard case .galleryItem(let item) = previewState, !ids.contains(item.id) else { return }
+            guard case let .galleryItem(item) = previewState, !ids.contains(item.id) else { return }
             selectedGalleryItem = nil
             previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
         }
@@ -329,8 +270,6 @@ struct ContentView: View {
                 .environment(settings)
         }
         .onAppear {
-            paramsWidth = savedParamsWidth
-            galleryWidth = savedGalleryWidth
             params.applyDefaults(from: settings)
             if settings.outputDir.isEmpty {
                 showingOutputDirPrompt = true
@@ -376,7 +315,7 @@ struct ContentView: View {
             gallery.scan(outputDir: settings.outputDir)
         }
         .onChange(of: runner.batchImageLanded) { _, count in
-            guard count > 1 else { return }  // first image handled by lastCompletedOutputPath
+            guard count > 1 else { return } // first image handled by lastCompletedOutputPath
             gallery.scan(outputDir: settings.outputDir)
         }
         .onChange(of: gallery.items) { _, newItems in
@@ -391,7 +330,7 @@ struct ContentView: View {
         NavigationStack {
             QueueDrawerView(selectedJob: Binding(
                 get: {
-                    if case .activeJob(let j) = previewState { return j }
+                    if case let .activeJob(j) = previewState { return j }
                     return nil
                 },
                 set: { job in
@@ -440,7 +379,7 @@ struct ContentView: View {
                             shortcutCount: settings.batchShortcutCount,
                             isDisabled: !canGenerate
                         ) { count in generate(count: count) }
-                        .frame(width: 28, height: 28)
+                            .frame(width: 28, height: 28)
                     }
                 }
                 .foregroundStyle(.white)
@@ -466,7 +405,6 @@ struct ContentView: View {
         }
     }
 
-    @ViewBuilder
     private var queueStatusLabel: some View {
         ZStack {
             // Invisible anchor sized to the widest running state so the
@@ -524,12 +462,12 @@ struct ContentView: View {
         guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
               !params.isEditMode || !params.editImagePaths.isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
-        settings.lastPrompt    = params.prompt
-        settings.lastWidth     = params.width
-        settings.lastHeight    = params.height
-        settings.lastLoras     = params.loras
-        settings.lastModel     = params.model
-        settings.lastQuantize  = params.quantize
+        settings.lastPrompt = params.prompt
+        settings.lastWidth = params.width
+        settings.lastHeight = params.height
+        settings.lastLoras = params.loras
+        settings.lastModel = params.model
+        settings.lastQuantize = params.quantize
         let job = params.makeJob(count: count, templates: settings.activeTemplates)
         store.add(job)
         if runner.activeJob == nil {

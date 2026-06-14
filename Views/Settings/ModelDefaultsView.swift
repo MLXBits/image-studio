@@ -3,12 +3,12 @@ import SwiftUI
 
 /// Per-model settings form. Shows inside the Settings "Models" tab.
 struct ModelDefaultsView: View {
-    @Environment(AppSettings.self) private var settings
-    @State private var selectedModel: FluxModelVariant = FluxModelVariant.builtIn[0]
-
     private enum CachePhase: Equatable {
         case idle, running, done, failed(String)
     }
+
+    @Environment(AppSettings.self) private var settings
+    @State private var selectedModel: FluxModelVariant = .builtIn[0]
     @State private var cachePhase: CachePhase = .idle
     @State private var cacheLog: String = ""
     @State private var cacheProcess: Process?
@@ -131,6 +131,25 @@ struct ModelDefaultsView: View {
         .padding()
     }
 
+    // MARK: - Cache log
+
+    private var cacheLogView: some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
+                    .font(.system(size: 10, design: .monospaced))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(6)
+                    .textSelection(.enabled)
+                Color.clear.frame(height: 1).id("cacheLogEnd")
+            }
+            .frame(height: 120)
+            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
+            .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
+            .onAppear { proxy.scrollTo("cacheLogEnd") }
+        }
+    }
+
     @ViewBuilder
     private func cacheStatusRow(model: FluxModelVariant, quantize: Int) -> some View {
         switch cachePhase {
@@ -139,7 +158,7 @@ struct ModelDefaultsView: View {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
                     Text(model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
-                         ? "Converting…" : "Downloading…")
+                        ? "Converting…" : "Downloading…")
                         .font(.caption).foregroundStyle(.secondary)
                     Spacer()
                     Button("Cancel") {
@@ -152,7 +171,7 @@ struct ModelDefaultsView: View {
                     .font(.caption2).foregroundStyle(.tertiary)
             }
 
-        case .failed(let message):
+        case let .failed(message):
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     Label("Failed", systemImage: "exclamationmark.triangle.fill")
@@ -168,23 +187,23 @@ struct ModelDefaultsView: View {
         case .idle, .done:
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
-                let _ = cacheRevision  // invalidates view when cache changes on disk
+                let _ = cacheRevision // invalidates view when cache changes on disk
                 let cachedVariants = [0, 4, 8].filter { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir) }
                 ForEach(cachedVariants, id: \.self) { qLevel in
-                        HStack(spacing: 3) {
-                            Text(qLevel == 0 ? "BF16" : "Q\(qLevel)")
-                                .font(.caption2).fontWeight(.medium)
-                            Button {
-                                pendingDeleteVariant = (model, qLevel)
-                            } label: {
-                                Image(systemName: "xmark")
-                                    .font(.system(size: 7, weight: .bold))
-                            }
-                            .buttonStyle(.plain)
+                    HStack(spacing: 3) {
+                        Text(qLevel == 0 ? "BF16" : "Q\(qLevel)")
+                            .font(.caption2).fontWeight(.medium)
+                        Button {
+                            pendingDeleteVariant = (model, qLevel)
+                        } label: {
+                            Image(systemName: "xmark")
+                                .font(.system(size: 7, weight: .bold))
                         }
-                        .padding(.horizontal, 6).padding(.vertical, 2)
-                        .background(.green.opacity(0.15), in: Capsule())
-                        .foregroundStyle(.green)
+                        .buttonStyle(.plain)
+                    }
+                    .padding(.horizontal, 6).padding(.vertical, 2)
+                    .background(.green.opacity(0.15), in: Capsule())
+                    .foregroundStyle(.green)
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
                 ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
@@ -209,7 +228,6 @@ struct ModelDefaultsView: View {
         cacheRevision = UUID()
     }
 
-    @ViewBuilder
     private func formContent(model: FluxModelVariant, defaults d: ModelDefaults) -> some View {
         Form {
             Section("Generation") {
@@ -267,7 +285,7 @@ struct ModelDefaultsView: View {
             }
         }
         .formStyle(.grouped)
-        .id(model)  // force re-render when model changes
+        .id(model) // force re-render when model changes
     }
 
     // MARK: - Field builders
@@ -292,7 +310,7 @@ struct ModelDefaultsView: View {
                     .multilineTextAlignment(.trailing)
                     .frame(width: 64)
                     .onSubmit { bound.wrappedValue = max(1, min(150, bound.wrappedValue)) }
-                Stepper("", value: bound, in: 1...150).labelsHidden()
+                Stepper("", value: bound, in: 1 ... 150).labelsHidden()
             }
         }
         .accessibilityLabel("Default steps for \(model.displayName)")
@@ -311,7 +329,7 @@ struct ModelDefaultsView: View {
                 if current != nil {
                     resetButton { var d = settings.defaults(for: model); d.guidance = nil; settings.updateDefaults(d, for: model) }
                 }
-                Slider(value: bound, in: 1.0...15.0)
+                Slider(value: bound, in: 1.0 ... 15.0)
                     .frame(minWidth: 80)
                 Text(String(format: "%.1f", bound.wrappedValue))
                     .monospacedDigit()
@@ -448,7 +466,7 @@ struct ModelDefaultsView: View {
     // swiftlint:disable:next function_parameter_count
     private func dimensionRow(
         label: String, model: FluxModelVariant, current: Int?,
-        get: KeyPath<ModelDefaults, Int?>,
+        get _: KeyPath<ModelDefaults, Int?>,
         set: @escaping (Int) -> Void,
         reset: @escaping () -> Void
     ) -> some View {
@@ -496,7 +514,7 @@ struct ModelDefaultsView: View {
                             Slider(value: Binding(
                                 get: { eff.strength },
                                 set: { v in setLoraStrength(v, path: global.path, model: model, globals: globals, current: current) }
-                            ), in: 0...2)
+                            ), in: 0 ... 2)
                             Text(String(format: "%.2f", eff.strength))
                                 .font(.caption2)
                                 .monospacedDigit()
@@ -551,25 +569,6 @@ struct ModelDefaultsView: View {
         }
         var d = settings.defaults(for: model); d.loras = list
         settings.updateDefaults(d, for: model)
-    }
-
-    // MARK: - Cache log
-
-    private var cacheLogView: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
-                    .font(.system(size: 10, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(6)
-                    .textSelection(.enabled)
-                Color.clear.frame(height: 1).id("cacheLogEnd")
-            }
-            .frame(height: 120)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
-            .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
-            .onAppear { proxy.scrollTo("cacheLogEnd") }
-        }
     }
 
     // MARK: - Model caching
@@ -642,13 +641,16 @@ struct ModelDefaultsView: View {
             return
         }
 
-        for await chunk in stream { cacheLog = appendCacheLog(chunk, to: cacheLog) }
+        for await chunk in stream {
+            cacheLog = appendCacheLog(chunk, to: cacheLog)
+        }
         process.waitUntilExit()
         cacheProcess = nil
 
         if process.terminationStatus == 0 {
             let savedFiles = (try? FileManager.default.contentsOfDirectory(
-                at: savePath, includingPropertiesForKeys: nil))?.map(\.lastPathComponent) ?? []
+                at: savePath, includingPropertiesForKeys: nil
+            ))?.map(\.lastPathComponent) ?? []
             cacheLog += "\nSaved to: \(savePath.path)\nFiles: \(savedFiles.isEmpty ? "(none found)" : savedFiles.joined(separator: ", "))"
             cachePhase = .done
             cacheRevision = UUID()
@@ -674,14 +676,16 @@ struct ModelDefaultsView: View {
                 // ESC — consume the full CSI sequence \x1b[<params><letter>
                 guard idx < chunk.endIndex, chunk[idx] == "[" else { continue }
                 idx = chunk.index(after: idx)
-                while idx < chunk.endIndex && !chunk[idx].isLetter { idx = chunk.index(after: idx) }
+                while idx < chunk.endIndex && !chunk[idx].isLetter {
+                    idx = chunk.index(after: idx)
+                }
                 guard idx < chunk.endIndex else { continue }
                 let cmd = chunk[idx]
                 idx = chunk.index(after: idx)
                 if cmd == "A" {
                     // Cursor up: remove current line and the \n above it, moving to end of previous line
                     if let nl = result.lastIndex(of: "\n") {
-                        result = String(result[result.startIndex..<nl])
+                        result = String(result[result.startIndex ..< nl])
                     } else {
                         result = ""
                     }
@@ -709,7 +713,7 @@ struct ModelDefaultsView: View {
         }
     }
 
-    // A small × button to clear an override back to the model default
+    /// A small × button to clear an override back to the model default
     private func resetButton(_ action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Image(systemName: "xmark.circle.fill")

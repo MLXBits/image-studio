@@ -10,18 +10,18 @@ enum JobStatus: Equatable {
 
     var label: String {
         switch self {
-        case .pending:      return "Pending"
-        case .running:      return "Running"
-        case .completed:    return "Completed"
-        case .failed(let m): return "Failed: \(m)"
-        case .cancelled:    return "Cancelled"
+        case .pending: "Pending"
+        case .running: "Running"
+        case .completed: "Completed"
+        case let .failed(m): "Failed: \(m)"
+        case .cancelled: "Cancelled"
         }
     }
 
     var isTerminal: Bool {
         switch self {
-        case .completed, .failed, .cancelled: return true
-        default: return false
+        case .completed, .failed, .cancelled: true
+        default: false
         }
     }
 }
@@ -33,11 +33,10 @@ extension JobStatus: Codable {
         let c = try decoder.container(keyedBy: CodingKey.self)
         let type = try c.decode(String.self, forKey: .type)
         switch type {
-        case "pending":   self = .pending
-        case "running":   self = .running
+        case "pending": self = .pending
+        case "running": self = .running
         case "completed": self = .completed
         case "cancelled": self = .cancelled
-
         default:
             let msg = (try? c.decode(String.self, forKey: .message)) ?? type
             self = .failed(msg)
@@ -47,11 +46,11 @@ extension JobStatus: Codable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKey.self)
         switch self {
-        case .pending:       try c.encode("pending", forKey: .type)
-        case .running:       try c.encode("running", forKey: .type)
-        case .completed:     try c.encode("completed", forKey: .type)
-        case .cancelled:     try c.encode("cancelled", forKey: .type)
-        case .failed(let m): try c.encode("failed", forKey: .type); try c.encode(m, forKey: .message)
+        case .pending: try c.encode("pending", forKey: .type)
+        case .running: try c.encode("running", forKey: .type)
+        case .completed: try c.encode("completed", forKey: .type)
+        case .cancelled: try c.encode("cancelled", forKey: .type)
+        case let .failed(m): try c.encode("failed", forKey: .type); try c.encode(m, forKey: .message)
         }
     }
 }
@@ -96,9 +95,9 @@ final class FluxJob: Identifiable {
     var log: String
     /// Absolute path to the finished image file. Set when the run succeeds.
     var outputPath: String?
-    var outputPaths: [String] = []          // transient — multi-seed outputs, not persisted
-    var outputThumbnails: [Data] = []       // transient — thumbnails for fan-out, not persisted
-    var completedSeedsInBatch: Int = 0      // transient — incremented as each seed's image lands
+    var outputPaths: [String] = [] // transient — multi-seed outputs, not persisted
+    var outputThumbnails: [Data] = [] // transient — thumbnails for fan-out, not persisted
+    var completedSeedsInBatch: Int = 0 // transient — incremented as each seed's image lands
     /// The seed that was actually used. Differs from ``seed`` when ``seed`` is `-1`.
     var resolvedSeed: Int?
     /// JPEG thumbnail cached in memory and persisted with the job.
@@ -106,9 +105,9 @@ final class FluxJob: Identifiable {
     var currentStep: Int
     var totalSteps: Int
     var latestStepwisePath: String?
-    var statusLine: String = ""     // transient: live CLI status for display during load/download
-    var stepTiming: String?         // transient: "1:23 elapsed · 0:05 left" from tqdm
-    var isDenoising: Bool = false   // transient: true once the denoising loop emits its first 0/N line
+    var statusLine: String = "" // transient: live CLI status for display during load/download
+    var stepTiming: String? // transient: "1:23 elapsed · 0:05 left" from tqdm
+    var isDenoising: Bool = false // transient: true once the denoising loop emits its first 0/N line
     let createdAt: Date
     var startedAt: Date?
     var completedAt: Date?
@@ -147,31 +146,31 @@ final class FluxJob: Identifiable {
         board: String = "Default",
         createdAt: Date = Date()
     ) {
-        self.id              = id
-        self.model           = model
+        self.id = id
+        self.model = model
         self.customModelRepo = customModelRepo
         self.customBaseModel = customBaseModel
-        self.prompt          = prompt
-        self.negativePrompt  = negativePrompt
-        self.width           = width
-        self.height          = height
-        self.seed            = seed
-        self.seeds           = seeds
-        self.steps           = steps
-        self.guidance        = guidance
-        self.loras           = loras
-        self.quantize        = quantize
-        self.lowRam          = lowRam
-        self.imagePath       = imagePath
-        self.imageStrength   = imageStrength
-        self.isEditMode      = isEditMode
-        self.editImagePaths  = editImagePaths
-        self.board           = board
-        self.status          = .pending
-        self.log             = ""
-        self.currentStep     = 0
-        self.totalSteps      = steps
-        self.createdAt       = createdAt
+        self.prompt = prompt
+        self.negativePrompt = negativePrompt
+        self.width = width
+        self.height = height
+        self.seed = seed
+        self.seeds = seeds
+        self.steps = steps
+        self.guidance = guidance
+        self.loras = loras
+        self.quantize = quantize
+        self.lowRam = lowRam
+        self.imagePath = imagePath
+        self.imageStrength = imageStrength
+        self.isEditMode = isEditMode
+        self.editImagePaths = editImagePaths
+        self.board = board
+        self.status = .pending
+        self.log = ""
+        self.currentStep = 0
+        self.totalSteps = steps
+        self.createdAt = createdAt
     }
 }
 
@@ -186,8 +185,8 @@ extension FluxJob: Codable {
 
     convenience init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
-        self.init(
-            id: try c.decode(UUID.self, forKey: .id),
+        try self.init(
+            id: c.decode(UUID.self, forKey: .id),
             model: (try? c.decode(FluxModelVariant.self, forKey: .model)) ?? .flux2Klein9B,
             customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             customBaseModel: (try? c.decode(FluxModelVariant.self, forKey: .customBaseModel)) ?? .flux2Klein9B,
@@ -209,15 +208,15 @@ extension FluxJob: Codable {
             board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
             createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
-        status       = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log          = (try? c.decode(String.self, forKey: .log)) ?? ""
-        outputPath   = try? c.decode(String.self, forKey: .outputPath)
+        status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
+        log = (try? c.decode(String.self, forKey: .log)) ?? ""
+        outputPath = try? c.decode(String.self, forKey: .outputPath)
         resolvedSeed = try? c.decode(Int.self, forKey: .resolvedSeed)
         thumbnailData = try? c.decode(Data.self, forKey: .thumbnailData)
-        currentStep  = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
-        totalSteps   = (try? c.decode(Int.self, forKey: .totalSteps)) ?? steps
-        startedAt    = try? c.decode(Date.self, forKey: .startedAt)
-        completedAt  = try? c.decode(Date.self, forKey: .completedAt)
+        currentStep = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
+        totalSteps = (try? c.decode(Int.self, forKey: .totalSteps)) ?? steps
+        startedAt = try? c.decode(Date.self, forKey: .startedAt)
+        completedAt = try? c.decode(Date.self, forKey: .completedAt)
         // latestStepwisePath is not persisted — it's transient
     }
 

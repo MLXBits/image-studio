@@ -58,6 +58,25 @@ targets:
         com.apple.security.app-sandbox: false
         com.apple.security.files.user-selected.read-write: true
         com.apple.security.network.client: true
+    preBuildScripts:
+      - name: SwiftFormat
+        script: |
+          SWIFTFORMAT=/opt/homebrew/bin/swiftformat
+          if [ -f "$SWIFTFORMAT" ]; then
+            "$SWIFTFORMAT" --config "${SRCROOT}/.swiftformat" "${SRCROOT}"
+          else
+            echo "warning: SwiftFormat not installed — run: brew install swiftformat"
+          fi
+        basedOnDependencyAnalysis: false
+      - name: SwiftLint
+        script: |
+          SWIFTLINT=/opt/homebrew/bin/swiftlint
+          if [ -f "$SWIFTLINT" ]; then
+            "$SWIFTLINT" lint --config "${SRCROOT}/.swiftlint.yml"
+          else
+            echo "warning: SwiftLint not installed — run: brew install swiftlint"
+          fi
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_NAME: "MLXBits Image Studio"

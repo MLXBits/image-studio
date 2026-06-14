@@ -1,13 +1,13 @@
 import AppKit
 import SwiftUI
 
-// NSTextView-backed log viewer. SwiftUI Text + textSelection re-lays the full document on
-// every append, causing beachballs on long generations. NSTextView only re-lays new content.
+/// NSTextView-backed log viewer. SwiftUI Text + textSelection re-lays the full document on
+/// every append, causing beachballs on long generations. NSTextView only re-lays new content.
 private struct LogTextView: NSViewRepresentable {
     let text: String
     let fontSize: CGFloat
 
-    func makeNSView(context: Context) -> NSScrollView {
+    func makeNSView(context _: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
         // swiftlint:disable:next force_cast
         let textView = scrollView.documentView as! NSTextView
@@ -20,7 +20,7 @@ private struct LogTextView: NSViewRepresentable {
         return scrollView
     }
 
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+    func updateNSView(_ scrollView: NSScrollView, context _: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         if textView.string != text {
             textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)

@@ -1,26 +1,6 @@
 import Foundation
 
 nonisolated struct GenerationMetadata: Codable {
-    var prompt: String
-    var negativePrompt: String
-    var model: FluxModelVariant
-    var customModelRepo: String
-    var customBaseModel: FluxModelVariant
-    var seed: Int
-    var steps: Int
-    var guidance: Double
-    var width: Int
-    var height: Int
-    var quantize: Int
-    var lowRam: Bool
-    var imagePath: String
-    var imageStrength: Double
-    var loras: [LoraEntry]
-    var board: String?
-    var generatedAt: Date
-    var startedAt: Date?
-    var log: String?
-
     @MainActor static func from(job: FluxJob) -> Self {
         Self(
             prompt: job.prompt,
@@ -44,6 +24,26 @@ nonisolated struct GenerationMetadata: Codable {
             log: job.log.isEmpty ? nil : job.log
         )
     }
+
+    var prompt: String
+    var negativePrompt: String
+    var model: FluxModelVariant
+    var customModelRepo: String
+    var customBaseModel: FluxModelVariant
+    var seed: Int
+    var steps: Int
+    var guidance: Double
+    var width: Int
+    var height: Int
+    var quantize: Int
+    var lowRam: Bool
+    var imagePath: String
+    var imageStrength: Double
+    var loras: [LoraEntry]
+    var board: String?
+    var generatedAt: Date
+    var startedAt: Date?
+    var log: String?
 }
 
 enum MetadataSidecar {

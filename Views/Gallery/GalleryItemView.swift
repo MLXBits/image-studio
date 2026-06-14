@@ -1,6 +1,17 @@
 import SwiftUI
 
 struct GalleryItemView: View, Equatable {
+    /// Intentionally ignores closure props — they capture reference types by reference so
+    /// semantically-identical closures from different parent renders behave the same.
+    /// Compares thumbnailImage presence so re-render fires when the image first loads.
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.item.id == rhs.item.id &&
+            (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
+            lhs.isSelected == rhs.isSelected &&
+            lhs.isInMultiSelection == rhs.isInMultiSelection &&
+            lhs.hasAnySelection == rhs.hasAnySelection
+    }
+
     let item: GalleryItem
     let isSelected: Bool
     let isInMultiSelection: Bool
@@ -79,6 +90,8 @@ struct GalleryItemView: View, Equatable {
     private var thumbnailView: some View {
         if let img = item.thumbnailImage {
             Image(nsImage: img)
+                .resizable()
+                .aspectRatio(contentMode: .fill)
         } else {
             ZStack {
                 Color.secondary.opacity(0.15)
@@ -87,17 +100,6 @@ struct GalleryItemView: View, Equatable {
                     .foregroundStyle(.tertiary)
             }
         }
-    }
-
-    // Intentionally ignores closure props — they capture reference types by reference so
-    // semantically-identical closures from different parent renders behave the same.
-    // Compares thumbnailImage presence so re-render fires when the image first loads.
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.item.id == rhs.item.id &&
-        (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
-        lhs.isSelected == rhs.isSelected &&
-        lhs.isInMultiSelection == rhs.isInMultiSelection &&
-        lhs.hasAnySelection == rhs.hasAnySelection
     }
 
     @ViewBuilder

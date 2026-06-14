@@ -2,56 +2,54 @@
 import AppKit
 import SwiftUI
 
-// Width of the overlay scroll indicator track — keeps content clear without hardcoding.
-// automaticallyAdjustsContentInsets (default true) handles the legacy-scroller case automatically.
-private let kScrollerInset = NSScroller.scrollerWidth(for: .regular, scrollerStyle: .overlay)
-
 // MARK: - Closure-based NSMenuItem helper
 
 private final class MenuAction: NSObject {
     private let block: () -> Void
-    init(_ block: @escaping () -> Void) { self.block = block }
-    @objc func run() { block() }
+    init(_ block: @escaping () -> Void) {
+        self.block = block
+    }
+
+    @objc func run() {
+        block()
+    }
 }
 
 private func menuItem(_ title: String, action: @escaping () -> Void) -> NSMenuItem {
     let wrapper = MenuAction(action)
     let item = NSMenuItem(title: title, action: #selector(MenuAction.run), keyEquivalent: "")
     item.target = wrapper
-    item.representedObject = wrapper   // keeps wrapper alive while menu lives
+    item.representedObject = wrapper // keeps wrapper alive while menu lives
     return item
 }
 
 // MARK: - Cell SwiftUI content
 
 private struct ThumbnailCellView: View, Equatable {
+    static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.item.id == rhs.item.id &&
+            (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
+            lhs.isSelected == rhs.isSelected &&
+            lhs.isInMultiSelection == rhs.isInMultiSelection &&
+            lhs.hasAnySelection == rhs.hasAnySelection
+    }
+
     let item: GalleryItem
     let isSelected: Bool
     let isInMultiSelection: Bool
     let hasAnySelection: Bool
 
-    static func == (lhs: Self, rhs: Self) -> Bool {
-        lhs.item.id == rhs.item.id &&
-        (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
-        lhs.isSelected == rhs.isSelected &&
-        lhs.isInMultiSelection == rhs.isInMultiSelection &&
-        lhs.hasAnySelection == rhs.hasAnySelection
-    }
-
     var body: some View {
         ZStack(alignment: .bottom) {
-            Color.clear
-                .overlay {
-                    if let img = item.thumbnailImage {
-                        Image(nsImage: img)
-                            .resizable()
-                            .scaledToFill()
-                    } else {
-                        Color.secondary.opacity(0.15)
-                            .overlay { Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary) }
-                    }
+            Group {
+                if let img = item.thumbnailImage {
+                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fill).clipped()
+                } else {
+                    Color.secondary.opacity(0.15)
+                        .overlay { Image(systemName: "photo").font(.title2).foregroundStyle(.tertiary) }
                 }
-                .clipped()
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             if item.metadata != nil {
                 LinearGradient(colors: [.clear, .black.opacity(0.4)], startPoint: .center, endPoint: .bottom)
@@ -90,11 +88,17 @@ private final class GalleryCell: NSCollectionViewItem {
     static let reuseID = NSUserInterfaceItemIdentifier("GalleryCell")
     private var hosting: NSHostingView<ThumbnailCellView>?
 
-    override func loadView() { view = NSView() }
+    override func loadView() {
+        view = NSView()
+    }
 
     func configure(item: GalleryItem, selected: Bool, multiSelected: Bool, hasAny: Bool) {
-        let content = ThumbnailCellView(item: item, isSelected: selected,
-                                        isInMultiSelection: multiSelected, hasAnySelection: hasAny)
+        let content = ThumbnailCellView(
+            item: item,
+            isSelected: selected,
+            isInMultiSelection: multiSelected,
+            hasAnySelection: hasAny
+        )
         if let h = hosting {
             h.rootView = content
         } else {
@@ -140,8 +144,7 @@ private struct SectionHeaderContent: View {
                 .background(.secondary.opacity(0.12), in: Capsule())
         }
         .padding(.vertical, 5)
-        .padding(.leading, 8)
-        .padding(.trailing, kScrollerInset)
+        .padding(.horizontal, 8)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(
             RoundedRectangle(cornerRadius: 4)
@@ -178,12 +181,23 @@ final class GallerySectionHeader: NSView, NSCollectionViewElement {
     /// collapsed (0-item) sections.
     private(set) var boardName: String?
 
-    func configure(name: String, count: Int, isExpanded: Bool, isDropTarget: Bool,
-                   actions: SectionHeaderActions) {
+    func configure(
+        name: String,
+        count: Int,
+        isExpanded: Bool,
+        isDropTarget: Bool,
+        actions: SectionHeaderActions
+    ) {
         boardName = name
-        let content = SectionHeaderContent(name: name, count: count, isExpanded: isExpanded,
-                                           isDropTarget: isDropTarget, onToggle: actions.onToggle,
-                                           onRename: actions.onRename, onDelete: actions.onDelete)
+        let content = SectionHeaderContent(
+            name: name,
+            count: count,
+            isExpanded: isExpanded,
+            isDropTarget: isDropTarget,
+            onToggle: actions.onToggle,
+            onRename: actions.onRename,
+            onDelete: actions.onDelete
+        )
         if let h = hosting {
             h.rootView = content
         } else {
@@ -206,24 +220,26 @@ final class GallerySectionHeader: NSView, NSCollectionViewElement {
 final class GalleryNSCollectionView: NSCollectionView {
     weak var eventDelegate: GalleryCollectionViewEvents?
 
-    // When true, NSCollectionView is allowed to change selectionIndexPaths.
-    // Set only during arrow-key handling so keyboard navigation works normally,
-    // while mouse-click selection changes are blocked (we manage those ourselves).
+    /// When true, NSCollectionView is allowed to change selectionIndexPaths.
+    /// Set only during arrow-key handling so keyboard navigation works normally,
+    /// while mouse-click selection changes are blocked (we manage those ourselves).
     var allowsSelectionChange = false
 
-    // Tracks the plain-click item path so singleClick can be deferred to mouseUp.
-    // NSCollectionView.mouseDown returns immediately (non-blocking); the drag threshold
-    // is detected in mouseDragged. Deferring to mouseUp ensures we don't clear
-    // multiSelection prematurely on what turns out to be the start of a drag.
-    // Drag sessions consume the source view's mouseUp, so mouseUp only fires for
-    // true clicks — exactly when we want singleClick to run.
+    /// Tracks the plain-click item path so singleClick can be deferred to mouseUp.
+    /// NSCollectionView.mouseDown returns immediately (non-blocking); the drag threshold
+    /// is detected in mouseDragged. Deferring to mouseUp ensures we don't clear
+    /// multiSelection prematurely on what turns out to be the start of a drag.
+    /// Drag sessions consume the source view's mouseUp, so mouseUp only fires for
+    /// true clicks — exactly when we want singleClick to run.
     private var pendingClickPath: IndexPath?
 
-    override var acceptsFirstResponder: Bool { true }
+    override var acceptsFirstResponder: Bool {
+        true
+    }
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 123, 124, 125, 126:   // Arrow keys — NSCollectionView handles 2D navigation
+        case 123, 124, 125, 126: // Arrow keys — NSCollectionView handles 2D navigation
             allowsSelectionChange = true
             super.keyDown(with: event)
             allowsSelectionChange = false
@@ -231,10 +247,10 @@ final class GalleryNSCollectionView: NSCollectionView {
                 eventDelegate?.didNavigate(to: path)
             }
 
-        case 51, 117:              // Delete / Forward Delete
+        case 51, 117: // Delete / Forward Delete
             eventDelegate?.deleteKeyPressed(shift: event.modifierFlags.contains(.shift))
 
-        case 53:                   // Escape
+        case 53: // Escape
             eventDelegate?.escapeKeyPressed()
 
         default:
@@ -243,7 +259,7 @@ final class GalleryNSCollectionView: NSCollectionView {
     }
 
     override func mouseDown(with event: NSEvent) {
-        pendingClickPath = nil  // clear stale state from any previous drag that consumed mouseUp
+        pendingClickPath = nil // clear stale state from any previous drag that consumed mouseUp
         let pt = convert(event.locationInWindow, from: nil)
         guard let path = indexPathForItem(at: pt) else {
             super.mouseDown(with: event)
@@ -293,11 +309,13 @@ final class GalleryNSCollectionView: NSCollectionView {
         return .move
     }
 
-    override func draggingExited(_ sender: (any NSDraggingInfo)?) {
+    override func draggingExited(_: (any NSDraggingInfo)?) {
         eventDelegate?.dragExited(in: self)
     }
 
-    override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool { true }
+    override func prepareForDragOperation(_: NSDraggingInfo) -> Bool {
+        true
+    }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         eventDelegate?.dropPerformed(sender, in: self) ?? false
@@ -323,149 +341,26 @@ protocol GalleryCollectionViewEvents: AnyObject {
 // MARK: - NSViewRepresentable
 
 struct GalleryCollectionView: NSViewRepresentable {
-    // Data
-    var sections: [GallerySection]
-    var selectedItemId: UUID?
-    var multiSelectionIds: Set<UUID>
-    var anchorItemId: UUID?
-    // Callbacks
-    var onSelect: (GalleryItem) -> Void
-    var onMultiToggle: (GalleryItem) -> Void
-    var onRangeSelect: (GalleryItem) -> Void
-    var onItemAppear: (GalleryItem) -> Void
-    var onDeleteRequest: (GalleryItem) -> Void
-    var onDeleteImmediate: (GalleryItem) -> Void
-    var onDeleteMultiRequest: () -> Void
-    var onDeleteMultiImmediate: () -> Void
-    var onRemix: (GenerationMetadata) -> Void
-    var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
-    var onUseInImg2Img: (String) -> Void
-    var onMoveToBoard: (GalleryItem, String) -> Void
-    var onRevealInFinder: (String) -> Void
-    var onToggleSection: (String) -> Void
-    var onRenameBoard: (String) -> Void
-    var onDeleteBoard: (String) -> Void
-    var onEscape: () -> Void
-
-    func makeNSView(context: Context) -> NSScrollView {
-        let cv = GalleryNSCollectionView()
-        cv.eventDelegate = context.coordinator
-
-        let layout = NSCollectionViewFlowLayout()
-        layout.minimumInteritemSpacing = 4
-        layout.minimumLineSpacing = 4
-        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: kScrollerInset)
-        layout.headerReferenceSize = NSSize(width: 0, height: 30)
-        cv.collectionViewLayout = layout
-
-        cv.dataSource = context.coordinator
-        cv.delegate = context.coordinator
-        cv.isSelectable = true
-        cv.allowsMultipleSelection = true  // Native multi-item drag; we block user-driven changes via delegate
-        cv.backgroundColors = [.clear]
-        cv.register(GalleryCell.self, forItemWithIdentifier: GalleryCell.reuseID)
-        cv.register(GallerySectionHeader.self,
-                    forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
-                    withIdentifier: GallerySectionHeader.reuseID)
-        cv.registerForDraggedTypes([.string])
-        cv.setDraggingSourceOperationMask(.move, forLocal: true)
-        cv.setDraggingSourceOperationMask(.copy, forLocal: false)
-
-        context.coordinator.collectionView = cv
-        context.coordinator.parent = self
-
-        let scrollView = NSScrollView()
-        scrollView.documentView = cv
-        scrollView.hasVerticalScroller = true
-        scrollView.autohidesScrollers = true
-        scrollView.scrollerStyle = .overlay
-        scrollView.drawsBackground = false
-        return scrollView
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context: Context) {
-        let coord = context.coordinator
-        guard let cv = scrollView.documentView as? GalleryNSCollectionView else { return }
-        coord.parent = self
-
-        let oldSectionIds = coord.sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
-        let newSectionIds = sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
-        let structureChanged = !zip(oldSectionIds, newSectionIds).allSatisfy {
-            $0.0 == $1.0 && $0.1 == $1.1 && $0.2 == $1.2
-        } || oldSectionIds.count != newSectionIds.count
-
-        coord.sections = sections
-
-        if structureChanged {
-            let cvHadFocus = isGalleryInResponderChain(scrollView: scrollView, window: cv.window)
-            cv.reloadData()
-            if cvHadFocus { cv.window?.makeFirstResponder(cv) }
-        } else {
-            // Refresh visible cells — thumbnail may have loaded or selection changed
-            let hasAny = !multiSelectionIds.isEmpty
-            for path in cv.indexPathsForVisibleItems() {
-                guard path.section < sections.count,
-                      path.item < sections[path.section].visibleItems.count else { continue }
-                let item = sections[path.section].visibleItems[path.item]
-                (cv.item(at: path) as? GalleryCell)?.configure(
-                    item: item,
-                    selected: item.id == selectedItemId,
-                    multiSelected: multiSelectionIds.count > 1 && multiSelectionIds.contains(item.id),
-                    hasAny: hasAny
-                )
-            }
-        }
-
-        // Keep NSCollectionView's selectionIndexPaths in sync with our unified selection so it
-        // knows which items to include in native multi-item drag sessions.
-        var wantedPaths = Set<IndexPath>()
-        for (si, sec) in sections.enumerated() {
-            for (ii, item) in sec.visibleItems.enumerated() where multiSelectionIds.contains(item.id) {
-                wantedPaths.insert(IndexPath(item: ii, section: si))
-            }
-        }
-        if cv.selectionIndexPaths != wantedPaths {
-            cv.selectionIndexPaths = wantedPaths
-        }
-
-        // Refresh visible section headers
-        for sectionIdx in 0..<sections.count {
-            let path = IndexPath(item: 0, section: sectionIdx)
-            if let header = cv.supplementaryView(
-                forElementKind: NSCollectionView.elementKindSectionHeader, at: path
-            ) as? GallerySectionHeader {
-                let sec = sections[sectionIdx]
-                header.configure(
-                    name: sec.board, count: sec.items.count,
-                    isExpanded: sec.isExpanded, isDropTarget: coord.dropTargetBoard == sec.board,
-                    actions: SectionHeaderActions(
-                        onToggle: { coord.parent.onToggleSection(sec.board) },
-                        onRename: sec.board == "Default" ? nil : { coord.parent.onRenameBoard(sec.board) },
-                        onDelete: sec.board == "Default" ? nil : { coord.parent.onDeleteBoard(sec.board) }
-                    )
-                )
-            }
-        }
-    }
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
     // MARK: - Coordinator
 
     final class Coordinator: NSObject, NSCollectionViewDataSource, NSCollectionViewDelegateFlowLayout,
-                              GalleryCollectionViewEvents {
+        GalleryCollectionViewEvents {
         var parent: GalleryCollectionView
         var sections: [GallerySection] = []
         var dropTargetBoard: String?
         weak var collectionView: GalleryNSCollectionView?
 
-        init(_ parent: GalleryCollectionView) { self.parent = parent }
+        init(_ parent: GalleryCollectionView) {
+            self.parent = parent
+        }
 
         // MARK: Data source
 
-        func numberOfSections(in cv: NSCollectionView) -> Int { sections.count }
+        func numberOfSections(in _: NSCollectionView) -> Int {
+            sections.count
+        }
 
-        func collectionView(_ cv: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
+        func collectionView(_: NSCollectionView, numberOfItemsInSection section: Int) -> Int {
             sections[section].visibleItems.count
         }
 
@@ -474,21 +369,27 @@ struct GalleryCollectionView: NSViewRepresentable {
             let cell = cv.makeItem(withIdentifier: GalleryCell.reuseID, for: path) as! GalleryCell
             let item = sections[path.section].visibleItems[path.item]
             let hasAny = !parent.multiSelectionIds.isEmpty
-            cell.configure(item: item,
-                           selected: item.id == parent.selectedItemId,
-                           multiSelected: parent.multiSelectionIds.count > 1 && parent.multiSelectionIds.contains(item.id),
-                           hasAny: hasAny)
+            cell.configure(
+                item: item,
+                selected: item.id == parent.selectedItemId,
+                multiSelected: parent.multiSelectionIds.count > 1 && parent.multiSelectionIds.contains(item.id),
+                hasAny: hasAny
+            )
             parent.onItemAppear(item)
             return cell
         }
 
-        func collectionView(_ cv: NSCollectionView,
-                            viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind,
-                            at path: IndexPath) -> NSView {
+        func collectionView(
+            _ cv: NSCollectionView,
+            viewForSupplementaryElementOfKind kind: NSCollectionView.SupplementaryElementKind,
+            at path: IndexPath
+        ) -> NSView {
             guard kind == NSCollectionView.elementKindSectionHeader else { return NSView() }
-            let anyView = cv.makeSupplementaryView(ofKind: kind,
-                                                   withIdentifier: GallerySectionHeader.reuseID,
-                                                   for: path)
+            let anyView = cv.makeSupplementaryView(
+                ofKind: kind,
+                withIdentifier: GallerySectionHeader.reuseID,
+                for: path
+            )
             // swiftlint:disable:next force_cast
             let header = anyView as! GallerySectionHeader
             let sec = sections[path.section]
@@ -508,11 +409,13 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         // MARK: Layout delegate
 
-        func collectionView(_ cv: NSCollectionView, layout: NSCollectionViewLayout,
-                            sizeForItemAt path: IndexPath) -> NSSize {
-            guard let flow = layout as? NSCollectionViewFlowLayout else { return NSSize(width: 80, height: 80) }
-            let spacing = flow.minimumInteritemSpacing, minCell = 80.0
-            let available = max(0, cv.bounds.width - flow.sectionInset.left - flow.sectionInset.right)
+        func collectionView(
+            _ cv: NSCollectionView,
+            layout _: NSCollectionViewLayout,
+            sizeForItemAt _: IndexPath
+        ) -> NSSize {
+            let inset = 8.0, spacing = 4.0, minCell = 80.0
+            let available = max(0, cv.bounds.width - inset * 2)
             let numCols = max(1, floor((available + spacing) / (minCell + spacing)))
             let cellW = floor((available - (numCols - 1) * spacing) / numCols)
             return NSSize(width: cellW, height: cellW)
@@ -549,13 +452,16 @@ struct GalleryCollectionView: NSViewRepresentable {
             if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
         }
 
-        func escapeKeyPressed() { parent.onEscape() }
+        func escapeKeyPressed() {
+            parent.onEscape()
+        }
 
-        // Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
-        // This lets NSCollectionView drive arrow-key navigation while we own click-based selection.
+        /// Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
+        /// This lets NSCollectionView drive arrow-key navigation while we own click-based selection.
         func collectionView(_ cv: NSCollectionView, shouldSelectItemsAt paths: Set<IndexPath>) -> Set<IndexPath> {
             (cv as? GalleryNSCollectionView)?.allowsSelectionChange == true ? paths : []
         }
+
         func collectionView(_ cv: NSCollectionView, shouldDeselectItemsAt paths: Set<IndexPath>) -> Set<IndexPath> {
             (cv as? GalleryNSCollectionView)?.allowsSelectionChange == true ? paths : []
         }
@@ -571,8 +477,10 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         // MARK: Drag source
 
-        func collectionView(_ cv: NSCollectionView,
-                            pasteboardWriterForItemAt path: IndexPath) -> (any NSPasteboardWriting)? {
+        func collectionView(
+            _: NSCollectionView,
+            pasteboardWriterForItemAt path: IndexPath
+        ) -> (any NSPasteboardWriting)? {
             guard path.section < sections.count,
                   path.item < sections[path.section].visibleItems.count else { return nil }
             let item = sections[path.section].visibleItems[path.item]
@@ -604,8 +512,12 @@ struct GalleryCollectionView: NSViewRepresentable {
             // Collect all dragged items (one per NSDraggingItem in native multi-drag).
             var draggedItems: [GalleryItem] = []
             let allVisible = sections.flatMap(\.visibleItems)
-            info.enumerateDraggingItems(options: [], for: nil, classes: [NSPasteboardItem.self],
-                                        searchOptions: [:]) { draggingItem, _, _ in
+            info.enumerateDraggingItems(
+                options: [],
+                for: nil,
+                classes: [NSPasteboardItem.self],
+                searchOptions: [:]
+            ) { draggingItem, _, _ in
                 guard let pbItem = draggingItem.item as? NSPasteboardItem,
                       let itemPath = pbItem.string(forType: .string),
                       let item = allVisible.first(where: { $0.path == itemPath }),
@@ -619,7 +531,9 @@ struct GalleryCollectionView: NSViewRepresentable {
             if draggedItems.contains(where: { parent.multiSelectionIds.contains($0.id) }) {
                 parent.onMoveToBoard(draggedItems[0], board)
             } else {
-                for item in draggedItems { parent.onMoveToBoard(item, board) }
+                for item in draggedItems {
+                    parent.onMoveToBoard(item, board)
+                }
             }
             return true
         }
@@ -639,7 +553,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             let loc = cv.convert(draggingInfo.draggingLocation, from: nil)
             guard let layout = cv.collectionViewLayout as? NSCollectionViewFlowLayout else { return nil }
 
-            for si in 0..<sections.count {
+            for si in 0 ..< sections.count {
                 let path = IndexPath(item: 0, section: si)
                 if let hAttrs = layout.layoutAttributesForSupplementaryView(
                     ofKind: NSCollectionView.elementKindSectionHeader, at: path
@@ -657,10 +571,12 @@ struct GalleryCollectionView: NSViewRepresentable {
             return nil
         }
 
-        func collectionView(_ cv: NSCollectionView,
-                            draggingSession session: NSDraggingSession,
-                            endedAt screenPoint: NSPoint,
-                            dragOperation: NSDragOperation) {
+        func collectionView(
+            _ cv: NSCollectionView,
+            draggingSession _: NSDraggingSession,
+            endedAt _: NSPoint,
+            dragOperation _: NSDragOperation
+        ) {
             guard dropTargetBoard != nil else { return }
             let old = dropTargetBoard
             dropTargetBoard = nil
@@ -674,7 +590,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             // scroll view's full subview tree which covers views NSCollectionView may place
             // outside cv.subviews (e.g. in the clip view for sticky/floating headers).
             var found = Set<String>()
-            for si in 0..<sections.count {
+            for si in 0 ..< sections.count {
                 let sec = sections[si]
                 guard toRefresh.contains(sec.board) else { continue }
                 let path = IndexPath(item: 0, section: si)
@@ -779,6 +695,138 @@ struct GalleryCollectionView: NSViewRepresentable {
             return menu
         }
     }
+
+    // Data
+    var sections: [GallerySection]
+    var selectedItemId: UUID?
+    var multiSelectionIds: Set<UUID>
+    var anchorItemId: UUID?
+    // Callbacks
+    var onSelect: (GalleryItem) -> Void
+    var onMultiToggle: (GalleryItem) -> Void
+    var onRangeSelect: (GalleryItem) -> Void
+    var onItemAppear: (GalleryItem) -> Void
+    var onDeleteRequest: (GalleryItem) -> Void
+    var onDeleteImmediate: (GalleryItem) -> Void
+    var onDeleteMultiRequest: () -> Void
+    var onDeleteMultiImmediate: () -> Void
+    var onRemix: (GenerationMetadata) -> Void
+    var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
+    var onUseInImg2Img: (String) -> Void
+    var onMoveToBoard: (GalleryItem, String) -> Void
+    var onRevealInFinder: (String) -> Void
+    var onToggleSection: (String) -> Void
+    var onRenameBoard: (String) -> Void
+    var onDeleteBoard: (String) -> Void
+    var onEscape: () -> Void
+
+    func makeNSView(context: Context) -> NSScrollView {
+        let cv = GalleryNSCollectionView()
+        cv.eventDelegate = context.coordinator
+
+        let layout = NSCollectionViewFlowLayout()
+        layout.minimumInteritemSpacing = 4
+        layout.minimumLineSpacing = 4
+        layout.sectionInset = NSEdgeInsets(top: 0, left: 8, bottom: 8, right: 8)
+        layout.headerReferenceSize = NSSize(width: 0, height: 30)
+        cv.collectionViewLayout = layout
+
+        cv.dataSource = context.coordinator
+        cv.delegate = context.coordinator
+        cv.isSelectable = true
+        cv.allowsMultipleSelection = true // Native multi-item drag; we block user-driven changes via delegate
+        cv.backgroundColors = [.clear]
+        cv.register(GalleryCell.self, forItemWithIdentifier: GalleryCell.reuseID)
+        cv.register(
+            GallerySectionHeader.self,
+            forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
+            withIdentifier: GallerySectionHeader.reuseID
+        )
+        cv.registerForDraggedTypes([.string])
+        cv.setDraggingSourceOperationMask(.move, forLocal: true)
+        cv.setDraggingSourceOperationMask(.copy, forLocal: false)
+
+        context.coordinator.collectionView = cv
+        context.coordinator.parent = self
+
+        let scrollView = NSScrollView()
+        scrollView.documentView = cv
+        scrollView.hasVerticalScroller = true
+        scrollView.autohidesScrollers = true
+        scrollView.scrollerStyle = .overlay
+        scrollView.drawsBackground = false
+        scrollView.automaticallyAdjustsContentInsets = false
+        return scrollView
+    }
+
+    func updateNSView(_ scrollView: NSScrollView, context: Context) {
+        let coord = context.coordinator
+        guard let cv = scrollView.documentView as? GalleryNSCollectionView else { return }
+        coord.parent = self
+
+        let oldSectionIds = coord.sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
+        let newSectionIds = sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
+        let structureChanged = !zip(oldSectionIds, newSectionIds).allSatisfy {
+            $0.0 == $1.0 && $0.1 == $1.1 && $0.2 == $1.2
+        } || oldSectionIds.count != newSectionIds.count
+
+        coord.sections = sections
+
+        if structureChanged {
+            let cvHadFocus = isGalleryInResponderChain(scrollView: scrollView, window: cv.window)
+            cv.reloadData()
+            if cvHadFocus { cv.window?.makeFirstResponder(cv) }
+        } else {
+            // Refresh visible cells — thumbnail may have loaded or selection changed
+            let hasAny = !multiSelectionIds.isEmpty
+            for path in cv.indexPathsForVisibleItems() {
+                guard path.section < sections.count,
+                      path.item < sections[path.section].visibleItems.count else { continue }
+                let item = sections[path.section].visibleItems[path.item]
+                (cv.item(at: path) as? GalleryCell)?.configure(
+                    item: item,
+                    selected: item.id == selectedItemId,
+                    multiSelected: multiSelectionIds.count > 1 && multiSelectionIds.contains(item.id),
+                    hasAny: hasAny
+                )
+            }
+        }
+
+        // Keep NSCollectionView's selectionIndexPaths in sync with our unified selection so it
+        // knows which items to include in native multi-item drag sessions.
+        var wantedPaths = Set<IndexPath>()
+        for (si, sec) in sections.enumerated() {
+            for (ii, item) in sec.visibleItems.enumerated() where multiSelectionIds.contains(item.id) {
+                wantedPaths.insert(IndexPath(item: ii, section: si))
+            }
+        }
+        if cv.selectionIndexPaths != wantedPaths {
+            cv.selectionIndexPaths = wantedPaths
+        }
+
+        // Refresh visible section headers
+        for sectionIdx in 0 ..< sections.count {
+            let path = IndexPath(item: 0, section: sectionIdx)
+            if let header = cv.supplementaryView(
+                forElementKind: NSCollectionView.elementKindSectionHeader, at: path
+            ) as? GallerySectionHeader {
+                let sec = sections[sectionIdx]
+                header.configure(
+                    name: sec.board, count: sec.items.count,
+                    isExpanded: sec.isExpanded, isDropTarget: coord.dropTargetBoard == sec.board,
+                    actions: SectionHeaderActions(
+                        onToggle: { coord.parent.onToggleSection(sec.board) },
+                        onRename: sec.board == "Default" ? nil : { coord.parent.onRenameBoard(sec.board) },
+                        onDelete: sec.board == "Default" ? nil : { coord.parent.onDeleteBoard(sec.board) }
+                    )
+                )
+            }
+        }
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
+    }
 }
 
 // MARK: - Focus helper
@@ -804,5 +852,7 @@ struct GallerySection {
     let isExpanded: Bool
 
     /// Items actually shown in the grid (empty when collapsed).
-    var visibleItems: [GalleryItem] { isExpanded ? items : [] }
+    var visibleItems: [GalleryItem] {
+        isExpanded ? items : []
+    }
 }

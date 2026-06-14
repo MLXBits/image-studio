@@ -7,9 +7,82 @@ import SwiftUI
 /// Pass `ghostSuffix` to show template-contributed text after the user's editable content.
 /// The ghost text is styled in tertiaryLabelColor and cannot be edited.
 struct InsetTextEditor: NSViewRepresentable {
-    @Binding var text: String
-    var insets = NSSize(width: 5, height: 8)
-    var ghostSuffix: String = ""
+    final class Coordinator: NSObject, NSTextViewDelegate {
+        var parent: InsetTextEditor
+
+        init(_ parent: InsetTextEditor) {
+            self.parent = parent
+        }
+
+        func textDidChange(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            parent.text = userText(from: tv.string)
+        }
+
+        func textViewDidChangeSelection(_ notification: Notification) {
+            guard let tv = notification.object as? NSTextView else { return }
+            let ghostLen = parent.ghostSuffix.utf16.count
+            guard ghostLen > 0 else { return }
+
+            // Derive userLen from the live text view string rather than parent.text,
+            // because textViewDidChangeSelection can fire before textDidChange — if it
+            // does, parent.text is still the pre-keystroke value (e.g. "" when the
+            // user types the first character), which would clamp the cursor to 0.
+            let userLen = max(0, tv.string.utf16.count - ghostLen)
+            let sel = tv.selectedRange()
+
+            // Clamp selection to user-text range. Preserves selection length (e.g. Cmd+A
+            // selects all user text, not the ghost). Re-triggers textViewDidChangeSelection,
+            // but the clamped range satisfies the guard below, ending the recursion.
+            if NSMaxRange(sel) > userLen {
+                let clampedLoc = min(sel.location, userLen)
+                tv.setSelectedRange(NSRange(location: clampedLoc, length: userLen - clampedLoc))
+            }
+
+            // Always keep typing attributes at normal color so new chars aren't styled as ghost.
+            tv.typingAttributes = InsetTextEditor.userAttrs
+        }
+
+        func textView(
+            _ textView: NSTextView,
+            shouldChangeTextIn affectedCharRange: NSRange,
+            replacementString: String?
+        ) -> Bool {
+            let ghostLen = parent.ghostSuffix.utf16.count
+            guard ghostLen > 0 else { return true }
+
+            let userLen = parent.text.utf16.count
+
+            // Edit is entirely within user range: allow normally.
+            if affectedCharRange.upperBound <= userLen { return true }
+
+            // Edit is entirely within ghost range: block.
+            if affectedCharRange.location >= userLen { return false }
+
+            // Edit straddles the boundary (e.g. Cmd+A then type): clamp to user range
+            // and perform the edit manually so the ghost text is preserved.
+            let clampedRange = NSRange(
+                location: affectedCharRange.location,
+                length: userLen - affectedCharRange.location
+            )
+            let delegate = textView.delegate
+            textView.delegate = nil
+            textView.insertText(replacementString ?? "", replacementRange: clampedRange)
+            textView.delegate = delegate
+            parent.text = userText(from: textView.string)
+            return false
+        }
+
+        /// Strips the ghost suffix from the full NSTextView string to recover user text.
+        private func userText(from full: String) -> String {
+            let ghostLen = parent.ghostSuffix.utf16.count
+            guard ghostLen > 0 else { return full }
+            let utf16 = full.utf16
+            guard utf16.count >= ghostLen else { return full }
+            let endIdx = utf16.index(utf16.endIndex, offsetBy: -ghostLen)
+            return String(full[..<endIdx])
+        }
+    }
 
     static let userAttrs: [NSAttributedString.Key: Any] = [
         .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
@@ -19,6 +92,10 @@ struct InsetTextEditor: NSViewRepresentable {
         .font: NSFont.systemFont(ofSize: NSFont.systemFontSize),
         .foregroundColor: NSColor.tertiaryLabelColor,
     ]
+
+    @Binding var text: String
+    var insets = NSSize(width: 5, height: 8)
+    var ghostSuffix: String = ""
 
     func makeNSView(context: Context) -> NSScrollView {
         let scrollView = NSTextView.scrollableTextView()
@@ -81,78 +158,7 @@ struct InsetTextEditor: NSViewRepresentable {
         textView.selectedRanges = clamped
     }
 
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    final class Coordinator: NSObject, NSTextViewDelegate {
-        var parent: InsetTextEditor
-
-        init(_ parent: InsetTextEditor) { self.parent = parent }
-
-        func textDidChange(_ notification: Notification) {
-            guard let tv = notification.object as? NSTextView else { return }
-            parent.text = userText(from: tv.string)
-        }
-
-        func textViewDidChangeSelection(_ notification: Notification) {
-            guard let tv = notification.object as? NSTextView else { return }
-            let ghostLen = parent.ghostSuffix.utf16.count
-            guard ghostLen > 0 else { return }
-
-            // Derive userLen from the live text view string rather than parent.text,
-            // because textViewDidChangeSelection can fire before textDidChange — if it
-            // does, parent.text is still the pre-keystroke value (e.g. "" when the
-            // user types the first character), which would clamp the cursor to 0.
-            let userLen = max(0, tv.string.utf16.count - ghostLen)
-            let sel = tv.selectedRange()
-
-            // Clamp selection to user-text range. Preserves selection length (e.g. Cmd+A
-            // selects all user text, not the ghost). Re-triggers textViewDidChangeSelection,
-            // but the clamped range satisfies the guard below, ending the recursion.
-            if NSMaxRange(sel) > userLen {
-                let clampedLoc = min(sel.location, userLen)
-                tv.setSelectedRange(NSRange(location: clampedLoc, length: userLen - clampedLoc))
-            }
-
-            // Always keep typing attributes at normal color so new chars aren't styled as ghost.
-            tv.typingAttributes = InsetTextEditor.userAttrs
-        }
-
-        func textView(
-            _ textView: NSTextView,
-            shouldChangeTextIn affectedCharRange: NSRange,
-            replacementString: String?
-        ) -> Bool {
-            let ghostLen = parent.ghostSuffix.utf16.count
-            guard ghostLen > 0 else { return true }
-
-            let userLen = parent.text.utf16.count
-
-            // Edit is entirely within user range: allow normally.
-            if affectedCharRange.upperBound <= userLen { return true }
-
-            // Edit is entirely within ghost range: block.
-            if affectedCharRange.location >= userLen { return false }
-
-            // Edit straddles the boundary (e.g. Cmd+A then type): clamp to user range
-            // and perform the edit manually so the ghost text is preserved.
-            let clampedRange = NSRange(location: affectedCharRange.location,
-                                       length: userLen - affectedCharRange.location)
-            let delegate = textView.delegate
-            textView.delegate = nil
-            textView.insertText(replacementString ?? "", replacementRange: clampedRange)
-            textView.delegate = delegate
-            parent.text = userText(from: textView.string)
-            return false
-        }
-
-        // Strips the ghost suffix from the full NSTextView string to recover user text.
-        private func userText(from full: String) -> String {
-            let ghostLen = parent.ghostSuffix.utf16.count
-            guard ghostLen > 0 else { return full }
-            let utf16 = full.utf16
-            guard utf16.count >= ghostLen else { return full }
-            let endIdx = utf16.index(utf16.endIndex, offsetBy: -ghostLen)
-            return String(full[..<endIdx])
-        }
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
 }

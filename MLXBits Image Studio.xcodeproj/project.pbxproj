@@ -252,6 +252,8 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 11644E12E4E096464A3FE521 /* Build configuration list for PBXNativeTarget "MLXBits Image Studio" */;
 			buildPhases = (
+				8A2EBDD6948F6DB2B3683A0D /* SwiftFormat */,
+				837DAB49D3E6174E37F3DCF8 /* SwiftLint */,
 				7180A44B4EABA08AA5126CD2 /* Sources */,
 				D55F446F21DA424762BAF739 /* Resources */,
 			);
@@ -309,6 +311,47 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		837DAB49D3E6174E37F3DCF8 /* SwiftLint */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = SwiftLint;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SWIFTLINT=/opt/homebrew/bin/swiftlint\nif [ -f \"$SWIFTLINT\" ]; then\n  \"$SWIFTLINT\" lint --config \"${SRCROOT}/.swiftlint.yml\"\nelse\n  echo \"warning: SwiftLint not installed — run: brew install swiftlint\"\nfi\n";
+		};
+		8A2EBDD6948F6DB2B3683A0D /* SwiftFormat */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = SwiftFormat;
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "SWIFTFORMAT=/opt/homebrew/bin/swiftformat\nif [ -f \"$SWIFTFORMAT\" ]; then\n  \"$SWIFTFORMAT\" --config \"${SRCROOT}/.swiftformat\" \"${SRCROOT}\"\nelse\n  echo \"warning: SwiftFormat not installed — run: brew install swiftformat\"\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		7180A44B4EABA08AA5126CD2 /* Sources */ = {

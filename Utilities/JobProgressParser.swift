@@ -4,7 +4,7 @@ enum JobProgressParser {
     struct StepProgress {
         let current: Int
         let total: Int
-        let elapsed: String?   // e.g. "1:23"
+        let elapsed: String? // e.g. "1:23"
         let remaining: String? // e.g. "0:05"
     }
 
@@ -25,11 +25,12 @@ enum JobProgressParser {
             var remaining: String?
             let suffix = String(line[countRange.upperBound...])
             if let timingRange = suffix.range(
-                of: #"\[(\d+:\d+(?::\d+)?)<(\d+:\d+(?::\d+)?)"#, options: .regularExpression) {
+                of: #"\[(\d+:\d+(?::\d+)?)<(\d+:\d+(?::\d+)?)"#, options: .regularExpression
+            ) {
                 let timing = String(suffix[timingRange].dropFirst()) // drop leading "["
                 let timeParts = timing.split(separator: "<", maxSplits: 1)
                 if timeParts.count == 2 {
-                    elapsed   = String(timeParts[0])
+                    elapsed = String(timeParts[0])
                     remaining = String(timeParts[1])
                 }
             }

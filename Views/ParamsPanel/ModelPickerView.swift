@@ -1,6 +1,18 @@
 import SwiftUI
 
 struct ModelPickerView: View {
+    // MARK: - VRAM / disk estimate
+
+    private struct VRAMEstimate {
+        let label: String
+        let color: Color
+        let diskLabel: String
+        let diskColor: Color
+        let onDisk: Bool
+        let diskInfoTitle: String
+        let diskInfoBody: String
+    }
+
     @Binding var model: FluxModelVariant
     @Binding var customModelRepo: String
     @Binding var customBaseModel: FluxModelVariant
@@ -89,7 +101,6 @@ struct ModelPickerView: View {
 
     // MARK: - Custom model fields
 
-    @ViewBuilder
     private var customModelFields: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 4) {
@@ -129,18 +140,6 @@ struct ModelPickerView: View {
         .padding(.top, 2)
     }
 
-    // MARK: - VRAM / disk estimate
-
-    private struct VRAMEstimate {
-        let label: String
-        let color: Color
-        let diskLabel: String
-        let diskColor: Color
-        let onDisk: Bool
-        let diskInfoTitle: String
-        let diskInfoBody: String
-    }
-
     private var vramEstimate: VRAMEstimate? {
         guard model != .custom else { return nil }
         let sizeGB = model.approximateBF16SizeGB
@@ -153,12 +152,11 @@ struct ModelPickerView: View {
         let diskLabel = "≈\(String(format: "%.0f", gb)) GB disk"
         let diskColor: Color = onDisk ? .green : (gb > 30 ? .orange : gb > 18 ? .yellow : .secondary)
         let quantName = quantize == 0 ? "BF16" : "Q\(quantize)"
-        let qualityNote: String
-        switch quantize {
-        case 0:  qualityNote = "Full precision. Highest quality, largest footprint. Best on 64 GB Macs."
-        case 8:  qualityNote = "~50% smaller than BF16 with minimal quality loss. Recommended for most users."
-        case 4:  qualityNote = "~75% smaller than BF16. Some quality loss but fits Macs with less RAM."
-        default: qualityNote = ""
+        let qualityNote = switch quantize {
+        case 0: "Full precision. Highest quality, largest footprint. Best on 64 GB Macs."
+        case 8: "~50% smaller than BF16 with minimal quality loss. Recommended for most users."
+        case 4: "~75% smaller than BF16. Some quality loss but fits Macs with less RAM."
+        default: ""
         }
         let diskInfoTitle = "\(model.displayName) \(quantName)"
         let diskInfoBody = "\(quantName) weights cached locally (~\(Int(gb)) GB). \(qualityNote)"

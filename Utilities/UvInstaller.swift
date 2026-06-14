@@ -8,9 +8,9 @@ enum UvInstaller {
 
         var errorDescription: String? {
             switch self {
-            case .unsupportedArch:         return "Unsupported CPU architecture"
-            case .downloadFailed(let err): return "Download failed: \(err.localizedDescription)"
-            case .extractionFailed:        return "Failed to extract uv archive"
+            case .unsupportedArch: "Unsupported CPU architecture"
+            case let .downloadFailed(err): "Download failed: \(err.localizedDescription)"
+            case .extractionFailed: "Failed to extract uv archive"
             }
         }
     }
@@ -23,11 +23,11 @@ enum UvInstaller {
 
     static func install() async throws -> String {
         #if arch(arm64)
-        let archName = "aarch64"
+            let archName = "aarch64"
         #elseif arch(x86_64)
-        let archName = "x86_64"
+            let archName = "x86_64"
         #else
-        throw InstallError.unsupportedArch
+            throw InstallError.unsupportedArch
         #endif
 
         guard let url = URL(string:
@@ -54,8 +54,10 @@ enum UvInstaller {
         tar.waitUntilExit()
         guard tar.terminationStatus == 0 else { throw InstallError.extractionFailed }
 
-        try FileManager.default.setAttributes([.posixPermissions: 0o755],
-                                              ofItemAtPath: installPath.path)
+        try FileManager.default.setAttributes(
+            [.posixPermissions: 0o755],
+            ofItemAtPath: installPath.path
+        )
         return installPath.path
     }
 }
