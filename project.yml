@@ -2,7 +2,7 @@ name: MLXBits Image Studio
 options:
   bundleIdPrefix: com.mlxbits
   deploymentTarget:
-    macOS: "26.5"
+    macOS: "26.0"
   xcodeVersion: "26.0"
   createIntermediateGroups: true
   generateEmptyDirectories: true
@@ -10,7 +10,7 @@ options:
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    MACOSX_DEPLOYMENT_TARGET: "26.5"
+    MACOSX_DEPLOYMENT_TARGET: "26.0"
     SWIFT_APPROACHABLE_CONCURRENCY: YES
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     CODE_SIGN_STYLE: Automatic
@@ -20,8 +20,10 @@ settings:
   configs:
     # Team only on Release so Debug builds stay unsigned/adhoc and don't
     # require a provisioning round-trip. release.sh archives Release.
+    # Replace XXXXXXXXXX with your Apple Developer Team ID (10-char string from
+    # developer.apple.com → Membership). Only needed to build a signed release.
     Release:
-      DEVELOPMENT_TEAM: 39TQC8LANW
+      DEVELOPMENT_TEAM: XXXXXXXXXX
 
 targets:
   MLXBits Image Studio:
@@ -47,7 +49,7 @@ targets:
         CFBundleIdentifier: com.mlxbits.image-studio
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
-        LSMinimumSystemVersion: "26.5"
+        LSMinimumSystemVersion: "26.0"
         NSHumanReadableCopyright: ""
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
