@@ -1,8 +1,8 @@
 # MLXBits Image Studio
 
-A native macOS app for **FLUX image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, and browse your history — all without leaving the GPU.
+A native macOS Swiftapp for **FLUX image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, and browse your history — empower your creative workflow. No CLI needed, NOT yet another Electron container "app".
 
-> **Requires macOS Sequoia 26.5+** and [mflux](https://github.com/filipstrand/mflux) installed via `uv` or `pip`.
+> **Requires macOS Sequoia 26.5+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) is installed automatically on first launch.
 
 ---
 
@@ -17,13 +17,13 @@ A native macOS app for **FLUX image generation** powered by [mflux](https://gith
      5. Settings → Model Defaults tab
 -->
 
-| Main window | Live preview |
-|---|---|
-| *(screenshot)* | *(screenshot)* |
+| Main window                                      | Live preview                                      |
+| ------------------------------------------------ | ------------------------------------------------- |
+| ![Main window](docs/screenshots/main-window.png) | ![Main window](docs/screenshots/live-preview.png) |
 
-| Gallery | Settings |
-|---|---|
-| *(screenshot)* | *(screenshot)* |
+| Gallery                                      | Settings                                      |
+| -------------------------------------------- | --------------------------------------------- |
+| ![Main window](docs/screenshots/gallery.png) | ![Main window](docs/screenshots/settings.png) |
 
 ---
 
@@ -34,42 +34,33 @@ A native macOS app for **FLUX image generation** powered by [mflux](https://gith
 - **Persistent job queue** — queue multiple jobs, they survive app restarts
 - **Gallery** — scrollable history of every generation with thumbnail cache and metadata sidecars
 - **LoRA support** — add any number of LoRA adapters with per-adapter strength sliders
-- **Batch generation** — run 1, 4, or a custom count with auto-incrementing seeds
+- **Batch generation** — run 1, 3, 5 or a custom count with auto-incrementing seeds
+- **Shortcut Keys** - `Command + Enter` for one-shot generation, `Option + Command + Enter` for batch generation
 - **Model defaults** — save per-model presets (steps, guidance, LoRAs, dimensions)
-- **Prompt templates** — save and reuse favourite prompt fragments
+- **Prompt templates** — save and reuse favorite prompt fragments like lighting, camera style
 - **Low-RAM mode** — streams transformer blocks to cut peak Metal memory ~75%
 - **HuggingFace integration** — enter your HF token once (stored in Keychain); gated models download automatically
 
 ## Supported models
 
-| Variant | Steps | Notes |
-|---|---|---|
-| FLUX.2 Klein 4B (distilled) | 4 min | Fastest |
-| FLUX.2 Klein 9B (distilled) | 4 min | Best quality/speed trade-off |
-| FLUX.2 Klein 4B (base) | ~50 | Full diffusion |
-| FLUX.2 Klein 9B (base) | ~50 | Full diffusion |
-| Custom | any | Any HuggingFace repo ID or local path |
+| Variant                     | Steps | Notes                                                                   |
+| --------------------------- | ----- | ----------------------------------------------------------------------- |
+| FLUX.2 Klein 4B (distilled) | 4     | Fastest                                                                 |
+| FLUX.2 Klein 9B (distilled) | 4     | Best quality/speed trade-off                                            |
+| FLUX.2 Klein 4B (base)      | ~50   | Full diffusion                                                          |
+| FLUX.2 Klein 9B (base)      | ~50   | Full diffusion                                                          |
+| Custom                      | any   | Any HuggingFace repo ID or local path (only Flux.2 compatible, for now) |
 
 ---
 
 ## Requirements
 
-| Requirement | Version |
-|---|---|
-| macOS | Sequoia 26.5+ |
-| Apple Silicon | M1 or later |
-| mflux | 0.17+ |
-| uv *(optional but recommended)* | latest |
+| Requirement   | Version       |
+| ------------- | ------------- |
+| macOS         | Sequoia 26.5+ |
+| Apple Silicon | M1 or later   |
 
-Install mflux:
-
-```bash
-# with uv (recommended)
-uv tool install mflux
-
-# or pip
-pip install mflux
-```
+mflux and uv are detected and installed automatically on first launch. No manual setup required.
 
 ---
 
@@ -77,7 +68,7 @@ pip install mflux
 
 Download the latest `MLXBits_Image_Studio_<version>.dmg` from [Releases](../../releases), open it, and drag **MLXBits Image Studio** to `/Applications`.
 
-On first launch macOS may show a Gatekeeper prompt — right-click the app and choose **Open** to bypass it (the app is notarized).
+The app is notarized/signed by Apple, so it should launch without any Gatekeeper prompt.
 
 ---
 
@@ -135,9 +126,3 @@ Resources/     Info.plist, entitlements
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
 release.sh     Archive → notarize → DMG pipeline
 ```
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
