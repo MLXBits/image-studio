@@ -9,13 +9,18 @@ set -eo pipefail
 #   2. notarytool credentials stored once via:
 #      xcrun notarytool store-credentials "notarytool" \
 #        --apple-id "your@email.com" \
-#        --team-id 39TQC8LANW \
+#        --team-id XXXXXXXXXX \
 #        --password "xxxx-xxxx-xxxx-xxxx"   # app-specific password from appleid.apple.com
 
 VERSION="${1:?Usage: ./release.sh <version>  e.g. ./release.sh 0.1.0}"
 SCHEME="MLXBits Image Studio"
 APP_NAME="MLXBits Image Studio"
 NOTARYTOOL_PROFILE="${NOTARYTOOL_PROFILE:-notarytool}"
+
+# Your 10-character Apple Developer Team ID. Set via env var or a local
+# .env file (both gitignored) rather than hardcoding here.
+#   export DEVELOPMENT_TEAM=XXXXXXXXXX   # or source .env
+DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:?Set DEVELOPMENT_TEAM to your Apple Developer Team ID}"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
@@ -39,13 +44,14 @@ echo "==> Version $VERSION, build $BUILD_NUMBER (git commit count)"
 
 echo "==> Archiving (this takes a few minutes)..."
 xcodebuild archive \
-  -workspace "$HOME/MLXBits.xcworkspace" \
+  -project "$SCRIPT_DIR/MLXBits Image Studio.xcodeproj" \
   -scheme "$SCHEME" \
   -archivePath "$ARCHIVE" \
   -configuration Release \
   -destination "generic/platform=macOS" \
   MARKETING_VERSION="$VERSION" \
   CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+  DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
   -allowProvisioningUpdates \
   -quiet \
   > "$BUILD_DIR/archive.log" 2>&1 || {

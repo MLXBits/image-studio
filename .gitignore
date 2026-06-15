@@ -30,3 +30,11 @@ Carthage/Build/
 
 # Code-quality tool output
 .jscpd-report/
+
+# AI assistant / IDE tool state (machine-specific, never commit)
+.claude/
+.continue/
+.cursor/
+
+# Local secrets (Team ID, credentials) — never commit
+.env
