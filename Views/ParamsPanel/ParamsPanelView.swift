@@ -90,7 +90,7 @@ struct ParamsPanelView: View {
                 // Image input — directly below prompt/negative prompt
                 if params.isEditMode {
                     SectionContainerView(
-                        title: "Images",
+                        title: "Image Input",
                         info: "One or more reference images for editing. Order matters: list the " +
                             "primary subject first. Prompt describes the edit — " +
                             "e.g. \"make her wear the glasses\"."
@@ -370,6 +370,7 @@ struct ParamsPanelView: View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
                 if !params.imagePath.isEmpty {
+                    Spacer()
                     Button {
                         params.imagePath = ""
                     } label: {
@@ -516,13 +517,6 @@ struct ParamsPanelView: View {
     private var editImagesSection: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 4) {
-                sectionHeader(
-                    "Images",
-                    info: "One or more reference images for editing. Order matters: list the"
-                        + " primary subject first. Prompt describes the edit — e.g. \"make her"
-                        + " wear the glasses\"."
-                )
-                Spacer()
                 if !params.editImagePaths.isEmpty {
                     Button {
                         params.editImagePaths = []
