@@ -113,6 +113,8 @@ final class ParamsPanelState {
 // MARK: - ContentView
 
 struct ContentView: View {
+    private enum MfluxAutoInstall { case idle, installing, done, failed(String) }
+
     /// Static so the token outlives any view identity change and is never deallocated.
     private static var batchEventMonitor: Any?
 
@@ -132,6 +134,7 @@ struct ContentView: View {
 
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
+    @State private var mfluxAutoInstall: MfluxAutoInstall = .idle
 
     @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
     @State private var paramsWidth: Double = 280
@@ -240,7 +243,10 @@ struct ContentView: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .safeAreaInset(edge: .top, spacing: 0) {
-                topControlBar
+                VStack(spacing: 0) {
+                    topControlBar
+                    mfluxInstallBanner
+                }
             }
 
             if let img = fullSizeImage {
@@ -335,6 +341,7 @@ struct ContentView: View {
                 return nil
             }
         }
+        .task { await checkAndAutoInstallMflux() }
         .onChange(of: settings.defaultLoras) { _, updated in
             let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
                 e.notes.isEmpty ? nil : (e.path, e.notes)
@@ -490,6 +497,60 @@ struct ContentView: View {
         return (idx > 0, idx < items.count - 1)
     }
 
+    @ViewBuilder
+    private var mfluxInstallBanner: some View {
+        switch mfluxAutoInstall {
+        case .idle:
+            EmptyView()
+        case .installing:
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Installing mflux…")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        case .done:
+            HStack(spacing: 8) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                    .font(.caption)
+                Text("mflux ready")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        case let .failed(msg):
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                Text("mflux install failed — open Settings → Advanced to retry")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .help(msg)
+                Spacer()
+                Button("Retry") { Task { await checkAndAutoInstallMflux() } }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        }
+    }
+
     private func useInImg2Img(_ path: String) {
         if params.isEditMode {
             if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
@@ -510,6 +571,20 @@ struct ContentView: View {
         if let idx = items.firstIndex(where: { $0.id == current.id }) {
             let next = max(0, min(items.count - 1, idx + delta))
             if next != idx { selectedGalleryItem = items[next] }
+        }
+    }
+
+    private func checkAndAutoInstallMflux() async {
+        guard BinaryDetector.mfluxGenerateFlux2(in: settings.mfluxBinaryDir).isEmpty else { return }
+        mfluxAutoInstall = .installing
+        do {
+            let binDir = try await MfluxInstaller.install()
+            settings.mfluxBinaryDir = binDir
+            mfluxAutoInstall = .done
+            try? await Task.sleep(for: .seconds(3))
+            mfluxAutoInstall = .idle
+        } catch {
+            mfluxAutoInstall = .failed(error.localizedDescription)
         }
     }
 
