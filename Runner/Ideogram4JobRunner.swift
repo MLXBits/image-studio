@@ -2,28 +2,30 @@
 import AppKit
 import Foundation
 
-/// Executes image generation jobs by driving the `mflux-generate-flux2` CLI.
-///
-/// `FluxJobRunner` picks pending jobs from ``JobStore`` one at a time, spawns the `mflux`
-/// process, streams its output into the job's ``FluxJob/log``, and updates job status as the
-/// run progresses. Call ``runNext(in:settings:)`` after each job completes to drive the queue
-/// forward. Cancel the active job via ``cancel()``.
+/// Executes Ideogram 4 generation jobs by driving the `mflux-generate-ideogram4` CLI.
 @Observable
 @MainActor
-final class FluxJobRunner {
-    // MARK: - One-time quantized model save
+final class Ideogram4JobRunner {
+    // MARK: - Types
 
     private enum SaveResult { case success, cancelled, failed }
+
+    private struct RunContext {
+        let seed: Int
+        let outputFile: String
+        let stepwiseDir: URL
+        let promptFileURL: URL?
+    }
 
     private static let cacheBase: URL = {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("com.mlxbits.image-studio/stepwise", isDirectory: true)
+        return base.appendingPathComponent("com.mlxbits.image-studio/stepwise-ideogram4", isDirectory: true)
     }()
 
-    private(set) var activeJob: FluxJob?
+    private(set) var activeJob: Ideogram4Job?
     private(set) var lastCompletedOutputPath: String?
-    private(set) var batchImageLanded: Int = 0 // incremented per-seed; ContentView scans gallery on change
+    private(set) var batchImageLanded: Int = 0
     private(set) var sessionCompleted: Int = 0
     private(set) var inSession: Bool = false
     private var runTask: Task<Void, Never>?
@@ -33,7 +35,7 @@ final class FluxJobRunner {
 
     // MARK: - Public
 
-    func runNext(in store: JobStore, settings: AppSettings) {
+    func runNext(in store: Ideogram4JobStore, settings: AppSettings) {
         guard runTask == nil, let job = store.pendingJobs.first else {
             inSession = false
             return
@@ -62,10 +64,8 @@ final class FluxJobRunner {
 
     // MARK: - Private execution
 
-    // Intentionally long until the CLI subprocess is replaced with pure-Python
-    // calls, at which point this method gets split up.
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    private func run(_ job: FluxJob, settings: AppSettings) async {
+    private func run(_ job: Ideogram4Job, settings: AppSettings) async {
         activeJob = job
         job.status = .running
         job.startedAt = Date()
@@ -76,18 +76,14 @@ final class FluxJobRunner {
         try? FileManager.default.createDirectory(at: stepDir, withIntermediateDirectories: true)
         startStepwiseWatcher(job: job, dir: stepDir)
 
-        let binaryPath = job.isEditMode ? settings.mfluxEditBinaryPath() : settings.mfluxBinaryPath()
+        let binaryPath = settings.mfluxIdeogram4BinaryPath()
         guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
-            let name = job.isEditMode ? "mflux-generate-flux2-edit" : "mflux-generate-flux2"
-            finishJob(job, status: .failed("\(name) not found. Check Settings → Advanced."), stepDir: stepDir)
+            finishJob(job, status: .failed("mflux-generate-ideogram4 not found. Check Settings → Advanced."), stepDir: stepDir)
             return
         }
 
-        // For quantized non-custom models, ensure a local saved copy exists so every subsequent
-        // load skips in-memory quantization.
-        if job.quantize > 0, job.model != .custom,
-           job.model.preQuantizedRepoID(quantize: job.quantize) == nil {
-            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+        if job.quantize > 0 {
+            let savedPath = ideogram4SavedPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
             if !FluxModelVariant.hasSavedWeights(at: savedPath) {
                 switch await runSave(job: job, savePath: savedPath, settings: settings) {
                 case .success:
@@ -117,7 +113,14 @@ final class FluxJobRunner {
             job.resolvedSeed = effectiveSeed
         }
 
-        let args = buildArgs(job: job, seed: effectiveSeed, outputFile: outputTemplate, stepwiseDir: stepDir, settings: settings)
+        let promptFileURL = writeCaptionTempFile(job: job)
+        defer { promptFileURL.flatMap { try? FileManager.default.removeItem(at: $0) } }
+
+        let runCtx = RunContext(
+            seed: effectiveSeed, outputFile: outputTemplate,
+            stepwiseDir: stepDir, promptFileURL: promptFileURL
+        )
+        let args = buildArgs(job: job, ctx: runCtx, settings: settings)
         job.log += "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
 
         let process = Process()
@@ -127,7 +130,6 @@ final class FluxJobRunner {
 
         let stream = makeOutputStream(for: process)
 
-        // Pre-compute expected output paths for multi-seed so we can poll as each lands.
         let batchPaths: [(seed: Int, path: String)] = isMultiSeed
             ? expandedPaths(from: outputTemplate, seeds: job.seeds)
             : []
@@ -149,26 +151,25 @@ final class FluxJobRunner {
         var seenLastStep = false
         var loadEndTime: Date?
         var denoiseEndTime: Date?
+        let expectedSteps = job.preset.stepCount
 
         for await chunk in stream {
             job.log = appendLog(chunk, to: job.log)
             if let progress = JobProgressParser.parseStep(from: job.log),
-               progress.total == job.steps {
+               progress.total == expectedSteps {
                 if !seenFirstStep {
                     seenFirstStep = true
                     loadEndTime = Date()
                     let loadSecs = loadEndTime.map { $0.timeIntervalSince(jobStartTime) } ?? 0
-                    let label = "▸ Encoding prompt...  (loaded in \(formatDuration(loadSecs)))\n"
+                    let label = "▸ Encoding caption...  (loaded in \(formatDuration(loadSecs)))\n"
                     job.log = insertBeforeLastLine(job.log, text: label)
                 }
-
                 if !seenLastStep && progress.current == progress.total {
                     seenLastStep = true
                     denoiseEndTime = Date()
                     if !job.log.hasSuffix("\n") { job.log += "\n" }
                     job.log += "▸ Decoding image...\n"
                 }
-
                 job.isDenoising = true
                 job.currentStep = progress.current
                 job.totalSteps = progress.total
@@ -192,40 +193,21 @@ final class FluxJobRunner {
                 job.outputThumbnails = paths.map { loadThumbnail(at: $0) ?? Data() }
                 job.outputPath = paths.first
                 job.thumbnailData = job.outputThumbnails.first
-
-                // --- RECONCILIATION BLOCK ---
-                // The batchPoller is asynchronous and might be cancelled before it finds the last image.
-                // We perform a final, authoritative scan of the disk to determine the true count.
-                var verifiedPathsCount = 0
-                for item in batchPaths {
-                    if FileManager.default.fileExists(atPath: item.path), isPNGComplete(at: item.path) {
-                        verifiedPathsCount += 1
-
-                        // Ensure metadata sidecar exists for this confirmed image
-                        if !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
-                            var meta = GenerationMetadata.from(job: job)
-                            meta.seed = item.seed
-                            meta.startedAt = job.startedAt ?? Date()
-                            meta.generatedAt = Date()
-                            MetadataSidecar.write(meta, for: item.path)
-                        }
-                    }
+                for item in batchPaths
+                    where FileManager.default.fileExists(atPath: item.path)
+                    && isPNGComplete(at: item.path)
+                    && !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
+                    var meta = Ideogram4Metadata.from(job: job)
+                    meta.seed = item.seed
+                    MetadataSidecar.writeIdeogram4(meta, for: item.path)
                 }
-
-                // Sync the job and runner state with the actual filesystem state
-                job.completedSeedsInBatch = verifiedPathsCount
-                self.batchImageLanded = verifiedPathsCount
-
-                if verifiedPathsCount == 1 { lastCompletedOutputPath = paths.first }
-                if verifiedPathsCount == paths.count { lastCompletedOutputPath = paths.last }
-                // ----------------------------
-
-                job.log += "▸ Saved \(verifiedPathsCount) images  (\(timing)total \(formatDuration(totalSecs)))\n"
+                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(formatDuration(totalSecs)))\n"
+                if job.completedSeedsInBatch == 0 { lastCompletedOutputPath = paths.first }
             } else {
                 job.outputPath = outputTemplate
                 job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(formatDuration(totalSecs)))\n"
                 job.thumbnailData = loadThumbnail(at: outputTemplate)
-                MetadataSidecar.write(GenerationMetadata.from(job: job), for: outputTemplate)
+                MetadataSidecar.writeIdeogram4(Ideogram4Metadata.from(job: job), for: outputTemplate)
                 lastCompletedOutputPath = outputTemplate
             }
             finishJob(job, status: .completed, stepDir: stepDir)
@@ -238,66 +220,37 @@ final class FluxJobRunner {
         }
     }
 
-    /// Wires `process` to a pipe for combined stdout+stderr, tracks it as the current
-    /// process, and returns an `AsyncStream` yielding decoded output chunks.
-    private func makeOutputStream(for process: Process) -> AsyncStream<String> {
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        self.currentProcess = process
+    // MARK: - Prompt file
 
-        return AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+    private func writeCaptionTempFile(job: Ideogram4Job) -> URL? {
+        guard !job.usePlainPrompt, let json = job.caption.toJSON() else { return nil }
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ideogram4-caption-\(job.id.uuidString).json")
+        guard let data = json.data(using: .utf8) else { return nil }
+        try? data.write(to: url, options: .atomic)
+        return url
     }
 
-    private func finishJob(_ job: FluxJob, status: JobStatus, stepDir: URL) {
-        batchPollingTask?.cancel()
-        batchPollingTask = nil
-        stopStepwiseWatcher()
-        try? FileManager.default.removeItem(at: stepDir)
-        job.status = status
-        job.completedAt = Date()
-        job.latestStepwisePath = nil
-        job.stepTiming = nil
-        job.isDenoising = false
-        if case .running = status { } else {
-            activeJob = nil
-            sessionCompleted += 1
-        }
-    }
+    // MARK: - mflux-save for quantized weights
 
-    private func runSave(job: FluxJob, savePath: URL, settings: AppSettings) async -> SaveResult {
-        let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
+    private func runSave(job: Ideogram4Job, savePath: URL, settings: AppSettings) async -> SaveResult {
+        // Ideogram 4 support is only in the uv-installed mflux (~/.local/bin); skip the configured dev dir.
+        let saveBinary = BinaryDetector.detect("mflux-save")
         guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
             job.log += "⚠️  mflux-save not found — falling back to in-memory quantization.\n"
-            return .success // non-fatal: generate will quantize in-memory instead
+            return .success
         }
         try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
         job.log += "▸ Downloading and saving Q\(job.quantize) weights (one-time)...\n"
         job.statusLine = "Downloading model…"
 
-        let args = ["--model", job.model.mfluxModelID, "--quantize", "\(job.quantize)", "--path", savePath.path]
+        let args = ["--model", "ideogram4", "--quantize", "\(job.quantize)", "--path", savePath.path]
         let process = Process()
         process.executableURL = URL(fileURLWithPath: saveBinary)
         process.arguments = args
         process.environment = settings.buildEnvironment()
 
         let stream = makeOutputStream(for: process)
-
         do { try process.run() } catch {
             self.currentProcess = nil
             job.log += "⚠️  mflux-save failed: \(error.localizedDescription)\n"
@@ -306,7 +259,6 @@ final class FluxJobRunner {
 
         for await chunk in stream {
             job.log = appendLog(chunk, to: job.log)
-            // Surface the latest download/quantize line (skip the shell command echo)
             if let last = job.log.components(separatedBy: "\n")
                 .last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty && !$0.hasPrefix("$") }) {
                 job.statusLine = last
@@ -330,7 +282,7 @@ final class FluxJobRunner {
 
     // MARK: - Stepwise watcher
 
-    private func startStepwiseWatcher(job: FluxJob, dir: URL) {
+    private func startStepwiseWatcher(job: Ideogram4Job, dir: URL) {
         stopStepwiseWatcher()
         let fd = open(dir.path, O_EVTONLY)
         guard fd >= 0 else { return }
@@ -344,7 +296,7 @@ final class FluxJobRunner {
         source.setCancelHandler { close(fd) }
         source.resume()
         stepwiseSource = source
-        pollStepwise(job: job, dir: dir) // check immediately for any pre-existing files
+        pollStepwise(job: job, dir: dir)
     }
 
     private func stopStepwiseWatcher() {
@@ -352,7 +304,7 @@ final class FluxJobRunner {
         stepwiseSource = nil
     }
 
-    private func pollStepwise(job: FluxJob, dir: URL) {
+    private func pollStepwise(job: Ideogram4Job, dir: URL) {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.creationDateKey]
         ) else { return }
@@ -383,7 +335,7 @@ final class FluxJobRunner {
         return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
     }
 
-    private func startBatchPoller(job: FluxJob, paths: [(seed: Int, path: String)]) {
+    private func startBatchPoller(job: Ideogram4Job, paths: [(seed: Int, path: String)]) {
         batchPollingTask?.cancel()
         batchPollingTask = Task { @MainActor [weak self] in
             guard let self else { return }
@@ -395,11 +347,11 @@ final class FluxJobRunner {
                           isPNGComplete(at: item.path) else { continue }
                     found.insert(item.path)
                     let imageGeneratedAt = Date()
-                    var meta = GenerationMetadata.from(job: job)
+                    var meta = Ideogram4Metadata.from(job: job)
                     meta.seed = item.seed
                     meta.startedAt = perImageStartTime
                     meta.generatedAt = imageGeneratedAt
-                    MetadataSidecar.write(meta, for: item.path)
+                    MetadataSidecar.writeIdeogram4(meta, for: item.path)
                     perImageStartTime = imageGeneratedAt
                     job.completedSeedsInBatch = found.count
                     if found.count == 1 { lastCompletedOutputPath = item.path }
@@ -414,95 +366,61 @@ final class FluxJobRunner {
 
     // MARK: - Arg building
 
-    private func buildArgs(
-        job: FluxJob, seed: Int, outputFile: String, stepwiseDir: URL, settings: AppSettings
-    ) -> [String] {
+    private func ideogram4SavedPath(quantize: Int, in cacheDir: URL) -> URL {
+        cacheDir.appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)
+    }
+
+    private func buildArgs(job: Ideogram4Job, ctx: RunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
-        if job.model == .custom {
-            args += ["--model", job.customModelRepo, "--base-model", job.customBaseModel.mfluxModelID]
-        } else if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
-            // User-supplied override (HF repo ID or local path): use as-is.
-            // No --quantize flag — the repo carries its own quantization metadata.
+        let savedPath = ideogram4SavedPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+        if job.quantize > 0, FluxModelVariant.hasSavedWeights(at: savedPath) {
+            args += ["--model", savedPath.path]
+        } else if let override = settings.ideogram4ModelRepoOverride, !override.isEmpty {
             args += ["--model", override]
-        } else if job.quantize > 0 {
-            if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
-                // Known mlx-community pre-quantized repo: pass directly, mflux detects stored_q.
-                args += ["--model", preQuantizedRepo]
-            } else {
-                let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-                if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                    // Local mflux-saved weights: pass path directly, mflux detects stored_q.
-                    args += ["--model", savedPath.path]
-                } else {
-                    // No saved weights yet (mflux-save may have failed): fall back to in-memory quantization.
-                    args += ["--model", job.model.mfluxModelID]
-                }
-            }
         } else {
-            args += ["--model", job.model.mfluxModelID]
+            args += ["--model", "ideogram4"]
         }
 
-        args += ["--prompt", job.prompt]
-
-        let supportsNeg = job.model.supportsNegativePrompt
-        if supportsNeg, !job.negativePrompt.isEmpty {
-            args += ["--negative-prompt", job.negativePrompt]
+        if job.usePlainPrompt || ctx.promptFileURL == nil {
+            args += ["--prompt", job.usePlainPrompt ? job.plainPrompt : job.caption.highLevelDescription]
+        } else if let fileURL = ctx.promptFileURL {
+            args += ["--prompt-file", fileURL.path]
         }
 
-        args += [
-            "--width", "\(job.width)",
-            "--height", "\(job.height)",
-            "--steps", "\(job.steps)",
-            "--guidance", String(format: "%.2f", job.guidance),
-            "--output", outputFile,
-        ]
+        args += ["--preset", job.preset.rawValue]
+        args += ["--width", "\(job.width)", "--height", "\(job.height)"]
+        args += ["--output", ctx.outputFile]
 
         if job.seeds.isEmpty {
-            args += ["--seed", "\(seed)"]
+            args += ["--seed", "\(ctx.seed)"]
         } else {
             args += ["--seed"] + job.seeds.map { "\($0)" }
         }
 
-        // Only pass --quantize when falling back to in-memory quantization (BF16 base model).
-        // Overrides, pre-quantized repos, and locally saved weights carry stored_q in metadata.
-        if job.quantize > 0 {
-            let hasOverride = !(settings.defaults(for: job.model).modelRepoOverride ?? "").isEmpty
-            let hasPreQuantizedRepo = job.model != .custom && job.model.preQuantizedRepoID(quantize: job.quantize) != nil
-            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-            let hasSaved = job.model != .custom && FluxModelVariant.hasSavedWeights(at: savedPath)
-            if !hasOverride && !hasPreQuantizedRepo && !hasSaved {
-                args += ["--quantize", "\(job.quantize)"]
-            }
-        }
-        if job.lowRam { args.append("--low-ram") }
-        if settings.mlxCacheLimitGB > 0 {
-            args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
+        if job.quantize > 0, !FluxModelVariant.hasSavedWeights(at: savedPath),
+           (settings.ideogram4ModelRepoOverride ?? "").isEmpty {
+            args += ["--quantize", "\(job.quantize)"]
         }
 
-        if job.isEditMode {
-            if !job.editImagePaths.isEmpty {
-                args += ["--image-paths"] + job.editImagePaths
-            }
-        } else if !job.imagePath.isEmpty {
-            args += [
-                "--image-path", job.imagePath,
-                "--image-strength", String(format: "%.2f", job.imageStrength),
-            ]
-        }
-
-        let enabledLoras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
+        let enabledLoras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .ideogram4 }
         if !enabledLoras.isEmpty {
             args += ["--lora-paths"] + enabledLoras.map(\.path)
             args += ["--lora-scales"] + enabledLoras.map { String(format: "%.2f", $0.strength) }
         }
 
-        args += ["--stepwise-image-output-dir", stepwiseDir.path]
+        if job.lowRam { args.append("--low-ram") }
+        if settings.mlxCacheLimitGB > 0 {
+            args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
+        }
+        if job.strictValidation { args.append("--strict-caption-validation") }
+
+        args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
 
         return args
     }
 
-    private func buildOutputPath(job: FluxJob, settings: AppSettings, multiSeed: Bool = false) -> String? {
+    private func buildOutputPath(job: Ideogram4Job, settings: AppSettings, multiSeed: Bool = false) -> String? {
         let useBoard = !job.board.isEmpty && job.board != "Default"
         let dir = useBoard ? "\(settings.outputDir)/\(job.board)" : settings.outputDir
         do {
@@ -512,12 +430,52 @@ final class FluxJobRunner {
         } catch { return nil }
         let ts = Int(Date().timeIntervalSince1970)
         if multiSeed {
-            // No {seed} placeholder — mflux rewrites multi-seed output paths itself:
-            // it appends _seed_{seed} to the stem, so image_ts.png → image_ts_seed_42.png
-            return "\(dir)/image_\(ts).png"
+            return "\(dir)/ideogram4_\(ts).png"
         }
         let seedLabel = job.seed == -1 ? "rnd" : "\(job.seed)"
-        return "\(dir)/image_\(ts)_\(seedLabel).png"
+        return "\(dir)/ideogram4_\(ts)_\(seedLabel).png"
+    }
+
+    // MARK: - Finish / utilities
+
+    private func finishJob(_ job: Ideogram4Job, status: JobStatus, stepDir: URL) {
+        batchPollingTask?.cancel()
+        batchPollingTask = nil
+        stopStepwiseWatcher()
+        try? FileManager.default.removeItem(at: stepDir)
+        job.status = status
+        job.completedAt = Date()
+        job.latestStepwisePath = nil
+        job.stepTiming = nil
+        job.isDenoising = false
+        if case .running = status { } else {
+            activeJob = nil
+            sessionCompleted += 1
+        }
+    }
+
+    private func makeOutputStream(for process: Process) -> AsyncStream<String> {
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        self.currentProcess = process
+
+        return AsyncStream<String> { continuation in
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
+            }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
     }
 
     private func isPNGComplete(at path: String) -> Bool {
@@ -527,7 +485,6 @@ final class FluxJobRunner {
         guard size >= 12 else { return false }
         handle.seek(toFileOffset: size - 4)
         let tail = handle.readDataToEndOfFile()
-        // PNG IEND chunk CRC — present only in a fully written PNG
         return tail.count == 4 && tail[0] == 0xAE && tail[1] == 0x42 && tail[2] == 0x60 && tail[3] == 0x82
     }
 
@@ -556,13 +513,11 @@ final class FluxJobRunner {
         return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
     }
 
-    /// Insert `text` immediately before the last (possibly incomplete) line.
-    /// Used to place stage markers ahead of tqdm output that has no trailing newline.
     private func insertBeforeLastLine(_ log: String, text: String) -> String {
         if let lastNewline = log.lastIndex(of: "\n") {
             let split = log.index(after: lastNewline)
-            let head = String(log[...lastNewline]) // includes the \n
-            let tail = String(log[split...]) // "" when \n was the last char
+            let head = String(log[...lastNewline])
+            let tail = String(log[split...])
             return head + text + tail
         }
         return text + log

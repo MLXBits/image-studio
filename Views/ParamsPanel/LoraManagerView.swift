@@ -6,6 +6,7 @@ struct LoraManagerView: View {
     var alwaysExpanded: Bool = false
     var showAdd: Bool = true
     var defaultLoras: [LoraEntry] = []
+    var modelFamily: ModelFamily = .flux
     var onReset: (() -> Void)?
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
@@ -130,7 +131,7 @@ struct LoraManagerView: View {
     private func addLora() {
         let trimmed = newPath.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
-        loras.append(LoraEntry(path: trimmed))
+        loras.append(LoraEntry(path: trimmed, modelFamily: modelFamily))
         newPath = ""
         showingAdd = false
     }

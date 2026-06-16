@@ -13,6 +13,7 @@ struct GalleryItem: Identifiable, Equatable {
     var thumbnailData: Data?
     var thumbnailImage: NSImage? // decoded from thumbnailData; not persisted
     var metadata: GenerationMetadata?
+    var ideogram4Metadata: Ideogram4Metadata?
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -226,11 +227,14 @@ nonisolated private func scanDirectory(
         let board = components.count > 1 ? String(components[0]) : "Default"
 
         let prior = existing[url.path]
+        let fluxMeta = MetadataSidecar.read(for: url.path)
+        let ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             thumbnailImage: prior?.thumbnailImage,
-            metadata: MetadataSidecar.read(for: url.path)
+            metadata: fluxMeta,
+            ideogram4Metadata: ideogramMeta
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }

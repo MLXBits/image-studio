@@ -14,6 +14,7 @@ struct ModelDefaultsView: View {
     @State private var cacheProcess: Process?
     @State private var cacheRevision = UUID()
     @State private var userCancelledCache = false
+    @State private var cacheStartedAt: Date?
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
 
     var body: some View {
@@ -45,7 +46,7 @@ struct ModelDefaultsView: View {
             Button("Cancel", role: .cancel) { pendingDeleteVariant = nil }
         } message: {
             if let pending = pendingDeleteVariant {
-                let qLabel = pending.quantize == 0 ? "BF16" : "Q\(pending.quantize)"
+                let qLabel = pending.quantize == 0 ? pending.model.baseWeightLabel : "Q\(pending.quantize)"
                 Text(
                     "This will permanently delete the \(qLabel) weights for"
                         + " \(pending.model.displayName) from disk. You can re-download them later."
@@ -57,16 +58,29 @@ struct ModelDefaultsView: View {
     // MARK: - Model list
 
     private var modelList: some View {
-        List(FluxModelVariant.builtIn, id: \.self, selection: $selectedModel) { model in
-            VStack(alignment: .leading, spacing: 2) {
-                Text(model.displayName)
-                    .font(.callout)
-                Text(model.isDistilled ? "Distilled · \(model.defaultSteps) steps" : "Base · \(model.defaultSteps) steps")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        List(selection: $selectedModel) {
+            Section("FLUX.2") {
+                ForEach(FluxModelVariant.builtIn, id: \.self) { model in
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(model.displayName).font(.callout)
+                        Text(model.isDistilled
+                            ? "Distilled · \(model.defaultSteps) steps"
+                            : "Base · \(model.defaultSteps) steps")
+                            .font(.caption2).foregroundStyle(.secondary)
+                    }
+                    .padding(.vertical, 2)
+                    .tag(model)
+                }
             }
-            .padding(.vertical, 2)
-            .tag(model)
+            Section("Ideogram") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Ideogram 4").font(.callout)
+                    Text("Preset-based · gated FP8")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(FluxModelVariant.ideogram4)
+            }
         }
         .listStyle(.sidebar)
     }
@@ -74,22 +88,32 @@ struct ModelDefaultsView: View {
     // MARK: - Per-model form
 
     private var modelForm: some View {
-        let d = settings.defaults(for: selectedModel)
-        return ScrollView {
+        ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 modelHeader
                 Divider()
-                formContent(model: selectedModel, defaults: d)
+                if selectedModel.isIdeogram4 {
+                    ideogram4FormContent()
+                } else {
+                    formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
+                }
             }
         }
     }
 
     private var modelHeader: some View {
-        let d = settings.defaults(for: selectedModel)
-        let quantize = d.quantize ?? selectedModel.recommendedQuantize
+        let quantize: Int
+        let typeLabel: String
+        if selectedModel.isIdeogram4 {
+            quantize = settings.lastIdeogramQuantize ?? 8
+            typeLabel = "Preset-based"
+        } else {
+            quantize = settings.defaults(for: selectedModel).quantize ?? selectedModel.recommendedQuantize
+            typeLabel = selectedModel.isDistilled ? "Distilled" : "Base model"
+        }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
         let vramGB = selectedModel.approximateBF16SizeGB * factor
-        let quantLabel = quantize == 0 ? "BF16" : "Q\(quantize)"
+        let quantLabel = quantize == 0 ? selectedModel.baseWeightLabel : "Q\(quantize)"
         let vramColor: Color = vramGB > 30 ? .orange : vramGB > 18 ? .yellow : .green
 
         return VStack(alignment: .leading, spacing: 6) {
@@ -98,7 +122,7 @@ struct ModelDefaultsView: View {
 
             HStack(spacing: 10) {
                 Label(
-                    selectedModel.isDistilled ? "Distilled" : "Base model",
+                    typeLabel,
                     systemImage: selectedModel.isDistilled ? "bolt.fill" : "cpu"
                 )
                 .font(.caption)
@@ -123,10 +147,23 @@ struct ModelDefaultsView: View {
                 cacheLogView
             }
 
-            Text("Overrides global defaults when this model is selected. The memory estimate above reflects your current quantize setting.")
+            if selectedModel.isIdeogram4 {
+                Text(
+                    "Gated model — accept access at huggingface.co/ideogram-ai/ideogram-4-fp8,"
+                        + " then set your HF token in Settings → Advanced."
+                )
                 .font(.caption)
                 .foregroundStyle(.tertiary)
                 .fixedSize(horizontal: false, vertical: true)
+            } else {
+                Text(
+                    "Overrides global defaults when this model is selected."
+                        + " The memory estimate above reflects your current quantize setting."
+                )
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+            }
         }
         .padding()
     }
@@ -157,9 +194,15 @@ struct ModelDefaultsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    Text(model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
-                        ? "Converting…" : "Downloading…")
-                        .font(.caption).foregroundStyle(.secondary)
+                    let verb = model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
+                        ? "Converting" : "Downloading"
+                    TimelineView(.periodic(from: cacheStartedAt ?? Date(), by: 1)) { ctx in
+                        let elapsed = Int(ctx.date.timeIntervalSince(cacheStartedAt ?? ctx.date))
+                        let mm = elapsed / 60
+                        let ss = elapsed % 60
+                        Text("\(verb)… \(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                     Spacer()
                     Button("Cancel") {
                         userCancelledCache = true
@@ -191,7 +234,7 @@ struct ModelDefaultsView: View {
                 let cachedVariants = [0, 4, 8].filter { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir) }
                 ForEach(cachedVariants, id: \.self) { qLevel in
                     HStack(spacing: 3) {
-                        Text(qLevel == 0 ? "BF16" : "Q\(qLevel)")
+                        Text(qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)")
                             .font(.caption2).fontWeight(.medium)
                         Button {
                             pendingDeleteVariant = (model, qLevel)
@@ -206,13 +249,18 @@ struct ModelDefaultsView: View {
                     .foregroundStyle(.green)
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
-                ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
-                    let qLabel = qLevel == 0 ? "BF16" : "Q\(qLevel)"
-                    let canConvert = qLevel != 0 && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir)
-                    Button(canConvert ? "Convert to \(qLabel)" : "Download \(qLabel)") {
+                // Ideogram 4: quantization not supported — FP8 only. Hide Q4/Q8 entirely.
+                let availableQuantLevels = model.isIdeogram4 ? [0] : [0, 4, 8]
+                ForEach(availableQuantLevels.filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
+                    let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
+                    Button("Download \(qLabel)") {
                         startCache(model: model, quantize: qLevel)
                     }
                     .buttonStyle(.bordered).controlSize(.small)
+                }
+                if model.isIdeogram4 && !model.isOnDisk(quantize: 0, savedIn: cacheDir) {
+                    Text("~28 GB · quantization not yet supported")
+                        .font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -226,6 +274,101 @@ struct ModelDefaultsView: View {
             try? FileManager.default.removeItem(at: hfURL)
         }
         cacheRevision = UUID()
+    }
+
+    // MARK: - Ideogram 4 form
+
+    private func ideogram4FormContent() -> some View {
+        let presetBinding = Binding<Ideogram4Preset>(
+            get: { settings.lastIdeogramPreset ?? .normal },
+            set: { settings.lastIdeogramPreset = $0 }
+        )
+        let quantizeBinding = Binding<Int>(
+            get: { settings.lastIdeogramQuantize ?? 8 },
+            set: { settings.lastIdeogramQuantize = $0 }
+        )
+        let widthBinding = Binding<Int>(
+            get: { settings.lastIdeogramWidth ?? 1024 },
+            set: { settings.lastIdeogramWidth = $0 }
+        )
+        let heightBinding = Binding<Int>(
+            get: { settings.lastIdeogramHeight ?? 1024 },
+            set: { settings.lastIdeogramHeight = $0 }
+        )
+        let repoBinding = Binding<String>(
+            get: { settings.ideogram4ModelRepoOverride ?? "" },
+            set: { settings.ideogram4ModelRepoOverride = $0.isEmpty ? nil : $0 }
+        )
+        return Form {
+            Section("Generation") {
+                LabeledContent("Default Preset") {
+                    Picker("", selection: presetBinding) {
+                        ForEach(Ideogram4Preset.allCases, id: \.self) { preset in
+                            Text(preset.labelWithSteps).tag(preset)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 160)
+                }
+                LabeledContent("Quantization") {
+                    Picker("", selection: quantizeBinding) {
+                        Text("FP8").tag(0)
+                        Text("Q8").tag(8)
+                        Text("Q4").tag(4)
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 80)
+                }
+                LabeledContent("Model source") {
+                    HStack(spacing: 6) {
+                        TextField("ideogram-ai/ideogram-4-fp8", text: repoBinding)
+                            .textFieldStyle(.roundedBorder)
+                            .font(.caption)
+                            .onSubmit {
+                                repoBinding.wrappedValue = repoBinding.wrappedValue
+                                    .trimmingCharacters(in: .whitespaces)
+                            }
+                        Button("Browse…") { browseModelDir(binding: repoBinding) }
+                            .controlSize(.small)
+                        InfoButton(
+                            title: "Model source override",
+                            description: "HF repo ID or absolute local path to the Ideogram 4 FP8 weights."
+                                + " Leave empty to use the mflux default."
+                        )
+                    }
+                }
+            }
+
+            Section {
+                HStack {
+                    DimensionSliderRow(label: "Width", value: widthBinding)
+                }
+                HStack {
+                    DimensionSliderRow(label: "Height", value: heightBinding)
+                }
+            } header: {
+                Text("Canvas")
+            } footer: {
+                Text("Default image size for new Ideogram 4 jobs.")
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+
+            Section {
+                Button("Reset to Defaults", role: .destructive) {
+                    settings.lastIdeogramPreset = nil
+                    settings.lastIdeogramQuantize = nil
+                    settings.lastIdeogramWidth = nil
+                    settings.lastIdeogramHeight = nil
+                    settings.ideogram4ModelRepoOverride = nil
+                }
+                .foregroundStyle(.red)
+                .accessibilityLabel("Reset Ideogram 4 to built-in defaults")
+            }
+        }
+        .formStyle(.grouped)
+        .id(FluxModelVariant.ideogram4)
     }
 
     private func formContent(model: FluxModelVariant, defaults d: ModelDefaults) -> some View {
@@ -576,12 +719,16 @@ struct ModelDefaultsView: View {
     private func startCache(model: FluxModelVariant, quantize: Int) {
         cachePhase = .running
         cacheLog = ""
+        cacheStartedAt = Date()
         userCancelledCache = false
         Task { await runMfluxSave(model: model, quantize: quantize) }
     }
 
     private func runMfluxSave(model: FluxModelVariant, quantize: Int) async {
-        let saveBinary = BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
+        // Ideogram 4 support is only in the uv-installed mflux; skip the configured dev dir.
+        let saveBinary = model.isIdeogram4
+            ? BinaryDetector.detect("mflux-save")
+            : BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
         guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
             cachePhase = .failed("mflux-save not found. Check Settings → Advanced.")
             return

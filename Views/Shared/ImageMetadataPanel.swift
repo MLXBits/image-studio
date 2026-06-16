@@ -65,6 +65,31 @@ struct ImageMetadataInfo {
         }
     }
 
+    init(ideogram4Item: GalleryItem) {
+        let meta = ideogram4Item.ideogram4Metadata
+        if meta?.usePlainPrompt == true {
+            prompt = meta?.plainPrompt ?? ""
+        } else {
+            prompt = meta?.caption.highLevelDescription ?? ""
+        }
+        negativePrompt = ""
+        modelName = "Ideogram 4"
+        seed = meta?.seed
+        width = meta?.width ?? 0
+        height = meta?.height ?? 0
+        steps = meta?.preset.stepCount ?? 0
+        guidance = 1.0
+        loras = []
+        filePath = ideogram4Item.path
+        log = meta?.log
+        if let started = meta?.startedAt, let generatedAt = meta?.generatedAt {
+            let secs = Int(generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        } else {
+            generationTime = nil
+        }
+    }
+
     init(path: String) {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []

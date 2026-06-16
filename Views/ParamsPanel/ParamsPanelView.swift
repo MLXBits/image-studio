@@ -18,6 +18,7 @@ struct ParamsPanelView: View {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
 
     @Bindable var params: ParamsPanelState
+    @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
 
@@ -29,18 +30,35 @@ struct ParamsPanelView: View {
         params.model.isDistilled
     }
 
+    private var unifiedQuantize: Binding<Int> {
+        Binding(
+            get: { params.model.isIdeogram4 ? ideogramParams.quantize : params.quantize },
+            set: { v in
+                if params.model.isIdeogram4 {
+                    ideogramParams.quantize = v
+                } else {
+                    params.quantize = v
+                }
+            }
+        )
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                // Model
+                // Model — single picker covering FLUX.2 variants, Ideogram 4, and Custom
                 SectionContainerView(title: "Model", info: nil) {
                     ModelPickerView(
                         model: $params.model,
                         customModelRepo: $params.customModelRepo,
                         customBaseModel: $params.customBaseModel,
-                        quantize: $params.quantize
+                        quantize: unifiedQuantize
                     )
                     .onChange(of: params.model) { _, m in
+                        if m.isIdeogram4 {
+                            ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                            return
+                        }
                         guard m != .custom else { return }
                         let d = settings.resolvedDefaults(for: m)
                         params.steps = d.steps
@@ -50,114 +68,25 @@ struct ParamsPanelView: View {
                         params.negativePrompt = d.negativePrompt
                         params.width = d.width
                         params.height = d.height
-                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
+                        params.loras = d.loras.isEmpty
+                            ? settings.defaultLoras.filter { $0.modelFamily == .flux }
+                            : d.loras
                         params.isEditMode = false
                         params.editImagePaths = []
                     }
 
-                    // Generation Mode
-                    if params.model != .custom {
+                    if params.model != .custom, !params.model.isIdeogram4 {
                         modePickerRow
                     }
                 }
 
                 Divider()
 
-                // Style
-                SectionContainerView(
-                    title: "Style",
-                    info: "Stacks preset style additions on your prompt — lighting, camera," +
-                        " detail level, shot type. Select multiple. Applied at generation time;" +
-                        " your prompt text stays clean."
-                ) {
-                    styleRow
-                }
-
-                Divider()
-
-                // Prompt
-                SectionContainerView(
-                    title: "Prompt",
-                    info: "Describe what you want to generate. Be specific about subjects, " +
-                        "lighting, style, and mood. More detail generally produces better results."
-                ) {
-                    promptEditor
-                    if params.model.supportsNegativePrompt {
-                        negativePromptEditor
-                    }
-                }
-
-                // Image input — directly below prompt/negative prompt
-                if params.isEditMode {
-                    SectionContainerView(
-                        title: "Image Input",
-                        info: "One or more reference images for editing. Order matters: list the " +
-                            "primary subject first. Prompt describes the edit — " +
-                            "e.g. \"make her wear the glasses\"."
-                    ) {
-                        editImagesSection
-                    }
+                if params.modelFamily == .flux {
+                    fluxContent
                 } else {
-                    SectionContainerView(
-                        title: "Image Input",
-                        info: "Optional reference image for image-to-image generation. " +
-                            "Drag an image here or click to browse. Higher strength = " +
-                            "closer to the original image. Lower strength = more creative, " +
-                            "prompt dominates."
-                    ) {
-                        img2ImgSection
-                    }
+                    Ideogram4ParamsPanelView(params: ideogramParams)
                 }
-
-                Divider()
-
-                // Group
-                SectionContainerView(
-                    title: "Folder",
-                    info: "Organizes generated images into named subfolders inside your output " +
-                        "directory. Leave as Default to keep everything in one place."
-                ) {
-                    boardRow
-                }
-
-                Divider()
-
-                // Dimensions
-                SectionContainerView(title: nil, info: nil) {
-                    DimensionPickerView(width: $params.width, height: $params.height)
-                }
-
-                Divider()
-
-                // Steps + Seed (always shown together)
-                SectionContainerView(title: nil, info: nil) {
-                    stepsAndSeedRow
-                }
-
-                // Guidance — only for base models
-                if !isDistilled {
-                    Divider()
-                    SectionContainerView(
-                        title: "Guidance",
-                        info: "How closely the model follows your prompt. Higher = stricter adherence but" +
-                            "can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
-                    ) {
-                        guidanceRow
-                    }
-                }
-
-                Divider()
-
-                // LoRAs
-                LoraManagerView(
-                    loras: $params.loras,
-                    showAdd: false,
-                    defaultLoras: settings.defaultLoras
-                ) {
-                    let d = settings.resolvedDefaults(for: params.model)
-                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                }
-                .padding(.bottom, 8)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -165,6 +94,102 @@ struct ParamsPanelView: View {
         }
         .scrollIndicators(.automatic)
         .contentMargins(.trailing, 5, for: .scrollContent)
+    }
+
+    // MARK: - Flux content
+
+    @ViewBuilder
+    private var fluxContent: some View {
+        // Style
+        SectionContainerView(
+            title: "Style",
+            info: "Stacks preset style additions on your prompt — lighting, camera," +
+                " detail level, shot type. Select multiple. Applied at generation time;" +
+                " your prompt text stays clean."
+        ) {
+            styleRow
+        }
+
+        Divider()
+
+        // Prompt
+        SectionContainerView(
+            title: "Prompt",
+            info: "Describe what you want to generate. Be specific about subjects, " +
+                "lighting, style, and mood. More detail generally produces better results."
+        ) {
+            promptEditor
+            if params.model.supportsNegativePrompt {
+                negativePromptEditor
+            }
+        }
+
+        // Image input
+        if params.isEditMode {
+            SectionContainerView(
+                title: "Image Input",
+                info: "One or more reference images for editing. Order matters: list the " +
+                    "primary subject first. Prompt describes the edit — " +
+                    "e.g. \"make her wear the glasses\"."
+            ) {
+                editImagesSection
+            }
+        } else {
+            SectionContainerView(
+                title: "Image Input",
+                info: "Optional reference image for image-to-image generation. " +
+                    "Drag an image here or click to browse. Higher strength = " +
+                    "closer to the original image. Lower strength = more creative, " +
+                    "prompt dominates."
+            ) {
+                img2ImgSection
+            }
+        }
+
+        Divider()
+
+        SectionContainerView(
+            title: "Folder",
+            info: "Organizes generated images into named subfolders inside your output " +
+                "directory. Leave as Default to keep everything in one place."
+        ) {
+            boardRow
+        }
+
+        Divider()
+
+        SectionContainerView(title: nil, info: nil) {
+            DimensionPickerView(width: $params.width, height: $params.height)
+        }
+
+        Divider()
+
+        SectionContainerView(title: nil, info: nil) {
+            stepsAndSeedRow
+        }
+
+        if !isDistilled {
+            Divider()
+            SectionContainerView(
+                title: "Guidance",
+                info: "How closely the model follows your prompt. Higher = stricter adherence but" +
+                    "can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
+            ) {
+                guidanceRow
+            }
+        }
+
+        Divider()
+
+        LoraManagerView(
+            loras: $params.loras,
+            showAdd: false,
+            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .flux }
+        ) {
+            let d = settings.resolvedDefaults(for: params.model)
+            params.loras = d.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .flux } : d.loras
+        }
+        .padding(.bottom, 8)
     }
 
     // MARK: - Style (template) row

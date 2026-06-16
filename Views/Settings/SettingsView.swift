@@ -22,6 +22,8 @@ struct SettingsView: View {
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
     @State private var mfluxSetupPhase: SetupPhase = .idle
+    @State private var loraFamily: ModelFamily = .flux
+    @State private var hfTokenDraft: String = ""
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -193,14 +195,31 @@ struct SettingsView: View {
 
     private var lorasTab: some View {
         @Bindable var s = settings
+        let filteredBinding = Binding<[LoraEntry]>(
+            get: { s.defaultLoras.filter { $0.modelFamily == loraFamily } },
+            set: { updated in
+                s.defaultLoras = s.defaultLoras.filter { $0.modelFamily != loraFamily } + updated
+            }
+        )
         return VStack(alignment: .leading, spacing: 8) {
-            Text("Default LoRAs are added to every new generation.")
+            Picker("", selection: $loraFamily) {
+                ForEach(ModelFamily.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
+            Text("Default LoRAs are added to every new \(loraFamily.rawValue) generation.")
                 .font(.caption)
                 .foregroundStyle(.secondary)
 
             ScrollView {
-                LoraManagerView(loras: $s.defaultLoras, showNotes: true, alwaysExpanded: true)
-                    .frame(maxWidth: .infinity, alignment: .top)
+                LoraManagerView(
+                    loras: filteredBinding,
+                    showNotes: true,
+                    alwaysExpanded: true,
+                    modelFamily: loraFamily
+                )
+                .frame(maxWidth: .infinity, alignment: .top)
             }
         }
         .padding()
@@ -230,8 +249,20 @@ struct SettingsView: View {
 
             Section("HuggingFace") {
                 VStack(alignment: .leading, spacing: 4) {
-                    SecureField("Paste token here…", text: $s.hfToken)
-                        .textFieldStyle(.roundedBorder)
+                    HStack(spacing: 6) {
+                        SecureField("Paste token here…", text: $hfTokenDraft)
+                            .textFieldStyle(.roundedBorder)
+                            .onSubmit { settings.hfToken = hfTokenDraft }
+                            .onChange(of: hfTokenDraft) { _, v in if !v.isEmpty { settings.hfToken = v } }
+                        if !settings.hfToken.isEmpty {
+                            Button("Clear") {
+                                hfTokenDraft = ""
+                                settings.hfToken = ""
+                            }
+                            .buttonStyle(.borderless)
+                            .foregroundStyle(.secondary)
+                        }
+                    }
                     HStack(spacing: 3) {
                         Text("Required for gated and private models (e.g. Flux.1 Pro). Stored in the system Keychain. Create one at")
                             .font(.caption).foregroundStyle(.secondary)
@@ -243,6 +274,7 @@ struct SettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
                 }
                 .padding(.vertical, 2)
+                .onAppear { hfTokenDraft = settings.hfToken }
 
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
@@ -288,6 +320,46 @@ struct SettingsView: View {
                         "0 = unlimited (default). Set to 4–8 GB if other apps are competing for memory."
                 )
                 .font(.caption).foregroundStyle(.tertiary)
+            }
+
+            Section {
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
+                        .textFieldStyle(.roundedBorder)
+                    Text(
+                        "HF repo ID or local path for the Gemma model used to generate structured Ideogram 4 captions. " +
+                            "Requires mlx_lm — install with: uv tool install mlx-lm"
+                    )
+                    .font(.caption).foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    let uvPath = NSHomeDirectory() + "/.local/bin/uv"
+                    let uvFound = FileManager.default.fileExists(atPath: uvPath)
+                    HStack(spacing: 6) {
+                        Image(systemName: uvFound ? "checkmark.circle.fill" : "xmark.circle.fill")
+                            .foregroundStyle(uvFound ? Color.green : Color.red)
+                        Text(uvFound ? "uv found — mlx-lm>=0.31.3 managed automatically" : "uv not found at ~/.local/bin/uv")
+                            .font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(1).truncationMode(.middle)
+                    }
+                }
+                .padding(.vertical, 2)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    TextField("e.g. ideogram-ai/ideogram-4-fp8", text: Binding(
+                        get: { s.ideogram4ModelRepoOverride ?? "" },
+                        set: { s.ideogram4ModelRepoOverride = $0.isEmpty ? nil : $0 }
+                    ))
+                    .textFieldStyle(.roundedBorder)
+                    Text("Override the Ideogram 4 model repo (or path to saved weights). Leave blank to use the default.")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+            } header: {
+                Text("Ideogram 4 / Gemma")
             }
 
             Section("UI") {
