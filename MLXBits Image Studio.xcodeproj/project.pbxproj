@@ -28,6 +28,7 @@
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
 		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
+		5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
@@ -104,6 +105,7 @@
 		B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
+		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -161,6 +163,7 @@
 			children = (
 				E8F1DFE8F60EE409FB230CA2 /* App */,
 				EF16D0F619C4921D0A476F26 /* Models */,
+				AB119E2514CE274AB18259A7 /* Resources */,
 				9F6BCBE28C9814EF7779D261 /* Runner */,
 				F0AE2F196D188960303A9263 /* Stores */,
 				117682124434130DAFA9B142 /* Utilities */,
@@ -209,6 +212,14 @@
 				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		AB119E2514CE274AB18259A7 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
+			);
+			path = Resources;
 			sourceTree = "<group>";
 		};
 		AE6CA2D7C353EC349D6C918D /* Settings */ = {
@@ -354,6 +365,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
+				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

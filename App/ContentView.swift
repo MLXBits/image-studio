@@ -213,6 +213,7 @@ struct ContentView: View {
                 galleryWidth = savedGalleryWidth
                 params.applyDefaults(from: settings)
                 ideogramParams.applyDefaults(settings: settings)
+                try? IdeogramPromptConfig.seedIfNeeded()
                 if settings.outputDir.isEmpty {
                     showingOutputDirPrompt = true
                 } else {
