@@ -28,25 +28,42 @@ struct ModelPickerView: View {
                         Text(v.displayName).tag(v)
                     }
                     Divider()
+                    Text("Ideogram 4").tag(FluxModelVariant.ideogram4)
+                    Divider()
                     Text("Custom…").tag(FluxModelVariant.custom)
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .accessibilityLabel("Flux model")
-                .accessibilityHint("Selects which Flux.2 model variant to use")
+                .accessibilityLabel("Model")
+                .accessibilityHint("Selects the model for generation")
 
-                Picker("Precision", selection: $quantize) {
-                    Text("BF16").tag(0)
-                    Text("Q8").tag(8)
-                    Text("Q4").tag(4)
+                if model.isIdeogram4 {
+                    Text("FP8")
+                        .font(.caption)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(.secondary.opacity(0.12), in: Capsule())
+                        .foregroundStyle(.secondary)
+                } else {
+                    Picker("Precision", selection: $quantize) {
+                        Text(model.baseWeightLabel).tag(0)
+                        Text("Q8").tag(8)
+                        Text("Q4").tag(4)
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .frame(width: 70)
+                    .accessibilityLabel("Quantization")
+                    .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 70)
-                .accessibilityLabel("Quantization")
-                .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
 
-                if model != .custom && model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                if model != .custom && !model.isIdeogram4
+                    && model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                        .accessibilityLabel("Model weights cached on disk")
+                }
+                if model.isIdeogram4 && model.isOnDisk {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -55,7 +72,12 @@ struct ModelPickerView: View {
 
                 InfoButton(
                     title: "Model & Precision",
-                    description: "Choose your Flux.2 model variant and weight precision."
+                    description: model.isIdeogram4
+                        ? "Ideogram 4 uses FP8 weights (~28 GB). Quantization is not yet supported —"
+                        + " the full 28 GB is always used regardless of setting."
+                        + " Accept terms at huggingface.co/ideogram-ai/ideogram-4-fp8,"
+                        + " then set your HF token in Settings → Advanced."
+                        : "Choose your Flux.2 model variant and weight precision."
                         + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
                         + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
                 )
@@ -151,7 +173,7 @@ struct ModelPickerView: View {
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
         let diskLabel = "≈\(String(format: "%.0f", gb)) GB disk"
         let diskColor: Color = onDisk ? .green : (gb > 30 ? .orange : gb > 18 ? .yellow : .secondary)
-        let quantName = quantize == 0 ? "BF16" : "Q\(quantize)"
+        let quantName = quantize == 0 ? model.baseWeightLabel : "Q\(quantize)"
         let qualityNote = switch quantize {
         case 0: "Full precision. Highest quality, largest footprint. Best on 64 GB Macs."
         case 8: "~50% smaller than BF16 with minimal quality loss. Recommended for most users."

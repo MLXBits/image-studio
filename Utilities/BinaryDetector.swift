@@ -38,4 +38,18 @@ enum BinaryDetector {
         let path = "\(dir)/mflux-save"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-save")
     }
+
+    /// Returns the full path to mflux-generate-ideogram4 given a binary directory.
+    static func mfluxGenerateIdeogram4(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-generate-ideogram4") }
+        let path = "\(dir)/mflux-generate-ideogram4"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-ideogram4")
+    }
+
+    /// Returns the full path to the mlx_lm.generate binary for LLM caption generation.
+    static func mlxLmGenerate(in dir: String) -> String {
+        if dir.isEmpty { return detect("mlx_lm.generate") }
+        let path = "\(dir)/mlx_lm.generate"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mlx_lm.generate")
+    }
 }

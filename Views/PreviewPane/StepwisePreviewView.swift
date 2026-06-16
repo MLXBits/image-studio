@@ -151,3 +151,115 @@ struct StepwisePreviewView: View {
         }
     }
 }
+
+struct Ideogram4StepwisePreviewView: View {
+    let job: Ideogram4Job
+    let onCancel: () -> Void
+
+    @Environment(AppSettings.self) private var settings
+    @State private var displayedImage: NSImage?
+    @State private var showLog: Bool = false
+
+    var body: some View {
+        VStack(spacing: 0) {
+            if showLog {
+                LogTextView(
+                    text: job.log.isEmpty ? "No output yet." : job.log,
+                    fontSize: settings.logFontSize
+                )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ZStack {
+                    Color(nsColor: .windowBackgroundColor)
+                    if let img = displayedImage {
+                        Image(nsImage: img)
+                            .resizable()
+                            .aspectRatio(contentMode: .fit)
+                    } else {
+                        VStack(spacing: 12) {
+                            ProgressView().scaleEffect(1.5)
+                            Text("Generating…")
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .padding()
+            }
+
+            VStack(spacing: 8) {
+                if !showLog {
+                    Group {
+                        if job.isDenoising, job.totalSteps > 0 {
+                            let inProgress = min(job.currentStep + 1, job.totalSteps)
+                            ProgressView(value: Double(inProgress) / Double(job.totalSteps))
+                        } else {
+                            ProgressView()
+                        }
+                    }
+                    .progressViewStyle(.linear)
+                    .padding(.horizontal)
+                }
+                HStack(spacing: 8) {
+                    if job.isDenoising {
+                        VStack(alignment: .leading, spacing: 1) {
+                            let inProgress = min(job.currentStep + 1, job.totalSteps)
+                            Text("Step \(inProgress)/\(job.totalSteps)")
+                                .font(.caption).monospacedDigit().foregroundStyle(.secondary)
+                            if let timing = job.stepTiming {
+                                Text(timing)
+                                    .font(.caption2).monospacedDigit().foregroundStyle(.tertiary)
+                            }
+                        }
+                    } else {
+                        Text(job.statusLine.isEmpty ? "Loading model…" : job.statusLine)
+                            .font(.caption).foregroundStyle(.secondary)
+                            .lineLimit(1).truncationMode(.middle)
+                    }
+                    Spacer()
+                    Button(showLog ? "Hide Log" : "View Log") { showLog.toggle() }
+                        .buttonStyle(.bordered).controlSize(.small)
+                    Button("Cancel") { onCancel() }
+                        .buttonStyle(.borderedProminent).controlSize(.small).tint(.red)
+                }
+                .padding(.horizontal)
+            }
+            .padding(.bottom, 16)
+        }
+        .onChange(of: job.latestStepwisePath) { _, path in
+            guard let path else { displayedImage = nil; return }
+            Task.detached(priority: .userInitiated) {
+                let img = NSImage(contentsOfFile: path)
+                await MainActor.run { displayedImage = img }
+            }
+        }
+    }
+}
+
+struct Ideogram4CompletedPreviewView: View {
+    let job: Ideogram4Job
+    @State private var image: NSImage?
+
+    var body: some View {
+        ZStack {
+            Color.black.opacity(0.05)
+            if let img = image {
+                Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+            } else {
+                ProgressView()
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .clipShape(RoundedRectangle(cornerRadius: 8))
+        .padding()
+        .onAppear {
+            guard let path = job.outputPath else { return }
+            Task.detached(priority: .userInitiated) {
+                let img = NSImage(contentsOfFile: path)
+                await MainActor.run { image = img }
+            }
+        }
+    }
+}

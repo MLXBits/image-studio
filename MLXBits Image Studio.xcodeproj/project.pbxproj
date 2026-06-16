@@ -12,50 +12,65 @@
 		01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */; };
 		0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
+		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
 		2CE5231419CEA80AC78A2EEB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFB6BA799C59DAA55470EC3 /* ContentView.swift */; };
 		2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D923D32E0D737D888C711FE7 /* KeychainHelper.swift */; };
+		32CD239EE81E711BFC106E6F /* BBoxEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7487A27C328B569EF618E3BC /* BBoxEditorView.swift */; };
 		33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 174F374D4B5F7A05666D31B3 /* Assets.xcassets */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
 		4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
+		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
+		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
+		8C60284A9547C1107436C267 /* Ideogram4ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
+		8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */; };
 		932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */; };
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
 		98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */; };
 		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
+		A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
+		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
 		D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */; };
 		DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */; };
+		DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */; };
 		E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */; };
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
+		F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
+		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
+		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
 		0DFB6BA799C59DAA55470EC3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
+		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
+		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplatePickerView.swift; sourceTree = "<group>"; };
@@ -64,20 +79,26 @@
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
 		562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UvInstaller.swift; sourceTree = "<group>"; };
+		57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelState.swift; sourceTree = "<group>"; };
+		607FDAD831E19BE75C734220 /* IdeogramCaption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaption.swift; sourceTree = "<group>"; };
 		64A7412A576F846395336217 /* ModelDefaultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDefaultsView.swift; sourceTree = "<group>"; };
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
+		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
+		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
+		93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelView.swift; sourceTree = "<group>"; };
 		96B20E83673119F893B43BBB /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
+		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
 		B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
@@ -86,13 +107,16 @@
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
+		DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionEditorView.swift; sourceTree = "<group>"; };
 		DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepwisePreviewView.swift; sourceTree = "<group>"; };
 		DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
 		DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
+		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
+		FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -108,6 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */,
+				B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
 				D923D32E0D737D888C711FE7 /* KeychainHelper.swift */,
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
@@ -166,10 +191,22 @@
 			path = ParamsPanel;
 			sourceTree = "<group>";
 		};
+		9F055965043A2B57DBE5B81A /* Ideogram4 */ = {
+			isa = PBXGroup;
+			children = (
+				7487A27C328B569EF618E3BC /* BBoxEditorView.swift */,
+				57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */,
+				93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */,
+				DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */,
+			);
+			path = Ideogram4;
+			sourceTree = "<group>";
+		};
 		9F6BCBE28C9814EF7779D261 /* Runner */ = {
 			isa = PBXGroup;
 			children = (
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
+				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -188,6 +225,7 @@
 			isa = PBXGroup;
 			children = (
 				6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */,
+				0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */,
 				529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */,
 				DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */,
 			);
@@ -198,6 +236,7 @@
 			isa = PBXGroup;
 			children = (
 				DB23B4F3B654A98909C6B6E3 /* Gallery */,
+				9F055965043A2B57DBE5B81A /* Ideogram4 */,
 				72528118E0360DB5F808B0BC /* ParamsPanel */,
 				B4967038153E9BBCF696B8BA /* PreviewPane */,
 				03F175B8A6A79FC1A8184DE3 /* Queue */,
@@ -232,7 +271,11 @@
 			children = (
 				91C5CA95EAA14C772647C853 /* FluxJob.swift */,
 				EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */,
+				2E769B611A03FA4372F553CA /* Ideogram4Job.swift */,
+				915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */,
+				607FDAD831E19BE75C734220 /* IdeogramCaption.swift */,
 				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
+				2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
 			);
 			path = Models;
@@ -243,6 +286,7 @@
 			children = (
 				3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */,
 				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
+				FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */,
 				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
 			);
 			path = Stores;
@@ -362,6 +406,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
+				32CD239EE81E711BFC106E6F /* BBoxEditorView.swift in Sources */,
 				0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */,
 				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
 				4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */,
@@ -373,9 +418,19 @@
 				6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */,
 				A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */,
 				475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */,
+				A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */,
 				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
+				65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */,
+				1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */,
+				FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */,
+				8C60284A9547C1107436C267 /* Ideogram4ParamsPanelState.swift in Sources */,
+				B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */,
+				DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */,
+				0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */,
+				517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */,
+				F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
 				66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */,
@@ -388,6 +443,7 @@
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
 				01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */,
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
+				8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
 				6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */,
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,

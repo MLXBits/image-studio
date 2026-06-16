@@ -73,6 +73,16 @@ class AppSettings {
         var activeTemplateIDs: [UUID]?
         var batchShortcutPreset: Int?
         var batchShortcutCustomCount: Int?
+        // Ideogram 4
+        var gemmaModelPath: String?
+        var ideogram4ModelRepoOverride: String?
+        var lastIdeogramPreset: Ideogram4Preset?
+        var lastIdeogramWidth: Int?
+        var lastIdeogramHeight: Int?
+        var lastIdeogramQuantize: Int?
+        var lastIdeogramCaption: IdeogramCaption?
+        var lastIdeogramPlainPrompt: String?
+        var lastIdeogramUsePlainPrompt: Bool?
 
         init() {}
         init(
@@ -85,7 +95,10 @@ class AppSettings {
             modelDefaults: [String: ModelDefaults],
             lastModel: FluxModelVariant, lastQuantize: Int,
             customTemplates: [PromptTemplate], activeTemplateIDs: [UUID],
-            batchShortcutPreset: Int, batchShortcutCustomCount: Int
+            batchShortcutPreset: Int, batchShortcutCustomCount: Int,
+            gemmaModelPath: String, ideogram4ModelRepoOverride: String?,
+            lastIdeogramPreset: Ideogram4Preset?, lastIdeogramWidth: Int?,
+            lastIdeogramHeight: Int?, lastIdeogramQuantize: Int?
         ) {
             self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
             self.defaultModel = defaultModel
@@ -100,6 +113,12 @@ class AppSettings {
             self.customTemplates = customTemplates; self.activeTemplateIDs = activeTemplateIDs
             self.batchShortcutPreset = batchShortcutPreset
             self.batchShortcutCustomCount = batchShortcutCustomCount
+            self.gemmaModelPath = gemmaModelPath
+            self.ideogram4ModelRepoOverride = ideogram4ModelRepoOverride
+            self.lastIdeogramPreset = lastIdeogramPreset
+            self.lastIdeogramWidth = lastIdeogramWidth
+            self.lastIdeogramHeight = lastIdeogramHeight
+            self.lastIdeogramQuantize = lastIdeogramQuantize
         }
     }
 
@@ -208,7 +227,47 @@ class AppSettings {
         batchShortcutPreset == 0 ? batchShortcutCustomCount : batchShortcutPreset
     }
 
-    /// Per-model overrides, keyed by `FluxModelVariant.rawValue`.
+    // MARK: - Ideogram 4
+
+    /// HF repo ID or local path for the Gemma model used to generate captions.
+    var gemmaModelPath: String {
+        didSet { save() }
+    }
+
+    /// Optional HF repo ID or local path override for the Ideogram 4 model.
+    var ideogram4ModelRepoOverride: String? {
+        didSet { save() }
+    }
+
+    var lastIdeogramPreset: Ideogram4Preset? {
+        didSet { save() }
+    }
+
+    var lastIdeogramWidth: Int? {
+        didSet { save() }
+    }
+
+    var lastIdeogramHeight: Int? {
+        didSet { save() }
+    }
+
+    var lastIdeogramQuantize: Int? {
+        didSet { save() }
+    }
+
+    var lastIdeogramCaption: IdeogramCaption? {
+        didSet { save() }
+    }
+
+    var lastIdeogramPlainPrompt: String? {
+        didSet { save() }
+    }
+
+    var lastIdeogramUsePlainPrompt: Bool? {
+        didSet { save() }
+    }
+
+    // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
     }
@@ -276,6 +335,15 @@ class AppSettings {
             ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
         batchShortcutPreset = s.batchShortcutPreset ?? 3
         batchShortcutCustomCount = s.batchShortcutCustomCount ?? 25
+        gemmaModelPath = s.gemmaModelPath ?? "mlx-community/gemma-3-12b-it-4bit"
+        ideogram4ModelRepoOverride = s.ideogram4ModelRepoOverride
+        lastIdeogramPreset = s.lastIdeogramPreset
+        lastIdeogramWidth = s.lastIdeogramWidth
+        lastIdeogramHeight = s.lastIdeogramHeight
+        lastIdeogramQuantize = s.lastIdeogramQuantize
+        lastIdeogramCaption = s.lastIdeogramCaption
+        lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
+        lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -316,7 +384,7 @@ class AppSettings {
     // MARK: - Persistence
 
     func save() {
-        let s = Stored(
+        var s = Stored(
             mfluxBinaryDir: mfluxBinaryDir, outputDir: outputDir,
             defaultModel: defaultModel, defaultBoard: defaultBoard,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
@@ -329,8 +397,17 @@ class AppSettings {
             lastModel: lastModel, lastQuantize: lastQuantize,
             customTemplates: customTemplates, activeTemplateIDs: activeTemplateIDs,
             batchShortcutPreset: batchShortcutPreset,
-            batchShortcutCustomCount: batchShortcutCustomCount
+            batchShortcutCustomCount: batchShortcutCustomCount,
+            gemmaModelPath: gemmaModelPath,
+            ideogram4ModelRepoOverride: ideogram4ModelRepoOverride,
+            lastIdeogramPreset: lastIdeogramPreset,
+            lastIdeogramWidth: lastIdeogramWidth,
+            lastIdeogramHeight: lastIdeogramHeight,
+            lastIdeogramQuantize: lastIdeogramQuantize
         )
+        s.lastIdeogramCaption = lastIdeogramCaption
+        s.lastIdeogramPlainPrompt = lastIdeogramPlainPrompt
+        s.lastIdeogramUsePlainPrompt = lastIdeogramUsePlainPrompt
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()
@@ -357,10 +434,37 @@ class AppSettings {
         BinaryDetector.mfluxGenerateFlux2Edit(in: mfluxBinaryDir)
     }
 
+    func mfluxIdeogram4BinaryPath() -> String {
+        BinaryDetector.mfluxGenerateIdeogram4(in: mfluxBinaryDir)
+    }
+
+    func mlxLmBinaryPath() -> String {
+        BinaryDetector.mlxLmGenerate(in: mfluxBinaryDir)
+    }
+
+    /// Returns true when Ideogram 4 model weights are already cached locally.
+    func ideogram4ModelOnDisk(quantize: Int) -> Bool {
+        if quantize > 0 {
+            let savedPath = effectiveMfluxCacheDir
+                .appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)
+            return FluxModelVariant.hasSavedWeights(at: savedPath)
+        }
+        // Check HF hub cache for the FP8 base checkpoint.
+        let hfBase = if !hfHome.isEmpty {
+            URL(fileURLWithPath: hfHome).appendingPathComponent("hub")
+        } else {
+            URL(fileURLWithPath: NSHomeDirectory())
+                .appendingPathComponent(".cache/huggingface/hub")
+        }
+        let snapshots = hfBase.appendingPathComponent("models--ideogram-ai--ideogram-4-fp8/snapshots")
+        return FileManager.default.fileExists(atPath: snapshots.path)
+    }
+
     func buildEnvironment() -> [String: String] {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
+        env["PYTHONUNBUFFERED"] = "1"
         if !hfHome.isEmpty { env["HF_HOME"] = hfHome }
         if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"] = mfluxCacheDir }
         if hfOffline { env["HF_HUB_OFFLINE"] = "1" }

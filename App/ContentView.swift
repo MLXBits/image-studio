@@ -23,6 +23,10 @@ final class ParamsPanelState {
     var editImagePaths: [String] = []
     var board: String = ""
 
+    var modelFamily: ModelFamily {
+        model == .ideogram4 ? .ideogram4 : .flux
+    }
+
     func applyDefaults(from settings: AppSettings) {
         let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
@@ -36,18 +40,21 @@ final class ParamsPanelState {
         seed = -1
         lowRam = d.lowRam
         negativePrompt = d.negativePrompt
-        // Build last-run lookup (safe against duplicate paths).
+        // Build last-run lookup (safe against duplicate paths). Only include FLUX LoRAs —
+        // global defaults may contain Ideogram entries that the Flux runner must not receive.
+        let fluxDefaultLoras = settings.defaultLoras.filter { $0.modelFamily == .flux }
+        let fluxLastLoras = settings.lastLoras.filter { $0.modelFamily == .flux }
         let lastByPath = Dictionary(
-            settings.lastLoras.map { ($0.path, $0) }
+            fluxLastLoras.map { ($0.path, $0) }
         ) { first, _ in first }
-        let defaultPaths = Set(settings.defaultLoras.map(\.path))
+        let defaultPaths = Set(fluxDefaultLoras.map(\.path))
         // Global defaults with enabled/strength restored from last run (notes stay from defaults).
-        var loraResult = settings.defaultLoras.map { global -> LoraEntry in
+        var loraResult = fluxDefaultLoras.map { global -> LoraEntry in
             guard let last = lastByPath[global.path] else { return global }
             var e = global; e.enabled = last.enabled; e.strength = last.strength; return e
         }
         // Session-only loras (added during a run but not in global defaults) persist across launches.
-        loraResult += settings.lastLoras.filter { !defaultPaths.contains($0.path) }
+        loraResult += fluxLastLoras.filter { !defaultPaths.contains($0.path) }
         loras = loraResult
         prompt = settings.lastPrompt
     }
@@ -122,6 +129,8 @@ struct ContentView: View {
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
     @Environment(GalleryStore.self) private var gallery
+    @Environment(Ideogram4JobStore.self) private var ideogram4Store
+    @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
 
     @Environment(\.openSettings) private var openSettings
 
@@ -130,6 +139,7 @@ struct ContentView: View {
     @State private var showingQueue: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
+    @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var fullSizeImage: NSImage?
 
     @State private var showingParams: Bool = true
@@ -144,8 +154,12 @@ struct ContentView: View {
     @State private var galleryWidth: Double = 260
     @State private var galleryDragBase: Double?
 
+    private var isAnyStoreRunning: Bool {
+        store.isRunning || ideogram4Store.isRunning
+    }
+
     private var paramsPane: some View {
-        ParamsPanelView(params: params)
+        ParamsPanelView(params: params, ideogramParams: ideogramParams)
             .frame(width: CGFloat(paramsWidth))
             .frame(maxHeight: .infinity)
     }
@@ -156,7 +170,7 @@ struct ContentView: View {
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel() },
+            onCancel: { runner.cancel(); ideogram4Runner.cancel() },
             onClear: clearPreview,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
             hasPrev: galleryNavInfo.hasPrev,
@@ -189,6 +203,82 @@ struct ContentView: View {
     }
 
     var body: some View {
+        mainContent
+            .sheet(isPresented: $showingOutputDirPrompt) {
+                OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
+                    .environment(settings)
+            }
+            .onAppear {
+                paramsWidth = savedParamsWidth
+                galleryWidth = savedGalleryWidth
+                params.applyDefaults(from: settings)
+                ideogramParams.applyDefaults(settings: settings)
+                if settings.outputDir.isEmpty {
+                    showingOutputDirPrompt = true
+                } else {
+                    gallery.scan(outputDir: settings.outputDir)
+                }
+                Task { @MainActor in
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                }
+                guard Self.batchEventMonitor == nil else { return }
+                Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                    guard event.keyCode == 36, // return key
+                          event.modifierFlags.contains(.command),
+                          event.modifierFlags.contains(.option),
+                          !event.modifierFlags.contains(.shift),
+                          !event.modifierFlags.contains(.control)
+                    else { return event }
+                    generate(count: settings.batchShortcutCount)
+                    return nil
+                }
+            }
+            .task { await checkAndAutoInstallMflux() }
+            .onChange(of: settings.defaultLoras) { _, updated in
+                let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
+                    e.notes.isEmpty ? nil : (e.path, e.notes)
+                })
+                for i in params.loras.indices {
+                    if let note = notesByPath[params.loras[i].path] {
+                        params.loras[i].notes = note
+                    }
+                }
+                let currentPaths = Set(params.loras.map(\.path))
+                for entry in updated where !currentPaths.contains(entry.path) && entry.modelFamily == .flux {
+                    params.loras.append(entry)
+                }
+                ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
+            }
+            .onChange(of: showingOutputDirPrompt) { _, showing in
+                if !showing, !settings.outputDir.isEmpty {
+                    gallery.scan(outputDir: settings.outputDir)
+                }
+            }
+            .onChange(of: runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: runner.batchImageLanded) { _, count in
+                guard count > 1 else { return } // first image handled by lastCompletedOutputPath
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: ideogram4Runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: ideogram4Runner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: gallery.items) { _, newItems in
+                guard let path = pendingSelectPath,
+                      let item = newItems.first(where: { $0.path == path }) else { return }
+                selectedGalleryItem = item
+                pendingSelectPath = nil
+            }
+    }
+
+    private var mainContent: some View {
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
@@ -284,11 +374,14 @@ struct ContentView: View {
             selectedGalleryItem = nil
             previewState = .activeJob(job)
         }
+        .onChange(of: ideogram4Runner.activeJob?.id) { _, id in
+            guard let id, let job = ideogram4Store.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeIdeogram4Job(job)
+        }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
-                if selectedGalleryItem == nil {
-                    previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
-                }
+                if selectedGalleryItem == nil { restoreActiveJobPreview() }
                 return
             }
             previewState = .galleryItem(item)
@@ -306,74 +399,12 @@ struct ContentView: View {
             // instead of leaving the detail pane spinning on a missing file.
             guard case let .galleryItem(item) = previewState, !ids.contains(item.id) else { return }
             selectedGalleryItem = nil
-            previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
+            restoreActiveJobPreview()
         }
         .background {
             Button("") { showingQueue.toggle() }
                 .keyboardShortcut("k", modifiers: .command)
                 .hidden()
-        }
-        .sheet(isPresented: $showingOutputDirPrompt) {
-            OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
-                .environment(settings)
-        }
-        .onAppear {
-            paramsWidth = savedParamsWidth
-            galleryWidth = savedGalleryWidth
-            params.applyDefaults(from: settings)
-            if settings.outputDir.isEmpty {
-                showingOutputDirPrompt = true
-            } else {
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            Task { @MainActor in
-                NSApp.keyWindow?.makeFirstResponder(nil)
-            }
-            guard Self.batchEventMonitor == nil else { return }
-            Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                guard event.keyCode == 36, // return key
-                      event.modifierFlags.contains(.command),
-                      event.modifierFlags.contains(.option),
-                      !event.modifierFlags.contains(.shift),
-                      !event.modifierFlags.contains(.control)
-                else { return event }
-                generate(count: settings.batchShortcutCount)
-                return nil
-            }
-        }
-        .task { await checkAndAutoInstallMflux() }
-        .onChange(of: settings.defaultLoras) { _, updated in
-            let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
-                e.notes.isEmpty ? nil : (e.path, e.notes)
-            })
-            for i in params.loras.indices {
-                if let note = notesByPath[params.loras[i].path] {
-                    params.loras[i].notes = note
-                }
-            }
-            let currentPaths = Set(params.loras.map(\.path))
-            for entry in updated where !currentPaths.contains(entry.path) {
-                params.loras.append(entry)
-            }
-        }
-        .onChange(of: showingOutputDirPrompt) { _, showing in
-            if !showing, !settings.outputDir.isEmpty {
-                gallery.scan(outputDir: settings.outputDir)
-            }
-        }
-        .onChange(of: runner.lastCompletedOutputPath) { _, path in
-            pendingSelectPath = path
-            gallery.scan(outputDir: settings.outputDir)
-        }
-        .onChange(of: runner.batchImageLanded) { _, count in
-            guard count > 1 else { return } // first image handled by lastCompletedOutputPath
-            gallery.scan(outputDir: settings.outputDir)
-        }
-        .onChange(of: gallery.items) { _, newItems in
-            guard let path = pendingSelectPath,
-                  let item = newItems.first(where: { $0.path == path }) else { return }
-            selectedGalleryItem = item
-            pendingSelectPath = nil
         }
     }
 
@@ -408,8 +439,13 @@ struct ContentView: View {
         HStack(spacing: 0) {
             Spacer()
             HStack(spacing: 12) {
-                let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
-                    && (!params.isEditMode || !params.editImagePaths.isEmpty)
+                let canGenerate: Bool = switch params.modelFamily {
+                case .flux:
+                    !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
+                        && (!params.isEditMode || !params.editImagePaths.isEmpty)
+                case .ideogram4:
+                    ideogramParams.isReadyToGenerate(settings: settings)
+                }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
                         Label("Generate  ⌘↵", systemImage: "wand.and.stars")
@@ -420,7 +456,8 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canGenerate)
-                    if params.seed == -1 {
+                    // Batch button: Flux only (Ideogram4 batch seeds entered in panel)
+                    if params.modelFamily == .flux, params.seed == -1 {
                         Rectangle()
                             .fill(.white.opacity(0.35))
                             .frame(width: 1, height: 16)
@@ -444,7 +481,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help(store.isRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+                .help(isAnyStoreRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
             }
             Spacer()
         }
@@ -477,6 +514,22 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         let remaining = store.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if ideogram4Store.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = ideogram4Runner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = ideogram4Store.pendingJobs.count + 1
                         Text("\(remaining) left")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -561,7 +614,17 @@ struct ContentView: View {
 
     private func clearPreview() {
         selectedGalleryItem = nil
-        if let job = runner.activeJob { previewState = .activeJob(job) } else { previewState = .idle }
+        restoreActiveJobPreview()
+    }
+
+    private func restoreActiveJobPreview() {
+        if let j = runner.activeJob {
+            previewState = .activeJob(j)
+        } else if let j = ideogram4Runner.activeJob {
+            previewState = .activeIdeogram4Job(j)
+        } else {
+            previewState = .idle
+        }
     }
 
     private func navigateGallery(_ delta: Int) {
@@ -591,21 +654,39 @@ struct ContentView: View {
     // MARK: - Generate
 
     private func generate(count: Int = 1) {
-        guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-              !params.isEditMode || !params.editImagePaths.isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
-        settings.lastPrompt = params.prompt
-        settings.lastWidth = params.width
-        settings.lastHeight = params.height
-        settings.lastLoras = params.loras
-        settings.lastModel = params.model
-        settings.lastQuantize = params.quantize
-        let job = params.makeJob(count: count, templates: settings.activeTemplates)
-        store.add(job)
-        if runner.activeJob == nil {
-            selectedGalleryItem = nil
-            previewState = .activeJob(job)
+
+        switch params.modelFamily {
+        case .flux:
+            guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
+                  !params.isEditMode || !params.editImagePaths.isEmpty else { return }
+            settings.lastPrompt = params.prompt
+            settings.lastWidth = params.width
+            settings.lastHeight = params.height
+            settings.lastLoras = params.loras
+            settings.lastModel = params.model
+            settings.lastQuantize = params.quantize
+            let job = params.makeJob(count: count, templates: settings.activeTemplates)
+            store.add(job)
+            if runner.activeJob == nil {
+                selectedGalleryItem = nil
+                previewState = .activeJob(job)
+            }
+            runner.runNext(in: store, settings: settings)
+
+        case .ideogram4:
+            guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
+            settings.lastModel = .ideogram4 // remember family across sessions
+            settings.lastIdeogramPreset = ideogramParams.preset
+            settings.lastIdeogramWidth = ideogramParams.width
+            settings.lastIdeogramHeight = ideogramParams.height
+            settings.lastIdeogramQuantize = ideogramParams.quantize
+            settings.lastIdeogramCaption = ideogramParams.caption
+            settings.lastIdeogramPlainPrompt = ideogramParams.plainPrompt
+            settings.lastIdeogramUsePlainPrompt = ideogramParams.usePlainPrompt
+            let job = ideogramParams.makeJob()
+            ideogram4Store.add(job)
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings)
         }
-        runner.runNext(in: store, settings: settings)
     }
 }
