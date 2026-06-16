@@ -84,8 +84,7 @@ final class FluxJobRunner {
         }
 
         // For quantized non-custom models, ensure a local saved copy exists so every subsequent
-        // load skips in-memory quantization. The mlx-community pre-quantized repos are preferred
-        // when known; otherwise we run mflux-save once to produce a local saved copy.
+        // load skips in-memory quantization.
         if job.quantize > 0, job.model != .custom,
            job.model.preQuantizedRepoID(quantize: job.quantize) == nil {
             let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
@@ -93,11 +92,9 @@ final class FluxJobRunner {
                 switch await runSave(job: job, savePath: savedPath, settings: settings) {
                 case .success:
                     job.statusLine = ""
-
                 case .cancelled:
                     finishJob(job, status: .cancelled, stepDir: stepDir)
                     return
-
                 case .failed:
                     finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
                     return
@@ -195,19 +192,35 @@ final class FluxJobRunner {
                 job.outputThumbnails = paths.map { loadThumbnail(at: $0) ?? Data() }
                 job.outputPath = paths.first
                 job.thumbnailData = job.outputThumbnails.first
-                // Sidecars written progressively by batchPoller; write any missed ones here.
-                // Gate on the image existing so a cancelled batch (seeds whose PNG never
-                // landed) doesn't leave orphaned sidecars.
-                for item in batchPaths
-                    where FileManager.default.fileExists(atPath: item.path)
-                    && isPNGComplete(at: item.path)
-                    && !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
-                    var meta = GenerationMetadata.from(job: job)
-                    meta.seed = item.seed
-                    MetadataSidecar.write(meta, for: item.path)
+
+                // --- RECONCILIATION BLOCK ---
+                // The batchPoller is asynchronous and might be cancelled before it finds the last image.
+                // We perform a final, authoritative scan of the disk to determine the true count.
+                var verifiedPathsCount = 0
+                for item in batchPaths {
+                    if FileManager.default.fileExists(atPath: item.path), isPNGComplete(at: item.path) {
+                        verifiedPathsCount += 1
+
+                        // Ensure metadata sidecar exists for this confirmed image
+                        if !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
+                            var meta = GenerationMetadata.from(job: job)
+                            meta.seed = item.seed
+                            meta.startedAt = job.startedAt ?? Date()
+                            meta.generatedAt = Date()
+                            MetadataSidecar.write(meta, for: item.path)
+                        }
+                    }
                 }
-                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(formatDuration(totalSecs)))\n"
-                if job.completedSeedsInBatch == 0 { lastCompletedOutputPath = paths.first }
+
+                // Sync the job and runner state with the actual filesystem state
+                job.completedSeedsInBatch = verifiedPathsCount
+                self.batchImageLanded = verifiedPathsCount
+
+                if verifiedPathsCount == 1 { lastCompletedOutputPath = paths.first }
+                if verifiedPathsCount == paths.count { lastCompletedOutputPath = paths.last }
+                // ----------------------------
+
+                job.log += "▸ Saved \(verifiedPathsCount) images  (\(timing)total \(formatDuration(totalSecs)))\n"
             } else {
                 job.outputPath = outputTemplate
                 job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(formatDuration(totalSecs)))\n"
