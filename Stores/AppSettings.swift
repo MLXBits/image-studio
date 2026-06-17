@@ -83,6 +83,7 @@ class AppSettings {
         var lastIdeogramCaption: IdeogramCaption?
         var lastIdeogramPlainPrompt: String?
         var lastIdeogramUsePlainPrompt: Bool?
+        var lastIdeogramSeed: Int?
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
 
@@ -269,6 +270,11 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Last Ideogram 4 seed (-1 = random), restored on next launch.
+    var lastIdeogramSeed: Int? {
+        didSet { save() }
+    }
+
     /// Stream Ideogram 4 transformer blocks from disk to reduce peak memory.
     var ideogram4LowRam: Bool {
         didSet { save() }
@@ -356,6 +362,7 @@ class AppSettings {
         lastIdeogramCaption = s.lastIdeogramCaption
         lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
+        lastIdeogramSeed = s.lastIdeogramSeed
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         customTemplates = s.customTemplates ?? []
@@ -422,6 +429,7 @@ class AppSettings {
         s.lastIdeogramCaption = lastIdeogramCaption
         s.lastIdeogramPlainPrompt = lastIdeogramPlainPrompt
         s.lastIdeogramUsePlainPrompt = lastIdeogramUsePlainPrompt
+        s.lastIdeogramSeed = lastIdeogramSeed
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         do {

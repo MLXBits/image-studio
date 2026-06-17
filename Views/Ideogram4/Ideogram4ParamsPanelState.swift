@@ -30,6 +30,7 @@ final class Ideogram4ParamsPanelState {
         width = settings.lastIdeogramWidth ?? 1024
         height = settings.lastIdeogramHeight ?? 1024
         quantize = 0 // FP8 only — quantization not yet supported for Ideogram 4
+        seed = settings.lastIdeogramSeed ?? -1
         lowRam = settings.ideogram4LowRam
         strictValidation = settings.ideogram4StrictValidation
         board = settings.defaultBoard
