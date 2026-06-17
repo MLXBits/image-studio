@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 /// Full caption editing view: high-level desc, style, bbox canvas, element list, generate button.
@@ -208,28 +209,32 @@ struct IdeogramCaptionEditorView: View {
         return styleFieldRow("Camera / Lens", placeholder: "camera / lens…", text: binding)
     }
 
-    /// Comma-separated hex color palette field backed by `[String]?`.
+    /// Hex color palette backed by `[String]?`, edited as inline swatch chips.
     private var colorPaletteField: some View {
-        let binding = Binding<String>(
-            get: { (caption.styleDescription?.colorPalette ?? []).joined(separator: ", ") },
-            set: { raw in
+        let binding = Binding<[String]>(
+            get: { caption.styleDescription?.colorPalette ?? [] },
+            set: { values in
                 if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
-                let values = raw.split(separator: ",")
-                    .map { $0.trimmingCharacters(in: .whitespaces) }
-                    .filter { !$0.isEmpty }
                 caption.styleDescription?.colorPalette = values.isEmpty ? nil : values
             }
         )
-        return styleFieldRow("Color Palette", placeholder: "#hex, #hex…", text: binding)
+        // Label on its own row so the chip grid gets the full column width to wrap
+        // into — in a label|field HStack it was boxed into one narrow column.
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Color Palette")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ColorPaletteEditor(colors: binding)
+        }
     }
 
     private var elementList: some View {
-        VStack(spacing: 6) {
+        VStack(spacing: 15) {
             ForEach($caption.compositionalDeconstruction.elements) { $el in
                 elementRow(element: $el)
             }
         }
-        .padding(.vertical, 6)
+        .padding(.vertical, 8)
         .background(Color.primary.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -385,11 +390,14 @@ struct IdeogramCaptionEditorView: View {
                 Button {
                     caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
                 } label: {
-                    Image(systemName: "xmark")
-                        .font(.system(size: 8, weight: .bold))
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.body)
                         .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
+                .help("Remove element")
             }
 
             if el.type == .text {
