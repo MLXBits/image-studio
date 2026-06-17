@@ -134,28 +134,17 @@ final class IdeogramCaptionGenerator {
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         process.environment = env
 
-        let outPipe = Pipe()
-        let errPipe = Pipe()
-        process.standardOutput = outPipe
-        process.standardError = errPipe
+        let rawOutput = try await runProcessCollectingOutput(process)
 
-        try process.run()
-
-        let rawOutput = try await collectOutput(from: outPipe)
-        process.waitUntilExit()
-
-        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
-        let errText = String(data: errData, encoding: .utf8) ?? ""
-
-        var logParts = [
+        lastLog = [
             "=== PROMPT ===", fullPrompt,
             "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
-        ]
-        if !errText.isEmpty { logParts += ["=== STDERR ===", errText] }
-        lastLog = logParts.joined(separator: "\n\n")
+        ].joined(separator: "\n\n")
 
         guard process.terminationStatus == 0 else {
-            throw IdeogramCaptionGeneratorError.subprocessFailed(process.terminationStatus, errText)
+            throw IdeogramCaptionGeneratorError.subprocessFailed(
+                process.terminationStatus, String(rawOutput.suffix(2000))
+            )
         }
 
         guard let extractedJSON = extractJSONString(from: rawOutput) else {
@@ -190,19 +179,48 @@ final class IdeogramCaptionGenerator {
 
     // MARK: - Private
 
-    private func collectOutput(from pipe: Pipe) async throws -> String {
-        try await withCheckedThrowingContinuation { continuation in
-            var buffer = Data()
+    /// Runs `process`, draining a single merged stdout+stderr pipe incrementally, and
+    /// returns the full combined output. Merging avoids the classic two-pipe deadlock
+    /// (child blocks writing stderr while we block reading stdout). Cancelling the
+    /// enclosing Task terminates the subprocess so a hung or long-running generation
+    /// can actually be stopped (otherwise the model stays resident on the GPU).
+    private func runProcessCollectingOutput(_ process: Process) async throws -> String {
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+
+        let stream = AsyncStream<String> { continuation in
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
                 if data.isEmpty {
                     pipe.fileHandleForReading.readabilityHandler = nil
-                    let text = String(data: buffer, encoding: .utf8) ?? ""
-                    continuation.resume(returning: text)
-                } else {
-                    buffer.append(data)
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
                 }
             }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
+
+        try process.run()
+
+        return try await withTaskCancellationHandler {
+            var output = ""
+            for await chunk in stream {
+                output += chunk
+            }
+            process.waitUntilExit() // already exited once the pipe hit EOF; returns immediately
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            return output
+        } onCancel: {
+            process.terminate()
         }
     }
 
