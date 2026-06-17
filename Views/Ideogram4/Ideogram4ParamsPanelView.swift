@@ -114,19 +114,25 @@ struct Ideogram4ParamsPanelView: View {
     }
 
     private var presetPicker: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Picker("", selection: $params.preset) {
-                ForEach(Ideogram4Preset.allCases, id: \.self) { preset in
-                    Text(preset.labelWithSteps).tag(preset)
+        VStack(alignment: .center, spacing: 6) {
+            HStack {
+                Spacer()
+                Picker("", selection: $params.preset) {
+                    ForEach(Ideogram4Preset.allCases, id: \.self) { preset in
+                        Text(preset.labelWithSteps).tag(preset)
+                    }
                 }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
+                Spacer()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
 
             Text(presetDescription)
                 .font(.caption)
                 .foregroundStyle(.secondary)
         }
+        .frame(maxWidth: .infinity)
     }
 
     private var presetDescription: String {
