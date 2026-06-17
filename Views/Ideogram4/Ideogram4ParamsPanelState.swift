@@ -58,7 +58,7 @@ final class Ideogram4ParamsPanelState {
         seed = newSeed ? -1 : meta.seed
     }
 
-    func makeJob() -> Ideogram4Job {
+    func makeJob(count: Int = 1) -> Ideogram4Job {
         let job = Ideogram4Job(
             preset: preset,
             caption: caption,
@@ -73,7 +73,11 @@ final class Ideogram4ParamsPanelState {
             loras: loras,
             board: board
         )
-        if !batchSeeds.isEmpty {
+        if count > 1 {
+            // Matches Flux.2's batch button: auto-generate N random seeds into one
+            // warm job (single mflux process, model loaded once).
+            job.seeds = (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+        } else if !batchSeeds.isEmpty {
             job.seeds = batchSeeds
         }
         return job

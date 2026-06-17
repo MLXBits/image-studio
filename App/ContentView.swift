@@ -461,8 +461,12 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canGenerate)
-                    // Batch button: Flux only (Ideogram4 batch seeds entered in panel)
-                    if params.modelFamily == .flux, params.seed == -1 {
+                    // Batch button: auto-generates N random seeds into one warm job.
+                    // Shown for whichever family has a random (-1) seed selected.
+                    let seedIsRandom = params.modelFamily == .flux
+                        ? params.seed == -1
+                        : ideogramParams.seed == -1
+                    if seedIsRandom {
                         Rectangle()
                             .fill(.white.opacity(0.35))
                             .frame(width: 1, height: 16)
@@ -701,7 +705,7 @@ struct ContentView: View {
             // pull the current values so live edits apply to this run.
             ideogramParams.lowRam = settings.ideogram4LowRam
             ideogramParams.strictValidation = settings.ideogram4StrictValidation
-            let job = ideogramParams.makeJob()
+            let job = ideogramParams.makeJob(count: count)
             ideogram4Store.add(job)
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings)
         }
