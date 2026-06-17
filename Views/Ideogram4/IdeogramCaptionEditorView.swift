@@ -109,10 +109,7 @@ struct IdeogramCaptionEditorView: View {
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
                 TextField("background description…", text: $caption.compositionalDeconstruction.background)
-                    .textFieldStyle(.plain)
-                    .padding(6)
-                    .background(Color.primary.opacity(0.06))
-                    .clipShape(RoundedRectangle(cornerRadius: 6))
+                    .textFieldStyle(.roundedBorder)
                     .font(.callout)
             }
 
@@ -172,28 +169,21 @@ struct IdeogramCaptionEditorView: View {
     private var styleFields: some View {
         let isPhoto = caption.styleDescription?.isPhotoMode ?? false
         return VStack(spacing: 6) {
-            HStack(spacing: 0) {
-                Button("Photo") { enterPhotoMode() }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-                    .background(isPhoto ? Color.accentColor : Color.primary.opacity(0.08))
-                    .foregroundStyle(isPhoto ? Color.white : Color.primary)
-                Button("Art Style") { enterArtStyleMode() }
-                    .buttonStyle(.plain)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 4)
-                    .background(!isPhoto ? Color.accentColor : Color.primary.opacity(0.08))
-                    .foregroundStyle(!isPhoto ? Color.white : Color.primary)
+            Picker("", selection: Binding<Bool>(
+                get: { caption.styleDescription?.isPhotoMode ?? false },
+                set: { $0 ? enterPhotoMode() : enterArtStyleMode() }
+            )) {
+                Text("Photo").tag(true)
+                Text("Art Style").tag(false)
             }
-            .font(.subheadline)
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .pickerStyle(.segmented)
+            .labelsHidden()
             .help("Photo: uses camera/lens field. Art Style: uses style description field. These are mutually exclusive.")
 
             styleTextField("Aesthetics", keyPath: \.aesthetics)
             styleTextField("Lighting", keyPath: \.lighting)
 
-            if caption.styleDescription?.isPhotoMode ?? false {
+            if isPhoto {
                 // Photo key order: aesthetics → lighting → photo → medium → color_palette
                 cameraLensField
                 styleTextField("Medium", keyPath: \.medium)
@@ -215,16 +205,7 @@ struct IdeogramCaptionEditorView: View {
                 caption.styleDescription?.photo = value
             }
         )
-        return LabeledContent("Camera / Lens") {
-            TextField("camera / lens…", text: binding)
-                .textFieldStyle(.plain)
-                .padding(.vertical, 3)
-                .padding(.horizontal, 5)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 5))
-                .font(.callout)
-        }
-        .font(.caption)
+        return styleFieldRow("Camera / Lens", placeholder: "camera / lens…", text: binding)
     }
 
     /// Comma-separated hex color palette field backed by `[String]?`.
@@ -239,16 +220,7 @@ struct IdeogramCaptionEditorView: View {
                 caption.styleDescription?.colorPalette = values.isEmpty ? nil : values
             }
         )
-        return LabeledContent("Color Palette") {
-            TextField("#hex, #hex…", text: binding)
-                .textFieldStyle(.plain)
-                .padding(.vertical, 3)
-                .padding(.horizontal, 5)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 5))
-                .font(.callout)
-        }
-        .font(.caption)
+        return styleFieldRow("Color Palette", placeholder: "#hex, #hex…", text: binding)
     }
 
     private var elementList: some View {
@@ -367,16 +339,23 @@ struct IdeogramCaptionEditorView: View {
             get: { caption.styleDescription?[keyPath: keyPath] ?? "" },
             set: { setStyle(keyPath, $0) }
         )
-        return LabeledContent(label) {
-            TextField(label.lowercased() + "…", text: binding)
-                .textFieldStyle(.plain)
-                .padding(.vertical, 3)
-                .padding(.horizontal, 5)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+        return styleFieldRow(label, placeholder: label.lowercased() + "…", text: binding)
+    }
+
+    /// A labeled single-line field with a fixed-width label column so every Style
+    /// row aligns, using the native rounded-border field style from the Flux panel.
+    private func styleFieldRow(
+        _ label: String, placeholder: String, text: Binding<String>
+    ) -> some View {
+        HStack(spacing: 8) {
+            Text(label)
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .frame(width: 92, alignment: .leading)
+            TextField(placeholder, text: text)
+                .textFieldStyle(.roundedBorder)
                 .font(.callout)
         }
-        .font(.caption)
     }
 
     @ViewBuilder
