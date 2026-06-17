@@ -224,12 +224,12 @@ struct IdeogramCaptionEditorView: View {
     }
 
     private var elementList: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 6) {
             ForEach($caption.compositionalDeconstruction.elements) { $el in
                 elementRow(element: $el)
             }
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .background(Color.primary.opacity(0.04))
         .clipShape(RoundedRectangle(cornerRadius: 8))
     }
@@ -361,48 +361,59 @@ struct IdeogramCaptionEditorView: View {
     @ViewBuilder
     private func elementRow(element: Binding<IdeogramCaptionElement>) -> some View {
         let el = element.wrappedValue
-        HStack(spacing: 6) {
-            Text(el.type == .text ? "T" : "•")
-                .font(.system(size: 10, weight: .bold, design: .rounded))
-                .foregroundStyle(el.type == .text ? Color.blue : Color.green)
-                .frame(width: 18, height: 18)
-                .background((el.type == .text ? Color.blue : Color.green).opacity(0.12))
-                .clipShape(RoundedRectangle(cornerRadius: 4))
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 6) {
+                Text(el.type == .text ? "T" : "•")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(el.type == .text ? Color.blue : Color.green)
+                    .frame(width: 18, height: 18)
+                    .background((el.type == .text ? Color.blue : Color.green).opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
 
-            VStack(alignment: .leading, spacing: 1) {
-                if el.type == .text, let txt = el.text, !txt.isEmpty {
-                    TextField("text…", text: Binding(
-                        get: { el.text ?? "" },
-                        set: { element.wrappedValue.text = $0.isEmpty ? nil : $0 }
-                    ))
-                    .font(.caption)
-                    .textFieldStyle(.plain)
+                if el.bbox.count == 4 {
+                    // Coordinates are noise in the list — surface them in a tooltip
+                    // on a bounding-box icon instead of a cryptic numeric label.
+                    Image(systemName: "viewfinder")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .help("Bounding box (0–1000): "
+                            + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
                 }
-                TextField("description…", text: element.desc)
-                    .font(.caption)
-                    .textFieldStyle(.plain)
-                    .foregroundStyle(.secondary)
+
+                Spacer(minLength: 4)
+
+                Button {
+                    caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 8, weight: .bold))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
             }
 
-            Spacer(minLength: 4)
-
-            if el.bbox.count == 4 {
-                Text("[\(el.bbox[1]),\(el.bbox[0])→\(el.bbox[3]),\(el.bbox[2])]")
-                    .font(.system(size: 8, design: .monospaced))
-                    .foregroundStyle(.tertiary)
+            if el.type == .text {
+                GrowingPromptField(
+                    text: Binding(
+                        get: { element.wrappedValue.text ?? "" },
+                        set: { element.wrappedValue.text = $0.isEmpty ? nil : $0 }
+                    ),
+                    placeholder: "text…",
+                    label: "Element text",
+                    hint: "The literal text this element renders",
+                    minHeight: 38
+                )
             }
-
-            Button {
-                caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
-            } label: {
-                Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
-                    .foregroundStyle(.secondary)
-            }
-            .buttonStyle(.plain)
+            GrowingPromptField(
+                text: element.desc,
+                placeholder: "description…",
+                label: "Element description",
+                hint: "Describe this element",
+                minHeight: 38
+            )
         }
         .padding(.horizontal, 8)
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
     }
 
     /// Copies the exact caption payload (the JSON handed to mflux) to the clipboard.
