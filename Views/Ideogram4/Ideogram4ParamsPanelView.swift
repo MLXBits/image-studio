@@ -7,7 +7,6 @@ struct Ideogram4ParamsPanelView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
 
-    @State private var seedText: String = ""
     @State private var batchSeedText: String = ""
     @State private var showBatchSeeds: Bool = false
     @State private var captionExpanded: Bool = true
@@ -145,33 +144,38 @@ struct Ideogram4ParamsPanelView: View {
 
     private var seedSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                TextField("Random", text: $seedText)
+            HStack(spacing: 4) {
+                // Matches the Flux.2 seed control: numeric field (-1 = random),
+                // dice for a concrete random seed, reset arrow back to -1.
+                TextField("-1", value: $params.seed, format: .number.grouping(.never))
                     .textFieldStyle(.roundedBorder)
-                    .frame(maxWidth: 120)
-                    .onChange(of: seedText) { _, text in
-                        params.seed = Int(text) ?? -1
-                    }
-                    .onAppear { seedText = params.seed >= 0 ? "\(params.seed)" : "" }
-
+                    .font(.system(.body, design: .monospaced))
+                    .frame(width: 100)
+                    .accessibilityLabel("Seed")
+                    .accessibilityHint("Use -1 for random")
                 Button {
-                    seedText = ""
-                    params.seed = -1
-                    params.batchSeeds = []
-                    showBatchSeeds = false
+                    params.seed = Int.random(in: 0 ..< 1_000_000_000)
                 } label: {
-                    Image(systemName: "dice")
-                        .font(.caption)
+                    Image(systemName: "dice").font(.caption)
                 }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .help("Random seed")
+                .buttonStyle(.plain)
+                .accessibilityLabel("Pick random seed")
+                Button {
+                    params.seed = -1
+                } label: {
+                    Image(systemName: "arrow.counterclockwise").font(.caption)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Reset to random (-1)")
 
                 Spacer()
 
                 Toggle("Batch", isOn: $showBatchSeeds)
                     .toggleStyle(.button)
                     .controlSize(.small)
+                    .onChange(of: showBatchSeeds) { _, on in
+                        if !on { params.batchSeeds = [] }
+                    }
             }
 
             if showBatchSeeds {
