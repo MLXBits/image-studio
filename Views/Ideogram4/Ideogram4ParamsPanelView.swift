@@ -10,19 +10,12 @@ struct Ideogram4ParamsPanelView: View {
     @State private var seedText: String = ""
     @State private var batchSeedText: String = ""
     @State private var showBatchSeeds: Bool = false
+    @State private var captionExpanded: Bool = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Caption / prompt
-            SectionContainerView(title: "Caption") {
-                IdeogramCaptionEditorView(
-                    caption: $params.caption,
-                    usePlainPrompt: $params.usePlainPrompt,
-                    plainPrompt: $params.plainPrompt,
-                    outputWidth: params.width,
-                    outputHeight: params.height
-                )
-            }
+            // Caption / prompt — collapsible (open by default)
+            captionSection
 
             Divider()
 
@@ -84,6 +77,41 @@ struct Ideogram4ParamsPanelView: View {
     }
 
     // MARK: - Subviews (instance_property)
+
+    private var captionSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.15)) { captionExpanded.toggle() }
+            } label: {
+                HStack(spacing: 4) {
+                    Image(systemName: captionExpanded ? "chevron.down" : "chevron.right")
+                        .font(.caption2)
+                        .frame(width: 10)
+                    Text("Caption")
+                        .font(.caption)
+                        .fontWeight(.medium)
+                    Spacer()
+                }
+                .foregroundStyle(.secondary)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            if captionExpanded {
+                IdeogramCaptionEditorView(
+                    caption: $params.caption,
+                    usePlainPrompt: $params.usePlainPrompt,
+                    plainPrompt: $params.plainPrompt,
+                    outputWidth: params.width,
+                    outputHeight: params.height
+                )
+                .padding(.horizontal, 8)
+                .padding(.vertical, 6)
+                .background(Color.primary.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+    }
 
     private var presetPicker: some View {
         VStack(alignment: .leading, spacing: 6) {
