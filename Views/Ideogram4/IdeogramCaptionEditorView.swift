@@ -109,9 +109,11 @@ struct IdeogramCaptionEditorView: View {
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
-                TextField("background description…", text: $caption.compositionalDeconstruction.background)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.callout)
+                SpellCheckingTextField(
+                    text: $caption.compositionalDeconstruction.background,
+                    placeholder: "background description…"
+                )
+                .frame(height: 22)
             }
 
             VStack(alignment: .leading, spacing: 4) {
@@ -357,9 +359,8 @@ struct IdeogramCaptionEditorView: View {
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(width: 92, alignment: .leading)
-            TextField(placeholder, text: text)
-                .textFieldStyle(.roundedBorder)
-                .font(.callout)
+            SpellCheckingTextField(text: text, placeholder: placeholder)
+                .frame(height: 22)
         }
     }
 

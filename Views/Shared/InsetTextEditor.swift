@@ -119,7 +119,9 @@ struct InsetTextEditor: NSViewRepresentable {
         textView.textContainer?.lineFragmentPadding = 0
         textView.isAutomaticQuoteSubstitutionEnabled = false
         textView.isAutomaticDashSubstitutionEnabled = false
-        textView.isAutomaticSpellingCorrectionEnabled = false
+        textView.isAutomaticSpellingCorrectionEnabled = false // no silent auto-replace
+        textView.isContinuousSpellCheckingEnabled = true // red squiggles on typos
+        textView.isGrammarCheckingEnabled = true
         textView.typingAttributes = Self.userAttrs
         return scrollView
     }
@@ -352,5 +354,68 @@ extension Color {
             green: Double((v >> 8) & 0xFF) / 255,
             blue: Double(v & 0xFF) / 255
         )
+    }
+}
+
+// MARK: - Spell-checked single-line field
+
+/// A single-line text field that shows spell/grammar squiggles.
+///
+/// SwiftUI's macOS `TextField` (an `NSTextField`) borrows the window's shared
+/// field editor, which has continuous spell checking off here — and there's no
+/// SwiftUI modifier to flip it. This wraps an `NSTextField` that enables spell
+/// + grammar checking on its field editor whenever it gains focus. Styled to
+/// match `.textFieldStyle(.roundedBorder)`.
+struct SpellCheckingTextField: NSViewRepresentable {
+    final class Field: NSTextField {
+        override func becomeFirstResponder() -> Bool {
+            let ok = super.becomeFirstResponder()
+            if let editor = currentEditor() as? NSTextView {
+                editor.isContinuousSpellCheckingEnabled = true
+                editor.isGrammarCheckingEnabled = true
+            }
+            return ok
+        }
+    }
+
+    final class Coordinator: NSObject, NSTextFieldDelegate {
+        var parent: SpellCheckingTextField
+
+        init(_ parent: SpellCheckingTextField) {
+            self.parent = parent
+        }
+
+        func controlTextDidChange(_ notification: Notification) {
+            guard let field = notification.object as? NSTextField else { return }
+            parent.text = field.stringValue
+        }
+    }
+
+    @Binding var text: String
+    var placeholder: String = ""
+
+    func makeNSView(context: Context) -> NSTextField {
+        let field = Field()
+        field.delegate = context.coordinator
+        field.isBezeled = true
+        field.bezelStyle = .roundedBezel
+        field.drawsBackground = true
+        field.font = .preferredFont(forTextStyle: .callout)
+        field.lineBreakMode = .byTruncatingTail
+        field.usesSingleLineMode = true
+        field.cell?.wraps = false
+        field.cell?.isScrollable = true
+        field.placeholderString = placeholder
+        return field
+    }
+
+    func updateNSView(_ field: NSTextField, context: Context) {
+        context.coordinator.parent = self
+        if field.stringValue != text { field.stringValue = text }
+        field.placeholderString = placeholder
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(self)
     }
 }
