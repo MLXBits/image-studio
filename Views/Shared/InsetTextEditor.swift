@@ -216,3 +216,141 @@ struct GrowingPromptField: View {
             .accessibilityHint(hint)
     }
 }
+
+// MARK: - Color palette editor
+
+/// Inline hex-color palette editor: each entry is a circular swatch (click to
+/// open the system color picker) with its hex shown alongside. "Add color"
+/// appends a new entry and opens the picker for it.
+struct ColorPaletteEditor: View {
+    @Binding var colors: [String]
+
+    private let columns = [GridItem(.adaptive(minimum: 92), spacing: 6, alignment: .leading)]
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            if !colors.isEmpty {
+                LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
+                    ForEach(Array(colors.enumerated()), id: \.offset) { idx, hex in
+                        chip(idx: idx, hex: hex)
+                    }
+                }
+            }
+            Button {
+                let idx = colors.count
+                colors.append("#808080")
+                editColor(at: idx)
+            } label: {
+                Label("Add color", systemImage: "plus.circle.fill")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Add a color")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func chip(idx: Int, hex: String) -> some View {
+        HStack(spacing: 4) {
+            Button {
+                editColor(at: idx)
+            } label: {
+                Circle()
+                    .fill(Color(hexString: hex) ?? .black)
+                    .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
+                    .frame(width: 20, height: 20)
+            }
+            .buttonStyle(.plain)
+            .help("Edit color")
+            Text(hex.uppercased().replacingOccurrences(of: "#", with: ""))
+                .font(.system(.caption2, design: .monospaced))
+                .foregroundStyle(.secondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+            Button {
+                guard colors.indices.contains(idx) else { return }
+                colors.remove(at: idx)
+            } label: {
+                Image(systemName: "xmark.circle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 18, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Remove color")
+        }
+        .padding(.leading, 4)
+        .padding(.trailing, 2)
+        .padding(.vertical, 2)
+        .frame(maxWidth: .infinity)
+        .background(Color.primary.opacity(0.06))
+        .clipShape(Capsule())
+        .help(hex.uppercased())
+    }
+
+    /// Opens the shared system color panel seeded with the entry at `idx`,
+    /// writing each live change back into the palette.
+    private func editColor(at idx: Int) {
+        guard colors.indices.contains(idx) else { return }
+        ColorPanelController.shared.present(initial: Color(hexString: colors[idx]) ?? .black) { picked in
+            if colors.indices.contains(idx) { colors[idx] = picked.hexString }
+        }
+    }
+}
+
+// MARK: - Color panel controller
+
+/// Bridges the shared `NSColorPanel` to a SwiftUI callback so a custom swatch
+/// button can present the native picker. Re-targeting on each present means
+/// only the most recently opened swatch receives updates.
+@MainActor
+final class ColorPanelController: NSObject {
+    static let shared = ColorPanelController()
+
+    private var onChange: ((Color) -> Void)?
+
+    func present(initial: Color, onChange: @escaping (Color) -> Void) {
+        self.onChange = onChange
+        let panel = NSColorPanel.shared
+        panel.showsAlpha = false
+        panel.color = NSColor(initial)
+        panel.setTarget(self)
+        panel.setAction(#selector(colorChanged(_:)))
+        panel.isContinuous = true
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    @objc private func colorChanged(_ sender: NSColorPanel) {
+        onChange?(Color(nsColor: sender.color))
+    }
+}
+
+// MARK: - Hex <-> Color
+
+extension Color {
+    /// Renders as `#RRGGBB` in sRGB.
+    var hexString: String {
+        let ns = NSColor(self).usingColorSpace(.sRGB) ?? NSColor(self)
+        let r = Int((ns.redComponent * 255).rounded())
+        let g = Int((ns.greenComponent * 255).rounded())
+        let b = Int((ns.blueComponent * 255).rounded())
+        return String(format: "#%02X%02X%02X", r, g, b)
+    }
+
+    /// Parses `#RRGGBB` (with or without the leading `#`). Returns nil on bad input.
+    init?(hexString: String) {
+        var s = hexString.trimmingCharacters(in: .whitespaces)
+        if s.hasPrefix("#") { s.removeFirst() }
+        guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
+        self = Color(
+            .sRGB,
+            red: Double((v >> 16) & 0xFF) / 255,
+            green: Double((v >> 8) & 0xFF) / 255,
+            blue: Double(v & 0xFF) / 255
+        )
+    }
+}
