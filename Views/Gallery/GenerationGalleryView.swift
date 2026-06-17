@@ -10,6 +10,8 @@ struct GenerationGalleryView: View {
     @Binding var selectedItem: GalleryItem?
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
+    let onRemixIdeogram: (Ideogram4Metadata) -> Void
+    let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
@@ -114,6 +116,8 @@ struct GenerationGalleryView: View {
                     },
                     onRemix: onRemix,
                     onApplySettings: { _, meta in onApplySettings(meta) },
+                    onRemixIdeogram: onRemixIdeogram,
+                    onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
                     onUseInImg2Img: onUseInImg2Img,
                     onMoveToBoard: { item, board in
                         if selection.contains(item.id) {

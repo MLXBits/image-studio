@@ -240,26 +240,89 @@ struct Ideogram4StepwisePreviewView: View {
 
 struct Ideogram4CompletedPreviewView: View {
     let job: Ideogram4Job
+    let onRemix: (Ideogram4Metadata) -> Void
+    let onApplySettings: (Ideogram4Metadata) -> Void
+
     @State private var image: NSImage?
+    @State private var showingLog: Bool = false
 
     var body: some View {
-        ZStack {
-            Color.black.opacity(0.05)
-            if let img = image {
-                Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
-            } else {
-                ProgressView()
+        VStack(spacing: 0) {
+            ZStack {
+                Color.black.opacity(0.05)
+                if let img = image {
+                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                } else {
+                    ProgressView()
+                }
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .clipShape(RoundedRectangle(cornerRadius: 8))
+            .padding()
+            .contextMenu {
+                if let path = job.outputPath {
+                    Button("Copy Image") {
+                        guard let img = NSImage(contentsOfFile: path) else { return }
+                        NSPasteboard.general.clearContents()
+                        NSPasteboard.general.writeObjects([img])
+                    }
+                    Divider()
+                }
+                Button("Apply Settings") { onApplySettings(metadata) }
+                Button("Remix (new seed)") { onRemix(metadata) }
+                if let path = job.outputPath {
+                    Divider()
+                    Button("Reveal in Finder") {
+                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                    }
+                }
+            }
+
+            ImageMetadataPanel(
+                info: ImageMetadataInfo(ideogram4Job: job),
+                onApplySettings: { onApplySettings(metadata) },
+                onRemix: { onRemix(metadata) },
+                onUseInImg2Img: nil,
+                onRevealInFinder: job.outputPath.map { path in {
+                    NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+                }
+                },
+                onShowLog: job.log.isEmpty ? nil : { showingLog = true }
+            )
+        }
+        .onAppear { loadImage() }
+        .onChange(of: job.outputPath) { _, _ in loadImage() }
+        .sheet(isPresented: $showingLog) { logSheet }
+    }
+
+    private var metadata: Ideogram4Metadata {
+        Ideogram4Metadata.from(job: job)
+    }
+
+    private var logSheet: some View {
+        NavigationStack {
+            ScrollView {
+                Text(job.log)
+                    .font(.system(.caption, design: .monospaced))
+                    .textSelection(.enabled)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding()
+            }
+            .navigationTitle("Generation Log")
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showingLog = false }
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .clipShape(RoundedRectangle(cornerRadius: 8))
-        .padding()
-        .onAppear {
-            guard let path = job.outputPath else { return }
-            Task.detached(priority: .userInitiated) {
-                let img = NSImage(contentsOfFile: path)
-                await MainActor.run { image = img }
-            }
+        .frame(width: 640, height: 480)
+    }
+
+    private func loadImage() {
+        guard let path = job.outputPath else { return }
+        Task.detached(priority: .userInitiated) {
+            let img = NSImage(contentsOfFile: path)
+            await MainActor.run { image = img }
         }
     }
 }

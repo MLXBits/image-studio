@@ -235,4 +235,62 @@ struct IdeogramCaption: Codable {
         root.append("\"compositional_deconstruction\":{\(cd.joined(separator: ","))}")
         return "{\(root.joined(separator: ","))}"
     }
+
+    /// Indented variant of ``toJSON()`` for display / clipboard.
+    ///
+    /// Reindents the compact string directly instead of round-tripping through
+    /// `JSONSerialization`, which routes through `NSDictionary` and reorders keys —
+    /// the very problem ``toJSON()`` is hand-built to avoid.
+    func toPrettyJSON(indent: String = "  ") -> String? {
+        guard let compact = toJSON() else { return nil }
+        let chars = Array(compact)
+        var out = ""
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var i = 0
+
+        func newline() {
+            out += "\n" + String(repeating: indent, count: depth)
+        }
+
+        while i < chars.count {
+            let c = chars[i]
+            if inString {
+                out.append(c)
+                if escaped { escaped = false } else if c == "\\" { escaped = true } else if c == "\"" { inString = false }
+                i += 1
+                continue
+            }
+            switch c {
+            case "\"":
+                inString = true
+                out.append(c)
+            case "{", "[":
+                // Keep empty containers on one line (`{}` / `[]`).
+                if i + 1 < chars.count, chars[i + 1] == "}" || chars[i + 1] == "]" {
+                    out.append(c)
+                    out.append(chars[i + 1])
+                    i += 2
+                    continue
+                }
+                out.append(c)
+                depth += 1
+                newline()
+            case "}", "]":
+                depth -= 1
+                newline()
+                out.append(c)
+            case ",":
+                out.append(c)
+                newline()
+            case ":":
+                out += ": "
+            default:
+                out.append(c)
+            }
+            i += 1
+        }
+        return out
+    }
 }

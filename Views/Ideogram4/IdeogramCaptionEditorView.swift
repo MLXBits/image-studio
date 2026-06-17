@@ -15,6 +15,7 @@ struct IdeogramCaptionEditorView: View {
     @State private var generatorTask: Task<Void, Never>?
     @State private var lastGemmaLog: String = ""
     @State private var showGemmaLog: Bool = false
+    @State private var jsonPasteError: String?
 
     // MARK: - Body
 
@@ -32,12 +33,33 @@ struct IdeogramCaptionEditorView: View {
 
                 Spacer()
 
+                Menu {
+                    Button("Copy JSON") { copyJSON() }
+                    Button("Paste JSON") { pasteJSON() }
+                } label: {
+                    Text("JSON")
+                        .font(.caption)
+                } primaryAction: {
+                    copyJSON()
+                }
+                .menuStyle(.borderlessButton)
+                .fixedSize()
+                .help("Copy the raw caption payload, or paste JSON to populate these fields")
+
                 Button("Reset") { resetCaption() }
                     .buttonStyle(.plain)
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding(.bottom, 8)
+            .alert("Couldn't paste JSON", isPresented: Binding(
+                get: { jsonPasteError != nil },
+                set: { if !$0 { jsonPasteError = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(jsonPasteError ?? "")
+            }
 
             if usePlainPrompt {
                 plainTextEditor
@@ -402,6 +424,31 @@ struct IdeogramCaptionEditorView: View {
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
+    }
+
+    /// Copies the exact caption payload (the JSON handed to mflux) to the clipboard.
+    /// In plain-text mode there is no structured payload, so the prompt text is copied.
+    private func copyJSON() {
+        let payload = usePlainPrompt ? plainPrompt : (caption.toPrettyJSON() ?? "")
+        guard !payload.isEmpty else { return }
+        NSPasteboard.general.clearContents()
+        NSPasteboard.general.setString(payload, forType: .string)
+    }
+
+    /// Parses a caption payload from the clipboard into the structured fields.
+    /// Leaves plain-text mode (the pasted JSON drives the structured editor).
+    private func pasteJSON() {
+        guard let raw = NSPasteboard.general.string(forType: .string),
+              !raw.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            jsonPasteError = "The clipboard is empty."
+            return
+        }
+        guard let parsed = IdeogramCaption.from(jsonString: raw) else {
+            jsonPasteError = "The clipboard doesn't contain a valid Ideogram caption JSON object."
+            return
+        }
+        caption = parsed
+        usePlainPrompt = false
     }
 
     private func resetCaption() {

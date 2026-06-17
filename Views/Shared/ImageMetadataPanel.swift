@@ -65,6 +65,24 @@ struct ImageMetadataInfo {
         }
     }
 
+    init(ideogram4Job job: Ideogram4Job) {
+        prompt = job.usePlainPrompt ? job.plainPrompt : job.caption.highLevelDescription
+        negativePrompt = ""
+        modelName = "Ideogram 4"
+        seed = job.resolvedSeed ?? job.seed
+        width = job.width
+        height = job.height
+        steps = job.preset.stepCount
+        guidance = 1.0
+        loras = []
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
+        if let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init(ideogram4Item: GalleryItem) {
         let meta = ideogram4Item.ideogram4Metadata
         if meta?.usePlainPrompt == true {
