@@ -11,7 +11,6 @@ struct IdeogramCaptionEditorView: View {
     @Environment(AppSettings.self) private var settings
     @State private var isGenerating: Bool = false
     @State private var generateError: String?
-    @State private var showStylePanel: Bool = false
     @State private var generatorTask: Task<Void, Never>?
     @State private var lastGemmaLog: String = ""
     @State private var showGemmaLog: Bool = false
@@ -147,31 +146,21 @@ struct IdeogramCaptionEditorView: View {
 
     private var styleSection: some View {
         VStack(alignment: .leading, spacing: 6) {
-            Button {
-                withAnimation(.easeInOut(duration: 0.15)) { showStylePanel.toggle() }
-            } label: {
-                HStack(spacing: 4) {
-                    Image(systemName: showStylePanel ? "chevron.down" : "chevron.right")
+            HStack(spacing: 4) {
+                Text("Style")
+                    .font(.caption)
+                    .fontWeight(.medium)
+                Spacer()
+                if styleIsEmpty {
+                    Text("not set")
                         .font(.caption2)
-                        .frame(width: 10)
-                    Text("Style")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                    Spacer()
-                    if styleIsEmpty {
-                        Text("not set")
-                            .font(.caption2)
-                            .foregroundStyle(.tertiary)
-                    }
+                        .foregroundStyle(.tertiary)
                 }
-                .foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .foregroundStyle(.secondary)
 
-            if showStylePanel {
-                styleFields
-                    .padding(.leading, 12)
-            }
+            styleFields
+                .padding(.leading, 12)
         }
     }
 
