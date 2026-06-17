@@ -264,6 +264,7 @@ struct IdeogramCaptionEditorView: View {
     private var generateButton: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
+                Spacer()
                 Button {
                     startGenerate()
                 } label: {
@@ -300,6 +301,7 @@ struct IdeogramCaptionEditorView: View {
                     .controlSize(.small)
                     .help("Show Gemma generation log")
                 }
+                Spacer()
             }
             .sheet(isPresented: $showGemmaLog) {
                 NavigationStack {
