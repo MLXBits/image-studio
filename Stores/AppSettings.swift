@@ -83,6 +83,8 @@ class AppSettings {
         var lastIdeogramCaption: IdeogramCaption?
         var lastIdeogramPlainPrompt: String?
         var lastIdeogramUsePlainPrompt: Bool?
+        var ideogram4LowRam: Bool?
+        var ideogram4StrictValidation: Bool?
 
         init() {}
         init(
@@ -267,6 +269,16 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Stream Ideogram 4 transformer blocks from disk to reduce peak memory.
+    var ideogram4LowRam: Bool {
+        didSet { save() }
+    }
+
+    /// Pass `--strict-caption-validation` to reject captions that don't match the schema.
+    var ideogram4StrictValidation: Bool {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -344,6 +356,8 @@ class AppSettings {
         lastIdeogramCaption = s.lastIdeogramCaption
         lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
+        ideogram4LowRam = s.ideogram4LowRam ?? false
+        ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -408,6 +422,8 @@ class AppSettings {
         s.lastIdeogramCaption = lastIdeogramCaption
         s.lastIdeogramPlainPrompt = lastIdeogramPlainPrompt
         s.lastIdeogramUsePlainPrompt = lastIdeogramUsePlainPrompt
+        s.ideogram4LowRam = ideogram4LowRam
+        s.ideogram4StrictValidation = ideogram4StrictValidation
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()
