@@ -475,6 +475,9 @@ struct IdeogramCaptionEditorView: View {
                     caption.compositionalDeconstruction.elements =
                         result.compositionalDeconstruction.elements
                 }
+            } catch is CancellationError {
+                // User cancelled — the subprocess was terminated; no error to show.
+                lastGemmaLog = generator.lastLog
             } catch {
                 lastGemmaLog = generator.lastLog
                 generateError = error.localizedDescription
