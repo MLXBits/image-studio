@@ -162,3 +162,57 @@ struct InsetTextEditor: NSViewRepresentable {
         Coordinator(self)
     }
 }
+
+/// Auto-growing, bordered prompt text field used across the params panels.
+///
+/// An invisible `Text` drives the height: it grows with content (`fixedSize`
+/// vertical), and the `InsetTextEditor` overlays it exactly. When `ghostSuffix`
+/// is non-empty (template-contributed text), it is shown after the editable
+/// content in tertiary color and the border switches to accent.
+struct GrowingPromptField: View {
+    @Binding var text: String
+    var placeholder: String
+    var label: String
+    var hint: String
+    var ghostSuffix: String = ""
+    var minHeight: CGFloat = 60
+
+    var body: some View {
+        let displayText = text + ghostSuffix
+        Text(displayText.isEmpty ? " " : displayText)
+            .font(.body)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 8)
+            .frame(maxWidth: .infinity, alignment: .topLeading)
+            .fixedSize(horizontal: false, vertical: true)
+            .frame(minHeight: minHeight)
+            .opacity(0)
+            .allowsHitTesting(false)
+            .overlay(alignment: .topLeading) {
+                InsetTextEditor(text: $text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
+            }
+            .overlay(alignment: .topLeading) {
+                // Hide placeholder when ghost text is present — ghost is more informative.
+                if text.isEmpty && ghostSuffix.isEmpty {
+                    Text(placeholder)
+                        .foregroundStyle(.tertiary)
+                        .font(.body)
+                        .padding(.leading, 5)
+                        .padding(.trailing, 8)
+                        .padding(.vertical, 8)
+                        .allowsHitTesting(false)
+                }
+            }
+            .background(Color(nsColor: .textBackgroundColor))
+            .clipShape(RoundedRectangle(cornerRadius: 6))
+            .overlay(
+                RoundedRectangle(cornerRadius: 6)
+                    .strokeBorder(
+                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
+                        lineWidth: 1
+                    )
+            )
+            .accessibilityLabel(label)
+            .accessibilityHint(hint)
+    }
+}
