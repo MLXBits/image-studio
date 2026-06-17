@@ -645,42 +645,13 @@ struct ParamsPanelView: View {
         hint: String,
         ghostSuffix: String = ""
     ) -> some View {
-        let displayText = text.wrappedValue + ghostSuffix
-        return Text(displayText.isEmpty ? " " : displayText)
-            .font(.body)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(minHeight: 60)
-            .opacity(0)
-            .allowsHitTesting(false)
-            .overlay(alignment: .topLeading) {
-                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
-            }
-            .overlay(alignment: .topLeading) {
-                // Hide placeholder when ghost text is present — ghost is more informative.
-                if text.wrappedValue.isEmpty && ghostSuffix.isEmpty {
-                    Text(placeholder)
-                        .foregroundStyle(.tertiary)
-                        .font(.body)
-                        .padding(.leading, 5)
-                        .padding(.trailing, 8)
-                        .padding(.vertical, 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(
-                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
-                        lineWidth: 1
-                    )
-            )
-            .accessibilityLabel(label)
-            .accessibilityHint(hint)
+        GrowingPromptField(
+            text: text,
+            placeholder: placeholder,
+            label: label,
+            hint: hint,
+            ghostSuffix: ghostSuffix
+        )
     }
 
     private func sectionHeader(_ title: String, info: String?) -> some View {

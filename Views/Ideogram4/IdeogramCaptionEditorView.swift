@@ -77,8 +77,12 @@ struct IdeogramCaptionEditorView: View {
                 .font(.caption)
                 .fontWeight(.medium)
                 .foregroundStyle(.secondary)
-            InsetTextEditor(text: $plainPrompt)
-                .frame(minHeight: 60)
+            GrowingPromptField(
+                text: $plainPrompt,
+                placeholder: "Describe your image…",
+                label: "Prompt",
+                hint: "Describe the image you want to generate"
+            )
         }
     }
 
@@ -89,8 +93,12 @@ struct IdeogramCaptionEditorView: View {
                     .font(.caption)
                     .fontWeight(.medium)
                     .foregroundStyle(.secondary)
-                InsetTextEditor(text: $caption.highLevelDescription)
-                    .frame(minHeight: 48)
+                GrowingPromptField(
+                    text: $caption.highLevelDescription,
+                    placeholder: "Describe your image…",
+                    label: "Description",
+                    hint: "High-level description of the image you want to generate"
+                )
             }
 
             styleSection
