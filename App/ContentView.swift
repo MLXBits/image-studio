@@ -696,6 +696,10 @@ struct ContentView: View {
             settings.lastIdeogramCaption = ideogramParams.caption
             settings.lastIdeogramPlainPrompt = ideogramParams.plainPrompt
             settings.lastIdeogramUsePlainPrompt = ideogramParams.usePlainPrompt
+            // Low-RAM and strict-validation live in Settings → Models → Ideogram;
+            // pull the current values so live edits apply to this run.
+            ideogramParams.lowRam = settings.ideogram4LowRam
+            ideogramParams.strictValidation = settings.ideogram4StrictValidation
             let job = ideogramParams.makeJob()
             ideogram4Store.add(job)
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings)

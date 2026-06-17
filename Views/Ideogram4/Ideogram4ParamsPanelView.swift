@@ -57,11 +57,10 @@ struct Ideogram4ParamsPanelView: View {
                 params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
             }
 
-            Divider()
-
-            // Options (low RAM, strict validation, HF token warning)
-            SectionContainerView(title: "Options") {
-                optionsSection
+            // HF token warning — Low RAM and strict validation now live in
+            // Settings → Models → Ideogram.
+            if settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
+                hfTokenWarning
             }
 
             Divider()
@@ -191,26 +190,6 @@ struct Ideogram4ParamsPanelView: View {
                                 .compactMap { Int($0) }
                         }
                 }
-            }
-        }
-    }
-
-    private var optionsSection: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Toggle("Low RAM", isOn: $params.lowRam)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                Spacer()
-                Toggle("Strict validation", isOn: $params.strictValidation)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .help("Pass --strict-caption-validation to reject captions that don't match the schema")
-            }
-
-            if settings.hfToken.isEmpty &&
-                !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
-                hfTokenWarning
             }
         }
     }

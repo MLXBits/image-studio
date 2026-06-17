@@ -299,6 +299,14 @@ struct ModelDefaultsView: View {
             get: { settings.ideogram4ModelRepoOverride ?? "" },
             set: { settings.ideogram4ModelRepoOverride = $0.isEmpty ? nil : $0 }
         )
+        let lowRamBinding = Binding<Bool>(
+            get: { settings.ideogram4LowRam },
+            set: { settings.ideogram4LowRam = $0 }
+        )
+        let strictValidationBinding = Binding<Bool>(
+            get: { settings.ideogram4StrictValidation },
+            set: { settings.ideogram4StrictValidation = $0 }
+        )
         return Form {
             Section("Generation") {
                 LabeledContent("Default Preset") {
@@ -339,6 +347,27 @@ struct ModelDefaultsView: View {
                         )
                     }
                 }
+                LabeledContent("Low RAM mode") {
+                    HStack(spacing: 6) {
+                        Toggle("", isOn: lowRamBinding).labelsHidden()
+                        InfoButton(
+                            title: "Low RAM mode",
+                            description: "Streams transformer blocks from disk during generation to reduce"
+                                + " peak memory, at a small speed cost. Enable on machines with limited RAM."
+                        )
+                    }
+                }
+                LabeledContent("Strict caption validation") {
+                    HStack(spacing: 6) {
+                        Toggle("", isOn: strictValidationBinding).labelsHidden()
+                        InfoButton(
+                            title: "Strict caption validation",
+                            description: "Passes --strict-caption-validation to mflux, rejecting captions"
+                                + " that don't match the Ideogram schema instead of silently coercing them."
+                                + " Useful when hand-editing or pasting caption JSON."
+                        )
+                    }
+                }
             }
 
             Section {
@@ -362,6 +391,8 @@ struct ModelDefaultsView: View {
                     settings.lastIdeogramWidth = nil
                     settings.lastIdeogramHeight = nil
                     settings.ideogram4ModelRepoOverride = nil
+                    settings.ideogram4LowRam = false
+                    settings.ideogram4StrictValidation = false
                 }
                 .foregroundStyle(.red)
                 .accessibilityLabel("Reset Ideogram 4 to built-in defaults")
