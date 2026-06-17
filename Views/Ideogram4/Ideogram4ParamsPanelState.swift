@@ -38,6 +38,24 @@ final class Ideogram4ParamsPanelState {
         loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
     }
 
+    /// Replays a completed generation's settings back into the form.
+    /// `newSeed == true` (Remix) resets the seed to random; otherwise the
+    /// original seed is restored. LoRAs are not captured in the sidecar and
+    /// are left untouched.
+    func apply(metadata meta: Ideogram4Metadata, newSeed: Bool) {
+        caption = meta.caption
+        usePlainPrompt = meta.usePlainPrompt
+        plainPrompt = meta.plainPrompt
+        preset = meta.preset
+        width = meta.width
+        height = meta.height
+        quantize = meta.quantize
+        lowRam = meta.lowRam
+        board = meta.board ?? ""
+        batchSeeds = []
+        seed = newSeed ? -1 : meta.seed
+    }
+
     func makeJob() -> Ideogram4Job {
         let job = Ideogram4Job(
             preset: preset,

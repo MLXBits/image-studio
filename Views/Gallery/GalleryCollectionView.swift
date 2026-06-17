@@ -671,6 +671,15 @@ struct GalleryCollectionView: NSViewRepresentable {
                     self?.parent.onUseInImg2Img(item.path)
                 })
                 menu.addItem(.separator())
+            } else if let meta = item.ideogram4Metadata {
+                menu.addItem(.separator())
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemixIdeogram(meta) })
+                menu.addItem(menuItem("Apply Settings") { [weak self] in
+                    var corrected = meta
+                    corrected.board = item.board == "Default" ? nil : item.board
+                    self?.parent.onApplyIdeogramSettings(item, corrected)
+                })
+                menu.addItem(.separator())
             }
 
             let allBoards = sections.map(\.board)
@@ -713,6 +722,8 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteMultiImmediate: () -> Void
     var onRemix: (GenerationMetadata) -> Void
     var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
+    var onRemixIdeogram: (Ideogram4Metadata) -> Void
+    var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
     var onUseInImg2Img: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
     var onRevealInFinder: (String) -> Void

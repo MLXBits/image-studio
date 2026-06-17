@@ -169,6 +169,8 @@ struct ContentView: View {
             state: previewState,
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
+            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onCancel: { runner.cancel(); ideogram4Runner.cancel() },
             onClear: clearPreview,
@@ -189,6 +191,8 @@ struct ContentView: View {
             selectedItem: $selectedGalleryItem,
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
+            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onSelectBoard: { name in params.board = name },
             onClearPreview: clearPreview,
@@ -611,6 +615,13 @@ struct ContentView: View {
         } else {
             params.imagePath = path
         }
+    }
+
+    /// Switches the params panel to the Ideogram 4 family and replays a completed
+    /// generation's settings. Mirrors the Flux `params.apply(metadata:newSeed:)` path.
+    private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {
+        params.model = .ideogram4
+        ideogramParams.apply(metadata: meta, newSeed: newSeed)
     }
 
     private func clearPreview() {

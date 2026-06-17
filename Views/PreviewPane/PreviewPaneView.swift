@@ -14,6 +14,8 @@ struct PreviewPaneView: View {
     let state: PreviewState
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
+    let onRemixIdeogram: (Ideogram4Metadata) -> Void
+    let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -60,7 +62,11 @@ struct PreviewPaneView: View {
                         Ideogram4StepwisePreviewView(job: job, onCancel: onCancel)
 
                     case .completed:
-                        Ideogram4CompletedPreviewView(job: job)
+                        Ideogram4CompletedPreviewView(
+                            job: job,
+                            onRemix: onRemixIdeogram,
+                            onApplySettings: onApplyIdeogramSettings
+                        )
 
                     case let .failed(msg):
                         ideogram4FailedView(message: msg, job: job)
@@ -77,6 +83,8 @@ struct PreviewPaneView: View {
                         item: item,
                         onRemix: onRemix,
                         onApplySettings: onApplySettings,
+                        onRemixIdeogram: onRemixIdeogram,
+                        onApplyIdeogramSettings: onApplyIdeogramSettings,
                         onUseInImg2Img: onUseInImg2Img,
                         onShowFullSize: onShowFullSize
                     )
