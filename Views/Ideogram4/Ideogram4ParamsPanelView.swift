@@ -13,11 +13,6 @@ struct Ideogram4ParamsPanelView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            // Caption / prompt — collapsible (open by default)
-            captionSection
-
-            Divider()
-
             // Preset
             SectionContainerView(
                 title: "Preset",
@@ -25,6 +20,11 @@ struct Ideogram4ParamsPanelView: View {
             ) {
                 presetPicker
             }
+
+            Divider()
+
+            // Caption / prompt — collapsible (open by default)
+            captionSection
 
             Divider()
 
