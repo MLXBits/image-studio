@@ -32,14 +32,15 @@ struct IdeogramCaptionEditorView: View {
 
                 Spacer()
 
+                // No primaryAction: a split-button main click would run Copy and
+                // clobber the system clipboard, so pasting external JSON would paste
+                // the app's own caption back. Opening the menu must not copy.
                 Menu {
                     Button("Copy JSON") { copyJSON() }
                     Button("Paste JSON") { pasteJSON() }
                 } label: {
                     Text("JSON")
                         .font(.caption)
-                } primaryAction: {
-                    copyJSON()
                 }
                 .menuStyle(.borderlessButton)
                 .fixedSize()
