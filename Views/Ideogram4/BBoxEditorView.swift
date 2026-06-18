@@ -21,6 +21,9 @@ struct BBoxEditorView: View {
     let outputWidth: Int
     let outputHeight: Int
     var isExpanded: Bool = false
+    /// When set, drawn behind the boxes (filling the coordinate-space canvas) so
+    /// boxes can be adjusted against the image that generated them.
+    var backgroundImage: NSImage?
 
     @State private var mode: BBoxEditorMode = .select
     @State private var selectedID: UUID?
@@ -75,9 +78,15 @@ struct BBoxEditorView: View {
                         .frame(width: geo.size.width, height: geo.size.height)
 
                     ZStack(alignment: .topLeading) {
-                        Color(nsColor: .windowBackgroundColor)
-                            .frame(width: canvasSize.width, height: canvasSize.height)
-                            .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        if let backgroundImage {
+                            Image(nsImage: backgroundImage)
+                                .resizable()
+                                .frame(width: canvasSize.width, height: canvasSize.height)
+                        } else {
+                            Color(nsColor: .windowBackgroundColor)
+                                .frame(width: canvasSize.width, height: canvasSize.height)
+                                .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
+                        }
 
                         Canvas { ctx, size in
                             drawBoxes(ctx: ctx, size: size, canvasSize: canvasSize)
@@ -312,12 +321,21 @@ struct BBoxEditorView: View {
     }
 
     private func drawBoxes(ctx: GraphicsContext, size _: CGSize, canvasSize: CGSize) {
+        let overImage = backgroundImage != nil
         for (index, element) in elements.enumerated() {
             let rect = normRect(element.bbox, in: canvasSize)
             let isSelected = element.id == selectedID
             let color = boxColor(at: index, type: element.type)
 
-            ctx.fill(Path(rect.insetBy(dx: 0, dy: 0)), with: .color(color.opacity(0.12)))
+            ctx.fill(Path(rect), with: .color(color.opacity(overImage ? 0.10 : 0.12)))
+            // Dark halo under the coloured stroke keeps boxes legible over imagery.
+            if overImage {
+                ctx.stroke(
+                    Path(rect),
+                    with: .color(.black.opacity(0.55)),
+                    style: StrokeStyle(lineWidth: (isSelected ? 2 : 1.5) + 2)
+                )
+            }
             ctx.stroke(
                 Path(rect),
                 with: .color(color.opacity(isSelected ? 1.0 : 0.7)),
@@ -333,23 +351,42 @@ struct BBoxEditorView: View {
 
             if inset.width > 12 && inset.height > 14 {
                 let topPt = CGPoint(x: inset.minX, y: inset.minY)
-                ctx.draw(
+                drawLabel(
+                    ctx,
                     Text(line1)
                         .font(.system(size: fontSize, weight: .semibold))
                         .foregroundStyle(color.opacity(0.9)),
-                    at: topPt, anchor: .topLeading
+                    at: topPt, overImage: overImage
                 )
                 if inset.height > 26 {
                     let descPt = CGPoint(x: inset.minX, y: inset.minY + fontSize + 2)
-                    ctx.draw(
+                    drawLabel(
+                        ctx,
                         Text(line2)
                             .font(.system(size: max(7, fontSize - 1)))
                             .foregroundStyle(color.opacity(0.7)),
-                        at: descPt, anchor: .topLeading
+                        at: descPt, overImage: overImage
                     )
                 }
             }
         }
+    }
+
+    /// Draws Canvas label text, adding a 1px black outline behind it when over an
+    /// image so coloured labels stay readable on arbitrary backgrounds.
+    private func drawLabel(_ ctx: GraphicsContext, _ text: Text, at pt: CGPoint, overImage: Bool) {
+        if overImage {
+            let outline = text.foregroundStyle(.black.opacity(0.85))
+            for offset in [
+                CGSize(width: 1, height: 0),
+                CGSize(width: -1, height: 0),
+                CGSize(width: 0, height: 1),
+                CGSize(width: 0, height: -1),
+            ] {
+                ctx.draw(outline, at: CGPoint(x: pt.x + offset.width, y: pt.y + offset.height), anchor: .topLeading)
+            }
+        }
+        ctx.draw(text, at: pt, anchor: .topLeading)
     }
 
     @ViewBuilder

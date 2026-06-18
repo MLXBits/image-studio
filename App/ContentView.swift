@@ -122,6 +122,14 @@ final class ParamsPanelState {
 struct ContentView: View {
     private enum MfluxAutoInstall { case idle, installing, done, failed(String) }
 
+    /// Identifies a pending box-overlay editor session (image + its generation dims).
+    private struct BoxOverlayContext: Identifiable {
+        let id = UUID()
+        let image: NSImage
+        let width: Int
+        let height: Int
+    }
+
     /// Static so the token outlives any view identity change and is never deallocated.
     private static var batchEventMonitor: Any?
 
@@ -141,6 +149,7 @@ struct ContentView: View {
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var fullSizeImage: NSImage?
+    @State private var boxOverlay: BoxOverlayContext?
 
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
@@ -174,6 +183,7 @@ struct ContentView: View {
             onUseInImg2Img: useInImg2Img,
             onCancel: { runner.cancel(); ideogram4Runner.cancel() },
             onClear: clearPreview,
+            onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
@@ -211,6 +221,9 @@ struct ContentView: View {
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                     .environment(settings)
+            }
+            .sheet(item: $boxOverlay) { ctx in
+                boxOverlaySheet(ctx)
             }
             .onAppear {
                 paramsWidth = savedParamsWidth
@@ -511,6 +524,8 @@ struct ContentView: View {
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
                 .help(isAnyStoreRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+
+                fixedSeedPill
             }
             Spacer()
         }
@@ -519,6 +534,37 @@ struct ContentView: View {
         .background(.bar)
         .overlay(alignment: .bottom) {
             Divider()
+        }
+    }
+
+    /// Whether the active model family has a fixed (non-random) seed set.
+    private var seedIsFixed: Bool {
+        params.modelFamily == .flux ? params.seed != -1 : ideogramParams.seed != -1
+    }
+
+    /// Pill shown next to the queue counter when a fixed seed is set; its ✕
+    /// clears the seed for both Flux and Ideogram back to random.
+    @ViewBuilder
+    private var fixedSeedPill: some View {
+        if seedIsFixed {
+            HStack(spacing: 4) {
+                Image(systemName: "lock.fill").font(.caption2)
+                Text("Fixed Seed").font(.caption)
+                Button {
+                    params.seed = -1
+                    ideogramParams.seed = -1
+                } label: {
+                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help("Clear the fixed seed (return to random)")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .foregroundStyle(.secondary)
+            .background(Capsule().fill(Color.secondary.opacity(0.15)))
+            .help("A fixed seed is set — every generation reuses it.")
         }
     }
 
@@ -646,6 +692,43 @@ struct ContentView: View {
     private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {
         params.model = .ideogram4
         ideogramParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
+    /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
+    /// form and opens the box-overlay editor over the image. Prompt fields, seed,
+    /// and preset are left untouched so the user can adjust boxes in isolation.
+    private func editBoxesOverImage(_ meta: Ideogram4Metadata, image: NSImage) {
+        params.model = .ideogram4
+        ideogramParams.caption.compositionalDeconstruction.elements =
+            meta.caption.compositionalDeconstruction.elements
+        ideogramParams.width = meta.width
+        ideogramParams.height = meta.height
+        boxOverlay = BoxOverlayContext(image: image, width: meta.width, height: meta.height)
+    }
+
+    private func boxOverlaySheet(_ ctx: BoxOverlayContext) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Adjust Boxes")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { boxOverlay = nil }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding()
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+
+            BBoxEditorView(
+                elements: $ideogramParams.caption.compositionalDeconstruction.elements,
+                outputWidth: ctx.width,
+                outputHeight: ctx.height,
+                isExpanded: true,
+                backgroundImage: ctx.image
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 940, height: 600)
     }
 
     private func clearPreview() {

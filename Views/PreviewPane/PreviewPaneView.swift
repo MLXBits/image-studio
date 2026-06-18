@@ -19,6 +19,7 @@ struct PreviewPaneView: View {
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
+    var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
     var hasPrev: Bool = false
     var hasNext: Bool = false
@@ -40,8 +41,8 @@ struct PreviewPaneView: View {
                     case .completed:
                         CompletedImageView(
                             job: job,
-                            onRemix: onRemix,
                             onApplySettings: onApplySettings,
+                            onRemix: onRemix,
                             onUseInImg2Img: onUseInImg2Img,
                             onShowFullSize: onShowFullSize
                         )
@@ -86,6 +87,7 @@ struct PreviewPaneView: View {
                         onRemixIdeogram: onRemixIdeogram,
                         onApplyIdeogramSettings: onApplyIdeogramSettings,
                         onUseInImg2Img: onUseInImg2Img,
+                        onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize
                     )
                 }
