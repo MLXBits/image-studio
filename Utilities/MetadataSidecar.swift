@@ -14,6 +14,7 @@ nonisolated struct Ideogram4Metadata: Codable {
             height: job.height,
             quantize: job.quantize,
             lowRam: job.lowRam,
+            loras: job.loras.isEmpty ? nil : job.loras,
             board: job.board.isEmpty ? nil : job.board,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
@@ -30,6 +31,8 @@ nonisolated struct Ideogram4Metadata: Codable {
     var height: Int
     var quantize: Int
     var lowRam: Bool
+    // Optional so existing sidecars (written before LoRA support) still decode.
+    var loras: [LoraEntry]?
     var board: String?
     var generatedAt: Date
     var startedAt: Date?

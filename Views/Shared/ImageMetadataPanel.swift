@@ -74,7 +74,7 @@ struct ImageMetadataInfo {
         height = job.height
         steps = job.preset.stepCount
         guidance = 1.0
-        loras = []
+        loras = job.loras
         filePath = job.outputPath
         log = job.log.isEmpty ? nil : job.log
         if let started = job.startedAt, let ended = job.completedAt {
@@ -97,7 +97,7 @@ struct ImageMetadataInfo {
         height = meta?.height ?? 0
         steps = meta?.preset.stepCount ?? 0
         guidance = 1.0
-        loras = []
+        loras = meta?.loras ?? []
         filePath = ideogram4Item.path
         log = meta?.log
         if let started = meta?.startedAt, let generatedAt = meta?.generatedAt {
