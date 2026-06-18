@@ -16,6 +16,7 @@ struct IdeogramCaptionEditorView: View {
     @State private var lastGemmaLog: String = ""
     @State private var showGemmaLog: Bool = false
     @State private var jsonPasteError: String?
+    @State private var autosaveTask: Task<Void, Never>?
 
     @AppStorage("ideogram.caption.styleExpanded") private var styleExpanded = true
     @AppStorage("ideogram.caption.bboxElementsExpanded") private var elementsExpanded = true
@@ -73,6 +74,16 @@ struct IdeogramCaptionEditorView: View {
             } else {
                 structuredEditor
             }
+        }
+        // The persistent store is otherwise only written at generate time, so
+        // debounce-save the prompt state on edit too — edits (bbox moves, text,
+        // colour palettes) then survive an app quit even without generating.
+        .onChange(of: caption) { _, _ in scheduleAutosave() }
+        .onChange(of: plainPrompt) { _, _ in scheduleAutosave() }
+        .onChange(of: usePlainPrompt) { _, _ in scheduleAutosave() }
+        .onDisappear {
+            autosaveTask?.cancel()
+            persistPromptState()
         }
     }
 
@@ -378,6 +389,26 @@ struct IdeogramCaptionEditorView: View {
         }
         caption = parsed
         usePlainPrompt = false
+    }
+
+    /// Debounces a write of the current prompt state to the persistent store so
+    /// in-progress edits survive an app quit without a generate. Coalesces rapid
+    /// edits (typing, dragging a bbox) into one write 500 ms after the last change.
+    private func scheduleAutosave() {
+        autosaveTask?.cancel()
+        autosaveTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            persistPromptState()
+        }
+    }
+
+    /// Mirrors the prompt-state writes the generate handler performs, so the
+    /// restored-on-launch values match what the user last had on screen.
+    private func persistPromptState() {
+        settings.lastIdeogramCaption = caption
+        settings.lastIdeogramPlainPrompt = plainPrompt
+        settings.lastIdeogramUsePlainPrompt = usePlainPrompt
     }
 
     private func startGenerate() {

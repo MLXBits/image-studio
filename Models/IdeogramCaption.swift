@@ -149,9 +149,15 @@ struct IdeogramCaptionComposition: Codable {
     var elements: [IdeogramCaptionElement]
 }
 
+// MARK: - Equatable (drives SwiftUI onChange autosave)
+
+extension IdeogramCaptionElement: Equatable {}
+extension IdeogramCaptionStyle: Equatable {}
+extension IdeogramCaptionComposition: Equatable {}
+
 // MARK: - Root caption
 
-struct IdeogramCaption: Codable {
+struct IdeogramCaption: Codable, Equatable {
     enum CodingKeys: String, CodingKey {
         case highLevelDescription = "high_level_description"
         case styleDescription = "style_description"
