@@ -23,6 +23,13 @@ struct Ideogram4ParamsPanelView: View {
 
             Divider()
 
+            // Board
+            SectionContainerView(title: "Board") {
+                FolderComboBox(text: $params.board, options: gallery.boards, placeholder: "Default")
+            }
+
+            Divider()
+
             // Caption / prompt — collapsible (open by default)
             captionSection
 
@@ -61,13 +68,6 @@ struct Ideogram4ParamsPanelView: View {
             // Settings → Models → Ideogram.
             if settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
                 hfTokenWarning
-            }
-
-            Divider()
-
-            // Board
-            SectionContainerView(title: "Board") {
-                FolderComboBox(text: $params.board, options: gallery.boards, placeholder: "Default")
             }
 
             Spacer(minLength: 16)
