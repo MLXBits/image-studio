@@ -712,6 +712,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(boardsItem)
 
             menu.addItem(.separator())
+            menu.addItem(menuItem("Strip Metadata") { [weak self] in self?.parent.onStripMetadata(item) })
             menu.addItem(menuItem("Reveal in Finder") { [weak self] in
                 self?.parent.onRevealInFinder(item.path)
             })
@@ -741,6 +742,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
     var onUseInImg2Img: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
+    var onStripMetadata: (GalleryItem) -> Void
     var onRevealInFinder: (String) -> Void
     var onToggleSection: (String) -> Void
     var onRenameBoard: (String) -> Void

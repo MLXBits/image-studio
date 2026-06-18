@@ -32,6 +32,9 @@ struct GenerationGalleryView: View {
     // anchorItemId is the "preview" item shown in the right pane.
     @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
+    // Transient confirmation toast (e.g. after stripping metadata).
+    @State private var statusMessage: String?
+    @State private var statusDismissTask: Task<Void, Never>?
 
     private var orderedBoards: [String] {
         let hasDefault = gallery.items.contains { $0.board == "Default" }
@@ -126,6 +129,12 @@ struct GenerationGalleryView: View {
                             gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
                         }
                     },
+                    onStripMetadata: { item in
+                        let targets = selection.contains(item.id)
+                            ? gallery.items.filter { selection.contains($0.id) }
+                            : [item]
+                        stripMetadata(of: targets)
+                    },
                     onRevealInFinder: { path in
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     },
@@ -155,6 +164,7 @@ struct GenerationGalleryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .overlay(alignment: .bottom) { statusToast }
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
             guard let id = newId, anchorItemId != id else { return }
@@ -171,6 +181,14 @@ struct GenerationGalleryView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(gallery.deleteError ?? "")
+        }
+        .alert("Could not strip metadata", isPresented: Binding(
+            get: { gallery.stripError != nil },
+            set: { if !$0 { gallery.stripError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gallery.stripError ?? "")
         }
         .alert("Rename Folder", isPresented: $showingRenameAlert) {
             TextField("Folder name", text: $renameNameDraft)
@@ -281,6 +299,14 @@ struct GenerationGalleryView: View {
             }
             .menuStyle(.borderlessButton).fixedSize()
 
+            Button {
+                stripMetadata(of: gallery.items.filter { selection.contains($0.id) })
+            } label: {
+                Image(systemName: "tag.slash").font(.caption)
+            }
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .help("Strip embedded metadata (prompt, parameters) from the selected images")
+
             Button(role: .destructive) {
                 deleteTarget = nil
                 showingDeleteConfirm = true
@@ -297,6 +323,26 @@ struct GenerationGalleryView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(Color.accentColor.opacity(0.06))
+    }
+
+    // MARK: - Status toast
+
+    @ViewBuilder
+    private var statusToast: some View {
+        if let statusMessage {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(statusMessage)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.2)))
+            .padding(.bottom, 12)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: - New group popover
@@ -343,6 +389,25 @@ struct GenerationGalleryView: View {
         let toMove = gallery.items.filter { selection.contains($0.id) }
         gallery.moveItems(toMove, toBoard: board, outputDir: settings.outputDir)
         clearSelection(nextItem: nil)
+    }
+
+    private func stripMetadata(of targets: [GalleryItem]) {
+        guard !targets.isEmpty else { return }
+        let stripped = gallery.stripMetadata(from: targets)
+        // Errors surface via the stripError alert; confirm success with a toast.
+        if stripped > 0 {
+            showStatus("Stripped metadata from \(stripped) image\(stripped == 1 ? "" : "s")")
+        }
+    }
+
+    private func showStatus(_ message: String) {
+        statusDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) { statusMessage = message }
+        statusDismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { statusMessage = nil }
+        }
     }
 
     private func clearSelection(nextItem: GalleryItem?) {
