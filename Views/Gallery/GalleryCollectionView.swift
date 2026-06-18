@@ -240,7 +240,22 @@ final class GalleryNSCollectionView: NSCollectionView {
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 123, 124, 125, 126: // Arrow keys — NSCollectionView handles 2D navigation
+        case 123, 124: // Left / Right — keep horizontal navigation within the board
+            let origin = selectionIndexPaths.first
+            allowsSelectionChange = true
+            super.keyDown(with: event)
+            allowsSelectionChange = false
+            // NSCollectionView linearizes items across sections, so Right on the
+            // last item of a short board (e.g. 3 images in a 4-wide row) jumps to
+            // the next board's first item. Revert any move that crossed a board.
+            if let origin, let moved = selectionIndexPaths.first, moved.section != origin.section {
+                selectionIndexPaths = [origin]
+            }
+            if let path = selectionIndexPaths.first {
+                eventDelegate?.didNavigate(to: path)
+            }
+
+        case 125, 126: // Up / Down — NSCollectionView handles 2D navigation across boards
             allowsSelectionChange = true
             super.keyDown(with: event)
             allowsSelectionChange = false
