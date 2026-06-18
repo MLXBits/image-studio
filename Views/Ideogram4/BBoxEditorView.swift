@@ -231,6 +231,12 @@ struct BBoxEditorView: View {
                                     selectedID = el.id
                                     focusRequest += 1
                                 },
+                                onTextFocus: {
+                                    // Select the rectangle without bumping focusRequest:
+                                    // the key catcher must NOT steal first responder back
+                                    // from the text field the user just clicked into.
+                                    selectedID = el.id
+                                },
                                 onRemove: {
                                     if selectedID == el.id { selectedID = nil }
                                     elements.removeAll { $0.id == el.id }

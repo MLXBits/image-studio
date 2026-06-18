@@ -13,6 +13,10 @@ struct IdeogramElementCard: View {
     var accentColor: Color?
     var isSelected: Bool = false
     var onSelect: (() -> Void)?
+    /// Called when one of the card's text editors gains focus. Lets the bbox
+    /// viewer select the matching rectangle when the user clicks into a field
+    /// (the embedded NSTextView swallows the tap that drives `onSelect`).
+    var onTextFocus: (() -> Void)?
     var onRemove: () -> Void
 
     /// Tints the type tag and selection chrome. Defaults to the type's family
@@ -52,7 +56,8 @@ struct IdeogramElementCard: View {
                     placeholder: "text…",
                     label: "Element text",
                     hint: "The literal text this element renders",
-                    minHeight: 38
+                    minHeight: 38,
+                    onFocus: onTextFocus
                 )
             }
             GrowingPromptField(
@@ -60,7 +65,8 @@ struct IdeogramElementCard: View {
                 placeholder: "description…",
                 label: "Element description",
                 hint: "Describe this element",
-                minHeight: 38
+                minHeight: 38,
+                onFocus: onTextFocus
             )
 
             VStack {
