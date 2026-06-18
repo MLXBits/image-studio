@@ -17,6 +17,9 @@ struct IdeogramCaptionEditorView: View {
     @State private var showGemmaLog: Bool = false
     @State private var jsonPasteError: String?
 
+    @AppStorage("ideogram.caption.styleExpanded") private var styleExpanded = true
+    @AppStorage("ideogram.caption.bboxElementsExpanded") private var elementsExpanded = true
+
     // MARK: - Body
 
     var body: some View {
@@ -37,8 +40,8 @@ struct IdeogramCaptionEditorView: View {
                 // clobber the system clipboard, so pasting external JSON would paste
                 // the app's own caption back. Opening the menu must not copy.
                 Menu {
-                    Button("Copy JSON") { copyJSON() }
-                    Button("Paste JSON") { pasteJSON() }
+                    Button("Copy") { copyJSON() }
+                    Button("Paste") { pasteJSON() }
                 } label: {
                     Text("JSON")
                         .font(.caption)
@@ -89,11 +92,9 @@ struct IdeogramCaptionEditorView: View {
 
     private var structuredEditor: some View {
         VStack(alignment: .leading, spacing: 10) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Description")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
+            generateSection
+
+            SectionCard(title: "Description") {
                 GrowingPromptField(
                     text: $caption.highLevelDescription,
                     placeholder: "Describe your image…",
@@ -102,66 +103,69 @@ struct IdeogramCaptionEditorView: View {
                 )
             }
 
-            styleSection
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Background")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                    .foregroundStyle(.secondary)
-                SpellCheckingTextField(
+            SectionCard(title: "Background") {
+                GrowingPromptField(
                     text: $caption.compositionalDeconstruction.background,
-                    placeholder: "background description…"
+                    placeholder: "background description…",
+                    label: "Background",
+                    hint: "Background description of the image",
+                    minHeight: 22
                 )
-                .frame(height: 22)
             }
 
-            VStack(alignment: .leading, spacing: 4) {
-                HStack {
-                    Text("Elements")
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.secondary)
-                    Spacer()
-                    Text("\(caption.compositionalDeconstruction.elements.count) elements")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                }
-                BBoxEditorView(
-                    elements: $caption.compositionalDeconstruction.elements,
-                    outputWidth: outputWidth,
-                    outputHeight: outputHeight
-                )
-                .frame(height: 220)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
-                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1))
-            }
+            CollapsibleSectionCard(
+                title: "Style",
+                isExpanded: $styleExpanded,
+                trailing: {
+                    if styleIsEmpty {
+                        Text("not set")
+                            .font(.caption2)
+                            .foregroundStyle(.tertiary)
+                    }
+                },
+                content: { styleFields.padding(.leading, 4) }
+            )
 
-            if !caption.compositionalDeconstruction.elements.isEmpty {
-                elementList
-            }
-
-            generateButton
+            elementsSection
         }
     }
 
-    private var styleSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                Text("Style")
-                    .font(.caption)
-                    .fontWeight(.medium)
-                Spacer()
-                if styleIsEmpty {
-                    Text("not set")
+    /// Parent "Elements" card: the BBox canvas editor plus the collapsible
+    /// per-element list, each visually nested inside the Elements border.
+    private var elementsSection: some View {
+        SectionCard(title: "Elements") {
+            VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Editor")
                         .font(.caption2)
+                        .fontWeight(.medium)
                         .foregroundStyle(.tertiary)
+                    BBoxEditorView(
+                        elements: $caption.compositionalDeconstruction.elements,
+                        outputWidth: outputWidth,
+                        outputHeight: outputHeight
+                    )
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 8))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 8)
+                            .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+                    )
+                }
+
+                if !caption.compositionalDeconstruction.elements.isEmpty {
+                    CollapsibleSectionCard(
+                        title: "BBox Elements",
+                        isExpanded: $elementsExpanded,
+                        trailing: {
+                            Text("\(caption.compositionalDeconstruction.elements.count) elements")
+                                .font(.caption2)
+                                .foregroundStyle(.tertiary)
+                        },
+                        content: { elementList }
+                    )
                 }
             }
-            .foregroundStyle(.secondary)
-
-            styleFields
-                .padding(.leading, 12)
         }
     }
 
@@ -231,17 +235,22 @@ struct IdeogramCaptionEditorView: View {
     }
 
     private var elementList: some View {
-        VStack(spacing: 15) {
+        VStack(spacing: 6) {
             ForEach($caption.compositionalDeconstruction.elements) { $el in
-                elementRow(element: $el)
+                HStack {
+                    elementRow(element: $el)
+                }
+                .padding(.vertical, 4)
+                .background(Color.secondary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8)
+                        .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
+                )
             }
         }
-        .padding(.vertical, 8)
-        .background(Color.primary.opacity(0.04))
-        .clipShape(RoundedRectangle(cornerRadius: 8))
     }
 
-    private var generateButton: some View {
+    private var generateSection: some View {
         VStack(alignment: .leading, spacing: 4) {
             HStack {
                 Spacer()
@@ -263,6 +272,13 @@ struct IdeogramCaptionEditorView: View {
                 )
                 .buttonStyle(.borderedProminent)
                 .controlSize(.small)
+
+                InfoButton(
+                    title: "Generate with Gemma",
+                    description: "Runs Gemma on the Description field below and fills in "
+                        + "Style, Background, and Elements for you. Edit the Description "
+                        + "first, then generate.  Check BBox editor to rearrange, as needed."
+                )
 
                 if isGenerating {
                     Button("Cancel") { generatorTask?.cancel() }
@@ -320,25 +336,6 @@ struct IdeogramCaptionEditorView: View {
 
     // MARK: - Methods (other_method)
 
-    private func enterPhotoMode() {
-        if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
-        caption.styleDescription?.artStyle = nil
-        if caption.styleDescription?.photo == nil { caption.styleDescription?.photo = "" }
-        if (caption.styleDescription?.medium ?? "").isEmpty { caption.styleDescription?.medium = "photograph" }
-    }
-
-    private func enterArtStyleMode() {
-        if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
-        caption.styleDescription?.photo = nil
-    }
-
-    private func setStyle(_ kp: WritableKeyPath<IdeogramCaptionStyle, String?>, _ value: String) {
-        if caption.styleDescription == nil {
-            caption.styleDescription = IdeogramCaptionStyle()
-        }
-        caption.styleDescription?[keyPath: kp] = value.isEmpty ? nil : value
-    }
-
     private func styleTextField(
         _ label: String, keyPath: WritableKeyPath<IdeogramCaptionStyle, String?>
     ) -> some View {
@@ -354,53 +351,26 @@ struct IdeogramCaptionEditorView: View {
     private func styleFieldRow(
         _ label: String, placeholder: String, text: Binding<String>
     ) -> some View {
-        HStack(spacing: 8) {
+        HStack(alignment: .top, spacing: 8) {
             Text(label)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .frame(width: 92, alignment: .leading)
-            SpellCheckingTextField(text: text, placeholder: placeholder)
-                .frame(height: 22)
+                .padding(.top, 6)
+            GrowingPromptField(
+                text: text,
+                placeholder: placeholder,
+                label: label,
+                hint: label,
+                minHeight: 22
+            )
         }
     }
 
     @ViewBuilder
     private func elementRow(element: Binding<IdeogramCaptionElement>) -> some View {
         let el = element.wrappedValue
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 6) {
-                Text(el.type == .text ? "T" : "•")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(el.type == .text ? Color.blue : Color.green)
-                    .frame(width: 18, height: 18)
-                    .background((el.type == .text ? Color.blue : Color.green).opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-
-                if el.bbox.count == 4 {
-                    // Coordinates are noise in the list — surface them in a tooltip
-                    // on a bounding-box icon instead of a cryptic numeric label.
-                    Image(systemName: "viewfinder")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .help("Bounding box (0–1000): "
-                            + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
-                }
-
-                Spacer(minLength: 4)
-
-                Button {
-                    caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Remove element")
-            }
-
+        HStack(alignment: .top, spacing: 2) {
             if el.type == .text {
                 GrowingPromptField(
                     text: Binding(
@@ -420,19 +390,47 @@ struct IdeogramCaptionEditorView: View {
                 hint: "Describe this element",
                 minHeight: 38
             )
+
+            VStack {
+                // Remove BBox button
+                Button {
+                    caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.body)
+                        .foregroundStyle(.secondary)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Remove element")
+
+                // Text / Object label
+                Text(el.type == .text ? "T" : "O")
+                    .font(.system(size: 10, weight: .bold, design: .rounded))
+                    .foregroundStyle(el.type == .text ? Color.blue : Color.green)
+                    .frame(width: 18, height: 18)
+                    .background((el.type == .text ? Color.blue : Color.green).opacity(0.12))
+                    .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .help(el.type == .text ? "Text" : "Object")
+
+                // BBox dimension coordinate icon
+                if el.bbox.count == 4 {
+                    // Coordinates are noise in the list — surface them in a tooltip
+                    // on a bounding-box icon instead of a cryptic numeric label.
+                    Image(systemName: "viewfinder")
+                        .font(.caption2)
+                        .foregroundStyle(.tertiary)
+                        .help("Bounding box (0–1000): "
+                            + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
+                }
+            }
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 6)
     }
 
-    /// Copies the exact caption payload (the JSON handed to mflux) to the clipboard.
-    /// In plain-text mode there is no structured payload, so the prompt text is copied.
-    private func copyJSON() {
-        let payload = usePlainPrompt ? plainPrompt : (caption.toPrettyJSON() ?? "")
-        guard !payload.isEmpty else { return }
-        NSPasteboard.general.clearContents()
-        NSPasteboard.general.setString(payload, forType: .string)
-    }
+    // MARK: - Private-state actions
 
     /// Parses a caption payload from the clipboard into the structured fields.
     /// Leaves plain-text mode (the pasted JSON drives the structured editor).
@@ -448,14 +446,6 @@ struct IdeogramCaptionEditorView: View {
         }
         caption = parsed
         usePlainPrompt = false
-    }
-
-    private func resetCaption() {
-        caption.highLevelDescription = ""
-        caption.styleDescription = nil
-        caption.compositionalDeconstruction.background = ""
-        caption.compositionalDeconstruction.elements = []
-        plainPrompt = ""
     }
 
     private func startGenerate() {

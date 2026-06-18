@@ -10,10 +10,12 @@
 		005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */; };
 		01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */; };
 		01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */ = {isa = PBXBuildFile; fileRef = 014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */; };
+		05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */; };
 		0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
+		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
@@ -69,6 +71,7 @@
 		0DFB6BA799C59DAA55470EC3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
 		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
@@ -95,6 +98,7 @@
 		93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelView.swift; sourceTree = "<group>"; };
 		96B20E83673119F893B43BBB /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
+		A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IdeogramCaptionEditorView+Actions.swift"; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
@@ -154,6 +158,7 @@
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
 				AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */,
 				221656805C1026EDD0D6B9EA /* PassiveTextField.swift */,
+				1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */,
 			);
 			path = Shared;
 			sourceTree = "<group>";
@@ -201,6 +206,7 @@
 				57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */,
 				93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */,
 				DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */,
+				A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */,
 			);
 			path = Ideogram4;
 			sourceTree = "<group>";
@@ -441,6 +447,7 @@
 				B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */,
 				DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */,
 				0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */,
+				1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */,
 				517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */,
 				F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
@@ -464,6 +471,7 @@
 				3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */,
 				79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */,
 				A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */,
+				05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */,
 				98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */,
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
