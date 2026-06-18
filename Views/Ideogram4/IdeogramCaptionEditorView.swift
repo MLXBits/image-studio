@@ -136,13 +136,9 @@ struct IdeogramCaptionEditorView: View {
     /// Parent "Elements" card: the BBox canvas editor plus the collapsible
     /// per-element list, each visually nested inside the Elements border.
     private var elementsSection: some View {
-        SectionCard(title: "Elements") {
+        SectionCard(title: "BBox Editor") {
             VStack(alignment: .leading, spacing: 8) {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Editor")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                        .foregroundStyle(.tertiary)
                     BBoxEditorView(
                         elements: $caption.compositionalDeconstruction.elements,
                         outputWidth: outputWidth,
@@ -249,6 +245,8 @@ struct IdeogramCaptionEditorView: View {
 
     private var generateSection: some View {
         VStack(alignment: .leading, spacing: 4) {
+            Divider()
+            Spacer()
             HStack {
                 Spacer()
                 Button {
