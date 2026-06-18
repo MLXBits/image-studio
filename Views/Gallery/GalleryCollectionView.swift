@@ -676,24 +676,24 @@ struct GalleryCollectionView: NSViewRepresentable {
 
             if let meta = item.metadata {
                 menu.addItem(.separator())
-                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemix(meta) })
                 menu.addItem(menuItem("Apply Settings") { [weak self] in
                     var corrected = meta
                     corrected.board = item.board == "Default" ? nil : item.board
                     self?.parent.onApplySettings(item, corrected)
                 })
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemix(meta) })
                 menu.addItem(menuItem("Use as Img2Img Input") { [weak self] in
                     self?.parent.onUseInImg2Img(item.path)
                 })
                 menu.addItem(.separator())
             } else if let meta = item.ideogram4Metadata {
                 menu.addItem(.separator())
-                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemixIdeogram(meta) })
                 menu.addItem(menuItem("Apply Settings") { [weak self] in
                     var corrected = meta
                     corrected.board = item.board == "Default" ? nil : item.board
                     self?.parent.onApplyIdeogramSettings(item, corrected)
                 })
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemixIdeogram(meta) })
                 menu.addItem(.separator())
             }
 
