@@ -42,8 +42,8 @@ final class Ideogram4ParamsPanelState {
 
     /// Replays a completed generation's settings back into the form.
     /// `newSeed == true` (Remix) resets the seed to random; otherwise the
-    /// original seed is restored. LoRAs are not captured in the sidecar and
-    /// are left untouched.
+    /// original seed is restored. LoRAs are restored when present in the sidecar
+    /// (older sidecars predate LoRA capture and leave the current selection).
     func apply(metadata meta: Ideogram4Metadata, newSeed: Bool) {
         caption = meta.caption
         usePlainPrompt = meta.usePlainPrompt
@@ -53,6 +53,7 @@ final class Ideogram4ParamsPanelState {
         height = meta.height
         quantize = meta.quantize
         lowRam = meta.lowRam
+        if let savedLoras = meta.loras { loras = savedLoras }
         board = meta.board ?? ""
         batchSeeds = []
         seed = newSeed ? -1 : meta.seed
