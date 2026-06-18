@@ -44,16 +44,19 @@ struct IdeogramCaptionEditorView: View {
                     Button("Paste") { pasteJSON() }
                 } label: {
                     Text("JSON")
-                        .font(.caption)
                 }
-                .menuStyle(.borderlessButton)
+                .menuStyle(.button)
+                .buttonStyle(.bordered)
+                .controlSize(.small)
                 .fixedSize()
-                .help("Copy the raw caption payload, or paste JSON to populate these fields")
+                .help("Copies the Ideogram4-compliant JSON to the clipboard or pastes it in. "
+                    + "Pasted JSON is validated before replacing the form values.")
 
                 Button("Reset") { resetCaption() }
                     .buttonStyle(.plain)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+                    .controlSize(.small)
+                    .foregroundStyle(.red)
+                    .help("Resets the entire form below, use to start over from scratch")
             }
             .padding(.bottom, 8)
             .alert("Couldn't paste JSON", isPresented: Binding(
