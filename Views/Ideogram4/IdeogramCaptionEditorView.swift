@@ -240,15 +240,9 @@ struct IdeogramCaptionEditorView: View {
     private var elementList: some View {
         VStack(spacing: 6) {
             ForEach($caption.compositionalDeconstruction.elements) { $el in
-                HStack {
-                    elementRow(element: $el)
+                IdeogramElementCard(element: $el) {
+                    caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
                 }
-                .padding(.vertical, 4)
-                .background(Color.secondary.opacity(0.04), in: RoundedRectangle(cornerRadius: 8))
-                .overlay(
-                    RoundedRectangle(cornerRadius: 8)
-                        .strokeBorder(Color.secondary.opacity(0.2), lineWidth: 1)
-                )
             }
         }
     }
@@ -368,69 +362,6 @@ struct IdeogramCaptionEditorView: View {
                 minHeight: 22
             )
         }
-    }
-
-    @ViewBuilder
-    private func elementRow(element: Binding<IdeogramCaptionElement>) -> some View {
-        let el = element.wrappedValue
-        HStack(alignment: .top, spacing: 2) {
-            if el.type == .text {
-                GrowingPromptField(
-                    text: Binding(
-                        get: { element.wrappedValue.text ?? "" },
-                        set: { element.wrappedValue.text = $0.isEmpty ? nil : $0 }
-                    ),
-                    placeholder: "text…",
-                    label: "Element text",
-                    hint: "The literal text this element renders",
-                    minHeight: 38
-                )
-            }
-            GrowingPromptField(
-                text: element.desc,
-                placeholder: "description…",
-                label: "Element description",
-                hint: "Describe this element",
-                minHeight: 38
-            )
-
-            VStack {
-                // Remove BBox button
-                Button {
-                    caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
-                } label: {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.body)
-                        .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .help("Remove element")
-
-                // Text / Object label
-                Text(el.type == .text ? "T" : "O")
-                    .font(.system(size: 10, weight: .bold, design: .rounded))
-                    .foregroundStyle(el.type == .text ? Color.blue : Color.green)
-                    .frame(width: 18, height: 18)
-                    .background((el.type == .text ? Color.blue : Color.green).opacity(0.12))
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .help(el.type == .text ? "Text" : "Object")
-
-                // BBox dimension coordinate icon
-                if el.bbox.count == 4 {
-                    // Coordinates are noise in the list — surface them in a tooltip
-                    // on a bounding-box icon instead of a cryptic numeric label.
-                    Image(systemName: "viewfinder")
-                        .font(.caption2)
-                        .foregroundStyle(.tertiary)
-                        .help("Bounding box (0–1000): "
-                            + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
-                }
-            }
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
     }
 
     // MARK: - Private-state actions
