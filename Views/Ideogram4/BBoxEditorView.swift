@@ -45,6 +45,21 @@ struct BBoxEditorView: View {
     // MARK: - Body (instance_property)
 
     var body: some View {
+        Group {
+            if isExpanded {
+                HStack(spacing: 0) {
+                    editorCanvas
+                    Divider()
+                    elementSidePanel
+                }
+            } else {
+                editorCanvas
+            }
+        }
+        .sheet(isPresented: $showExpandedSheet) { expandedSheet }
+    }
+
+    private var editorCanvas: some View {
         VStack(spacing: 0) {
             modeToolbar
             Divider()
@@ -122,7 +137,6 @@ struct BBoxEditorView: View {
                 }
             }
         }
-        .sheet(isPresented: $showExpandedSheet) { expandedSheet }
     }
 
     // MARK: - Computed views (instance_property)
@@ -170,7 +184,57 @@ struct BBoxEditorView: View {
             Self(elements: $elements, outputWidth: outputWidth, outputHeight: outputHeight, isExpanded: true)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(width: 760, height: 560)
+        .frame(width: 940, height: 600)
+    }
+
+    // MARK: - Element side panel (expanded mode only)
+
+    private var elementSidePanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack {
+                Text("Elements").font(.headline)
+                Spacer()
+                Text("\(elements.count)").font(.caption).foregroundStyle(.secondary)
+            }
+            .padding(10)
+            Divider()
+
+            if elements.isEmpty {
+                VStack(spacing: 4) {
+                    Spacer()
+                    Text("No elements yet").font(.callout).foregroundStyle(.tertiary)
+                    Text("Draw a box on the canvas").font(.caption2).foregroundStyle(.tertiary)
+                    Spacer()
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                ScrollView {
+                    VStack(spacing: 8) {
+                        ForEach($elements) { $el in
+                            IdeogramElementCard(
+                                element: $el,
+                                accentColor: boxColor(
+                                    at: elements.firstIndex { $0.id == el.id } ?? 0,
+                                    type: el.type
+                                ),
+                                isSelected: el.id == selectedID,
+                                onSelect: {
+                                    selectedID = el.id
+                                    focusRequest += 1
+                                },
+                                onRemove: {
+                                    if selectedID == el.id { selectedID = nil }
+                                    elements.removeAll { $0.id == el.id }
+                                }
+                            )
+                        }
+                    }
+                    .padding(10)
+                }
+            }
+        }
+        .frame(width: 260)
+        .background(Color(nsColor: .windowBackgroundColor))
     }
 
     private var createPopover: some View {
@@ -235,11 +299,23 @@ struct BBoxEditorView: View {
         .help(label)
     }
 
+    /// A distinct shade within the type's colour family (blue for text, green for
+    /// objects). Shades are spread by index using a golden-ratio step so adjacent
+    /// boxes are easy to tell apart while staying recognisably blue/green.
+    private func boxColor(at index: Int, type: IdeogramElementType) -> Color {
+        let baseHue: Double = type == .text ? 0.58 : 0.36
+        let frac = (Double(index) * 0.618).truncatingRemainder(dividingBy: 1)
+        let hue = baseHue + (frac - 0.5) * 0.10 // ±0.05 jitter — stays in family
+        let saturation = 0.55 + frac * 0.40 // 0.55…0.95
+        let brightness = 0.95 - frac * 0.30 // 0.95…0.65
+        return Color(hue: hue, saturation: saturation, brightness: brightness)
+    }
+
     private func drawBoxes(ctx: GraphicsContext, size _: CGSize, canvasSize: CGSize) {
-        for element in elements {
+        for (index, element) in elements.enumerated() {
             let rect = normRect(element.bbox, in: canvasSize)
             let isSelected = element.id == selectedID
-            let color: Color = element.type == .text ? .blue : .green
+            let color = boxColor(at: index, type: element.type)
 
             ctx.fill(Path(rect.insetBy(dx: 0, dy: 0)), with: .color(color.opacity(0.12)))
             ctx.stroke(
@@ -279,7 +355,8 @@ struct BBoxEditorView: View {
     @ViewBuilder
     private func handleOverlay(for element: IdeogramCaptionElement, canvasSize: CGSize) -> some View {
         let rect = normRect(element.bbox, in: canvasSize)
-        let color: Color = element.type == .text ? .blue : .green
+        let index = elements.firstIndex { $0.id == element.id } ?? 0
+        let color = boxColor(at: index, type: element.type)
 
         ForEach(ResizeHandle.allCases, id: \.self) { handle in
             let pt = handlePoint(handle, in: rect)
