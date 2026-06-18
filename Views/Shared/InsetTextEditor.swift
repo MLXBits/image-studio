@@ -7,6 +7,18 @@ import SwiftUI
 /// Pass `ghostSuffix` to show template-contributed text after the user's editable content.
 /// The ghost text is styled in tertiaryLabelColor and cannot be edited.
 struct InsetTextEditor: NSViewRepresentable {
+    /// NSTextView that reports when it becomes first responder (clicked / tabbed
+    /// into) so callers can react to focus — e.g. selecting the owning element.
+    final class FocusReportingTextView: NSTextView {
+        var onFocus: (() -> Void)?
+
+        override func becomeFirstResponder() -> Bool {
+            let ok = super.becomeFirstResponder()
+            if ok { onFocus?() }
+            return ok
+        }
+    }
+
     final class Coordinator: NSObject, NSTextViewDelegate {
         var parent: InsetTextEditor
 
@@ -96,17 +108,33 @@ struct InsetTextEditor: NSViewRepresentable {
     @Binding var text: String
     var insets = NSSize(width: 5, height: 8)
     var ghostSuffix: String = ""
+    /// Called when the text view gains first-responder focus.
+    var onFocus: (() -> Void)?
 
     func makeNSView(context: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
+        let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = false
         scrollView.hasHorizontalScroller = false
         scrollView.borderType = .noBorder
         scrollView.drawsBackground = false
 
-        guard let textView = scrollView.documentView as? NSTextView else {
-            return scrollView
-        }
+        // Manual scrollable-text-view assembly (mirrors NSTextView.scrollableTextView())
+        // so we can inject a first-responder-reporting subclass.
+        let contentSize = scrollView.contentSize
+        let textView = FocusReportingTextView(frame: NSRect(origin: .zero, size: contentSize))
+        textView.minSize = NSSize(width: 0, height: 0)
+        textView.maxSize = NSSize(
+            width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.isVerticallyResizable = true
+        textView.isHorizontallyResizable = false
+        textView.autoresizingMask = [.width]
+        textView.textContainer?.containerSize = NSSize(
+            width: contentSize.width, height: CGFloat.greatestFiniteMagnitude
+        )
+        textView.textContainer?.widthTracksTextView = true
+        scrollView.documentView = textView
+        textView.onFocus = onFocus
         textView.delegate = context.coordinator
         textView.isRichText = false
         textView.isEditable = true
@@ -129,6 +157,7 @@ struct InsetTextEditor: NSViewRepresentable {
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = scrollView.documentView as? NSTextView else { return }
         context.coordinator.parent = self
+        (textView as? FocusReportingTextView)?.onFocus = onFocus
 
         let expected = text + ghostSuffix
         guard textView.string != expected else { return }
@@ -178,6 +207,8 @@ struct GrowingPromptField: View {
     var hint: String
     var ghostSuffix: String = ""
     var minHeight: CGFloat = 60
+    /// Called when the underlying editor gains first-responder focus.
+    var onFocus: (() -> Void)?
 
     var body: some View {
         let displayText = text + ghostSuffix
@@ -191,7 +222,10 @@ struct GrowingPromptField: View {
             .opacity(0)
             .allowsHitTesting(false)
             .overlay(alignment: .topLeading) {
-                InsetTextEditor(text: $text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
+                InsetTextEditor(
+                    text: $text, insets: NSSize(width: 5, height: 8),
+                    ghostSuffix: ghostSuffix, onFocus: onFocus
+                )
             }
             .overlay(alignment: .topLeading) {
                 // Hide placeholder when ghost text is present — ghost is more informative.
