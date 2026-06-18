@@ -19,11 +19,18 @@ struct IdeogramElementCard: View {
     var onTextFocus: (() -> Void)?
     var onRemove: () -> Void
 
+    @State private var showPalette = false
+
     /// Tints the type tag and selection chrome. Defaults to the type's family
     /// colour (blue text / green object); the bbox viewer overrides with the
     /// box's per-rectangle shade.
     private var tagColor: Color {
         accentColor ?? (element.type == .text ? .blue : .green)
+    }
+
+    /// Hex strings for this element's optional color palette (`[]` when unset).
+    private var paletteColors: [String] {
+        element.colorPalette ?? []
     }
 
     var body: some View {
@@ -43,8 +50,20 @@ struct IdeogramElementCard: View {
             .modifier(SelectOnTap(action: onSelect))
     }
 
-    @ViewBuilder
     private var card: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            elementRow
+            if showPalette {
+                Divider()
+                elementPaletteSection
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+    }
+
+    @ViewBuilder
+    private var elementRow: some View {
         let el = element
         HStack(alignment: .top, spacing: 2) {
             if el.type == .text {
@@ -69,7 +88,9 @@ struct IdeogramElementCard: View {
                 onFocus: onTextFocus
             )
 
-            VStack {
+            // Fixed spacing + a uniform 24pt slot per row so the action buttons,
+            // the type chip, and the bbox icon are evenly distributed.
+            VStack(spacing: 6) {
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.body)
@@ -80,12 +101,15 @@ struct IdeogramElementCard: View {
                 .buttonStyle(.plain)
                 .help("Remove element")
 
+                paletteButton
+
                 Text(el.type == .text ? "T" : "O")
                     .font(.system(size: 10, weight: .bold, design: .rounded))
                     .foregroundStyle(tagColor)
                     .frame(width: 18, height: 18)
                     .background(tagColor.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .frame(width: 24, height: 24)
                     .help(el.type == .text ? "Text" : "Object")
 
                 if el.bbox.count == 4 {
@@ -94,13 +118,52 @@ struct IdeogramElementCard: View {
                     Image(systemName: "viewfinder")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
+                        .frame(width: 24, height: 24)
                         .help("Bounding box (0–1000): "
                             + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
                 }
             }
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
+    }
+
+    /// Colour-wheel toggle for the element's palette. Translucent when no colours
+    /// are set, full-colour once the element carries a palette. Expands an inline
+    /// editor rather than a popover — a popover presented from the bbox overlay
+    /// sheet is dismissed the moment the system colour panel becomes key.
+    private var paletteButton: some View {
+        let hasColors = !paletteColors.isEmpty
+        return Button {
+            withAnimation(.easeInOut(duration: 0.15)) { showPalette.toggle() }
+        } label: {
+            Image(systemName: "paintpalette.fill")
+                .symbolRenderingMode(hasColors ? .multicolor : .monochrome)
+                .font(.body)
+                .foregroundStyle(.secondary)
+                .opacity(hasColors || showPalette ? 1 : 0.35)
+                .frame(width: 24, height: 24)
+                .background(
+                    RoundedRectangle(cornerRadius: 5)
+                        .fill(showPalette ? Color.secondary.opacity(0.18) : .clear)
+                )
+                .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help(hasColors
+            ? "Edit element colors (\(paletteColors.count))"
+            : "Add element colors")
+    }
+
+    private var elementPaletteSection: some View {
+        let binding = Binding<[String]>(
+            get: { element.colorPalette ?? [] },
+            set: { element.colorPalette = $0.isEmpty ? nil : $0 }
+        )
+        return VStack(alignment: .leading, spacing: 6) {
+            Text("Element Colors")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+            ColorPaletteEditor(colors: binding)
+        }
     }
 }
 
