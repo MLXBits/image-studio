@@ -415,18 +415,38 @@ struct ContentView: View {
 
     private var queueSheet: some View {
         NavigationStack {
-            QueueDrawerView(selectedJob: Binding(
-                get: {
-                    if case let .activeJob(j) = previewState { return j }
-                    return nil
-                },
-                set: { job in
-                    if let j = job { previewState = .activeJob(j) }
+            // Show the queue for the active model family. The two pipelines have
+            // separate stores; previously this always showed the Flux queue, so
+            // Ideogram jobs (single-shot and batch) never appeared.
+            Group {
+                if params.modelFamily == .ideogram4 {
+                    Ideogram4QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeIdeogram4Job(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeIdeogram4Job(j) }
+                        }
+                    ))
+                    .environment(ideogram4Store)
+                    .environment(ideogram4Runner)
+                    .environment(settings)
+                } else {
+                    QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeJob(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeJob(j) }
+                        }
+                    ))
+                    .environment(store)
+                    .environment(runner)
+                    .environment(settings)
                 }
-            ))
-            .environment(store)
-            .environment(runner)
-            .environment(settings)
+            }
             .navigationTitle("Queue")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
