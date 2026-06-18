@@ -103,10 +103,7 @@ struct Ideogram4ParamsPanelView: View {
                     outputWidth: params.width,
                     outputHeight: params.height
                 )
-                .padding(.horizontal, 8)
                 .padding(.vertical, 6)
-                .background(Color.primary.opacity(0.06))
-                .clipShape(RoundedRectangle(cornerRadius: 8))
             }
         }
     }
