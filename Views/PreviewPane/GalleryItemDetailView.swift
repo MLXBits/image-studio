@@ -8,6 +8,7 @@ struct GalleryItemDetailView: View {
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
+    var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
 
     @State private var image: NSImage?
@@ -53,6 +54,9 @@ struct GalleryItemDetailView: View {
                     Divider()
                     Button("Apply Settings") { onApplyIdeogramSettings(correctedIdeogram(meta)) }
                     Button("Remix (new seed)") { onRemixIdeogram(meta) }
+                    if let img = image {
+                        Button("Adjust Boxes…") { onEditBoxesOverImage?(meta, img) }
+                    }
                 }
                 if info.log != nil {
                     Divider()
@@ -69,6 +73,7 @@ struct GalleryItemDetailView: View {
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
                 onUseInImg2Img: item.ideogram4Metadata == nil ? { onUseInImg2Img(item.path) } : nil,
+                onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
                 },
@@ -100,6 +105,13 @@ struct GalleryItemDetailView: View {
         if let meta = item.metadata { return { onRemix(meta) } }
         if let meta = item.ideogram4Metadata { return { onRemixIdeogram(meta) } }
         return nil
+    }
+
+    /// "Adjust Boxes" closure — available only for Ideogram images once the image
+    /// has loaded, so the boxes can be overlaid on it.
+    private var editBoxesAction: (() -> Void)? {
+        guard let meta = item.ideogram4Metadata, let img = image else { return nil }
+        return { onEditBoxesOverImage?(meta, img) }
     }
 
     /// Restores the board from the item's gallery folder (the sidecar may predate

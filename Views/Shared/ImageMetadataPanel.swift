@@ -120,6 +120,7 @@ struct ImageMetadataPanel: View {
     let onApplySettings: (() -> Void)?
     let onRemix: (() -> Void)?
     let onUseInImg2Img: (() -> Void)?
+    var onEditBoxes: (() -> Void)?
     let onRevealInFinder: (() -> Void)?
     let onShowLog: (() -> Void)?
 
@@ -248,6 +249,12 @@ struct ImageMetadataPanel: View {
                 Button { fn() } label: { Image(systemName: "photo.on.rectangle.angled") }
                     .buttonStyle(.bordered).controlSize(.small)
                     .help("Use as img2img input")
+            }
+            if let fn = onEditBoxes {
+                Button { fn() } label: { Image(systemName: "square.dashed") }
+                    .buttonStyle(.bordered).controlSize(.small)
+                    .help("Adjust the bounding boxes over this image. Loads the boxes into "
+                        + "the form; fix the seed (or Apply Settings) to re-render this same image.")
             }
             if let path = info.filePath {
                 Button {
