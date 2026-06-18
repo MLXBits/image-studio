@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 // MARK: - BBox editor mode
@@ -35,6 +36,7 @@ struct BBoxEditorView: View {
     @State private var dragOriginalBBox: [Int] = []
     @State private var moveOffset: CGSize = .zero
     @State private var showExpandedSheet: Bool = false
+    @State private var focusRequest: Int = 0
     @FocusState private var isPopoverFocused: Bool
 
     private let handleRadius: CGFloat = 5
@@ -75,6 +77,7 @@ struct BBoxEditorView: View {
                             .simultaneousGesture(
                                 SpatialTapGesture()
                                     .onEnded { event in
+                                        focusRequest += 1
                                         guard mode == .select else { return }
                                         let normPt = toNorm(
                                             clamp(event.location, in: canvasSize), in: canvasSize
@@ -82,6 +85,16 @@ struct BBoxEditorView: View {
                                         selectedID = hitTest(normPt)?.id
                                     }
                             )
+
+                        // Zero-size AppKit responder: reliably receives the Delete /
+                        // Escape keys once we make it first responder on selection.
+                        BBoxKeyCatcher(
+                            focusTrigger: focusRequest,
+                            onDelete: { deleteSelected() },
+                            onEscape: { selectedID = nil }
+                        )
+                        .frame(width: 0, height: 0)
+                        .allowsHitTesting(false)
 
                         if isDragging && mode == .draw, let bbox = previewBBox(canvasSize: canvasSize) {
                             Rectangle()
@@ -109,9 +122,6 @@ struct BBoxEditorView: View {
                 }
             }
         }
-        .onKeyPress(.delete) { deleteSelected(); return .handled }
-        .onKeyPress(.deleteForward) { deleteSelected(); return .handled }
-        .onKeyPress(.escape) { selectedID = nil; return .handled }
         .sheet(isPresented: $showExpandedSheet) { expandedSheet }
     }
 
@@ -287,6 +297,7 @@ struct BBoxEditorView: View {
             .onChanged { value in
                 if !isDragging {
                     isDragging = true
+                    focusRequest += 1
                     dragStart = clamp(value.startLocation, in: canvasSize)
                     if mode == .draw {
                         dragCurrent = clamp(value.location, in: canvasSize)
@@ -496,5 +507,58 @@ struct BBoxEditorView: View {
             return CGSize(width: maxW, height: maxW / ratio)
         }
         return CGSize(width: maxH * ratio, height: maxH)
+    }
+}
+
+// MARK: - BBoxKeyCatcher
+
+/// Zero-size AppKit responder bridged into SwiftUI. SwiftUI's `.onKeyPress` +
+/// `@FocusState` does not reliably take first-responder for a gesture-driven
+/// canvas embedded in a scrolling form on macOS, so deletion is driven through
+/// an `NSView` that we explicitly make first responder whenever the selection
+/// changes (`focusTrigger` is bumped on every tap / drag).
+private struct BBoxKeyCatcher: NSViewRepresentable {
+    var focusTrigger: Int
+    var onDelete: () -> Void
+    var onEscape: () -> Void
+
+    func makeNSView(context _: Context) -> KeyView {
+        let view = KeyView()
+        view.onDelete = onDelete
+        view.onEscape = onEscape
+        return view
+    }
+
+    func updateNSView(_ nsView: KeyView, context _: Context) {
+        nsView.onDelete = onDelete
+        nsView.onEscape = onEscape
+        guard nsView.lastTrigger != focusTrigger else { return }
+        nsView.lastTrigger = focusTrigger
+        DispatchQueue.main.async { [weak nsView] in
+            nsView?.window?.makeFirstResponder(nsView)
+        }
+    }
+}
+
+// MARK: - BBoxKeyCatcher.KeyView
+
+/// Accepts first responder and routes Delete / Escape key codes to closures.
+private final class KeyView: NSView {
+    var onDelete: (() -> Void)?
+    var onEscape: (() -> Void)?
+    /// Starts at 0 to match `focusRequest`'s initial value, so the catcher
+    /// does not steal focus on first appearance — only after a real selection.
+    var lastTrigger: Int = 0
+
+    override var acceptsFirstResponder: Bool {
+        true
+    }
+
+    override func keyDown(with event: NSEvent) {
+        switch event.keyCode {
+        case 51, 117: onDelete?() // 51 = delete/backspace, 117 = forward delete
+        case 53: onEscape?() // 53 = escape
+        default: super.keyDown(with: event)
+        }
     }
 }
