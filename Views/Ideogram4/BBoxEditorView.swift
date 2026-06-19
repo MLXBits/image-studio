@@ -72,12 +72,19 @@ struct BBoxEditorView: View {
             modeToolbar
             Divider()
             GeometryReader { geo in
-                let canvasSize = BBoxGeometry.fitCanvas(
+                // Pixel-align the canvas so the text Canvas isn't composited over
+                // the background image at a sub-point offset, which bilinearly
+                // resamples (and blurs) the rendered labels. Rounding size and
+                // origin to whole points keeps glyphs crisp on 1x and 2x displays.
+                let fitted = BBoxGeometry.fitCanvas(
                     width: outputWidth, height: outputHeight, in: geo.size
                 )
+                let canvasSize = CGSize(
+                    width: fitted.width.rounded(), height: fitted.height.rounded()
+                )
                 let canvasOrigin = CGPoint(
-                    x: (geo.size.width - canvasSize.width) / 2,
-                    y: (geo.size.height - canvasSize.height) / 2
+                    x: ((geo.size.width - canvasSize.width) / 2).rounded(),
+                    y: ((geo.size.height - canvasSize.height) / 2).rounded()
                 )
 
                 ZStack(alignment: .topLeading) {
@@ -99,6 +106,9 @@ struct BBoxEditorView: View {
                             drawBoxes(ctx: ctx, size: size, canvasSize: canvasSize)
                         }
                         .frame(width: canvasSize.width, height: canvasSize.height)
+
+                        // Native-text labels above the box Canvas (crisp glyphs).
+                        labelOverlay(canvasSize: canvasSize)
 
                         // Color.clear is BELOW the handle overlay so handle circles
                         // sit on top and receive drag events before the canvas does.
