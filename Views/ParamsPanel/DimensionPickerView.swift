@@ -93,6 +93,8 @@ struct DimensionPickerView: View {
     @Binding var width: Int
     @Binding var height: Int
 
+    let constraints: DimensionConstraints
+
     @State private var selectedAspect: AspectPreset
     @State private var aspectLocked: Bool
     @State private var hoveredPreset: AspectPreset?
@@ -112,11 +114,20 @@ struct DimensionPickerView: View {
         return Double(width) / Double(max(height, 1))
     }
 
+    private var dimensionsInfoText: String {
+        var text = "Output image size. Preset buttons set common aspect ratios."
+            + " Width and height snap to multiples of \(constraints.step)."
+        if let maxArea = constraints.maxArea {
+            text += " Total size is capped at ~\(maxArea / 1_000_000) MP across any aspect ratio."
+        }
+        return text + " The grid preview animates on hover."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 10) {
             headerRow
-            DimensionSliderRow(label: "Width", value: widthBinding)
-            DimensionSliderRow(label: "Height", value: heightBinding)
+            DimensionSliderRow(label: "Width", value: widthBinding, range: constraints.range, step: constraints.step)
+            DimensionSliderRow(label: "Height", value: heightBinding, range: constraints.range, step: constraints.step)
         }
         .onChange(of: width) { _, w in resyncAspect(w: w, h: height) }
         .onChange(of: height) { _, h in resyncAspect(w: width, h: h) }
@@ -182,8 +193,7 @@ struct DimensionPickerView: View {
 
                 InfoButton(
                     title: "Dimensions",
-                    description: "Output image size. Preset buttons set common aspect ratios."
-                        + " Width and height snap to multiples of 16. The grid preview animates on hover."
+                    description: dimensionsInfoText
                 )
             }
         }
@@ -218,10 +228,8 @@ struct DimensionPickerView: View {
         Binding(
             get: { width },
             set: { newVal in
-                width = newVal
-                if let ratio = effectiveRatio {
-                    height = snapTo16(Double(newVal) / ratio)
-                }
+                let h = effectiveRatio.map { constraints.snap(Double(newVal) / $0) } ?? height
+                applyDimensions(width: newVal, height: h, preserveRatio: effectiveRatio != nil)
             }
         )
     }
@@ -230,17 +238,20 @@ struct DimensionPickerView: View {
         Binding(
             get: { height },
             set: { newVal in
-                height = newVal
                 if let ratio = effectiveRatio {
-                    width = snapTo16(Double(newVal) * ratio)
+                    let w = constraints.snap(Double(newVal) * ratio)
+                    applyDimensions(width: w, height: newVal, preserveRatio: true)
+                } else {
+                    applyDimensions(width: width, height: newVal, preserveRatio: false, reduceHeight: true)
                 }
             }
         )
     }
 
-    init(width: Binding<Int>, height: Binding<Int>) {
+    init(width: Binding<Int>, height: Binding<Int>, constraints: DimensionConstraints = .legacy) {
         _width = width
         _height = height
+        self.constraints = constraints
         let asp = AspectPreset.detect(w: width.wrappedValue, h: height.wrappedValue)
         _selectedAspect = State(initialValue: asp == .free ? .w16h9 : asp)
         _aspectLocked = State(initialValue: asp != .free)
@@ -250,7 +261,7 @@ struct DimensionPickerView: View {
 
     private func halfResDimensions(for preset: AspectPreset) -> (width: Int, height: Int)? {
         guard let (w, h) = preset.targetDimensions else { return nil }
-        return (snapTo16(Double(w) / 2), snapTo16(Double(h) / 2))
+        return constraints.fit(width: w / 2, height: h / 2, preserveRatio: true)
     }
 
     private func resyncAspect(w: Int, h: Int) {
@@ -274,8 +285,7 @@ struct DimensionPickerView: View {
             aspectLocked = true
             let dims = halfRes ? halfResDimensions(for: preset) : preset.targetDimensions
             if let (w, h) = dims {
-                width = w
-                height = h
+                applyDimensions(width: w, height: h, preserveRatio: true)
             }
         } label: {
             Text(preset.rawValue)
@@ -317,22 +327,33 @@ struct DimensionPickerView: View {
         halfRes.toggle()
         if halfRes {
             if let (w, h) = halfResDimensions {
-                width = w
-                height = h
+                applyDimensions(width: w, height: h, preserveRatio: true)
             }
         } else {
             if let (w, h) = selectedAspect.targetDimensions {
-                width = w
-                height = h
+                applyDimensions(width: w, height: h, preserveRatio: true)
             }
         }
     }
 
     // MARK: - Math helpers
 
-    private func snapTo16(_ val: Double) -> Int {
-        guard val.isFinite, val > 0 else { return 64 }
-        return max(64, min(2048, Int((val / 16).rounded() * 16)))
+    /// Snaps + area-fits a (width, height) pair via the active constraints, then
+    /// commits both bindings. For the unlocked single-axis case, `reduceHeight`
+    /// selects which side absorbs any area-cap reduction (the just-edited axis).
+    private func applyDimensions(
+        width w: Int, height h: Int, preserveRatio: Bool, reduceHeight: Bool = false
+    ) {
+        let fitted: (width: Int, height: Int)
+        if !preserveRatio, reduceHeight {
+            // `fit` reduces `width` to satisfy the area cap; swap so it reduces height.
+            let swapped = constraints.fit(width: h, height: w, preserveRatio: false)
+            fitted = (swapped.height, swapped.width)
+        } else {
+            fitted = constraints.fit(width: w, height: h, preserveRatio: preserveRatio)
+        }
+        width = fitted.width
+        height = fitted.height
     }
 }
 
