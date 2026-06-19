@@ -159,7 +159,11 @@ struct ParamsPanelView: View {
         Divider()
 
         SectionContainerView(title: nil, info: nil) {
-            DimensionPickerView(width: $params.width, height: $params.height)
+            DimensionPickerView(
+                width: $params.width,
+                height: $params.height,
+                constraints: params.model.isFlux ? .flux2 : .legacy
+            )
         }
 
         Divider()

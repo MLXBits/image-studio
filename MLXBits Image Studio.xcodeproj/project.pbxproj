@@ -18,6 +18,7 @@
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
 		2CE5231419CEA80AC78A2EEB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFB6BA799C59DAA55470EC3 /* ContentView.swift */; };
@@ -122,6 +123,7 @@
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
+		B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionConstraints.swift; sourceTree = "<group>"; };
 		B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
@@ -169,6 +171,7 @@
 			isa = PBXGroup;
 			children = (
 				6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */,
+				B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */,
 				86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */,
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
@@ -458,6 +461,7 @@
 				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
 				4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */,
 				2CE5231419CEA80AC78A2EEB /* ContentView.swift in Sources */,
+				1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */,
 				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
 				DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */,
 				9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */,
