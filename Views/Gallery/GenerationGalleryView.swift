@@ -8,6 +8,8 @@ struct GenerationGalleryView: View {
     @Environment(AppSettings.self) private var settings
 
     @Binding var selectedItem: GalleryItem?
+    /// Only images produced by this model family are shown.
+    var modelFilter: ModelFamily = .flux
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
@@ -36,8 +38,16 @@ struct GenerationGalleryView: View {
     @State private var statusMessage: String?
     @State private var statusDismissTask: Task<Void, Never>?
 
+    /// Store items limited to the selected model family — the source of truth for
+    /// everything the gallery displays and navigates (sections, board counts,
+    /// adjacency, range selection). Mutating operations still address the full
+    /// store by id, so they are unaffected by this filter.
+    private var modelItems: [GalleryItem] {
+        gallery.items.filter { $0.modelFamily == modelFilter }
+    }
+
     private var orderedBoards: [String] {
-        let hasDefault = gallery.items.contains { $0.board == "Default" }
+        let hasDefault = modelItems.contains { $0.board == "Default" }
         let others = gallery.boards.filter { $0 != "Default" }.sorted()
         return (hasDefault ? ["Default"] : []) + others
     }
@@ -47,7 +57,7 @@ struct GenerationGalleryView: View {
         // target and delete affordance); the implicit "Default" board only appears
         // when it actually holds loose images at the output root.
         orderedBoards.map { board in
-            let items = gallery.items.filter { $0.board == board }
+            let items = modelItems.filter { $0.board == board }
             return GallerySection(board: board, items: items, isExpanded: !collapsedBoards.contains(board))
         }
     }
@@ -419,7 +429,7 @@ struct GenerationGalleryView: View {
     // MARK: - Range select (shift+click)
 
     private func rangeSelect(to item: GalleryItem) {
-        let items = gallery.items
+        let items = modelItems
         guard let targetIdx = items.firstIndex(where: { $0.id == item.id }) else { return }
         if let anchorId = anchorItemId,
            let anchorIdx = items.firstIndex(where: { $0.id == anchorId }) {
@@ -457,7 +467,7 @@ struct GenerationGalleryView: View {
     }
 
     private func adjacentItem(to item: GalleryItem) -> GalleryItem? {
-        let boardItems = gallery.items.filter { $0.board == item.board }
+        let boardItems = modelItems.filter { $0.board == item.board }
         guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return nil }
         let nextIdx = idx + 1 < boardItems.count ? idx + 1 : idx - 1
         return nextIdx >= 0 ? boardItems[nextIdx] : nil
