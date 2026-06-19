@@ -414,6 +414,9 @@ final class Ideogram4JobRunner {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }
         if job.strictValidation { args.append("--strict-caption-validation") }
+        if let cfgEnd = settings.ideogram4CfgEnd, cfgEnd < 1.0 {
+            args += ["--cfg-end", String(format: "%.2f", cfgEnd)]
+        }
 
         args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
 

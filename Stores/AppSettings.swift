@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 
 // MARK: - Per-model defaults
@@ -86,6 +87,7 @@ class AppSettings {
         var lastIdeogramSeed: Int?
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
+        var ideogram4CfgEnd: Double?
 
         init() {}
         init(
@@ -285,6 +287,12 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Fraction of steps (0–1) that run CFG before switching to cond-only (`--cfg-end`).
+    /// `nil` = full CFG every step.
+    var ideogram4CfgEnd: Double? {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -365,6 +373,7 @@ class AppSettings {
         lastIdeogramSeed = s.lastIdeogramSeed
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
+        ideogram4CfgEnd = s.ideogram4CfgEnd
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -432,6 +441,7 @@ class AppSettings {
         s.lastIdeogramSeed = lastIdeogramSeed
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
+        s.ideogram4CfgEnd = ideogram4CfgEnd
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()
