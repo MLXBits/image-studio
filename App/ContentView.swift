@@ -199,6 +199,7 @@ struct ContentView: View {
     private var galleryPaneView: some View {
         GenerationGalleryView(
             selectedItem: $selectedGalleryItem,
+            modelFilter: params.modelFamily,
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },

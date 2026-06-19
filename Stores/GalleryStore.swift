@@ -24,6 +24,13 @@ struct GalleryItem: Identifiable, Equatable {
     var filename: String {
         url.lastPathComponent
     }
+
+    /// Which model family produced this image, used to filter the gallery to the
+    /// currently selected model. Ideogram outputs are named with an "ideogram"
+    /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux.
+    var modelFamily: ModelFamily {
+        filename.lowercased().hasPrefix("ideogram") ? .ideogram4 : .flux
+    }
 }
 
 /// Manages the image gallery by scanning the output directory for image files.
