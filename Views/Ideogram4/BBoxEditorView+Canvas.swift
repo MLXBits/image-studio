@@ -3,6 +3,10 @@ import SwiftUI
 // MARK: - Canvas drawing & resize handles
 
 extension BBoxEditorView {
+    /// Draws only the box fills and strokes. Labels are rendered separately as
+    /// native `Text` overlays (see `labelOverlay`) — drawing them inside the
+    /// Canvas rasterizes the glyphs into the canvas bitmap, which looks soft /
+    /// blurry over a background image.
     func drawBoxes(ctx: GraphicsContext, size _: CGSize, canvasSize: CGSize) {
         let overImage = backgroundImage != nil
         for (index, element) in elements.enumerated() {
@@ -24,52 +28,63 @@ extension BBoxEditorView {
                 with: .color(color.opacity(isSelected ? 1.0 : 0.7)),
                 style: StrokeStyle(lineWidth: isSelected ? 2 : 1.5)
             )
-
-            let line1 = element.type == .text
-                ? (element.text.map { "\"\($0)\"" } ?? "T")
-                : "•"
-            let line2 = element.desc
-            let fontSize: CGFloat = max(8, min(12, rect.height * 0.18))
-            let inset = rect.insetBy(dx: 4, dy: 3)
-
-            if inset.width > 12 && inset.height > 14 {
-                let topPt = CGPoint(x: inset.minX, y: inset.minY)
-                drawLabel(
-                    ctx,
-                    Text(line1)
-                        .font(.system(size: fontSize, weight: .semibold))
-                        .foregroundStyle(color.opacity(0.9)),
-                    at: topPt, overImage: overImage
-                )
-                if inset.height > 26 {
-                    let descPt = CGPoint(x: inset.minX, y: inset.minY + fontSize + 2)
-                    drawLabel(
-                        ctx,
-                        Text(line2)
-                            .font(.system(size: max(7, fontSize - 1)))
-                            .foregroundStyle(color.opacity(0.7)),
-                        at: descPt, overImage: overImage
-                    )
-                }
-            }
         }
     }
 
-    /// Draws Canvas label text, adding a 1px black outline behind it when over an
-    /// image so coloured labels stay readable on arbitrary backgrounds.
-    func drawLabel(_ ctx: GraphicsContext, _ text: Text, at pt: CGPoint, overImage: Bool) {
-        if overImage {
-            let outline = text.foregroundStyle(.black.opacity(0.85))
-            for offset in [
-                CGSize(width: 1, height: 0),
-                CGSize(width: -1, height: 0),
-                CGSize(width: 0, height: 1),
-                CGSize(width: 0, height: -1),
-            ] {
-                ctx.draw(outline, at: CGPoint(x: pt.x + offset.width, y: pt.y + offset.height), anchor: .topLeading)
+    /// Native-text label overlay sitting above the box Canvas. Using real SwiftUI
+    /// `Text` (vector glyphs) instead of `GraphicsContext.draw(Text:)` keeps the
+    /// labels crisp, especially over a background image. A soft black shadow
+    /// stands in for the old per-pixel outline when drawn over imagery.
+    func labelOverlay(canvasSize: CGSize) -> some View {
+        let overImage = backgroundImage != nil
+        return ZStack(alignment: .topLeading) {
+            ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
+                let rect = BBoxGeometry.normRect(element.bbox, in: canvasSize)
+                let color = BBoxGeometry.boxColor(at: index, type: element.type)
+                let fontSize: CGFloat = max(8, min(12, rect.height * 0.18))
+                let inset = rect.insetBy(dx: 4, dy: 3)
+                let line1 = element.type == .text
+                    ? (element.text.map { "\"\($0)\"" } ?? "T")
+                    : "•"
+
+                if inset.width > 12 && inset.height > 14 {
+                    VStack(alignment: .leading, spacing: 2) {
+                        labelText(line1, size: fontSize, weight: .semibold, color: color)
+                        if inset.height > 26 {
+                            labelText(
+                                element.desc, size: max(7, fontSize - 1),
+                                weight: .regular, color: color.opacity(0.85)
+                            )
+                        }
+                    }
+                    // Solid dark chip behind the labels so the busy background image
+                    // doesn't bleed through the (now opaque) glyphs. Without a
+                    // backdrop, translucent text over a photo reads as blurry.
+                    .padding(.horizontal, overImage ? 3 : 0)
+                    .padding(.vertical, overImage ? 1 : 0)
+                    .background {
+                        if overImage {
+                            RoundedRectangle(cornerRadius: 3)
+                                .fill(.black.opacity(0.6))
+                        }
+                    }
+                    .frame(width: inset.width, alignment: .leading)
+                    .offset(x: inset.minX, y: inset.minY)
+                }
             }
         }
-        ctx.draw(text, at: pt, anchor: .topLeading)
+        .frame(width: canvasSize.width, height: canvasSize.height, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    private func labelText(
+        _ string: String, size: CGFloat, weight: Font.Weight, color: Color
+    ) -> some View {
+        Text(string)
+            .font(.system(size: size, weight: weight))
+            .foregroundStyle(color)
+            .lineLimit(1)
+            .truncationMode(.tail)
     }
 
     @ViewBuilder
