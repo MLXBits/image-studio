@@ -32,6 +32,10 @@ extension ModelDefaultsView {
             get: { settings.ideogram4StrictValidation },
             set: { settings.ideogram4StrictValidation = $0 }
         )
+        let cfgEndBinding = Binding<Double>(
+            get: { settings.ideogram4CfgEnd ?? 1.0 },
+            set: { settings.ideogram4CfgEnd = $0 >= 1.0 ? nil : $0 }
+        )
         return Form {
             Section("Generation") {
                 LabeledContent("Default Preset") {
@@ -93,6 +97,25 @@ extension ModelDefaultsView {
                         )
                     }
                 }
+                LabeledContent("CFG truncation") {
+                    HStack(spacing: 6) {
+                        Slider(value: cfgEndBinding, in: 0.3 ... 1.0, step: 0.05)
+                            .frame(width: 120)
+                        Text(settings.ideogram4CfgEnd == nil
+                            ? "Off"
+                            : "\(Int((settings.ideogram4CfgEnd ?? 1.0) * 100))%")
+                            .font(.caption).monospacedDigit()
+                            .frame(width: 34, alignment: .trailing)
+                        InfoButton(
+                            title: "CFG truncation (cfg_end)",
+                            description: "Runs classifier-free guidance only for this leading fraction of"
+                                + " steps, then switches to faster cond-only generation for the rest."
+                                + " Guidance mostly shapes the early steps, so e.g. 60% is typically"
+                                + " indistinguishable from full while skipping ~40% of the unconditional"
+                                + " forward passes. Off = full CFG on every step."
+                        )
+                    }
+                }
             }
 
             Section {
@@ -118,6 +141,7 @@ extension ModelDefaultsView {
                     settings.ideogram4ModelRepoOverride = nil
                     settings.ideogram4LowRam = false
                     settings.ideogram4StrictValidation = false
+                    settings.ideogram4CfgEnd = nil
                 }
                 .foregroundStyle(.red)
                 .accessibilityLabel("Reset Ideogram 4 to built-in defaults")
