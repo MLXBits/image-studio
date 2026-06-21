@@ -167,8 +167,25 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         switch (self, quantize) {
         case (.flux2Klein9B, 8): "mlx-community/flux2-klein-9b-8bit"
         case (.flux2Klein4B, 8): "mlx-community/flux2-klein-4b-8bit"
+        case (.ideogram4, 8): "MLXBits/ideogram-4-mlx-q8"
+        case (.ideogram4, 4): "MLXBits/ideogram-4-mlx-q4"
         default: nil
         }
+    }
+
+    /// Approximate on-disk / unified-memory footprint in GB for a quantize level.
+    /// Ideogram 4 ships as FP8 (already 8-bit), so its Q8 is roughly FP8-sized while
+    /// Q4 roughly halves it — the generic BF16×factor model doesn't apply.
+    func approximateSizeGB(quantize: Int) -> Double {
+        if self == .ideogram4 {
+            switch quantize {
+            case 4: return 15
+            case 8: return 27
+            default: return 28
+            }
+        }
+        let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
+        return approximateBF16SizeGB * factor
     }
 
     /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
@@ -191,6 +208,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         let hubDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".cache/huggingface/hub")
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
+        // A published pre-quantized repo maps directly to its hub cache dir
+        // (models--org--name), so match it explicitly rather than by substring.
+        if quantize > 0, let repo = preQuantizedRepoID(quantize: quantize) {
+            let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
+            guard entries.contains(cacheName) else { return nil }
+            let url = hubDir.appendingPathComponent(cacheName)
+            return Self.isCompleteHFCache(at: url) ? url : nil
+        }
         let match: String?
         switch quantize {
         case 8:

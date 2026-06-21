@@ -478,18 +478,25 @@ class AppSettings {
 
     /// Returns true when Ideogram 4 model weights are already cached locally.
     func ideogram4ModelOnDisk(quantize: Int) -> Bool {
-        if quantize > 0 {
-            let savedPath = effectiveMfluxCacheDir
-                .appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)
-            return FluxModelVariant.hasSavedWeights(at: savedPath)
-        }
-        // Check HF hub cache for the FP8 base checkpoint.
         let hfBase = if !hfHome.isEmpty {
             URL(fileURLWithPath: hfHome).appendingPathComponent("hub")
         } else {
             URL(fileURLWithPath: NSHomeDirectory())
                 .appendingPathComponent(".cache/huggingface/hub")
         }
+        if quantize > 0 {
+            // Q8/Q4 ship as published MLX repos — check the hub cache first,
+            // then fall back to a legacy mflux-save directory.
+            if let repo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: quantize) {
+                let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
+                let snapshots = hfBase.appendingPathComponent(cacheName + "/snapshots")
+                if FileManager.default.fileExists(atPath: snapshots.path) { return true }
+            }
+            let savedPath = effectiveMfluxCacheDir
+                .appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)
+            return FluxModelVariant.hasSavedWeights(at: savedPath)
+        }
+        // Check HF hub cache for the FP8 base checkpoint.
         let snapshots = hfBase.appendingPathComponent("models--ideogram-ai--ideogram-4-fp8/snapshots")
         return FileManager.default.fileExists(atPath: snapshots.path)
     }

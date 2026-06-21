@@ -36,6 +36,7 @@ struct ParamsPanelView: View {
             set: { v in
                 if params.model.isIdeogram4 {
                     ideogramParams.quantize = v
+                    settings.lastIdeogramQuantize = v
                 } else {
                     params.quantize = v
                 }

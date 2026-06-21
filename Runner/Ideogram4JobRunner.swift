@@ -82,7 +82,10 @@ final class Ideogram4JobRunner {
             return
         }
 
-        if job.quantize > 0 {
+        // Q8/Q4 load pre-quantized MLX weights directly from the published repo —
+        // no one-time mflux-save quantization pass needed.
+        let hasPreQuantizedRepo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize) != nil
+        if job.quantize > 0, !hasPreQuantizedRepo {
             let savedPath = ideogram4SavedPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
             if !FluxModelVariant.hasSavedWeights(at: savedPath) {
                 switch await runSave(job: job, savePath: savedPath, settings: settings) {
@@ -373,11 +376,22 @@ final class Ideogram4JobRunner {
     private func buildArgs(job: Ideogram4Job, ctx: RunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
+        let override = (settings.ideogram4ModelRepoOverride ?? "").isEmpty
+            ? nil
+            : settings.ideogram4ModelRepoOverride
+        let preQuantizedRepo = override == nil && job.quantize > 0
+            ? FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize)
+            : nil
         let savedPath = ideogram4SavedPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-        if job.quantize > 0, FluxModelVariant.hasSavedWeights(at: savedPath) {
-            args += ["--model", savedPath.path]
-        } else if let override = settings.ideogram4ModelRepoOverride, !override.isEmpty {
+        if let override {
+            // Settings model-source override wins outright — it names a specific
+            // repo/path, so the precision selector is inert (UI shows "Override").
             args += ["--model", override]
+        } else if let preQuantizedRepo {
+            // Pre-quantized MLX weights — passed directly, no --quantize flag.
+            args += ["--model", preQuantizedRepo]
+        } else if job.quantize > 0, FluxModelVariant.hasSavedWeights(at: savedPath) {
+            args += ["--model", savedPath.path]
         } else {
             args += ["--model", "ideogram4"]
         }
@@ -398,8 +412,8 @@ final class Ideogram4JobRunner {
             args += ["--seed"] + job.seeds.map { "\($0)" }
         }
 
-        if job.quantize > 0, !FluxModelVariant.hasSavedWeights(at: savedPath),
-           (settings.ideogram4ModelRepoOverride ?? "").isEmpty {
+        if override == nil, preQuantizedRepo == nil, job.quantize > 0,
+           !FluxModelVariant.hasSavedWeights(at: savedPath) {
             args += ["--quantize", "\(job.quantize)"]
         }
 
