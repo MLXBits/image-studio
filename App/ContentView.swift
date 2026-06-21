@@ -155,10 +155,6 @@ struct ContentView: View {
     @State private var pendingSelectPath: String?
     @State private var mfluxAutoInstall: MfluxAutoInstall = .idle
 
-    @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
-    @State private var paramsWidth: Double = 280
-    @State private var paramsDragBase: Double?
-
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
     @State private var galleryWidth: Double = 260
     @State private var galleryDragBase: Double?
@@ -169,7 +165,7 @@ struct ContentView: View {
 
     private var paramsPane: some View {
         ParamsPanelView(params: params, ideogramParams: ideogramParams)
-            .frame(width: CGFloat(paramsWidth))
+            .frame(width: 350)
             .frame(maxHeight: .infinity)
     }
 
@@ -274,7 +270,6 @@ struct ContentView: View {
                 boxOverlaySheet(ctx)
             }
             .onAppear {
-                paramsWidth = savedParamsWidth
                 galleryWidth = savedGalleryWidth
                 params.applyDefaults(from: settings)
                 ideogramParams.applyDefaults(settings: settings)
@@ -350,49 +345,40 @@ struct ContentView: View {
                 if showingParams {
                     paramsPane
 
+                    // Static separator — the params panel is a fixed width.
                     Divider()
                         .padding(.vertical, 3)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                                .onChanged { value in
-                                    let base: Double
-                                    if let b = paramsDragBase { base = b } else {
-                                        paramsDragBase = paramsWidth; base = paramsWidth
-                                    }
-                                    paramsWidth = max(220, min(420, base + value.translation.width))
-                                }
-                                .onEnded { _ in
-                                    paramsDragBase = nil
-                                    savedParamsWidth = paramsWidth
-                                }
-                        )
-                        .onHover { hovering in
-                            if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                        }
                 }
 
                 previewPane
 
                 Divider()
                     .padding(.horizontal, 3)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                            .onChanged { value in
-                                let base: Double
-                                if let b = galleryDragBase { base = b } else {
-                                    galleryDragBase = galleryWidth; base = galleryWidth
-                                }
-                                galleryWidth = max(160, min(500, base - value.translation.width))
+                    .overlay {
+                        // Transparent ~10pt grab zone centred on the 1pt divider.
+                        // An overlay widens the resize target without padding the
+                        // panes apart the way horizontal padding on the divider
+                        // itself would (overlays don't affect HStack layout).
+                        Color.clear
+                            .frame(width: 10)
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        let base: Double
+                                        if let b = galleryDragBase { base = b } else {
+                                            galleryDragBase = galleryWidth; base = galleryWidth
+                                        }
+                                        galleryWidth = max(160, min(500, base - value.translation.width))
+                                    }
+                                    .onEnded { _ in
+                                        galleryDragBase = nil
+                                        savedGalleryWidth = galleryWidth
+                                    }
+                            )
+                            .onHover { hovering in
+                                if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
                             }
-                            .onEnded { _ in
-                                galleryDragBase = nil
-                                savedGalleryWidth = galleryWidth
-                            }
-                    )
-                    .onHover { hovering in
-                        if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
                     }
 
                 galleryPane
