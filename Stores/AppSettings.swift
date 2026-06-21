@@ -485,12 +485,13 @@ class AppSettings {
                 .appendingPathComponent(".cache/huggingface/hub")
         }
         if quantize > 0 {
-            // Q8/Q4 ship as published MLX repos — check the hub cache first,
-            // then fall back to a legacy mflux-save directory.
+            // Q8/Q4 ship as published MLX repos and load straight from the hub cache.
+            // The legacy mflux-save dir is never used for them (and may be stale), so
+            // a present pre-quantized repo is the only signal we trust.
             if let repo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: quantize) {
                 let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
                 let snapshots = hfBase.appendingPathComponent(cacheName + "/snapshots")
-                if FileManager.default.fileExists(atPath: snapshots.path) { return true }
+                return FileManager.default.fileExists(atPath: snapshots.path)
             }
             let savedPath = effectiveMfluxCacheDir
                 .appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)

@@ -8,6 +8,7 @@ struct ModelPickerView: View {
         let color: Color
         let diskLabel: String
         let diskColor: Color
+        let diskIcon: String
         let onDisk: Bool
         let diskInfoTitle: String
         let diskInfoBody: String
@@ -46,60 +47,64 @@ struct ModelPickerView: View {
     }
 
     var body: some View {
-        // Single horizontal row for the top header: model + precision + on-disk +
-        // info, then the memory/disk estimate pills inline (beside, not below).
-        HStack(spacing: 10) {
-            Picker("Model", selection: $model) {
-                ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                    Text(v.displayName).tag(v)
-                }
-                Divider()
-                Text("Ideogram 4").tag(FluxModelVariant.ideogram4)
-                Divider()
-                Text("Custom…").tag(FluxModelVariant.custom)
-            }
-            .pickerStyle(.menu)
-            .labelsHidden()
-            .fixedSize()
-            .accessibilityLabel("Model")
-            .accessibilityHint("Selects the model for generation")
-
-            if ideogramOverride != nil {
-                Label("Override", systemImage: "gearshape")
-                    .font(.caption)
-                    .padding(.horizontal, 8).padding(.vertical, 3)
-                    .background(.secondary.opacity(0.12), in: Capsule())
-                    .foregroundStyle(.secondary)
-                    .accessibilityLabel("Model source overridden in Settings")
-            } else if model != .custom {
-                Picker("Precision", selection: $quantize) {
-                    Text(model.baseWeightLabel).tag(0)
-                    Text("Q8").tag(8)
-                    Text("Q4").tag(4)
+        // Top header: selectors on the first row, memory/disk estimate pills
+        // below them on a second row.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                Picker("Model", selection: $model) {
+                    ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+                        Text(v.displayName).tag(v)
+                    }
+                    Divider()
+                    Text("Ideogram 4").tag(FluxModelVariant.ideogram4)
+                    Divider()
+                    Text("Custom…").tag(FluxModelVariant.custom)
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .fixedSize()
-                .accessibilityLabel("Quantization")
-                .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
-            }
+                .accessibilityLabel("Model")
+                .accessibilityHint("Selects the model for generation")
 
-            if ideogramOverride == nil, model != .custom,
-               model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.caption)
-                    .accessibilityLabel("Model weights cached on disk")
-            }
+                if ideogramOverride != nil {
+                    Label("Override", systemImage: "gearshape")
+                        .font(.caption)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(.secondary.opacity(0.12), in: Capsule())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Model source overridden in Settings")
+                } else if model != .custom {
+                    Picker("Precision", selection: $quantize) {
+                        Text(model.baseWeightLabel).tag(0)
+                        Text("Q8").tag(8)
+                        Text("Q4").tag(4)
+                    }
+                    .pickerStyle(.menu)
+                    .labelsHidden()
+                    .fixedSize()
+                    .accessibilityLabel("Quantization")
+                    .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
+                }
 
-            InfoButton(title: "Model & Precision", description: infoDescription)
+                if ideogramOverride == nil, model != .custom,
+                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                    Image(systemName: "checkmark.circle.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                        .accessibilityLabel("Model weights cached on disk")
+                }
 
-            if model == .custom {
-                customModelFields
+                InfoButton(title: "Model & Precision", description: infoDescription)
+
+                if model == .custom {
+                    customModelFields
+                }
             }
 
             if let estimate = vramEstimate {
-                estimatePills(estimate)
+                HStack(spacing: 8) {
+                    estimatePills(estimate)
+                }
             }
         }
     }
@@ -144,8 +149,14 @@ struct ModelPickerView: View {
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
         let color: Color = gb > 30 ? .orange : gb > 18 ? .yellow : .green
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
-        let diskLabel = "≈\(String(format: "%.0f", gb)) GB disk"
-        let diskColor: Color = onDisk ? .green : (gb > 30 ? .orange : gb > 18 ? .yellow : .secondary)
+        // The disk pill is a binary download-state signal — green when cached,
+        // neutral "download" otherwise. Size-based warning colors live on the RAM
+        // pill only, so a not-yet-downloaded model never looks like a warning.
+        let diskLabel = onDisk
+            ? "≈\(String(format: "%.0f", gb)) GB cached"
+            : "≈\(String(format: "%.0f", gb)) GB to download"
+        let diskColor: Color = onDisk ? .green : .secondary
+        let diskIcon = onDisk ? "internaldrive" : "arrow.down.circle"
         let quantName = quantize == 0 ? model.baseWeightLabel : "Q\(quantize)"
         let qualityNote = switch quantize {
         case 0: "Full precision. Highest quality, largest footprint. Best on 64 GB Macs."
@@ -157,7 +168,7 @@ struct ModelPickerView: View {
         let diskInfoBody = "\(quantName) weights cached locally (~\(Int(gb)) GB). \(qualityNote)"
         return VRAMEstimate(
             label: label, color: color,
-            diskLabel: diskLabel, diskColor: diskColor,
+            diskLabel: diskLabel, diskColor: diskColor, diskIcon: diskIcon,
             onDisk: onDisk,
             diskInfoTitle: diskInfoTitle, diskInfoBody: diskInfoBody
         )
@@ -175,7 +186,7 @@ struct ModelPickerView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(estimate.color.opacity(0.12), in: Capsule())
-        Label(estimate.diskLabel, systemImage: "internaldrive")
+        Label(estimate.diskLabel, systemImage: estimate.diskIcon)
             .font(.caption2)
             .lineLimit(1)
             .fixedSize(horizontal: true, vertical: false)

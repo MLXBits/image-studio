@@ -522,9 +522,9 @@ struct ContentView: View {
     // MARK: - Top control bar
 
     private var topControlBar: some View {
-        HStack(spacing: 0) {
-            headerModelPicker
-            Spacer(minLength: 16)
+        // Generate group is window-centered; the model selector is pinned to the
+        // leading edge in the same ZStack so its width doesn't shift the center.
+        ZStack {
             HStack(spacing: 12) {
                 let canGenerate: Bool = switch params.modelFamily {
                 case .flux:
@@ -576,7 +576,11 @@ struct ContentView: View {
 
                 fixedSeedPill
             }
-            Spacer()
+
+            HStack {
+                headerModelPicker
+                Spacer(minLength: 0)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
