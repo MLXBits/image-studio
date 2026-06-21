@@ -198,7 +198,7 @@ struct ParamsPanelView: View {
                 Button { showingTemplatePicker = true } label: {
                     Image(systemName: "pencil")
                         .font(.system(size: 9))
-                        .frame(width: 18, height: 18)
+                        .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -590,6 +590,12 @@ struct ParamsPanelView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .semibold))
+                        // The glyph is tiny; give it a frame + Rectangle hit area
+                        // so the whole right end of the chip removes it. Sized to
+                        // the chip height (~20pt) rather than the 24pt icon-button
+                        // standard so it doesn't overflow into neighbouring chips.
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
