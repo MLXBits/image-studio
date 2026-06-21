@@ -313,7 +313,7 @@ struct ColorPaletteEditor: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .frame(width: 18, height: 18)
+                    .frame(width: 24, height: 24)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
