@@ -18,12 +18,21 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         builtIn + [.ideogram4]
     }
 
-    /// Returns true if the HF hub model directory is fully downloaded (no .incomplete blobs).
+    /// Returns true if the HF hub model directory is fully downloaded: no in-flight
+    /// `.incomplete` blobs, and a real multi-GB weight payload (not a metadata-only
+    /// partial where only configs/tokenizer came down — e.g. a gated repo whose LFS
+    /// weights were blocked, which leaves no `.incomplete` marker).
     static func isCompleteHFCache(at dirURL: URL) -> Bool {
         let blobsURL = dirURL.appendingPathComponent("blobs")
-        guard let blobs = try? FileManager.default.contentsOfDirectory(atPath: blobsURL.path),
-              !blobs.isEmpty else { return false }
-        return !blobs.contains { $0.hasSuffix(".incomplete") }
+        guard let blobs = try? FileManager.default.contentsOfDirectory(
+            at: blobsURL, includingPropertiesForKeys: [.fileSizeKey]
+        ), !blobs.isEmpty else { return false }
+        if blobs.contains(where: { $0.lastPathComponent.hasSuffix(".incomplete") }) { return false }
+        let totalBytes = blobs.reduce(0) { sum, url in
+            sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
+        // Every supported model's weights are multiple GB; a config-only partial is ~tens of MB.
+        return totalBytes > 1_073_741_824
     }
 
     /// Returns true if mflux-saved weights already exist at the given path.

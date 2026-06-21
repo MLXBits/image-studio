@@ -64,11 +64,11 @@ struct Ideogram4ParamsPanelView: View {
                 params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
             }
 
-            // HF token warning — only FP8 is gated. Q8/Q4 load public MLXBits
-            // repos, so no token is needed there. Low RAM and strict validation
-            // now live in Settings → Models → Ideogram.
-            if params.quantize == 0, (settings.ideogram4ModelRepoOverride ?? "").isEmpty,
-               settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: 0) {
+            // HF token warning — every Ideogram variant (FP8 + the MLXBits Q8/Q4
+            // repos) is gated, so a token is required unless a model-source override
+            // points elsewhere. Low RAM and strict validation live in Settings.
+            if (settings.ideogram4ModelRepoOverride ?? "").isEmpty,
+               settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
                 hfTokenWarning
             }
 
@@ -207,7 +207,7 @@ struct Ideogram4ParamsPanelView: View {
                     .font(.caption)
                     .fontWeight(.semibold)
                 Text(
-                    "Ideogram 4 is a gated model (~28 GB). Request access on the model card, "
+                    "Ideogram 4 is gated (all precisions). Request access on the model card, "
                         + "then set your HF token in Settings → Advanced."
                 )
                 .font(.caption)

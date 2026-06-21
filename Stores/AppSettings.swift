@@ -177,6 +177,15 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// The Hugging Face hub cache directory (`$HF_HOME/hub`, or the default under ~/.cache).
+    var hfHubDir: URL {
+        if !hfHome.isEmpty {
+            URL(fileURLWithPath: hfHome).appendingPathComponent("hub")
+        } else {
+            URL(fileURLWithPath: NSHomeDirectory()).appendingPathComponent(".cache/huggingface/hub")
+        }
+    }
+
     var mfluxCacheDir: String {
         didSet { save() }
     }
@@ -478,12 +487,7 @@ class AppSettings {
 
     /// Returns true when Ideogram 4 model weights are already cached locally.
     func ideogram4ModelOnDisk(quantize: Int) -> Bool {
-        let hfBase = if !hfHome.isEmpty {
-            URL(fileURLWithPath: hfHome).appendingPathComponent("hub")
-        } else {
-            URL(fileURLWithPath: NSHomeDirectory())
-                .appendingPathComponent(".cache/huggingface/hub")
-        }
+        let hfBase = hfHubDir
         if quantize > 0 {
             // Q8/Q4 ship as published MLX repos and load straight from the hub cache.
             // The legacy mflux-save dir is never used for them (and may be stale), so

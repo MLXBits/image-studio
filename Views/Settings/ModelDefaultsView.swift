@@ -78,7 +78,7 @@ struct ModelDefaultsView: View {
             Section("Ideogram") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Ideogram 4").font(.callout)
-                    Text("Preset-based · gated FP8")
+                    Text("Preset-based · gated · FP8/Q8/Q4")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 2)
@@ -114,8 +114,7 @@ struct ModelDefaultsView: View {
             quantize = settings.defaults(for: selectedModel).quantize ?? selectedModel.recommendedQuantize
             typeLabel = selectedModel.isDistilled ? "Distilled" : "Base model"
         }
-        let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
-        let vramGB = selectedModel.approximateBF16SizeGB * factor
+        let vramGB = selectedModel.approximateSizeGB(quantize: quantize)
         let quantLabel = quantize == 0 ? selectedModel.baseWeightLabel : "Q\(quantize)"
         let vramColor: Color = vramGB > 30 ? .orange : vramGB > 18 ? .yellow : .green
 
@@ -151,12 +150,19 @@ struct ModelDefaultsView: View {
             }
 
             if selectedModel.isIdeogram4 {
-                Text(
-                    "Gated model — accept access at huggingface.co/ideogram-ai/ideogram-4-fp8,"
-                        + " then set your HF token in Settings → Advanced."
-                )
+                // Single string literal (no `+`) so the markdown links render and stay
+                // clickable. FP8 is Ideogram's gated repo; Q8/Q4 are the MLXBits MLX
+                // conversions, each gated on their own card.
+                Text("""
+                Gated — accept access on each source repo, then set your HF token in \
+                Settings → Advanced. \
+                FP8: [ideogram-ai/ideogram-4-fp8](https://huggingface.co/ideogram-ai/ideogram-4-fp8). \
+                Q8: [MLXBits/ideogram-4-mlx-q8](https://huggingface.co/MLXBits/ideogram-4-mlx-q8). \
+                Q4: [MLXBits/ideogram-4-mlx-q4](https://huggingface.co/MLXBits/ideogram-4-mlx-q4).
+                """)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+                .tint(.accentColor)
                 .fixedSize(horizontal: false, vertical: true)
             } else {
                 Text(
@@ -197,13 +203,19 @@ struct ModelDefaultsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    let verb = model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
+                    // Ideogram always downloads a pre-quantized repo; only Flux converts
+                    // from a local BF16 base.
+                    let verb = !model.isIdeogram4
+                        && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
                         ? "Converting" : "Downloading"
+                    // hf download emits noisy parallel progress bars that don't render
+                    // well in a plain log, so poll the on-disk payload for live feedback.
                     TimelineView(.periodic(from: cacheStartedAt ?? Date(), by: 1)) { ctx in
                         let elapsed = Int(ctx.date.timeIntervalSince(cacheStartedAt ?? ctx.date))
                         let mm = elapsed / 60
                         let ss = elapsed % 60
-                        Text("\(verb)… \(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s")
+                        let time = "\(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s"
+                        Text("\(verb)… \(time)\(downloadedSuffix(model: model, quantize: quantize))")
                             .font(.caption).foregroundStyle(.secondary)
                     }
                     Spacer()
@@ -252,18 +264,12 @@ struct ModelDefaultsView: View {
                     .foregroundStyle(.green)
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
-                // Ideogram 4: quantization not supported — FP8 only. Hide Q4/Q8 entirely.
-                let availableQuantLevels = model.isIdeogram4 ? [0] : [0, 4, 8]
-                ForEach(availableQuantLevels.filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
+                ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
                     let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
                     Button("Download \(qLabel)") {
                         startCache(model: model, quantize: qLevel)
                     }
                     .buttonStyle(.bordered).controlSize(.small)
-                }
-                if model.isIdeogram4 && !model.isOnDisk(quantize: 0, savedIn: cacheDir) {
-                    Text("~28 GB · quantization not yet supported")
-                        .font(.caption2).foregroundStyle(.secondary)
                 }
                 Spacer()
             }
@@ -286,7 +292,98 @@ struct ModelDefaultsView: View {
         cacheLog = ""
         cacheStartedAt = Date()
         userCancelledCache = false
-        Task { await runMfluxSave(model: model, quantize: quantize) }
+        // Ideogram loads pre-quantized weights straight from the HF cache, so a plain
+        // `hf download` of the source repo is all that's needed — no mflux-save
+        // quantize pass (which would also leave a redundant ~27 GB copy on disk).
+        if model.isIdeogram4 {
+            Task { await runIdeogramDownload(model: model, quantize: quantize) }
+        } else {
+            Task { await runMfluxSave(model: model, quantize: quantize) }
+        }
+    }
+
+    /// " · 4.4 / 27 GB" while an Ideogram repo is downloading, polled from the blobs
+    /// dir (includes in-flight `.incomplete` files). Empty for other models / no bytes yet.
+    private func downloadedSuffix(model: FluxModelVariant, quantize: Int) -> String {
+        guard model.isIdeogram4 else { return "" }
+        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
+        let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
+        let blobs = settings.hfHubDir.appendingPathComponent(cacheName).appendingPathComponent("blobs")
+        guard let entries = try? FileManager.default.contentsOfDirectory(
+            at: blobs, includingPropertiesForKeys: [.fileSizeKey]
+        ) else { return "" }
+        let bytes = entries.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        guard bytes > 0 else { return "" }
+        let gb = Double(bytes) / 1_073_741_824
+        let total = model.approximateSizeGB(quantize: quantize)
+        return total > 0
+            ? " · \(String(format: "%.1f", gb)) / \(String(format: "%.0f", total)) GB"
+            : " · \(String(format: "%.1f", gb)) GB"
+    }
+
+    private func runIdeogramDownload(model: FluxModelVariant, quantize: Int) async {
+        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
+        // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
+        let hfBinary = BinaryDetector.detect("hf")
+        guard !hfBinary.isEmpty else {
+            cachePhase = .failed("Hugging Face CLI (hf) not found. Install it (e.g. brew install huggingface-cli).")
+            return
+        }
+        cacheLog = "▸ Downloading \(repo) into the Hugging Face cache…\n"
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: hfBinary)
+        process.arguments = ["download", repo]
+        process.environment = settings.buildEnvironment()
+
+        guard await runStreamingToCacheLog(process) else { return }
+
+        if process.terminationStatus == 0 {
+            cacheLog += "\n✓ Cached \(repo)."
+            cachePhase = .done
+            cacheRevision = UUID()
+        } else if process.terminationReason == .uncaughtSignal {
+            cachePhase = userCancelledCache ? .idle : .failed("Download interrupted. Check the log below.")
+        } else {
+            cachePhase = .failed("hf exited with status \(process.terminationStatus). Check the log below.")
+        }
+    }
+
+    /// Runs `process` with combined stdout/stderr streamed line-by-line into cacheLog.
+    /// Returns false (and sets cachePhase = .failed) if the process couldn't be launched;
+    /// otherwise returns after exit so the caller can inspect terminationStatus/reason.
+    private func runStreamingToCacheLog(_ process: Process) async -> Bool {
+        cacheProcess = process
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        process.standardError = pipe
+        let stream = AsyncStream<String> { continuation in
+            pipe.fileHandleForReading.readabilityHandler = { handle in
+                let data = handle.availableData
+                if data.isEmpty {
+                    continuation.finish()
+                } else if let text = String(data: data, encoding: .utf8) {
+                    continuation.yield(text)
+                }
+            }
+            process.terminationHandler = { _ in
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    pipe.fileHandleForReading.readabilityHandler = nil
+                    continuation.finish()
+                }
+            }
+        }
+        do { try process.run() } catch {
+            cacheProcess = nil
+            cachePhase = .failed(error.localizedDescription)
+            return false
+        }
+        for await chunk in stream {
+            cacheLog = appendCacheLog(chunk, to: cacheLog)
+        }
+        process.waitUntilExit()
+        cacheProcess = nil
+        return true
     }
 
     private func runMfluxSave(model: FluxModelVariant, quantize: Int) async {
@@ -324,40 +421,8 @@ struct ModelDefaultsView: View {
         process.executableURL = URL(fileURLWithPath: saveBinary)
         process.arguments = args
         process.environment = settings.buildEnvironment()
-        cacheProcess = process
 
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
-
-        do { try process.run() } catch {
-            cacheProcess = nil
-            cachePhase = .failed(error.localizedDescription)
-            return
-        }
-
-        for await chunk in stream {
-            cacheLog = appendCacheLog(chunk, to: cacheLog)
-        }
-        process.waitUntilExit()
-        cacheProcess = nil
+        guard await runStreamingToCacheLog(process) else { return }
 
         if process.terminationStatus == 0 {
             let savedFiles = (try? FileManager.default.contentsOfDirectory(
