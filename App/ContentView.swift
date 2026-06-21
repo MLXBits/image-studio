@@ -173,6 +173,53 @@ struct ContentView: View {
             .frame(maxHeight: .infinity)
     }
 
+    /// Routes the precision picker to the active family's quantize, persisting
+    /// the Ideogram choice. Mirrors the binding ParamsPanelView used to own.
+    private var unifiedQuantize: Binding<Int> {
+        Binding(
+            get: { params.model.isIdeogram4 ? ideogramParams.quantize : params.quantize },
+            set: { v in
+                if params.model.isIdeogram4 {
+                    ideogramParams.quantize = v
+                    settings.lastIdeogramQuantize = v
+                } else {
+                    params.quantize = v
+                }
+            }
+        )
+    }
+
+    /// Model selector for the top header. Switching the model resets the
+    /// dependent Flux defaults (steps/guidance/dims) just as before.
+    private var headerModelPicker: some View {
+        ModelPickerView(
+            model: $params.model,
+            customModelRepo: $params.customModelRepo,
+            customBaseModel: $params.customBaseModel,
+            quantize: unifiedQuantize
+        )
+        .onChange(of: params.model) { _, m in
+            if m.isIdeogram4 {
+                ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                return
+            }
+            guard m != .custom else { return }
+            let d = settings.resolvedDefaults(for: m)
+            params.steps = d.steps
+            params.guidance = d.guidance
+            params.quantize = d.quantize
+            params.lowRam = d.lowRam
+            params.negativePrompt = d.negativePrompt
+            params.width = d.width
+            params.height = d.height
+            params.loras = d.loras.isEmpty
+                ? settings.defaultLoras.filter { $0.modelFamily == .flux }
+                : d.loras
+            params.isEditMode = false
+            params.editImagePaths = []
+        }
+    }
+
     private var previewPaneView: some View {
         PreviewPaneView(
             state: previewState,
@@ -476,7 +523,8 @@ struct ContentView: View {
 
     private var topControlBar: some View {
         HStack(spacing: 0) {
-            Spacer()
+            headerModelPicker
+            Spacer(minLength: 16)
             HStack(spacing: 12) {
                 let canGenerate: Bool = switch params.modelFamily {
                 case .flux:

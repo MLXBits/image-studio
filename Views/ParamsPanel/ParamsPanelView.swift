@@ -30,59 +30,11 @@ struct ParamsPanelView: View {
         params.model.isDistilled
     }
 
-    private var unifiedQuantize: Binding<Int> {
-        Binding(
-            get: { params.model.isIdeogram4 ? ideogramParams.quantize : params.quantize },
-            set: { v in
-                if params.model.isIdeogram4 {
-                    ideogramParams.quantize = v
-                    settings.lastIdeogramQuantize = v
-                } else {
-                    params.quantize = v
-                }
-            }
-        )
-    }
-
     var body: some View {
+        // The model selector lives in the top header now (ContentView.topControlBar);
+        // this panel covers the family-specific params only.
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                // Model — single picker covering FLUX.2 variants, Ideogram 4, and Custom
-                SectionContainerView(title: "Model", info: nil) {
-                    ModelPickerView(
-                        model: $params.model,
-                        customModelRepo: $params.customModelRepo,
-                        customBaseModel: $params.customBaseModel,
-                        quantize: unifiedQuantize
-                    )
-                    .onChange(of: params.model) { _, m in
-                        if m.isIdeogram4 {
-                            ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
-                            return
-                        }
-                        guard m != .custom else { return }
-                        let d = settings.resolvedDefaults(for: m)
-                        params.steps = d.steps
-                        params.guidance = d.guidance
-                        params.quantize = d.quantize
-                        params.lowRam = d.lowRam
-                        params.negativePrompt = d.negativePrompt
-                        params.width = d.width
-                        params.height = d.height
-                        params.loras = d.loras.isEmpty
-                            ? settings.defaultLoras.filter { $0.modelFamily == .flux }
-                            : d.loras
-                        params.isEditMode = false
-                        params.editImagePaths = []
-                    }
-
-                    if params.model != .custom, !params.model.isIdeogram4 {
-                        modePickerRow
-                    }
-                }
-
-                Divider()
-
                 if params.modelFamily == .flux {
                     fluxContent
                 } else {
@@ -101,6 +53,12 @@ struct ParamsPanelView: View {
 
     @ViewBuilder
     private var fluxContent: some View {
+        // Generation mode (Generate vs Edit) — not shown for custom repos.
+        if params.model != .custom {
+            modePickerRow
+            Divider()
+        }
+
         // Style
         SectionContainerView(
             title: "Style",
