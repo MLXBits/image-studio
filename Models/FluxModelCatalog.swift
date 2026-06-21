@@ -191,6 +191,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
     /// then falling back to the HuggingFace hub cache.
     func isOnDisk(quantize: Int, savedIn cacheDir: URL) -> Bool {
+        // Ideogram Q8/Q4 load pre-quantized weights straight from the HF cache; the
+        // legacy mflux-save dir is never used for them and may be stale, so ignore it
+        // and report on-disk purely from the published repo's cache.
+        if isIdeogram4, quantize > 0, preQuantizedRepoID(quantize: quantize) != nil {
+            return isOnDisk(quantize: quantize)
+        }
         let savePath = savedModelPath(quantize: quantize, in: cacheDir)
         if Self.hasSavedWeights(at: savePath) { return true }
         return isOnDisk(quantize: quantize)
