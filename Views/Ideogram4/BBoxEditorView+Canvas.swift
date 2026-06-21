@@ -95,11 +95,18 @@ extension BBoxEditorView {
 
         ForEach(BBoxResizeHandle.allCases, id: \.self) { handle in
             let pt = BBoxGeometry.handlePoint(handle, in: rect)
+            // The visible dot stays small, but the draggable region is a larger
+            // transparent square centered on the handle. A bare Circle only
+            // hit-tests its filled path — a 10pt target whose edges read as
+            // "not the whole dot". The padded frame + Rectangle contentShape
+            // makes the entire `handleHitSize` square grab the handle.
             Circle()
                 .fill(color)
                 .stroke(.white, lineWidth: 1.5)
                 .frame(width: handleRadius * 2, height: handleRadius * 2)
-                .offset(x: pt.x - handleRadius, y: pt.y - handleRadius)
+                .frame(width: handleHitSize, height: handleHitSize)
+                .contentShape(Rectangle())
+                .offset(x: pt.x - handleHitSize / 2, y: pt.y - handleHitSize / 2)
                 .gesture(handleDragGesture(handle: handle, element: element, canvasSize: canvasSize))
         }
     }

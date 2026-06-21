@@ -47,6 +47,9 @@ struct BBoxEditorView: View {
     @FocusState var isPopoverFocused: Bool
 
     let handleRadius: CGFloat = 5
+    /// Side of the transparent square hit area around each resize handle. Larger
+    /// than the visible dot (`handleRadius * 2`) so the whole circle is grabbable.
+    let handleHitSize: CGFloat = 20
     let minBoxNorm: Int = 20
     // swiftlint:enable private_swiftui_state
 
