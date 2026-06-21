@@ -35,11 +35,11 @@ struct ModelPickerView: View {
                 + " Clear the override in Settings to choose FP8 / Q8 / Q4 again."
         }
         if model.isIdeogram4 {
-            return "Ideogram 4 ships as FP8 (~28 GB, gated)."
-                + " Q8 (~27 GB) and Q4 (~15 GB) load pre-quantized MLX weights from MLXBits —"
-                + " no Hugging Face token needed for those, and no one-time save step."
-                + " FP8 requires accepting terms at huggingface.co/ideogram-ai/ideogram-4-fp8"
-                + " plus an HF token in Settings → Advanced."
+            return "Ideogram 4 ships as FP8 (~28 GB)."
+                + " Q8 (~27 GB) and Q4 (~15 GB) load pre-quantized MLX weights from MLXBits"
+                + " with no one-time save step."
+                + " All variants are gated — accept terms on the model card and set an HF token"
+                + " in Settings → Advanced."
         }
         return "Choose your Flux.2 model variant and weight precision."
             + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
@@ -51,17 +51,24 @@ struct ModelPickerView: View {
         // below them on a second row.
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
-                Picker("Model", selection: $model) {
+                // A `Menu` (vs `Picker(.menu)`) renders as a pull-down: the menu
+                // always anchors below the button and lists every item from the
+                // top, regardless of which is selected. A popup Picker instead
+                // aligns the selected row to the button, which pushed the Flux
+                // variants off-screen when Ideogram (near the list bottom) was
+                // selected. Checkmarks below preserve the selection indicator.
+                Menu {
                     ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                        Text(v.displayName).tag(v)
+                        modelMenuButton(v.displayName, value: v)
                     }
                     Divider()
-                    Text("Ideogram 4").tag(FluxModelVariant.ideogram4)
+                    modelMenuButton("Ideogram 4", value: .ideogram4)
                     Divider()
-                    Text("Custom…").tag(FluxModelVariant.custom)
+                    modelMenuButton("Custom…", value: .custom)
+                } label: {
+                    Text(modelMenuLabel)
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
+                .menuStyle(.button)
                 .fixedSize()
                 .accessibilityLabel("Model")
                 .accessibilityHint("Selects the model for generation")
@@ -74,13 +81,16 @@ struct ModelPickerView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Model source overridden in Settings")
                 } else if model != .custom {
-                    Picker("Precision", selection: $quantize) {
-                        Text(model.baseWeightLabel).tag(0)
-                        Text("Q8").tag(8)
-                        Text("Q4").tag(4)
+                    // Pull-down Menu to match the Model selector above (a popup
+                    // Picker would align the selected row to the button instead).
+                    Menu {
+                        precisionMenuButton(model.baseWeightLabel, value: 0)
+                        precisionMenuButton("Q8", value: 8)
+                        precisionMenuButton("Q4", value: 4)
+                    } label: {
+                        Text(precisionMenuLabel)
                     }
-                    .pickerStyle(.menu)
-                    .labelsHidden()
+                    .menuStyle(.button)
                     .fixedSize()
                     .accessibilityLabel("Quantization")
                     .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
@@ -106,6 +116,25 @@ struct ModelPickerView: View {
                     estimatePills(estimate)
                 }
             }
+        }
+    }
+
+    // MARK: - Model menu
+
+    /// Label shown on the closed Model menu button.
+    private var modelMenuLabel: String {
+        switch model {
+        case .custom: "Custom…"
+        default: model.displayName
+        }
+    }
+
+    /// Label shown on the closed Precision menu button.
+    private var precisionMenuLabel: String {
+        switch quantize {
+        case 8: "Q8"
+        case 4: "Q4"
+        default: model.baseWeightLabel
         }
     }
 
@@ -147,7 +176,17 @@ struct ModelPickerView: View {
         let gb = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
-        let color: Color = gb > 30 ? .orange : gb > 18 ? .yellow : .green
+        // Color relative to this machine's physical memory, not fixed GB cutoffs:
+        // green with comfortable headroom for activations + OS, yellow when tight,
+        // orange when it likely won't fit, red when it almost certainly won't.
+        let totalRAMGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        let ramFraction = totalRAMGB > 0 ? gb / totalRAMGB : 1.0
+        let color: Color = switch ramFraction {
+        case ..<0.6: .green
+        case ..<0.8: .yellow
+        case ..<0.9: .orange
+        default: .red
+        }
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
         // The disk pill is a binary download-state signal — green when cached,
         // neutral "download" otherwise. Size-based warning colors live on the RAM
@@ -172,6 +211,32 @@ struct ModelPickerView: View {
             onDisk: onDisk,
             diskInfoTitle: diskInfoTitle, diskInfoBody: diskInfoBody
         )
+    }
+
+    /// A menu row that selects `value` and shows a checkmark when active.
+    private func modelMenuButton(_ title: String, value: FluxModelVariant) -> some View {
+        Button {
+            model = value
+        } label: {
+            if model == value {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+    }
+
+    /// A precision menu row that selects `value` and shows a checkmark when active.
+    private func precisionMenuButton(_ title: String, value: Int) -> some View {
+        Button {
+            quantize = value
+        } label: {
+            if quantize == value {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
     }
 
     // MARK: - Estimate pills (inline, beside the selector)
