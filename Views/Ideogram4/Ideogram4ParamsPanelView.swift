@@ -64,9 +64,11 @@ struct Ideogram4ParamsPanelView: View {
                 params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
             }
 
-            // HF token warning — Low RAM and strict validation now live in
-            // Settings → Models → Ideogram.
-            if settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
+            // HF token warning — only FP8 is gated. Q8/Q4 load public MLXBits
+            // repos, so no token is needed there. Low RAM and strict validation
+            // now live in Settings → Models → Ideogram.
+            if params.quantize == 0, (settings.ideogram4ModelRepoOverride ?? "").isEmpty,
+               settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: 0) {
                 hfTokenWarning
             }
 

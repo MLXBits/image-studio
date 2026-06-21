@@ -19,6 +19,32 @@ struct ModelPickerView: View {
     @Binding var quantize: Int
     @Environment(AppSettings.self) private var settings
 
+    /// Non-nil when an Ideogram 4 model-source override is set in Settings.
+    /// The override names a specific repo/path, so the precision selector is inert.
+    private var ideogramOverride: String? {
+        guard model.isIdeogram4 else { return nil }
+        let repo = (settings.ideogram4ModelRepoOverride ?? "").trimmingCharacters(in: .whitespaces)
+        return repo.isEmpty ? nil : repo
+    }
+
+    private var infoDescription: String {
+        if let repo = ideogramOverride {
+            return "Model source is overridden in Settings → Models → Ideogram (\(repo))."
+                + " That repo/path is used as-is, so the precision selector is disabled."
+                + " Clear the override in Settings to choose FP8 / Q8 / Q4 again."
+        }
+        if model.isIdeogram4 {
+            return "Ideogram 4 ships as FP8 (~28 GB, gated)."
+                + " Q8 (~27 GB) and Q4 (~15 GB) load pre-quantized MLX weights from MLXBits —"
+                + " no Hugging Face token needed for those, and no one-time save step."
+                + " FP8 requires accepting terms at huggingface.co/ideogram-ai/ideogram-4-fp8"
+                + " plus an HF token in Settings → Advanced."
+        }
+        return "Choose your Flux.2 model variant and weight precision."
+            + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
+            + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
             // Model + quantize row
@@ -37,13 +63,14 @@ struct ModelPickerView: View {
                 .accessibilityLabel("Model")
                 .accessibilityHint("Selects the model for generation")
 
-                if model.isIdeogram4 {
-                    Text("FP8")
+                if ideogramOverride != nil {
+                    Label("Override", systemImage: "gearshape")
                         .font(.caption)
                         .padding(.horizontal, 8).padding(.vertical, 3)
                         .background(.secondary.opacity(0.12), in: Capsule())
                         .foregroundStyle(.secondary)
-                } else {
+                        .accessibilityLabel("Model source overridden in Settings")
+                } else if model != .custom {
                     Picker("Precision", selection: $quantize) {
                         Text(model.baseWeightLabel).tag(0)
                         Text("Q8").tag(8)
@@ -56,14 +83,8 @@ struct ModelPickerView: View {
                     .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
                 }
 
-                if model != .custom && !model.isIdeogram4
-                    && model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
-                    Image(systemName: "checkmark.circle.fill")
-                        .foregroundStyle(.green)
-                        .font(.caption)
-                        .accessibilityLabel("Model weights cached on disk")
-                }
-                if model.isIdeogram4 && model.isOnDisk {
+                if ideogramOverride == nil, model != .custom,
+                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -72,14 +93,7 @@ struct ModelPickerView: View {
 
                 InfoButton(
                     title: "Model & Precision",
-                    description: model.isIdeogram4
-                        ? "Ideogram 4 uses FP8 weights (~28 GB). Quantization is not yet supported —"
-                        + " the full 28 GB is always used regardless of setting."
-                        + " Accept terms at huggingface.co/ideogram-ai/ideogram-4-fp8,"
-                        + " then set your HF token in Settings → Advanced."
-                        : "Choose your Flux.2 model variant and weight precision."
-                        + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
-                        + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
+                    description: infoDescription
                 )
             }
 
@@ -163,10 +177,9 @@ struct ModelPickerView: View {
     }
 
     private var vramEstimate: VRAMEstimate? {
-        guard model != .custom else { return nil }
-        let sizeGB = model.approximateBF16SizeGB
-        let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
-        let gb = sizeGB * factor
+        // A Settings override names an arbitrary repo/path of unknown size — no estimate.
+        guard model != .custom, ideogramOverride == nil else { return nil }
+        let gb = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
         let color: Color = gb > 30 ? .orange : gb > 18 ? .yellow : .green
