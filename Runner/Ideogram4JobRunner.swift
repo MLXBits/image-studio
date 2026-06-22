@@ -1,5 +1,3 @@
-// swiftlint:disable file_length
-import AppKit
 import Foundation
 
 /// Executes Ideogram 4 generation jobs by driving the `mflux-generate-ideogram4` CLI.
@@ -30,7 +28,7 @@ final class Ideogram4JobRunner {
     private(set) var inSession: Bool = false
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
-    private var stepwiseSource: (any DispatchSourceProtocol)?
+    private let stepwiseWatcher = StepwiseWatcher()
     private var batchPollingTask: Task<Void, Never>?
 
     // MARK: - Public
@@ -74,7 +72,10 @@ final class Ideogram4JobRunner {
 
         let stepDir = Self.cacheBase.appendingPathComponent(job.id.uuidString, isDirectory: true)
         try? FileManager.default.createDirectory(at: stepDir, withIntermediateDirectories: true)
-        startStepwiseWatcher(job: job, dir: stepDir)
+        stepwiseWatcher.start(dir: stepDir) { [weak job] latest in
+            guard let job, latest != job.latestStepwisePath else { return }
+            job.latestStepwisePath = latest
+        }
 
         let binaryPath = settings.mfluxIdeogram4BinaryPath()
         guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
@@ -131,10 +132,11 @@ final class Ideogram4JobRunner {
         process.arguments = args
         process.environment = settings.buildEnvironment()
 
-        let stream = makeOutputStream(for: process)
+        self.currentProcess = process
+        let stream = RunnerSupport.outputStream(for: process)
 
         let batchPaths: [(seed: Int, path: String)] = isMultiSeed
-            ? expandedPaths(from: outputTemplate, seeds: job.seeds)
+            ? RunnerSupport.expandedPaths(from: outputTemplate, seeds: job.seeds)
             : []
 
         if isMultiSeed {
@@ -157,15 +159,15 @@ final class Ideogram4JobRunner {
         let expectedSteps = job.preset.stepCount
 
         for await chunk in stream {
-            job.log = appendLog(chunk, to: job.log)
+            job.log = RunnerSupport.appendLog(chunk, to: job.log)
             if let progress = JobProgressParser.parseStep(from: job.log),
                progress.total == expectedSteps {
                 if !seenFirstStep {
                     seenFirstStep = true
                     loadEndTime = Date()
                     let loadSecs = loadEndTime.map { $0.timeIntervalSince(jobStartTime) } ?? 0
-                    let label = "▸ Encoding caption...  (loaded in \(formatDuration(loadSecs)))\n"
-                    job.log = insertBeforeLastLine(job.log, text: label)
+                    let label = "▸ Encoding caption...  (loaded in \(RunnerSupport.formatDuration(loadSecs)))\n"
+                    job.log = RunnerSupport.insertBeforeLastLine(job.log, text: label)
                 }
                 if !seenLastStep && progress.current == progress.total {
                     seenLastStep = true
@@ -188,28 +190,28 @@ final class Ideogram4JobRunner {
         if process.terminationStatus == 0 {
             let totalSecs = Date().timeIntervalSince(jobStartTime)
             let decodeSecs = denoiseEndTime.map { Date().timeIntervalSince($0) }
-            let timing = decodeSecs.map { "decoded in \(formatDuration($0)) · " } ?? ""
+            let timing = decodeSecs.map { "decoded in \(RunnerSupport.formatDuration($0)) · " } ?? ""
 
             if isMultiSeed {
                 let paths = batchPaths.map(\.path)
                 job.outputPaths = paths
-                job.outputThumbnails = paths.map { loadThumbnail(at: $0) ?? Data() }
+                job.outputThumbnails = paths.map { RunnerSupport.loadThumbnail(at: $0) ?? Data() }
                 job.outputPath = paths.first
                 job.thumbnailData = job.outputThumbnails.first
                 for item in batchPaths
                     where FileManager.default.fileExists(atPath: item.path)
-                    && isPNGComplete(at: item.path)
+                    && RunnerSupport.isPNGComplete(at: item.path)
                     && !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
                     var meta = Ideogram4Metadata.from(job: job)
                     meta.seed = item.seed
                     MetadataSidecar.writeIdeogram4(meta, for: item.path)
                 }
-                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(formatDuration(totalSecs)))\n"
+                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(RunnerSupport.formatDuration(totalSecs)))\n"
                 if job.completedSeedsInBatch == 0 { lastCompletedOutputPath = paths.first }
             } else {
                 job.outputPath = outputTemplate
-                job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(formatDuration(totalSecs)))\n"
-                job.thumbnailData = loadThumbnail(at: outputTemplate)
+                job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(RunnerSupport.formatDuration(totalSecs)))\n"
+                job.thumbnailData = RunnerSupport.loadThumbnail(at: outputTemplate)
                 MetadataSidecar.writeIdeogram4(Ideogram4Metadata.from(job: job), for: outputTemplate)
                 lastCompletedOutputPath = outputTemplate
             }
@@ -253,7 +255,8 @@ final class Ideogram4JobRunner {
         process.arguments = args
         process.environment = settings.buildEnvironment()
 
-        let stream = makeOutputStream(for: process)
+        self.currentProcess = process
+        let stream = RunnerSupport.outputStream(for: process)
         do { try process.run() } catch {
             self.currentProcess = nil
             job.log += "⚠️  mflux-save failed: \(error.localizedDescription)\n"
@@ -261,7 +264,7 @@ final class Ideogram4JobRunner {
         }
 
         for await chunk in stream {
-            job.log = appendLog(chunk, to: job.log)
+            job.log = RunnerSupport.appendLog(chunk, to: job.log)
             if let last = job.log.components(separatedBy: "\n")
                 .last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty && !$0.hasPrefix("$") }) {
                 job.statusLine = last
@@ -283,60 +286,7 @@ final class Ideogram4JobRunner {
         return .failed
     }
 
-    // MARK: - Stepwise watcher
-
-    private func startStepwiseWatcher(job: Ideogram4Job, dir: URL) {
-        stopStepwiseWatcher()
-        let fd = open(dir.path, O_EVTONLY)
-        guard fd >= 0 else { return }
-        let source = DispatchSource.makeFileSystemObjectSource(
-            fileDescriptor: fd, eventMask: .write, queue: .main
-        )
-        source.setEventHandler { [weak self, weak job] in
-            guard let self, let job else { return }
-            self.pollStepwise(job: job, dir: dir)
-        }
-        source.setCancelHandler { close(fd) }
-        source.resume()
-        stepwiseSource = source
-        pollStepwise(job: job, dir: dir)
-    }
-
-    private func stopStepwiseWatcher() {
-        stepwiseSource?.cancel()
-        stepwiseSource = nil
-    }
-
-    private func pollStepwise(job: Ideogram4Job, dir: URL) {
-        guard let files = try? FileManager.default.contentsOfDirectory(
-            at: dir, includingPropertiesForKeys: [.creationDateKey]
-        ) else { return }
-        let latest = files
-            .filter {
-                $0.pathExtension.lowercased() == "png"
-                    && !$0.lastPathComponent.contains("composite")
-                    && !$0.lastPathComponent.hasPrefix(".")
-                    && isPNGComplete(at: $0.path)
-            }
-            .max {
-                let a = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-                let b = (try? $1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-                return a < b
-            }
-        if latest?.path != job.latestStepwisePath {
-            job.latestStepwisePath = latest?.path
-        }
-    }
-
     // MARK: - Batch polling
-
-    private func expandedPaths(from template: String, seeds: [Int]) -> [(seed: Int, path: String)] {
-        let url = URL(fileURLWithPath: template)
-        let stem = url.deletingPathExtension().lastPathComponent
-        let ext = url.pathExtension
-        let dir = url.deletingLastPathComponent().path
-        return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
-    }
 
     private func startBatchPoller(job: Ideogram4Job, paths: [(seed: Int, path: String)]) {
         batchPollingTask?.cancel()
@@ -347,7 +297,7 @@ final class Ideogram4JobRunner {
             while found.count < paths.count, !Task.isCancelled {
                 for item in paths where !found.contains(item.path) {
                     guard FileManager.default.fileExists(atPath: item.path),
-                          isPNGComplete(at: item.path) else { continue }
+                          RunnerSupport.isPNGComplete(at: item.path) else { continue }
                     found.insert(item.path)
                     let imageGeneratedAt = Date()
                     var meta = Ideogram4Metadata.from(job: job)
@@ -458,7 +408,7 @@ final class Ideogram4JobRunner {
     private func finishJob(_ job: Ideogram4Job, status: JobStatus, stepDir: URL) {
         batchPollingTask?.cancel()
         batchPollingTask = nil
-        stopStepwiseWatcher()
+        stepwiseWatcher.stop()
         try? FileManager.default.removeItem(at: stepDir)
         job.status = status
         job.completedAt = Date()
@@ -469,90 +419,5 @@ final class Ideogram4JobRunner {
             activeJob = nil
             sessionCompleted += 1
         }
-    }
-
-    private func makeOutputStream(for process: Process) -> AsyncStream<String> {
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        self.currentProcess = process
-
-        return AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
-    }
-
-    private func isPNGComplete(at path: String) -> Bool {
-        guard let handle = FileHandle(forReadingAtPath: path) else { return false }
-        defer { handle.closeFile() }
-        let size = handle.seekToEndOfFile()
-        guard size >= 12 else { return false }
-        handle.seek(toFileOffset: size - 4)
-        let tail = handle.readDataToEndOfFile()
-        return tail.count == 4 && tail[0] == 0xAE && tail[1] == 0x42 && tail[2] == 0x60 && tail[3] == 0x82
-    }
-
-    private func loadThumbnail(at path: String) -> Data? {
-        guard let img = NSImage(contentsOfFile: path) else { return nil }
-        let imgSize = img.size
-        guard imgSize.width > 0, imgSize.height > 0 else { return nil }
-        let side = min(imgSize.width, imgSize.height)
-        let srcRect = NSRect(
-            x: (imgSize.width - side) / 2,
-            y: (imgSize.height - side) / 2,
-            width: side, height: side
-        )
-        let size = CGSize(width: 200, height: 200)
-        let thumb = NSImage(size: size)
-        thumb.lockFocus()
-        img.draw(in: NSRect(origin: .zero, size: size), from: srcRect, operation: .copy, fraction: 1.0)
-        thumb.unlockFocus()
-        guard let tiff = thumb.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff) else { return nil }
-        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
-    }
-
-    private func formatDuration(_ seconds: TimeInterval) -> String {
-        if seconds < 60 { return String(format: "%.1fs", seconds) }
-        return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
-    }
-
-    private func insertBeforeLastLine(_ log: String, text: String) -> String {
-        if let lastNewline = log.lastIndex(of: "\n") {
-            let split = log.index(after: lastNewline)
-            let head = String(log[...lastNewline])
-            let tail = String(log[split...])
-            return head + text + tail
-        }
-        return text + log
-    }
-
-    private func appendLog(_ chunk: String, to log: String) -> String {
-        var result = log
-        for char in chunk {
-            if char == "\r" {
-                if let nl = result.lastIndex(of: "\n") {
-                    result = String(result[...nl])
-                } else {
-                    result = ""
-                }
-            } else {
-                result.append(char)
-            }
-        }
-        return result
     }
 }
