@@ -322,46 +322,6 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.tertiary)
             }
 
-            Section {
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
-                        .textFieldStyle(.roundedBorder)
-                    Text(
-                        "HF repo ID or local path for the Gemma model used to generate structured Ideogram 4 captions. " +
-                            "Requires mlx_lm — install with: uv tool install mlx-lm"
-                    )
-                    .font(.caption).foregroundStyle(.secondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                }
-                .padding(.vertical, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    let uvPath = NSHomeDirectory() + "/.local/bin/uv"
-                    let uvFound = FileManager.default.fileExists(atPath: uvPath)
-                    HStack(spacing: 6) {
-                        Image(systemName: uvFound ? "checkmark.circle.fill" : "xmark.circle.fill")
-                            .foregroundStyle(uvFound ? Color.green : Color.red)
-                        Text(uvFound ? "uv found — mlx-lm>=0.31.3 managed automatically" : "uv not found at ~/.local/bin/uv")
-                            .font(.caption).foregroundStyle(.secondary)
-                            .lineLimit(1).truncationMode(.middle)
-                    }
-                }
-                .padding(.vertical, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    TextField("e.g. ideogram-ai/ideogram-4-fp8", text: Binding(
-                        get: { s.ideogram4ModelRepoOverride ?? "" },
-                        set: { s.ideogram4ModelRepoOverride = $0.isEmpty ? nil : $0 }
-                    ))
-                    .textFieldStyle(.roundedBorder)
-                    Text("Override the Ideogram 4 model repo (or path to saved weights). Leave blank to use the default.")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-            } header: {
-                Text("Ideogram 4 / Gemma")
-            }
-
             Section("UI") {
                 HStack {
                     Text("Log font size")
