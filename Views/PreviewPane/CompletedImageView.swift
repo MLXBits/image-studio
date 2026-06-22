@@ -2,8 +2,8 @@ import SwiftUI
 
 struct CompletedImageView: View {
     let job: FluxJob
-    let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
+    let onRemix: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
     var onShowFullSize: ((NSImage) -> Void)?
 

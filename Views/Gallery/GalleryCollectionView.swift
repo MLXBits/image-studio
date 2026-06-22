@@ -240,7 +240,22 @@ final class GalleryNSCollectionView: NSCollectionView {
 
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
-        case 123, 124, 125, 126: // Arrow keys — NSCollectionView handles 2D navigation
+        case 123, 124: // Left / Right — keep horizontal navigation within the board
+            let origin = selectionIndexPaths.first
+            allowsSelectionChange = true
+            super.keyDown(with: event)
+            allowsSelectionChange = false
+            // NSCollectionView linearizes items across sections, so Right on the
+            // last item of a short board (e.g. 3 images in a 4-wide row) jumps to
+            // the next board's first item. Revert any move that crossed a board.
+            if let origin, let moved = selectionIndexPaths.first, moved.section != origin.section {
+                selectionIndexPaths = [origin]
+            }
+            if let path = selectionIndexPaths.first {
+                eventDelegate?.didNavigate(to: path)
+            }
+
+        case 125, 126: // Up / Down — NSCollectionView handles 2D navigation across boards
             allowsSelectionChange = true
             super.keyDown(with: event)
             allowsSelectionChange = false
@@ -661,15 +676,24 @@ struct GalleryCollectionView: NSViewRepresentable {
 
             if let meta = item.metadata {
                 menu.addItem(.separator())
-                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemix(meta) })
                 menu.addItem(menuItem("Apply Settings") { [weak self] in
                     var corrected = meta
                     corrected.board = item.board == "Default" ? nil : item.board
                     self?.parent.onApplySettings(item, corrected)
                 })
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemix(meta) })
                 menu.addItem(menuItem("Use as Img2Img Input") { [weak self] in
                     self?.parent.onUseInImg2Img(item.path)
                 })
+                menu.addItem(.separator())
+            } else if let meta = item.ideogram4Metadata {
+                menu.addItem(.separator())
+                menu.addItem(menuItem("Apply Settings") { [weak self] in
+                    var corrected = meta
+                    corrected.board = item.board == "Default" ? nil : item.board
+                    self?.parent.onApplyIdeogramSettings(item, corrected)
+                })
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemixIdeogram(meta) })
                 menu.addItem(.separator())
             }
 
@@ -688,6 +712,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(boardsItem)
 
             menu.addItem(.separator())
+            menu.addItem(menuItem("Strip Metadata") { [weak self] in self?.parent.onStripMetadata(item) })
             menu.addItem(menuItem("Reveal in Finder") { [weak self] in
                 self?.parent.onRevealInFinder(item.path)
             })
@@ -713,8 +738,11 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteMultiImmediate: () -> Void
     var onRemix: (GenerationMetadata) -> Void
     var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
+    var onRemixIdeogram: (Ideogram4Metadata) -> Void
+    var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
     var onUseInImg2Img: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
+    var onStripMetadata: (GalleryItem) -> Void
     var onRevealInFinder: (String) -> Void
     var onToggleSection: (String) -> Void
     var onRenameBoard: (String) -> Void

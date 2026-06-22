@@ -1,6 +1,6 @@
 # MLXBits Image Studio
 
-A native macOS Swiftapp for **FLUX image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, and browse your history — empower your creative workflow. No CLI needed, NOT yet another Electron container "app".
+A native macOS Swift app for **FLUX and Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, and browse your history — empower your creative workflow. No CLI needed, NOT yet another Electron container "app".
 
 > **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) is installed automatically on first launch.
 
@@ -30,6 +30,7 @@ A native macOS Swiftapp for **FLUX image generation** powered by [mflux](https:/
 ## Features
 
 - **Text-to-image and image-to-image** generation via FLUX.2 Klein models
+- **Ideogram 4** — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring (see [Ideogram 4](#ideogram-4) below)
 - **Step-by-step live preview** — watch the image denoise in real time
 - **Persistent job queue** — queue multiple jobs, they survive app restarts
 - **Gallery** — scrollable history of every generation with thumbnail cache and metadata sidecars
@@ -49,7 +50,33 @@ A native macOS Swiftapp for **FLUX image generation** powered by [mflux](https:/
 | FLUX.2 Klein 9B (distilled) | 4     | Best quality/speed trade-off                                            |
 | FLUX.2 Klein 4B (base)      | ~50   | Full diffusion                                                          |
 | FLUX.2 Klein 9B (base)      | ~50   | Full diffusion                                                          |
+| Ideogram 4                  | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace) |
 | Custom                      | any   | Any HuggingFace repo ID or local path (only Flux.2 compatible, for now) |
+
+---
+
+## Ideogram 4
+
+Ideogram 4 is a structured-caption model: instead of a single prompt string it
+takes a JSON caption describing a high-level scene, an optional style block, and
+a compositional breakdown of regional elements (each with an optional bounding
+box and color palette).
+
+- **Caption editor** — author the structured caption in a sectioned form, or let
+  Gemma turn a plain description into a full caption (`mlx_lm` runs locally via
+  `uv`; no API key).
+- **Bounding-box layout editor** — drag, resize, and color regional elements on a
+  canvas overlaid on the output aspect ratio.
+- **Color palettes** — per-element and per-style palettes with editable hex entry,
+  so an exact color can be reused across elements.
+- **Precision** — FP8 / Q8 / Q4 selector. Q8/Q4 load pre-quantized MLX weights
+  directly; FP8 quantizes once via `mflux-save`.
+
+> **mflux support:** Ideogram 4 generation drives the `mflux-generate-ideogram4`
+> CLI. Until Ideogram 4 support lands in a published mflux release, the app shows
+> a "binary not found" error for Ideogram 4 jobs while the rest of the app
+> (FLUX) works normally. The model is gated on HuggingFace — accept the terms on
+> the model page before first download.
 
 ---
 
@@ -119,11 +146,13 @@ export DEVELOPMENT_TEAM=YOUR_TEAM_ID
 
 ```
 App/           App entry point and root layout
-Models/        Data models (FluxJob, LoraEntry, PromptTemplate, catalog)
-Runner/        FluxJobRunner — spawns mflux subprocess, streams output
-Stores/        AppSettings, JobStore, GalleryStore (Observable state)
-Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings)
-Utilities/     KeychainHelper, MetadataSidecar, ThumbnailCache, progress parser
+Models/        Data models (FluxJob, Ideogram4Job, IdeogramCaption, LoraEntry, catalog)
+Runner/        FluxJobRunner + Ideogram4JobRunner — spawn mflux subprocess, stream output
+               (shared subprocess/stepwise plumbing in RunnerSupport)
+Stores/        AppSettings, JobStore, Ideogram4JobStore, GalleryStore (Observable state)
+Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4)
+Utilities/     KeychainHelper, MetadataSidecar, IdeogramCaptionGenerator, progress parser
+Tests/         Swift Testing unit tests (RunnerSupport, BBoxGeometry, caption JSON, hex color)
 Resources/     Info.plist, entitlements
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
 release.sh     Archive → notarize → DMG pipeline

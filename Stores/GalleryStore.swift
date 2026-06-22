@@ -1,5 +1,7 @@
 import AppKit
 import Foundation
+import ImageIO
+import UniformTypeIdentifiers
 
 struct GalleryItem: Identifiable, Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
@@ -13,6 +15,7 @@ struct GalleryItem: Identifiable, Equatable {
     var thumbnailData: Data?
     var thumbnailImage: NSImage? // decoded from thumbnailData; not persisted
     var metadata: GenerationMetadata?
+    var ideogram4Metadata: Ideogram4Metadata?
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -20,6 +23,13 @@ struct GalleryItem: Identifiable, Equatable {
 
     var filename: String {
         url.lastPathComponent
+    }
+
+    /// Which model family produced this image, used to filter the gallery to the
+    /// currently selected model. Ideogram outputs are named with an "ideogram"
+    /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux.
+    var modelFamily: ModelFamily {
+        filename.lowercased().hasPrefix("ideogram") ? .ideogram4 : .flux
     }
 }
 
@@ -42,6 +52,8 @@ final class GalleryStore {
     /// Set when a deletion fails; cleared by the next successful delete operation.
     /// Observed by ``GenerationGalleryView`` to display an alert.
     var deleteError: String?
+    /// Set when a metadata strip fails. Observed by ``GenerationGalleryView``.
+    var stripError: String?
 
     var displayedItems: [GalleryItem] {
         if selectedBoard == "All" { return items }
@@ -198,6 +210,30 @@ final class GalleryStore {
         }
         scan(outputDir: outputDir)
     }
+
+    /// Removes embedded metadata (EXIF/IPTC/XMP, including mflux's prompt and
+    /// generation-parameter comments) from the image files in place. The pixel
+    /// data and the app's sidecar `.json` are left untouched, so Remix / Apply
+    /// Settings still work — only the shareable file is sanitized. The file's
+    /// modification date is preserved so gallery ordering does not shift.
+    /// Returns the number of files successfully stripped. Failures populate
+    /// ``stripError`` for the caller to surface.
+    @discardableResult
+    func stripMetadata(from items: [GalleryItem]) -> Int {
+        var failures: [String] = []
+        var succeeded = 0
+        for item in items {
+            if stripImageMetadata(atPath: item.path) {
+                succeeded += 1
+            } else {
+                failures.append(item.filename)
+            }
+        }
+        stripError = failures.isEmpty
+            ? nil
+            : "Could not strip metadata from: \(failures.joined(separator: ", "))"
+        return succeeded
+    }
 }
 
 // MARK: - Free function (nonisolated, safe to call from Task.detached)
@@ -226,11 +262,14 @@ nonisolated private func scanDirectory(
         let board = components.count > 1 ? String(components[0]) : "Default"
 
         let prior = existing[url.path]
+        let fluxMeta = MetadataSidecar.read(for: url.path)
+        let ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             thumbnailImage: prior?.thumbnailImage,
-            metadata: MetadataSidecar.read(for: url.path)
+            metadata: fluxMeta,
+            ideogram4Metadata: ideogramMeta
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }
@@ -248,5 +287,88 @@ nonisolated private func scanBoardFolders(_ outputDir: String) -> [String] {
     return contents.compactMap { url in
         guard (try? url.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory == true else { return nil }
         return url.lastPathComponent
+    }
+}
+
+// MARK: - Metadata stripping
+
+/// Strips embedded metadata from an image file in place, preserving its
+/// modification date. Returns `true` on success. PNGs are filtered chunk-by-chunk
+/// (lossless); other formats are re-emitted via ImageIO without recompression.
+nonisolated private func stripImageMetadata(atPath path: String) -> Bool {
+    let url = URL(fileURLWithPath: path)
+    let originalDate = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
+
+    let stripped = url.pathExtension.lowercased() == "png"
+        ? stripPNGMetadata(at: url)
+        : stripMetadataViaImageIO(at: url)
+
+    if stripped, let originalDate {
+        try? FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: path)
+    }
+    return stripped
+}
+
+/// Removes the ancillary text/metadata chunks (`tEXt`, `zTXt`, `iTXt`, `eXIf`)
+/// that carry XMP, IPTC, and EXIF data. Pixel (`IDAT`) and color chunks are copied
+/// verbatim, so the image is bit-for-bit identical apart from the removed metadata.
+nonisolated private func stripPNGMetadata(at url: URL) -> Bool {
+    let signature: [UInt8] = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+    guard let data = try? Data(contentsOf: url),
+          data.count > signature.count,
+          Array(data.prefix(signature.count)) == signature else { return false }
+
+    let drop: Set = ["tEXt", "zTXt", "iTXt", "eXIf"]
+    var out = Data(signature)
+    var index = signature.count
+    let count = data.count
+    var sawMetadata = false
+
+    while index + 12 <= count {
+        let len = Int(data[index]) << 24 | Int(data[index + 1]) << 16
+            | Int(data[index + 2]) << 8 | Int(data[index + 3])
+        guard len >= 0, index + 12 + len <= count else { return false } // malformed — leave untouched
+        let type = String(bytes: data[(index + 4) ..< (index + 8)], encoding: .ascii) ?? ""
+        let chunkEnd = index + 12 + len
+        if drop.contains(type) {
+            sawMetadata = true
+        } else {
+            out.append(data[index ..< chunkEnd])
+        }
+        index = chunkEnd
+        if type == "IEND" { break }
+    }
+
+    guard sawMetadata else { return true } // nothing to remove — succeed without a rewrite
+    return (try? out.write(to: url, options: .atomic)) != nil
+}
+
+/// Strips EXIF/IPTC/GPS/XMP from non-PNG formats by copying the image source to a
+/// fresh destination with those dictionaries excluded (no pixel recompression).
+nonisolated private func stripMetadataViaImageIO(at url: URL) -> Bool {
+    guard let source = CGImageSourceCreateWithURL(url as CFURL, nil),
+          let type = CGImageSourceGetType(source) else { return false }
+    let tempURL = url.deletingLastPathComponent()
+        .appendingPathComponent(".strip-\(UUID().uuidString).tmp")
+    guard let destination = CGImageDestinationCreateWithURL(tempURL as CFURL, type, 1, nil) else { return false }
+
+    let options: [CFString: Any] = [
+        kCGImagePropertyExifDictionary: kCFNull,
+        kCGImagePropertyGPSDictionary: kCFNull,
+        kCGImagePropertyIPTCDictionary: kCFNull,
+        kCGImageMetadataShouldExcludeXMP: kCFBooleanTrue as Any,
+        kCGImageMetadataShouldExcludeGPS: kCFBooleanTrue as Any,
+    ]
+    let ok = CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, nil)
+    guard ok else {
+        try? FileManager.default.removeItem(at: tempURL)
+        return false
+    }
+    do {
+        _ = try FileManager.default.replaceItemAt(url, withItemAt: tempURL)
+        return true
+    } catch {
+        try? FileManager.default.removeItem(at: tempURL)
+        return false
     }
 }

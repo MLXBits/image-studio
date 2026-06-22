@@ -8,6 +8,7 @@ struct ModelPickerView: View {
         let color: Color
         let diskLabel: String
         let diskColor: Color
+        let diskIcon: String
         let onDisk: Bool
         let diskInfoTitle: String
         let diskInfoBody: String
@@ -19,139 +20,183 @@ struct ModelPickerView: View {
     @Binding var quantize: Int
     @Environment(AppSettings.self) private var settings
 
+    /// Non-nil when an Ideogram 4 model-source override is set in Settings.
+    /// The override names a specific repo/path, so the precision selector is inert.
+    private var ideogramOverride: String? {
+        guard model.isIdeogram4 else { return nil }
+        let repo = (settings.ideogram4ModelRepoOverride ?? "").trimmingCharacters(in: .whitespaces)
+        return repo.isEmpty ? nil : repo
+    }
+
+    private var infoDescription: String {
+        if let repo = ideogramOverride {
+            return "Model source is overridden in Settings → Models → Ideogram (\(repo))."
+                + " That repo/path is used as-is, so the precision selector is disabled."
+                + " Clear the override in Settings to choose FP8 / Q8 / Q4 again."
+        }
+        if model.isIdeogram4 {
+            return "Ideogram 4 ships as FP8 (~28 GB)."
+                + " Q8 (~27 GB) and Q4 (~15 GB) load pre-quantized MLX weights from MLXBits"
+                + " with no one-time save step."
+                + " All variants are gated — accept terms on the model card and set an HF token"
+                + " in Settings → Advanced."
+        }
+        return "Choose your Flux.2 model variant and weight precision."
+            + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
+            + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            // Model + quantize row
-            HStack(spacing: 6) {
-                Picker("Model", selection: $model) {
+        // Top header: selectors on the first row, memory/disk estimate pills
+        // below them on a second row.
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 10) {
+                // A `Menu` (vs `Picker(.menu)`) renders as a pull-down: the menu
+                // always anchors below the button and lists every item from the
+                // top, regardless of which is selected. A popup Picker instead
+                // aligns the selected row to the button, which pushed the Flux
+                // variants off-screen when Ideogram (near the list bottom) was
+                // selected. Checkmarks below preserve the selection indicator.
+                Menu {
                     ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                        Text(v.displayName).tag(v)
+                        modelMenuButton(v.displayName, value: v)
                     }
                     Divider()
-                    Text("Custom…").tag(FluxModelVariant.custom)
+                    modelMenuButton("Ideogram 4", value: .ideogram4)
+                    Divider()
+                    modelMenuButton("Custom…", value: .custom)
+                } label: {
+                    Text(modelMenuLabel)
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .accessibilityLabel("Flux model")
-                .accessibilityHint("Selects which Flux.2 model variant to use")
+                .menuStyle(.button)
+                .fixedSize()
+                .accessibilityLabel("Model")
+                .accessibilityHint("Selects the model for generation")
 
-                Picker("Precision", selection: $quantize) {
-                    Text("BF16").tag(0)
-                    Text("Q8").tag(8)
-                    Text("Q4").tag(4)
+                if ideogramOverride != nil {
+                    Label("Override", systemImage: "gearshape")
+                        .font(.caption)
+                        .padding(.horizontal, 8).padding(.vertical, 3)
+                        .background(.secondary.opacity(0.12), in: Capsule())
+                        .foregroundStyle(.secondary)
+                        .accessibilityLabel("Model source overridden in Settings")
+                } else if model != .custom {
+                    // Pull-down Menu to match the Model selector above (a popup
+                    // Picker would align the selected row to the button instead).
+                    Menu {
+                        precisionMenuButton(model.baseWeightLabel, value: 0)
+                        precisionMenuButton("Q8", value: 8)
+                        precisionMenuButton("Q4", value: 4)
+                    } label: {
+                        Text(precisionMenuLabel)
+                    }
+                    .menuStyle(.button)
+                    .fixedSize()
+                    .accessibilityLabel("Quantization")
+                    .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
                 }
-                .pickerStyle(.menu)
-                .labelsHidden()
-                .frame(width: 70)
-                .accessibilityLabel("Quantization")
-                .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
 
-                if model != .custom && model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                if ideogramOverride == nil, model != .custom,
+                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
                         .accessibilityLabel("Model weights cached on disk")
                 }
 
-                InfoButton(
-                    title: "Model & Precision",
-                    description: "Choose your Flux.2 model variant and weight precision."
-                        + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
-                        + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
-                )
+                InfoButton(title: "Model & Precision", description: infoDescription)
+
+                if model == .custom {
+                    customModelFields
+                }
             }
 
-            if model == .custom {
-                customModelFields
-            }
-
-            // Memory + disk estimates
             if let estimate = vramEstimate {
                 HStack(spacing: 8) {
-                    Spacer(minLength: 0)
-                    Label(estimate.label, systemImage: "memorychip")
-                        .font(.caption2)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .foregroundStyle(estimate.color)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(estimate.color.opacity(0.12), in: Capsule())
-                    Label(estimate.diskLabel, systemImage: "internaldrive")
-                        .font(.caption2)
-                        .lineLimit(1)
-                        .fixedSize(horizontal: true, vertical: false)
-                        .foregroundStyle(estimate.diskColor)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 3)
-                        .background(estimate.diskColor.opacity(0.12), in: Capsule())
-                    if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize) {
-                        InfoButton(
-                            title: estimate.diskInfoTitle,
-                            description: estimate.diskInfoBody,
-                            actionLabel: "Reveal in Finder"
-                        ) { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: diskURL.path) }
-                    }
-                    Spacer(minLength: 0)
+                    estimatePills(estimate)
                 }
-                .accessibilityLabel("Estimated unified memory: \(estimate.label). Disk: \(estimate.diskLabel)")
             }
         }
     }
 
-    // MARK: - Custom model fields
+    // MARK: - Model menu
+
+    /// Label shown on the closed Model menu button.
+    private var modelMenuLabel: String {
+        switch model {
+        case .custom: "Custom…"
+        default: model.displayName
+        }
+    }
+
+    /// Label shown on the closed Precision menu button.
+    private var precisionMenuLabel: String {
+        switch quantize {
+        case 8: "Q8"
+        case 4: "Q4"
+        default: model.baseWeightLabel
+        }
+    }
+
+    // MARK: - Custom model fields (inline)
 
     private var customModelFields: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 4) {
-                Text("Repo / path").font(.caption2).foregroundStyle(.secondary)
-                InfoButton(
-                    title: "Custom Model",
-                    description: "Enter a HuggingFace repo ID (e.g. org/my-fine-tune) or an"
-                        + " absolute local path to a directory containing MLX-format weights."
-                        + " Must be compatible with Flux.2 Klein architecture."
-                )
-            }
+        HStack(spacing: 6) {
             TextField("org/repo or /path/to/model", text: $customModelRepo)
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
+                .frame(width: 220)
                 .accessibilityLabel("Custom model repo or path")
-
-            HStack {
-                Text("Base model:")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                Picker("Base model", selection: $customBaseModel) {
-                    ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                        Text(v.displayName).tag(v)
-                    }
+            Text("Base:")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Picker("Base model", selection: $customBaseModel) {
+                ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+                    Text(v.displayName).tag(v)
                 }
-                .labelsHidden()
-                .font(.caption)
-                .accessibilityLabel("Base model for custom repo")
-                .accessibilityHint("Tells mflux which Flux architecture to use when loading the model")
-                InfoButton(
-                    title: "Base Model",
-                    description: "Specifies the base architecture for your custom model —"
-                        + " passed as --base-model. Most Flux.2 fine-tunes are built on Klein 9B."
-                )
             }
+            .labelsHidden()
+            .fixedSize()
+            .font(.caption)
+            .accessibilityLabel("Base model for custom repo")
+            .accessibilityHint("Tells mflux which Flux architecture to use when loading the model")
+            InfoButton(
+                title: "Custom Model",
+                description: "Enter a HuggingFace repo ID (e.g. org/my-fine-tune) or an"
+                    + " absolute local path to a directory containing MLX-format weights."
+                    + " Must be compatible with Flux.2 Klein architecture."
+                    + " Base model is passed as --base-model (most fine-tunes use Klein 9B)."
+            )
         }
-        .padding(.top, 2)
     }
 
     private var vramEstimate: VRAMEstimate? {
-        guard model != .custom else { return nil }
-        let sizeGB = model.approximateBF16SizeGB
-        let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
-        let gb = sizeGB * factor
+        // A Settings override names an arbitrary repo/path of unknown size — no estimate.
+        guard model != .custom, ideogramOverride == nil else { return nil }
+        let gb = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
-        let color: Color = gb > 30 ? .orange : gb > 18 ? .yellow : .green
+        // Color relative to this machine's physical memory, not fixed GB cutoffs:
+        // green with comfortable headroom for activations + OS, yellow when tight,
+        // orange when it likely won't fit, red when it almost certainly won't.
+        let totalRAMGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        let ramFraction = totalRAMGB > 0 ? gb / totalRAMGB : 1.0
+        let color: Color = switch ramFraction {
+        case ..<0.6: .green
+        case ..<0.8: .yellow
+        case ..<0.9: .orange
+        default: .red
+        }
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
-        let diskLabel = "≈\(String(format: "%.0f", gb)) GB disk"
-        let diskColor: Color = onDisk ? .green : (gb > 30 ? .orange : gb > 18 ? .yellow : .secondary)
-        let quantName = quantize == 0 ? "BF16" : "Q\(quantize)"
+        // The disk pill is a binary download-state signal — green when cached,
+        // neutral "download" otherwise. Size-based warning colors live on the RAM
+        // pill only, so a not-yet-downloaded model never looks like a warning.
+        let diskLabel = onDisk
+            ? "≈\(String(format: "%.0f", gb)) GB cached"
+            : "≈\(String(format: "%.0f", gb)) GB to download"
+        let diskColor: Color = onDisk ? .green : .secondary
+        let diskIcon = onDisk ? "internaldrive" : "arrow.down.circle"
+        let quantName = quantize == 0 ? model.baseWeightLabel : "Q\(quantize)"
         let qualityNote = switch quantize {
         case 0: "Full precision. Highest quality, largest footprint. Best on 64 GB Macs."
         case 8: "~50% smaller than BF16 with minimal quality loss. Recommended for most users."
@@ -162,9 +207,64 @@ struct ModelPickerView: View {
         let diskInfoBody = "\(quantName) weights cached locally (~\(Int(gb)) GB). \(qualityNote)"
         return VRAMEstimate(
             label: label, color: color,
-            diskLabel: diskLabel, diskColor: diskColor,
+            diskLabel: diskLabel, diskColor: diskColor, diskIcon: diskIcon,
             onDisk: onDisk,
             diskInfoTitle: diskInfoTitle, diskInfoBody: diskInfoBody
         )
+    }
+
+    /// A menu row that selects `value` and shows a checkmark when active.
+    private func modelMenuButton(_ title: String, value: FluxModelVariant) -> some View {
+        Button {
+            model = value
+        } label: {
+            if model == value {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+    }
+
+    /// A precision menu row that selects `value` and shows a checkmark when active.
+    private func precisionMenuButton(_ title: String, value: Int) -> some View {
+        Button {
+            quantize = value
+        } label: {
+            if quantize == value {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
+            }
+        }
+    }
+
+    // MARK: - Estimate pills (inline, beside the selector)
+
+    @ViewBuilder
+    private func estimatePills(_ estimate: VRAMEstimate) -> some View {
+        Label(estimate.label, systemImage: "memorychip")
+            .font(.caption2)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(estimate.color)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(estimate.color.opacity(0.12), in: Capsule())
+        Label(estimate.diskLabel, systemImage: estimate.diskIcon)
+            .font(.caption2)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
+            .foregroundStyle(estimate.diskColor)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(estimate.diskColor.opacity(0.12), in: Capsule())
+        if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize) {
+            InfoButton(
+                title: estimate.diskInfoTitle,
+                description: estimate.diskInfoBody,
+                actionLabel: "Reveal in Finder"
+            ) { NSWorkspace.shared.selectFile(nil, inFileViewerRootedAtPath: diskURL.path) }
+        }
     }
 }
