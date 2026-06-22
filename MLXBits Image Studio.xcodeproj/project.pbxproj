@@ -32,6 +32,7 @@
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
+		4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 620B629F83341AF0145AA278 /* NotepadView.swift */; };
 		4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
@@ -126,6 +127,7 @@
 		5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHexTests.swift; sourceTree = "<group>"; };
 		5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramElementCard.swift; sourceTree = "<group>"; };
 		607FDAD831E19BE75C734220 /* IdeogramCaption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaption.swift; sourceTree = "<group>"; };
+		620B629F83341AF0145AA278 /* NotepadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotepadView.swift; sourceTree = "<group>"; };
 		643242A3C81BC94AA1B5A99C /* BBoxEditorView+Canvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Canvas.swift"; sourceTree = "<group>"; };
 		64A7412A576F846395336217 /* ModelDefaultsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDefaultsView.swift; sourceTree = "<group>"; };
 		654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorPaletteEditor.swift; sourceTree = "<group>"; };
@@ -210,6 +212,7 @@
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
 				AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */,
+				620B629F83341AF0145AA278 /* NotepadView.swift */,
 				221656805C1026EDD0D6B9EA /* PassiveTextField.swift */,
 				1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */,
 			);
@@ -579,6 +582,7 @@
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
 				8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
+				4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */,
 				6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */,
 				CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */,
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,

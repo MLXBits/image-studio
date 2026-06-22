@@ -30,6 +30,7 @@ struct ContentView: View {
     @State private var previewState: PreviewState = .idle
     @State private var selectedGalleryItem: GalleryItem?
     @State private var showingQueue: Bool = false
+    @State private var showingNotepad: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
@@ -289,22 +290,13 @@ struct ContentView: View {
                 .zIndex(1)
             }
         }
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button { showingParams.toggle() } label: {
-                    Label("Toggle Params Panel", systemImage: "sidebar.leading")
-                }
-                .help("Toggle params panel")
-            }
-
-            ToolbarItem(placement: .primaryAction) {
-                Button { openSettings() } label: {
-                    Label("Settings", systemImage: "gear")
-                }
-            }
-        }
+        .toolbar { mainToolbar }
         .sheet(isPresented: $showingQueue) {
             queueSheet
+        }
+        .sheet(isPresented: $showingNotepad) {
+            NotepadView()
+                .environment(settings)
         }
         .onChange(of: runner.activeJob?.id) { _, id in
             guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
@@ -342,6 +334,29 @@ struct ContentView: View {
             Button("") { showingQueue.toggle() }
                 .keyboardShortcut("k", modifiers: .command)
                 .hidden()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var mainToolbar: some ToolbarContent {
+        ToolbarItem(placement: .navigation) {
+            Button { showingParams.toggle() } label: {
+                Label("Toggle Params Panel", systemImage: "sidebar.leading")
+            }
+            .help("Toggle params panel")
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button { showingNotepad = true } label: {
+                Label("Notepad", systemImage: "note.text")
+            }
+            .help("Open the notepad for reusable prompt notes")
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button { openSettings() } label: {
+                Label("Settings", systemImage: "gear")
+            }
         }
     }
 

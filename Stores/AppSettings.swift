@@ -88,6 +88,8 @@ class AppSettings {
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
         var ideogram4CfgEnd: Double?
+        /// Notepad
+        var notepadText: String?
 
         init() {}
         init(
@@ -302,6 +304,13 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - Notepad
+
+    /// Free-form markdown scratchpad for reusable prompt notes. Autosaves on edit.
+    var notepadText: String {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -383,6 +392,7 @@ class AppSettings {
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
+        notepadText = s.notepadText ?? ""
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -451,6 +461,7 @@ class AppSettings {
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
+        s.notepadText = notepadText
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()
