@@ -66,13 +66,18 @@ struct LoraManagerView: View {
     private var loraList: some View {
         VStack(spacing: 19) {
             ForEach($loras) { $lora in
+                let index = loras.firstIndex { $0.id == lora.id } ?? 0
                 LoraRowView(
                     lora: $lora,
                     showNotes: showNotes,
-                    showDelete: showAdd
-                ) { remove(id: lora.id) }
+                    showDelete: showAdd,
+                    canMoveUp: index > 0,
+                    canMoveDown: index < loras.count - 1,
+                    onMoveUp: { move(from: index, to: index - 1) },
+                    onMoveDown: { move(from: index, to: index + 1) },
+                    onDelete: { remove(id: lora.id) }
+                )
             }
-            .onMove { from, to in loras.move(fromOffsets: from, toOffset: to) }
         }
         .padding(.top, 4)
     }
@@ -150,12 +155,21 @@ struct LoraManagerView: View {
     private func remove(id: UUID) {
         loras.removeAll { $0.id == id }
     }
+
+    private func move(from: Int, to: Int) {
+        guard to >= 0, to < loras.count else { return }
+        loras.swapAt(from, to)
+    }
 }
 
 private struct LoraRowView: View {
     @Binding var lora: LoraEntry
     var showNotes: Bool = false
     var showDelete: Bool = true
+    var canMoveUp: Bool = false
+    var canMoveDown: Bool = false
+    var onMoveUp: () -> Void = {}
+    var onMoveDown: () -> Void = {}
     let onDelete: () -> Void
 
     var body: some View {
@@ -173,6 +187,20 @@ private struct LoraRowView: View {
                     .padding(.leading, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if showDelete {
+                    Button { onMoveUp() } label: {
+                        Image(systemName: "chevron.up").font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .disabled(!canMoveUp)
+                    .help("Move up")
+                    Button { onMoveDown() } label: {
+                        Image(systemName: "chevron.down").font(.caption)
+                    }
+                    .buttonStyle(.plain)
+                    .foregroundStyle(.secondary)
+                    .disabled(!canMoveDown)
+                    .help("Move down")
                     Button { onDelete() } label: {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.red)
