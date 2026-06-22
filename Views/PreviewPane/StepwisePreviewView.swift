@@ -90,6 +90,12 @@ struct StepwisePreviewView: View {
             }
             .padding(.bottom, 16)
         }
+        .onAppear {
+            // Returning from the gallery remounts this view with empty @State; load the
+            // most recent stepwise frame (already on disk) immediately instead of waiting
+            // for the next step to fire onChange.
+            loadStepwiseImage(path: job.latestStepwisePath)
+        }
         .onChange(of: job.latestStepwisePath) { _, path in
             loadStepwiseImage(path: path)
         }
@@ -228,12 +234,24 @@ struct Ideogram4StepwisePreviewView: View {
             }
             .padding(.bottom, 16)
         }
+        .onAppear {
+            // Remounting after a gallery detour clears @State; show the latest captured
+            // frame right away rather than waiting for the next step.
+            loadStepwiseImage(path: job.latestStepwisePath)
+        }
         .onChange(of: job.latestStepwisePath) { _, path in
-            guard let path else { displayedImage = nil; return }
-            Task.detached(priority: .userInitiated) {
-                let img = NSImage(contentsOfFile: path)
-                await MainActor.run { displayedImage = img }
-            }
+            loadStepwiseImage(path: path)
+        }
+    }
+
+    private func loadStepwiseImage(path: String?) {
+        guard let path else {
+            displayedImage = nil
+            return
+        }
+        Task.detached(priority: .userInitiated) {
+            let img = NSImage(contentsOfFile: path)
+            await MainActor.run { displayedImage = img }
         }
     }
 }
