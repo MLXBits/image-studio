@@ -15,9 +15,6 @@ struct ContentView: View {
         let height: Int
     }
 
-    /// Static so the token outlives any view identity change and is never deallocated.
-    private static var batchEventMonitor: Any?
-
     @Environment(AppSettings.self) private var settings
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
@@ -167,17 +164,6 @@ struct ContentView: View {
                 }
                 Task { @MainActor in
                     NSApp.keyWindow?.makeFirstResponder(nil)
-                }
-                guard Self.batchEventMonitor == nil else { return }
-                Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                    guard event.keyCode == 36, // return key
-                          event.modifierFlags.contains(.command),
-                          event.modifierFlags.contains(.option),
-                          !event.modifierFlags.contains(.shift),
-                          !event.modifierFlags.contains(.control)
-                    else { return event }
-                    generate(count: settings.batchShortcutCount)
-                    return nil
                 }
             }
             .task { await checkAndAutoInstallMflux() }
@@ -452,6 +438,17 @@ struct ContentView: View {
                 .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
                 .help("Generate (⌘↵)")
+
+                // Batch shortcut (⌘⌥↵). A SwiftUI button — not a static NSEvent
+                // monitor — so it always binds to the live, currently-active
+                // ContentView's state. The old static monitor captured the first
+                // window's `self`, so after switching the model family (or in a
+                // second window) it submitted the stale family's last job.
+                Button("") { generate(count: settings.batchShortcutCount) }
+                    .keyboardShortcut(.return, modifiers: [.command, .option])
+                    .disabled(!canGenerate)
+                    .hidden()
+                    .accessibilityHidden(true)
 
                 Button { showingQueue.toggle() } label: {
                     queueStatusLabel
