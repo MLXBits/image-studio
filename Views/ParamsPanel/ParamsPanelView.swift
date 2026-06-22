@@ -18,6 +18,7 @@ struct ParamsPanelView: View {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
 
     @Bindable var params: ParamsPanelState
+    @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
 
@@ -30,134 +31,15 @@ struct ParamsPanelView: View {
     }
 
     var body: some View {
+        // The model selector lives in the top header now (ContentView.topControlBar);
+        // this panel covers the family-specific params only.
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                // Model
-                SectionContainerView(title: "Model", info: nil) {
-                    ModelPickerView(
-                        model: $params.model,
-                        customModelRepo: $params.customModelRepo,
-                        customBaseModel: $params.customBaseModel,
-                        quantize: $params.quantize
-                    )
-                    .onChange(of: params.model) { _, m in
-                        guard m != .custom else { return }
-                        let d = settings.resolvedDefaults(for: m)
-                        params.steps = d.steps
-                        params.guidance = d.guidance
-                        params.quantize = d.quantize
-                        params.lowRam = d.lowRam
-                        params.negativePrompt = d.negativePrompt
-                        params.width = d.width
-                        params.height = d.height
-                        params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                        params.isEditMode = false
-                        params.editImagePaths = []
-                    }
-
-                    // Generation Mode
-                    if params.model != .custom {
-                        modePickerRow
-                    }
-                }
-
-                Divider()
-
-                // Style
-                SectionContainerView(
-                    title: "Style",
-                    info: "Stacks preset style additions on your prompt — lighting, camera," +
-                        " detail level, shot type. Select multiple. Applied at generation time;" +
-                        " your prompt text stays clean."
-                ) {
-                    styleRow
-                }
-
-                Divider()
-
-                // Prompt
-                SectionContainerView(
-                    title: "Prompt",
-                    info: "Describe what you want to generate. Be specific about subjects, " +
-                        "lighting, style, and mood. More detail generally produces better results."
-                ) {
-                    promptEditor
-                    if params.model.supportsNegativePrompt {
-                        negativePromptEditor
-                    }
-                }
-
-                // Image input — directly below prompt/negative prompt
-                if params.isEditMode {
-                    SectionContainerView(
-                        title: "Image Input",
-                        info: "One or more reference images for editing. Order matters: list the " +
-                            "primary subject first. Prompt describes the edit — " +
-                            "e.g. \"make her wear the glasses\"."
-                    ) {
-                        editImagesSection
-                    }
+                if params.modelFamily == .flux {
+                    fluxContent
                 } else {
-                    SectionContainerView(
-                        title: "Image Input",
-                        info: "Optional reference image for image-to-image generation. " +
-                            "Drag an image here or click to browse. Higher strength = " +
-                            "closer to the original image. Lower strength = more creative, " +
-                            "prompt dominates."
-                    ) {
-                        img2ImgSection
-                    }
+                    Ideogram4ParamsPanelView(params: ideogramParams)
                 }
-
-                Divider()
-
-                // Group
-                SectionContainerView(
-                    title: "Folder",
-                    info: "Organizes generated images into named subfolders inside your output " +
-                        "directory. Leave as Default to keep everything in one place."
-                ) {
-                    boardRow
-                }
-
-                Divider()
-
-                // Dimensions
-                SectionContainerView(title: nil, info: nil) {
-                    DimensionPickerView(width: $params.width, height: $params.height)
-                }
-
-                Divider()
-
-                // Steps + Seed (always shown together)
-                SectionContainerView(title: nil, info: nil) {
-                    stepsAndSeedRow
-                }
-
-                // Guidance — only for base models
-                if !isDistilled {
-                    Divider()
-                    SectionContainerView(
-                        title: "Guidance",
-                        info: "How closely the model follows your prompt. Higher = stricter adherence but" +
-                            "can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
-                    ) {
-                        guidanceRow
-                    }
-                }
-
-                Divider()
-
-                // LoRAs
-                LoraManagerView(
-                    loras: $params.loras,
-                    showAdd: false,
-                    defaultLoras: settings.defaultLoras
-                ) {
-                    let d = settings.resolvedDefaults(for: params.model)
-                    params.loras = d.loras.isEmpty ? settings.defaultLoras : d.loras
-                }
-                .padding(.bottom, 8)
             }
             .padding(.horizontal, 12)
             .padding(.vertical, 12)
@@ -165,6 +47,112 @@ struct ParamsPanelView: View {
         }
         .scrollIndicators(.automatic)
         .contentMargins(.trailing, 5, for: .scrollContent)
+    }
+
+    // MARK: - Flux content
+
+    @ViewBuilder
+    private var fluxContent: some View {
+        // Generation mode (Generate vs Edit) — not shown for custom repos.
+        if params.model != .custom {
+            modePickerRow
+            Divider()
+        }
+
+        // Style
+        SectionContainerView(
+            title: "Style",
+            info: "Stacks preset style additions on your prompt — lighting, camera," +
+                " detail level, shot type. Select multiple. Applied at generation time;" +
+                " your prompt text stays clean."
+        ) {
+            styleRow
+        }
+
+        Divider()
+
+        // Prompt
+        SectionContainerView(
+            title: "Prompt",
+            info: "Describe what you want to generate. Be specific about subjects, " +
+                "lighting, style, and mood. More detail generally produces better results."
+        ) {
+            promptEditor
+            if params.model.supportsNegativePrompt {
+                negativePromptEditor
+            }
+        }
+
+        // Image input
+        if params.isEditMode {
+            SectionContainerView(
+                title: "Image Input",
+                info: "One or more reference images for editing. Order matters: list the " +
+                    "primary subject first. Prompt describes the edit — " +
+                    "e.g. \"make her wear the glasses\"."
+            ) {
+                editImagesSection
+            }
+        } else {
+            SectionContainerView(
+                title: "Image Input",
+                info: "Optional reference image for image-to-image generation. " +
+                    "Drag an image here or click to browse. Higher strength = " +
+                    "closer to the original image. Lower strength = more creative, " +
+                    "prompt dominates."
+            ) {
+                img2ImgSection
+            }
+        }
+
+        Divider()
+
+        SectionContainerView(
+            title: "Folder",
+            info: "Organizes generated images into named subfolders inside your output " +
+                "directory. Leave as Default to keep everything in one place."
+        ) {
+            boardRow
+        }
+
+        Divider()
+
+        SectionContainerView(title: nil, info: nil) {
+            DimensionPickerView(
+                width: $params.width,
+                height: $params.height,
+                constraints: params.model.isFlux ? .flux2 : .legacy
+            )
+        }
+
+        Divider()
+
+        SectionContainerView(title: nil, info: nil) {
+            stepsAndSeedRow
+        }
+
+        if !isDistilled {
+            Divider()
+            SectionContainerView(
+                title: "Guidance",
+                info: "How closely the model follows your prompt. Higher = stricter adherence but" +
+                    "can over-saturate. 3–7 is typical for base models. Distilled Klein models always use 1.0."
+            ) {
+                guidanceRow
+            }
+        }
+
+        Divider()
+
+        LoraManagerView(
+            loras: $params.loras,
+            showAdd: false,
+            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .flux }
+        ) {
+            let d = settings.resolvedDefaults(for: params.model)
+            params.loras = d.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .flux } : d.loras
+        }
+        .padding(.bottom, 8)
     }
 
     // MARK: - Style (template) row
@@ -210,7 +198,7 @@ struct ParamsPanelView: View {
                 Button { showingTemplatePicker = true } label: {
                     Image(systemName: "pencil")
                         .font(.system(size: 9))
-                        .frame(width: 18, height: 18)
+                        .frame(width: 24, height: 24)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -602,6 +590,12 @@ struct ParamsPanelView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .semibold))
+                        // The glyph is tiny; give it a frame + Rectangle hit area
+                        // so the whole right end of the chip removes it. Sized to
+                        // the chip height (~20pt) rather than the 24pt icon-button
+                        // standard so it doesn't overflow into neighbouring chips.
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
@@ -620,42 +614,13 @@ struct ParamsPanelView: View {
         hint: String,
         ghostSuffix: String = ""
     ) -> some View {
-        let displayText = text.wrappedValue + ghostSuffix
-        return Text(displayText.isEmpty ? " " : displayText)
-            .font(.body)
-            .padding(.horizontal, 5)
-            .padding(.vertical, 8)
-            .frame(maxWidth: .infinity, alignment: .topLeading)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(minHeight: 60)
-            .opacity(0)
-            .allowsHitTesting(false)
-            .overlay(alignment: .topLeading) {
-                InsetTextEditor(text: text, insets: NSSize(width: 5, height: 8), ghostSuffix: ghostSuffix)
-            }
-            .overlay(alignment: .topLeading) {
-                // Hide placeholder when ghost text is present — ghost is more informative.
-                if text.wrappedValue.isEmpty && ghostSuffix.isEmpty {
-                    Text(placeholder)
-                        .foregroundStyle(.tertiary)
-                        .font(.body)
-                        .padding(.leading, 5)
-                        .padding(.trailing, 8)
-                        .padding(.vertical, 8)
-                        .allowsHitTesting(false)
-                }
-            }
-            .background(Color(nsColor: .textBackgroundColor))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
-            .overlay(
-                RoundedRectangle(cornerRadius: 6)
-                    .strokeBorder(
-                        ghostSuffix.isEmpty ? Color.secondary.opacity(0.25) : Color.accentColor.opacity(0.4),
-                        lineWidth: 1
-                    )
-            )
-            .accessibilityLabel(label)
-            .accessibilityHint(hint)
+        GrowingPromptField(
+            text: text,
+            placeholder: placeholder,
+            label: label,
+            hint: hint,
+            ghostSuffix: ghostSuffix
+        )
     }
 
     private func sectionHeader(_ title: String, info: String?) -> some View {

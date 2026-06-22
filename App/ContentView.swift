@@ -2,118 +2,18 @@
 import AppKit
 import SwiftUI
 
-@Observable
-final class ParamsPanelState {
-    var model: FluxModelVariant = .flux2Klein9B
-    var customModelRepo: String = ""
-    var customBaseModel: FluxModelVariant = .flux2Klein9B
-    var prompt: String = ""
-    var negativePrompt: String = ""
-    var width: Int = 1024
-    var height: Int = 1024
-    var seed: Int = -1
-    var steps: Int = 4
-    var guidance: Double = 1.0
-    var quantize: Int = 8
-    var lowRam: Bool = false
-    var loras: [LoraEntry] = []
-    var imagePath: String = ""
-    var imageStrength: Double = 0.75
-    var isEditMode: Bool = false
-    var editImagePaths: [String] = []
-    var board: String = ""
-
-    func applyDefaults(from settings: AppSettings) {
-        let m = settings.lastModel
-        let d = settings.resolvedDefaults(for: m)
-        model = m
-        quantize = settings.lastQuantize
-        board = settings.defaultBoard
-        width = settings.lastWidth
-        height = settings.lastHeight
-        steps = d.steps
-        guidance = d.guidance
-        seed = -1
-        lowRam = d.lowRam
-        negativePrompt = d.negativePrompt
-        // Build last-run lookup (safe against duplicate paths).
-        let lastByPath = Dictionary(
-            settings.lastLoras.map { ($0.path, $0) }
-        ) { first, _ in first }
-        let defaultPaths = Set(settings.defaultLoras.map(\.path))
-        // Global defaults with enabled/strength restored from last run (notes stay from defaults).
-        var loraResult = settings.defaultLoras.map { global -> LoraEntry in
-            guard let last = lastByPath[global.path] else { return global }
-            var e = global; e.enabled = last.enabled; e.strength = last.strength; return e
-        }
-        // Session-only loras (added during a run but not in global defaults) persist across launches.
-        loraResult += settings.lastLoras.filter { !defaultPaths.contains($0.path) }
-        loras = loraResult
-        prompt = settings.lastPrompt
-    }
-
-    func apply(metadata meta: GenerationMetadata, newSeed: Bool) {
-        model = meta.model
-        customModelRepo = meta.customModelRepo
-        customBaseModel = meta.customBaseModel
-        prompt = meta.prompt
-        negativePrompt = meta.negativePrompt
-        width = meta.width
-        height = meta.height
-        steps = meta.steps
-        guidance = meta.guidance
-        quantize = meta.quantize
-        lowRam = meta.lowRam
-        imagePath = meta.imagePath
-        imageStrength = meta.imageStrength
-        loras = meta.loras
-        board = meta.board ?? ""
-        seed = newSeed ? -1 : meta.seed
-    }
-
-    func makeJob(count: Int = 1, templates: [PromptTemplate] = []) -> FluxJob {
-        let seeds: [Int] = count > 1
-            ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
-            : []
-        var finalPrompt = prompt
-        var finalNegative = negativePrompt
-        for template in templates {
-            let applied = template.apply(
-                to: finalPrompt,
-                negativePrompt: finalNegative,
-                supportsNegativePrompt: model.supportsNegativePrompt
-            )
-            finalPrompt = applied.positive
-            finalNegative = applied.negative
-        }
-        return FluxJob(
-            model: model,
-            customModelRepo: customModelRepo,
-            customBaseModel: customBaseModel,
-            prompt: finalPrompt,
-            negativePrompt: finalNegative,
-            width: width,
-            height: height,
-            seed: seed,
-            seeds: seeds,
-            steps: steps,
-            guidance: guidance,
-            loras: loras,
-            quantize: quantize,
-            lowRam: lowRam,
-            imagePath: imagePath,
-            imageStrength: imageStrength,
-            isEditMode: isEditMode,
-            editImagePaths: editImagePaths,
-            board: board
-        )
-    }
-}
-
 // MARK: - ContentView
 
 struct ContentView: View {
     private enum MfluxAutoInstall { case idle, installing, done, failed(String) }
+
+    /// Identifies a pending box-overlay editor session (image + its generation dims).
+    private struct BoxOverlayContext: Identifiable {
+        let id = UUID()
+        let image: NSImage
+        let width: Int
+        let height: Int
+    }
 
     /// Static so the token outlives any view identity change and is never deallocated.
     private static var batchEventMonitor: Any?
@@ -122,6 +22,8 @@ struct ContentView: View {
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
     @Environment(GalleryStore.self) private var gallery
+    @Environment(Ideogram4JobStore.self) private var ideogram4Store
+    @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
 
     @Environment(\.openSettings) private var openSettings
 
@@ -130,24 +32,73 @@ struct ContentView: View {
     @State private var showingQueue: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
+    @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var fullSizeImage: NSImage?
+    @State private var boxOverlay: BoxOverlayContext?
 
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
     @State private var mfluxAutoInstall: MfluxAutoInstall = .idle
 
-    @AppStorage("paramsPanelWidth") private var savedParamsWidth: Double = 350
-    @State private var paramsWidth: Double = 280
-    @State private var paramsDragBase: Double?
-
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
     @State private var galleryWidth: Double = 260
     @State private var galleryDragBase: Double?
 
+    private var isAnyStoreRunning: Bool {
+        store.isRunning || ideogram4Store.isRunning
+    }
+
     private var paramsPane: some View {
-        ParamsPanelView(params: params)
-            .frame(width: CGFloat(paramsWidth))
+        ParamsPanelView(params: params, ideogramParams: ideogramParams)
+            .frame(width: 350)
             .frame(maxHeight: .infinity)
+    }
+
+    /// Routes the precision picker to the active family's quantize, persisting
+    /// the Ideogram choice. Mirrors the binding ParamsPanelView used to own.
+    private var unifiedQuantize: Binding<Int> {
+        Binding(
+            get: { params.model.isIdeogram4 ? ideogramParams.quantize : params.quantize },
+            set: { v in
+                if params.model.isIdeogram4 {
+                    ideogramParams.quantize = v
+                    settings.lastIdeogramQuantize = v
+                } else {
+                    params.quantize = v
+                }
+            }
+        )
+    }
+
+    /// Model selector for the top header. Switching the model resets the
+    /// dependent Flux defaults (steps/guidance/dims) just as before.
+    private var headerModelPicker: some View {
+        ModelPickerView(
+            model: $params.model,
+            customModelRepo: $params.customModelRepo,
+            customBaseModel: $params.customBaseModel,
+            quantize: unifiedQuantize
+        )
+        .onChange(of: params.model) { _, m in
+            if m.isIdeogram4 {
+                ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                return
+            }
+            guard m != .custom else { return }
+            let d = settings.resolvedDefaults(for: m)
+            params.steps = d.steps
+            params.guidance = d.guidance
+            params.quantize = d.quantize
+            params.lowRam = d.lowRam
+            params.negativePrompt = d.negativePrompt
+            params.width = d.width
+            params.height = d.height
+            params.loras = d.loras.isEmpty
+                ? settings.defaultLoras.filter { $0.modelFamily == .flux }
+                : d.loras
+            params.isEditMode = false
+            params.editImagePaths = []
+        }
     }
 
     private var previewPaneView: some View {
@@ -155,9 +106,12 @@ struct ContentView: View {
             state: previewState,
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
+            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel() },
+            onCancel: { runner.cancel(); ideogram4Runner.cancel() },
             onClear: clearPreview,
+            onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
@@ -173,8 +127,11 @@ struct ContentView: View {
     private var galleryPaneView: some View {
         GenerationGalleryView(
             selectedItem: $selectedGalleryItem,
+            modelFilter: params.modelFamily,
             onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
+            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onSelectBoard: { name in params.board = name },
             onClearPreview: clearPreview,
@@ -189,54 +146,124 @@ struct ContentView: View {
     }
 
     var body: some View {
+        mainContent
+            .sheet(isPresented: $showingOutputDirPrompt) {
+                OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
+                    .environment(settings)
+            }
+            .sheet(item: $boxOverlay) { ctx in
+                boxOverlaySheet(ctx)
+            }
+            .onAppear {
+                galleryWidth = savedGalleryWidth
+                params.applyDefaults(from: settings)
+                ideogramParams.applyDefaults(settings: settings)
+                try? IdeogramPromptConfig.seedIfNeeded()
+                if settings.outputDir.isEmpty {
+                    showingOutputDirPrompt = true
+                } else {
+                    gallery.scan(outputDir: settings.outputDir)
+                }
+                Task { @MainActor in
+                    NSApp.keyWindow?.makeFirstResponder(nil)
+                }
+                guard Self.batchEventMonitor == nil else { return }
+                Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+                    guard event.keyCode == 36, // return key
+                          event.modifierFlags.contains(.command),
+                          event.modifierFlags.contains(.option),
+                          !event.modifierFlags.contains(.shift),
+                          !event.modifierFlags.contains(.control)
+                    else { return event }
+                    generate(count: settings.batchShortcutCount)
+                    return nil
+                }
+            }
+            .task { await checkAndAutoInstallMflux() }
+            .onChange(of: settings.defaultLoras) { _, updated in
+                let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
+                    e.notes.isEmpty ? nil : (e.path, e.notes)
+                })
+                for i in params.loras.indices {
+                    if let note = notesByPath[params.loras[i].path] {
+                        params.loras[i].notes = note
+                    }
+                }
+                let currentPaths = Set(params.loras.map(\.path))
+                for entry in updated where !currentPaths.contains(entry.path) && entry.modelFamily == .flux {
+                    params.loras.append(entry)
+                }
+                ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
+            }
+            .onChange(of: showingOutputDirPrompt) { _, showing in
+                if !showing, !settings.outputDir.isEmpty {
+                    gallery.scan(outputDir: settings.outputDir)
+                }
+            }
+            .onChange(of: runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: runner.batchImageLanded) { _, count in
+                guard count > 1 else { return } // first image handled by lastCompletedOutputPath
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: ideogram4Runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: ideogram4Runner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: gallery.items) { _, newItems in
+                guard let path = pendingSelectPath,
+                      let item = newItems.first(where: { $0.path == path }) else { return }
+                selectedGalleryItem = item
+                pendingSelectPath = nil
+            }
+    }
+
+    private var mainContent: some View {
         ZStack {
             HStack(spacing: 0) {
                 if showingParams {
                     paramsPane
 
+                    // Static separator — the params panel is a fixed width.
                     Divider()
                         .padding(.vertical, 3)
-                        .contentShape(Rectangle())
-                        .gesture(
-                            DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                                .onChanged { value in
-                                    let base: Double
-                                    if let b = paramsDragBase { base = b } else {
-                                        paramsDragBase = paramsWidth; base = paramsWidth
-                                    }
-                                    paramsWidth = max(220, min(420, base + value.translation.width))
-                                }
-                                .onEnded { _ in
-                                    paramsDragBase = nil
-                                    savedParamsWidth = paramsWidth
-                                }
-                        )
-                        .onHover { hovering in
-                            if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
-                        }
                 }
 
                 previewPane
 
                 Divider()
                     .padding(.horizontal, 3)
-                    .contentShape(Rectangle())
-                    .gesture(
-                        DragGesture(minimumDistance: 0, coordinateSpace: .global)
-                            .onChanged { value in
-                                let base: Double
-                                if let b = galleryDragBase { base = b } else {
-                                    galleryDragBase = galleryWidth; base = galleryWidth
-                                }
-                                galleryWidth = max(160, min(500, base - value.translation.width))
+                    .overlay {
+                        // Transparent ~10pt grab zone centred on the 1pt divider.
+                        // An overlay widens the resize target without padding the
+                        // panes apart the way horizontal padding on the divider
+                        // itself would (overlays don't affect HStack layout).
+                        Color.clear
+                            .frame(width: 10)
+                            .contentShape(Rectangle())
+                            .gesture(
+                                DragGesture(minimumDistance: 0, coordinateSpace: .global)
+                                    .onChanged { value in
+                                        let base: Double
+                                        if let b = galleryDragBase { base = b } else {
+                                            galleryDragBase = galleryWidth; base = galleryWidth
+                                        }
+                                        galleryWidth = max(160, min(500, base - value.translation.width))
+                                    }
+                                    .onEnded { _ in
+                                        galleryDragBase = nil
+                                        savedGalleryWidth = galleryWidth
+                                    }
+                            )
+                            .onHover { hovering in
+                                if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
                             }
-                            .onEnded { _ in
-                                galleryDragBase = nil
-                                savedGalleryWidth = galleryWidth
-                            }
-                    )
-                    .onHover { hovering in
-                        if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
                     }
 
                 galleryPane
@@ -284,11 +311,14 @@ struct ContentView: View {
             selectedGalleryItem = nil
             previewState = .activeJob(job)
         }
+        .onChange(of: ideogram4Runner.activeJob?.id) { _, id in
+            guard let id, let job = ideogram4Store.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeIdeogram4Job(job)
+        }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
-                if selectedGalleryItem == nil {
-                    previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
-                }
+                if selectedGalleryItem == nil { restoreActiveJobPreview() }
                 return
             }
             previewState = .galleryItem(item)
@@ -306,91 +336,49 @@ struct ContentView: View {
             // instead of leaving the detail pane spinning on a missing file.
             guard case let .galleryItem(item) = previewState, !ids.contains(item.id) else { return }
             selectedGalleryItem = nil
-            previewState = runner.activeJob.map { .activeJob($0) } ?? .idle
+            restoreActiveJobPreview()
         }
         .background {
             Button("") { showingQueue.toggle() }
                 .keyboardShortcut("k", modifiers: .command)
                 .hidden()
         }
-        .sheet(isPresented: $showingOutputDirPrompt) {
-            OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
-                .environment(settings)
-        }
-        .onAppear {
-            paramsWidth = savedParamsWidth
-            galleryWidth = savedGalleryWidth
-            params.applyDefaults(from: settings)
-            if settings.outputDir.isEmpty {
-                showingOutputDirPrompt = true
-            } else {
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            Task { @MainActor in
-                NSApp.keyWindow?.makeFirstResponder(nil)
-            }
-            guard Self.batchEventMonitor == nil else { return }
-            Self.batchEventMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-                guard event.keyCode == 36, // return key
-                      event.modifierFlags.contains(.command),
-                      event.modifierFlags.contains(.option),
-                      !event.modifierFlags.contains(.shift),
-                      !event.modifierFlags.contains(.control)
-                else { return event }
-                generate(count: settings.batchShortcutCount)
-                return nil
-            }
-        }
-        .task { await checkAndAutoInstallMflux() }
-        .onChange(of: settings.defaultLoras) { _, updated in
-            let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
-                e.notes.isEmpty ? nil : (e.path, e.notes)
-            })
-            for i in params.loras.indices {
-                if let note = notesByPath[params.loras[i].path] {
-                    params.loras[i].notes = note
-                }
-            }
-            let currentPaths = Set(params.loras.map(\.path))
-            for entry in updated where !currentPaths.contains(entry.path) {
-                params.loras.append(entry)
-            }
-        }
-        .onChange(of: showingOutputDirPrompt) { _, showing in
-            if !showing, !settings.outputDir.isEmpty {
-                gallery.scan(outputDir: settings.outputDir)
-            }
-        }
-        .onChange(of: runner.lastCompletedOutputPath) { _, path in
-            pendingSelectPath = path
-            gallery.scan(outputDir: settings.outputDir)
-        }
-        .onChange(of: runner.batchImageLanded) { _, count in
-            guard count > 1 else { return } // first image handled by lastCompletedOutputPath
-            gallery.scan(outputDir: settings.outputDir)
-        }
-        .onChange(of: gallery.items) { _, newItems in
-            guard let path = pendingSelectPath,
-                  let item = newItems.first(where: { $0.path == path }) else { return }
-            selectedGalleryItem = item
-            pendingSelectPath = nil
-        }
     }
 
     private var queueSheet: some View {
         NavigationStack {
-            QueueDrawerView(selectedJob: Binding(
-                get: {
-                    if case let .activeJob(j) = previewState { return j }
-                    return nil
-                },
-                set: { job in
-                    if let j = job { previewState = .activeJob(j) }
+            // Show the queue for the active model family. The two pipelines have
+            // separate stores; previously this always showed the Flux queue, so
+            // Ideogram jobs (single-shot and batch) never appeared.
+            Group {
+                if params.modelFamily == .ideogram4 {
+                    Ideogram4QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeIdeogram4Job(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeIdeogram4Job(j) }
+                        }
+                    ))
+                    .environment(ideogram4Store)
+                    .environment(ideogram4Runner)
+                    .environment(settings)
+                } else {
+                    QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeJob(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeJob(j) }
+                        }
+                    ))
+                    .environment(store)
+                    .environment(runner)
+                    .environment(settings)
                 }
-            ))
-            .environment(store)
-            .environment(runner)
-            .environment(settings)
+            }
             .navigationTitle("Queue")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -405,11 +393,17 @@ struct ContentView: View {
     // MARK: - Top control bar
 
     private var topControlBar: some View {
-        HStack(spacing: 0) {
-            Spacer()
+        // Generate group is window-centered; the model selector is pinned to the
+        // leading edge in the same ZStack so its width doesn't shift the center.
+        ZStack {
             HStack(spacing: 12) {
-                let canGenerate = !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
-                    && (!params.isEditMode || !params.editImagePaths.isEmpty)
+                let canGenerate: Bool = switch params.modelFamily {
+                case .flux:
+                    !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
+                        && (!params.isEditMode || !params.editImagePaths.isEmpty)
+                case .ideogram4:
+                    ideogramParams.isReadyToGenerate(settings: settings)
+                }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
                         Label("Generate  ⌘↵", systemImage: "wand.and.stars")
@@ -420,7 +414,12 @@ struct ContentView: View {
                     .buttonStyle(.plain)
                     .keyboardShortcut(.return, modifiers: .command)
                     .disabled(!canGenerate)
-                    if params.seed == -1 {
+                    // Batch button: auto-generates N random seeds into one warm job.
+                    // Shown for whichever family has a random (-1) seed selected.
+                    let seedIsRandom = params.modelFamily == .flux
+                        ? params.seed == -1
+                        : ideogramParams.seed == -1
+                    if seedIsRandom {
                         Rectangle()
                             .fill(.white.opacity(0.35))
                             .frame(width: 1, height: 16)
@@ -444,15 +443,52 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help(store.isRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+                .help(isAnyStoreRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+
+                fixedSeedPill
             }
-            Spacer()
+
+            HStack {
+                headerModelPicker
+                Spacer(minLength: 0)
+            }
         }
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
         .background(.bar)
         .overlay(alignment: .bottom) {
             Divider()
+        }
+    }
+
+    /// Whether the active model family has a fixed (non-random) seed set.
+    private var seedIsFixed: Bool {
+        params.modelFamily == .flux ? params.seed != -1 : ideogramParams.seed != -1
+    }
+
+    /// Pill shown next to the queue counter when a fixed seed is set; its ✕
+    /// clears the seed for both Flux and Ideogram back to random.
+    @ViewBuilder
+    private var fixedSeedPill: some View {
+        if seedIsFixed {
+            HStack(spacing: 4) {
+                Image(systemName: "lock.fill").font(.caption2)
+                Text("Fixed Seed").font(.caption)
+                Button {
+                    params.seed = -1
+                    ideogramParams.seed = -1
+                } label: {
+                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                }
+                .buttonStyle(.plain)
+                .focusEffectDisabled()
+                .help("Clear the fixed seed (return to random)")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .foregroundStyle(.secondary)
+            .background(Capsule().fill(Color.secondary.opacity(0.15)))
+            .help("A fixed seed is set — every generation reuses it.")
         }
     }
 
@@ -477,6 +513,22 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         let remaining = store.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if ideogram4Store.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = ideogram4Runner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = ideogram4Store.pendingJobs.count + 1
                         Text("\(remaining) left")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -559,9 +611,63 @@ struct ContentView: View {
         }
     }
 
+    /// Switches the params panel to the Ideogram 4 family and replays a completed
+    /// generation's settings. Mirrors the Flux `params.apply(metadata:newSeed:)` path.
+    private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {
+        params.model = .ideogram4
+        ideogramParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
+    /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
+    /// form and opens the box-overlay editor over the image. Prompt fields, seed,
+    /// and preset are left untouched so the user can adjust boxes in isolation.
+    private func editBoxesOverImage(_ meta: Ideogram4Metadata, image: NSImage) {
+        params.model = .ideogram4
+        ideogramParams.caption.compositionalDeconstruction.elements =
+            meta.caption.compositionalDeconstruction.elements
+        ideogramParams.width = meta.width
+        ideogramParams.height = meta.height
+        boxOverlay = BoxOverlayContext(image: image, width: meta.width, height: meta.height)
+    }
+
+    private func boxOverlaySheet(_ ctx: BoxOverlayContext) -> some View {
+        VStack(spacing: 0) {
+            HStack {
+                Text("Adjust Boxes")
+                    .font(.headline)
+                Spacer()
+                Button("Done") { boxOverlay = nil }
+                    .keyboardShortcut(.cancelAction)
+            }
+            .padding()
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+
+            BBoxEditorView(
+                elements: $ideogramParams.caption.compositionalDeconstruction.elements,
+                outputWidth: ctx.width,
+                outputHeight: ctx.height,
+                isExpanded: true,
+                backgroundImage: ctx.image
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+        }
+        .frame(width: 940, height: 600)
+    }
+
     private func clearPreview() {
         selectedGalleryItem = nil
-        if let job = runner.activeJob { previewState = .activeJob(job) } else { previewState = .idle }
+        restoreActiveJobPreview()
+    }
+
+    private func restoreActiveJobPreview() {
+        if let j = runner.activeJob {
+            previewState = .activeJob(j)
+        } else if let j = ideogram4Runner.activeJob {
+            previewState = .activeIdeogram4Job(j)
+        } else {
+            previewState = .idle
+        }
     }
 
     private func navigateGallery(_ delta: Int) {
@@ -591,21 +697,44 @@ struct ContentView: View {
     // MARK: - Generate
 
     private func generate(count: Int = 1) {
-        guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-              !params.isEditMode || !params.editImagePaths.isEmpty else { return }
         NSApp.keyWindow?.makeFirstResponder(nil)
-        settings.lastPrompt = params.prompt
-        settings.lastWidth = params.width
-        settings.lastHeight = params.height
-        settings.lastLoras = params.loras
-        settings.lastModel = params.model
-        settings.lastQuantize = params.quantize
-        let job = params.makeJob(count: count, templates: settings.activeTemplates)
-        store.add(job)
-        if runner.activeJob == nil {
-            selectedGalleryItem = nil
-            previewState = .activeJob(job)
+
+        switch params.modelFamily {
+        case .flux:
+            guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
+                  !params.isEditMode || !params.editImagePaths.isEmpty else { return }
+            settings.lastPrompt = params.prompt
+            settings.lastWidth = params.width
+            settings.lastHeight = params.height
+            settings.lastLoras = params.loras
+            settings.lastModel = params.model
+            settings.lastQuantize = params.quantize
+            let job = params.makeJob(count: count, templates: settings.activeTemplates)
+            store.add(job)
+            if runner.activeJob == nil {
+                selectedGalleryItem = nil
+                previewState = .activeJob(job)
+            }
+            runner.runNext(in: store, settings: settings)
+
+        case .ideogram4:
+            guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
+            settings.lastModel = .ideogram4 // remember family across sessions
+            settings.lastIdeogramPreset = ideogramParams.preset
+            settings.lastIdeogramWidth = ideogramParams.width
+            settings.lastIdeogramHeight = ideogramParams.height
+            settings.lastIdeogramQuantize = ideogramParams.quantize
+            settings.lastIdeogramCaption = ideogramParams.caption
+            settings.lastIdeogramPlainPrompt = ideogramParams.plainPrompt
+            settings.lastIdeogramUsePlainPrompt = ideogramParams.usePlainPrompt
+            settings.lastIdeogramSeed = ideogramParams.seed
+            // Low-RAM and strict-validation live in Settings → Models → Ideogram;
+            // pull the current values so live edits apply to this run.
+            ideogramParams.lowRam = settings.ideogram4LowRam
+            ideogramParams.strictValidation = settings.ideogram4StrictValidation
+            let job = ideogramParams.makeJob(count: count)
+            ideogram4Store.add(job)
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings)
         }
-        runner.runNext(in: store, settings: settings)
     }
 }

@@ -8,8 +8,12 @@ struct GenerationGalleryView: View {
     @Environment(AppSettings.self) private var settings
 
     @Binding var selectedItem: GalleryItem?
+    /// Only images produced by this model family are shown.
+    var modelFilter: ModelFamily = .flux
     let onRemix: (GenerationMetadata) -> Void
     let onApplySettings: (GenerationMetadata) -> Void
+    let onRemixIdeogram: (Ideogram4Metadata) -> Void
+    let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
@@ -30,9 +34,20 @@ struct GenerationGalleryView: View {
     // anchorItemId is the "preview" item shown in the right pane.
     @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
+    // Transient confirmation toast (e.g. after stripping metadata).
+    @State private var statusMessage: String?
+    @State private var statusDismissTask: Task<Void, Never>?
+
+    /// Store items limited to the selected model family — the source of truth for
+    /// everything the gallery displays and navigates (sections, board counts,
+    /// adjacency, range selection). Mutating operations still address the full
+    /// store by id, so they are unaffected by this filter.
+    private var modelItems: [GalleryItem] {
+        gallery.items.filter { $0.modelFamily == modelFilter }
+    }
 
     private var orderedBoards: [String] {
-        let hasDefault = gallery.items.contains { $0.board == "Default" }
+        let hasDefault = modelItems.contains { $0.board == "Default" }
         let others = gallery.boards.filter { $0 != "Default" }.sorted()
         return (hasDefault ? ["Default"] : []) + others
     }
@@ -42,7 +57,7 @@ struct GenerationGalleryView: View {
         // target and delete affordance); the implicit "Default" board only appears
         // when it actually holds loose images at the output root.
         orderedBoards.map { board in
-            let items = gallery.items.filter { $0.board == board }
+            let items = modelItems.filter { $0.board == board }
             return GallerySection(board: board, items: items, isExpanded: !collapsedBoards.contains(board))
         }
     }
@@ -114,6 +129,8 @@ struct GenerationGalleryView: View {
                     },
                     onRemix: onRemix,
                     onApplySettings: { _, meta in onApplySettings(meta) },
+                    onRemixIdeogram: onRemixIdeogram,
+                    onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
                     onUseInImg2Img: onUseInImg2Img,
                     onMoveToBoard: { item, board in
                         if selection.contains(item.id) {
@@ -121,6 +138,12 @@ struct GenerationGalleryView: View {
                         } else {
                             gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
                         }
+                    },
+                    onStripMetadata: { item in
+                        let targets = selection.contains(item.id)
+                            ? gallery.items.filter { selection.contains($0.id) }
+                            : [item]
+                        stripMetadata(of: targets)
                     },
                     onRevealInFinder: { path in
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -151,6 +174,7 @@ struct GenerationGalleryView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
         }
+        .overlay(alignment: .bottom) { statusToast }
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
             guard let id = newId, anchorItemId != id else { return }
@@ -167,6 +191,14 @@ struct GenerationGalleryView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text(gallery.deleteError ?? "")
+        }
+        .alert("Could not strip metadata", isPresented: Binding(
+            get: { gallery.stripError != nil },
+            set: { if !$0 { gallery.stripError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gallery.stripError ?? "")
         }
         .alert("Rename Folder", isPresented: $showingRenameAlert) {
             TextField("Folder name", text: $renameNameDraft)
@@ -277,6 +309,14 @@ struct GenerationGalleryView: View {
             }
             .menuStyle(.borderlessButton).fixedSize()
 
+            Button {
+                stripMetadata(of: gallery.items.filter { selection.contains($0.id) })
+            } label: {
+                Image(systemName: "tag.slash").font(.caption)
+            }
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .help("Strip embedded metadata (prompt, parameters) from the selected images")
+
             Button(role: .destructive) {
                 deleteTarget = nil
                 showingDeleteConfirm = true
@@ -293,6 +333,26 @@ struct GenerationGalleryView: View {
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
         .background(Color.accentColor.opacity(0.06))
+    }
+
+    // MARK: - Status toast
+
+    @ViewBuilder
+    private var statusToast: some View {
+        if let statusMessage {
+            HStack(spacing: 6) {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(.green)
+                Text(statusMessage)
+                    .font(.caption)
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
+            .background(.regularMaterial, in: Capsule())
+            .overlay(Capsule().strokeBorder(Color.secondary.opacity(0.2)))
+            .padding(.bottom, 12)
+            .transition(.move(edge: .bottom).combined(with: .opacity))
+        }
     }
 
     // MARK: - New group popover
@@ -341,6 +401,25 @@ struct GenerationGalleryView: View {
         clearSelection(nextItem: nil)
     }
 
+    private func stripMetadata(of targets: [GalleryItem]) {
+        guard !targets.isEmpty else { return }
+        let stripped = gallery.stripMetadata(from: targets)
+        // Errors surface via the stripError alert; confirm success with a toast.
+        if stripped > 0 {
+            showStatus("Stripped metadata from \(stripped) image\(stripped == 1 ? "" : "s")")
+        }
+    }
+
+    private func showStatus(_ message: String) {
+        statusDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.2)) { statusMessage = message }
+        statusDismissTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(2.5))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.2)) { statusMessage = nil }
+        }
+    }
+
     private func clearSelection(nextItem: GalleryItem?) {
         selection = nextItem.map { [$0.id] } ?? []
         anchorItemId = nextItem?.id
@@ -350,7 +429,7 @@ struct GenerationGalleryView: View {
     // MARK: - Range select (shift+click)
 
     private func rangeSelect(to item: GalleryItem) {
-        let items = gallery.items
+        let items = modelItems
         guard let targetIdx = items.firstIndex(where: { $0.id == item.id }) else { return }
         if let anchorId = anchorItemId,
            let anchorIdx = items.firstIndex(where: { $0.id == anchorId }) {
@@ -388,7 +467,7 @@ struct GenerationGalleryView: View {
     }
 
     private func adjacentItem(to item: GalleryItem) -> GalleryItem? {
-        let boardItems = gallery.items.filter { $0.board == item.board }
+        let boardItems = modelItems.filter { $0.board == item.board }
         guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return nil }
         let nextIdx = idx + 1 < boardItems.count ? idx + 1 : idx - 1
         return nextIdx >= 0 ? boardItems[nextIdx] : nil

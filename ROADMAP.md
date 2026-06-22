@@ -1,5 +1,16 @@
 # MLXBits Image Studio — Roadmap
 
+## In progress
+
+### Ideogram 4 — awaiting upstream mflux merge
+
+The Ideogram 4 UI is complete and shipping: structured-caption editor,
+Gemma-assisted caption generation, regional bounding-box layout editor, color
+palettes with hex entry, and an FP8/Q8/Q4 precision selector. Generation drives
+the `mflux-generate-ideogram4` CLI, which is **not yet in a published mflux
+release** — Ideogram 4 jobs show a "binary not found" error until that support
+merges. FLUX generation is unaffected.
+
 ## Planned
 
 ### Keep Model Warm (Persistent Daemon)
