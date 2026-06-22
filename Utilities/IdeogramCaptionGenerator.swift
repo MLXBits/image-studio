@@ -224,7 +224,8 @@ final class IdeogramCaptionGenerator {
         }
     }
 
-    private func extractJSONString(from text: String) -> String? {
+    /// Exposed (non-private) for unit testing; pure, so `nonisolated`.
+    nonisolated func extractJSONString(from text: String) -> String? {
         // mlx_lm.generate echoes the full prompt before the generated text, separated by
         // "==========". The prompt contains example JSON, so searching from the start grabs
         // example content instead of the model's reply. Skip past the last separator.
@@ -283,7 +284,8 @@ final class IdeogramCaptionGenerator {
     }
 
     /// Fixes common model-output JSON defects before decoding.
-    private func sanitizeJSON(_ json: String) -> String {
+    /// Exposed (non-private) for unit testing; pure, so `nonisolated`.
+    nonisolated func sanitizeJSON(_ json: String) -> String {
         var s = json
         // Normalize any "compositional_<variant>" key to "compositional_deconstruction".
         // The model generates many wrong suffixes: compositional_description,
