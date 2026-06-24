@@ -154,8 +154,11 @@ final class FluxJobRunner {
 
         for await chunk in stream {
             job.log = RunnerSupport.appendLog(chunk, to: job.log)
+            // img2img runs fewer denoise steps than requested (the image-strength schedule
+            // drops the leading steps), so the tqdm total can be < job.steps. Accept any
+            // genuine tqdm bar up to the requested count rather than requiring exact equality.
             if let progress = JobProgressParser.parseStep(from: job.log),
-               progress.total == job.steps {
+               progress.total <= job.steps {
                 if !seenFirstStep {
                     seenFirstStep = true
                     loadEndTime = Date()

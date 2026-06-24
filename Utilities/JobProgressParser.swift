@@ -20,10 +20,15 @@ enum JobProgressParser {
                   let tot = Int(parts[1]),
                   tot > 0, tot <= 500 else { continue }
 
+            // Only count genuine tqdm progress bars: tqdm always renders the count as
+            // "N/M [elapsed<remaining, ...]", so the count is immediately followed by " [".
+            // This rejects look-alikes such as the LoRA "(336/336 keys matched)" line.
+            let suffix = String(line[countRange.upperBound...])
+            guard suffix.drop(while: { $0 == " " }).first == "[" else { continue }
+
             // Parse "[elapsed<remaining" that may follow the count
             var elapsed: String?
             var remaining: String?
-            let suffix = String(line[countRange.upperBound...])
             if let timingRange = suffix.range(
                 of: #"\[(\d+:\d+(?::\d+)?)<(\d+:\d+(?::\d+)?)"#, options: .regularExpression
             ) {

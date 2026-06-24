@@ -153,7 +153,12 @@ struct StepwisePreviewView: View {
         }
         Task.detached(priority: .userInitiated) {
             let img = NSImage(contentsOfFile: path)
-            await MainActor.run { displayedImage = img }
+            await MainActor.run {
+                // Detached loads can resolve out of order; ignore a stale frame that
+                // finished after a newer one was already requested.
+                guard path == job.latestStepwisePath else { return }
+                displayedImage = img
+            }
         }
     }
 }
@@ -251,7 +256,12 @@ struct Ideogram4StepwisePreviewView: View {
         }
         Task.detached(priority: .userInitiated) {
             let img = NSImage(contentsOfFile: path)
-            await MainActor.run { displayedImage = img }
+            await MainActor.run {
+                // Detached loads can resolve out of order; ignore a stale frame that
+                // finished after a newer one was already requested.
+                guard path == job.latestStepwisePath else { return }
+                displayedImage = img
+            }
         }
     }
 }

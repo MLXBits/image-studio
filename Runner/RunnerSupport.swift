@@ -67,25 +67,36 @@ enum RunnerSupport {
         return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
     }
 
-    /// Newest complete PNG in `dir`, ignoring composites and dotfiles. Used to surface
-    /// the latest stepwise preview.
-    static func latestCompletePNG(in dir: URL) -> String? {
+    /// Stepwise frame PNGs in `dir` (excluding composites and dotfiles), newest first by
+    /// creation date. mflux names frames `seed_{seed}_step{N}of{M}.png`, so creation order
+    /// tracks step order.
+    private static func stepFrames(in dir: URL) -> [URL] {
         guard let files = try? FileManager.default.contentsOfDirectory(
             at: dir, includingPropertiesForKeys: [.creationDateKey]
-        ) else { return nil }
+        ) else { return [] }
         return files
             .filter {
                 $0.pathExtension.lowercased() == "png"
                     && !$0.lastPathComponent.contains("composite")
                     && !$0.lastPathComponent.hasPrefix(".")
-                    && isPNGComplete(at: $0.path)
             }
-            .max {
+            .sorted {
                 let a = (try? $0.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
                 let b = (try? $1.resourceValues(forKeys: [.creationDateKey]))?.creationDate ?? .distantPast
-                return a < b
-            }?
-            .path
+                return a > b
+            }
+    }
+
+    /// Newest *finished* PNG in `dir`, ignoring composites and dotfiles. Used to surface
+    /// the latest stepwise preview.
+    static func latestCompletePNG(in dir: URL) -> String? {
+        stepFrames(in: dir).first { isPNGComplete(at: $0.path) }?.path
+    }
+
+    /// Newest PNG in `dir` regardless of whether it has finished writing. Used to attach a
+    /// completion watcher to the frame mflux is currently writing.
+    static func newestPNG(in dir: URL) -> String? {
+        stepFrames(in: dir).first?.path
     }
 
     /// Expands a multi-seed output template into per-seed paths. mflux appends
@@ -134,31 +145,89 @@ enum RunnerSupport {
     }
 }
 
-/// Watches a stepwise-output directory and reports the newest complete PNG whenever
-/// the directory changes. Owns the underlying `DispatchSource` so a runner just keeps
-/// one instance and calls ``start(dir:onLatest:)`` / ``stop()``.
+/// Watches a stepwise-output directory and reports the newest complete PNG as soon as each
+/// frame finishes writing. Owns the underlying `DispatchSource`s so a runner just keeps one
+/// instance and calls ``start(dir:onLatest:)`` / ``stop()``.
+///
+/// Two events drive it, both edge-triggered (no polling):
+///   - A **directory** vnode source fires when mflux creates the next frame's file. At that
+///     point the new file is still partial, so the freshly-created frame is skipped by the
+///     completeness check — but a directory event still means the *previous* frame is now done.
+///   - A **per-file** vnode source watches the frame currently being written and fires on each
+///     content write, so the moment its final bytes (the PNG `IEND` chunk) land we emit it.
+///     Without this the directory vnode alone would never re-fire for in-place content writes,
+///     leaving the preview ~1 step behind and the final frame only flashing at completion.
 @MainActor
 final class StepwiseWatcher {
-    private var source: (any DispatchSourceProtocol)?
+    private var dirSource: (any DispatchSourceProtocol)?
+    private var fileSource: (any DispatchSourceProtocol)?
+    private var watchedFile: String?
+    private var dir: URL?
+    private var onLatest: ((String?) -> Void)?
 
-    /// Starts watching `dir`. `onLatest` is invoked with the newest complete PNG path
-    /// (or nil) immediately and on every subsequent directory write.
+    /// Starts watching `dir`. `onLatest` is invoked with the newest complete PNG path (or nil)
+    /// immediately and whenever a frame finishes writing.
     func start(dir: URL, onLatest: @escaping (String?) -> Void) {
         stop()
+        self.dir = dir
+        self.onLatest = onLatest
         let fd = open(dir.path, O_EVTONLY)
         guard fd >= 0 else { return }
         let src = DispatchSource.makeFileSystemObjectSource(
             fileDescriptor: fd, eventMask: .write, queue: .main
         )
-        src.setEventHandler { onLatest(RunnerSupport.latestCompletePNG(in: dir)) }
+        src.setEventHandler { [weak self] in self?.handleDirChange() }
         src.setCancelHandler { close(fd) }
         src.resume()
-        source = src
-        onLatest(RunnerSupport.latestCompletePNG(in: dir)) // check immediately for pre-existing files
+        dirSource = src
+        handleDirChange() // pick up any pre-existing frames immediately
     }
 
     func stop() {
-        source?.cancel()
-        source = nil
+        dirSource?.cancel()
+        dirSource = nil
+        stopFileWatch()
+        dir = nil
+        onLatest = nil
+    }
+
+    /// A directory entry was added or removed (mflux created the next frame). Emit the newest
+    /// finished frame, then attach a watcher to the frame still being written so we can emit it
+    /// the instant it completes.
+    private func handleDirChange() {
+        guard let dir else { return }
+        onLatest?(RunnerSupport.latestCompletePNG(in: dir))
+        watchFrameInProgress(in: dir)
+    }
+
+    private func watchFrameInProgress(in dir: URL) {
+        guard let newest = RunnerSupport.newestPNG(in: dir), newest != watchedFile else { return }
+        if RunnerSupport.isPNGComplete(at: newest) { return } // already finished; nothing to wait on
+        stopFileWatch()
+        let fd = open(newest, O_EVTONLY)
+        guard fd >= 0 else { return }
+        let src = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: fd, eventMask: [.write, .extend], queue: .main
+        )
+        src.setEventHandler { [weak self] in self?.handleFrameWrite(path: newest) }
+        src.setCancelHandler { close(fd) }
+        src.resume()
+        fileSource = src
+        watchedFile = newest
+        // Close the small window between the completeness check above and source registration:
+        // the frame may have finished writing in between, with no further write event coming.
+        handleFrameWrite(path: newest)
+    }
+
+    private func handleFrameWrite(path: String) {
+        guard let dir, RunnerSupport.isPNGComplete(at: path) else { return }
+        onLatest?(RunnerSupport.latestCompletePNG(in: dir))
+        stopFileWatch() // frame done; the next directory event will re-arm for the following frame
+    }
+
+    private func stopFileWatch() {
+        fileSource?.cancel()
+        fileSource = nil
+        watchedFile = nil
     }
 }
