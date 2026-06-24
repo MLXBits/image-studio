@@ -207,12 +207,24 @@ struct GrowingPromptField: View {
     var hint: String
     var ghostSuffix: String = ""
     var minHeight: CGFloat = 60
+    /// Estimated-token soft cap. When set, a live token counter is shown beneath the
+    /// field, and an info icon explaining backend truncation appears once exceeded.
+    var tokenSoftCap: Int?
     /// Called when the underlying editor gains first-responder focus.
     var onFocus: (() -> Void)?
 
     var body: some View {
+        VStack(alignment: .trailing, spacing: 4) {
+            editor
+            if let cap = tokenSoftCap {
+                tokenCounter(cap: cap)
+            }
+        }
+    }
+
+    private var editor: some View {
         let displayText = text + ghostSuffix
-        Text(displayText.isEmpty ? " " : displayText)
+        return Text(displayText.isEmpty ? " " : displayText)
             .font(.body)
             .padding(.horizontal, 5)
             .padding(.vertical, 8)
@@ -250,6 +262,36 @@ struct GrowingPromptField: View {
             )
             .accessibilityLabel(label)
             .accessibilityHint(hint)
+    }
+
+    /// Live token estimate with a soft cap. Counts the combined user + ghost (template)
+    /// text since both are sent to the encoder. The info icon stays hidden until the
+    /// estimate exceeds the cap, then explains what truncation does to a submitted prompt.
+    @ViewBuilder
+    private func tokenCounter(cap: Int) -> some View {
+        let count = PromptTokenEstimator.estimate(text + ghostSuffix)
+        let over = count > cap
+        let near = Double(count) >= Double(cap) * 0.9
+        HStack(spacing: 4) {
+            if over {
+                InfoButton(
+                    title: "Prompt may be truncated",
+                    description: "This model encodes prompts up to about \(cap) tokens. Text beyond "
+                        + "that is dropped before it reaches the model, so trailing details may be "
+                        + "ignored if you submit as-is. The encoder also reads tokens in order — put "
+                        + "the most important content first. This is an estimate; the actual tokenizer "
+                        + "may differ slightly."
+                )
+            }
+            Text("~\(count) / \(cap) tokens")
+                .font(.caption2)
+                .monospacedDigit()
+                .foregroundStyle(over ? Color.red : (near ? Color.orange : Color.secondary))
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            "Estimated \(count) of \(cap) tokens" + (over ? ", over the limit — prompt may be truncated" : "")
+        )
     }
 }
 

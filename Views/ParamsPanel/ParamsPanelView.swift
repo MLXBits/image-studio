@@ -229,7 +229,8 @@ struct ParamsPanelView: View {
             placeholder: "Describe your image…",
             label: "Prompt",
             hint: "Describe the image you want to generate",
-            ghostSuffix: resolvedPositiveGhost
+            ghostSuffix: resolvedPositiveGhost,
+            tokenSoftCap: params.model.promptTokenSoftCap
         )
     }
 
@@ -612,14 +613,16 @@ struct ParamsPanelView: View {
         placeholder: String,
         label: String,
         hint: String,
-        ghostSuffix: String = ""
+        ghostSuffix: String = "",
+        tokenSoftCap: Int? = nil
     ) -> some View {
         GrowingPromptField(
             text: text,
             placeholder: placeholder,
             label: label,
             hint: hint,
-            ghostSuffix: ghostSuffix
+            ghostSuffix: ghostSuffix,
+            tokenSoftCap: tokenSoftCap
         )
     }
 
