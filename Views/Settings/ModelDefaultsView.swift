@@ -84,6 +84,15 @@ struct ModelDefaultsView: View {
                 .padding(.vertical, 2)
                 .tag(FluxModelVariant.ideogram4)
             }
+            Section("Krea") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Krea 2 Turbo").font(.callout)
+                    Text("Turbo · \(FluxModelVariant.krea2.defaultSteps) steps · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(FluxModelVariant.krea2)
+            }
         }
         .listStyle(.sidebar)
     }
@@ -97,6 +106,8 @@ struct ModelDefaultsView: View {
                 Divider()
                 if selectedModel.isIdeogram4 {
                     ideogram4FormContent()
+                } else if selectedModel.isKrea2 {
+                    krea2FormContent()
                 } else {
                     formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
                 }

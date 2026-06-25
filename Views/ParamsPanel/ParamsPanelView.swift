@@ -19,6 +19,7 @@ struct ParamsPanelView: View {
 
     @Bindable var params: ParamsPanelState
     @Bindable var ideogramParams: Ideogram4ParamsPanelState
+    @Bindable var krea2Params: Krea2ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
 
@@ -35,10 +36,13 @@ struct ParamsPanelView: View {
         // this panel covers the family-specific params only.
         ScrollView {
             VStack(alignment: .leading, spacing: 12) {
-                if params.modelFamily == .flux {
+                switch params.modelFamily {
+                case .flux:
                     fluxContent
-                } else {
+                case .ideogram4:
                     Ideogram4ParamsPanelView(params: ideogramParams)
+                case .krea2:
+                    Krea2ParamsPanelView(params: krea2Params)
                 }
             }
             .padding(.horizontal, 12)

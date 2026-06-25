@@ -8,6 +8,8 @@ struct MLXBitsImageStudioApp: App {
     @State private var runner = FluxJobRunner()
     @State private var ideogram4Store = Ideogram4JobStore()
     @State private var ideogram4Runner = Ideogram4JobRunner()
+    @State private var krea2Store = Krea2JobStore()
+    @State private var krea2Runner = Krea2JobRunner()
 
     var body: some Scene {
         WindowGroup {
@@ -18,6 +20,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(runner)
                 .environment(ideogram4Store)
                 .environment(ideogram4Runner)
+                .environment(krea2Store)
+                .environment(krea2Runner)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)

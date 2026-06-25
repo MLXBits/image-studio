@@ -6,6 +6,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     case flux2KleinBase4B = "flux2-klein-base-4b"
     case flux2KleinBase9B = "flux2-klein-base-9b"
     case ideogram4
+    case krea2
     case custom
 
     /// Flux.2 variants only — used for base-model pickers and LoRA sections.
@@ -15,7 +16,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     /// All non-custom models shown in Settings → Models.
     static var allModels: [Self] {
-        builtIn + [.ideogram4]
+        builtIn + [.ideogram4, .krea2]
     }
 
     /// Returns true if the HF hub model directory is fully downloaded: no in-flight
@@ -59,8 +60,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         self == .ideogram4
     }
 
+    var isKrea2: Bool {
+        self == .krea2
+    }
+
     var isFlux: Bool {
-        !isIdeogram4 && self != .custom
+        !isIdeogram4 && !isKrea2 && self != .custom
     }
 
     var displayName: String {
@@ -70,6 +75,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase4B: "FLUX.2 Klein Base 4B"
         case .flux2KleinBase9B: "FLUX.2 Klein Base 9B"
         case .ideogram4: "Ideogram 4"
+        case .krea2: "Krea 2 Turbo"
         case .custom: "Custom Model"
         }
     }
@@ -81,6 +87,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     var defaultSteps: Int {
         switch self {
         case .ideogram4: 20 // Normal preset (not directly used — preset drives step count)
+        case .krea2: 8 // turbo reference default
         default: isDistilled ? 4 : 50
         }
     }
@@ -88,6 +95,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     var defaultGuidance: Double {
         switch self {
         case .ideogram4: 7.0 // not used by Ideogram4 runner
+        case .krea2: 1.0 // turbo reference (CFG 1.0)
         default: isDistilled ? 1.0 : 3.5
         }
     }
@@ -103,7 +111,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     var promptTokenSoftCap: Int? {
         switch self {
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: 512
-        case .ideogram4, .custom: nil
+        case .ideogram4, .krea2, .custom: nil
         }
     }
 
@@ -112,6 +120,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2Klein4B, .flux2KleinBase4B: 15.0
         case .flux2Klein9B, .flux2KleinBase9B: 35.0
         case .ideogram4: 28.0 // FP8 checkpoint
+        case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
         case .custom: 0
         }
     }
@@ -121,7 +130,10 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     var mfluxModelID: String {
-        rawValue
+        switch self {
+        case .krea2: "krea/Krea-2-Turbo" // official repo; rawValue "krea2" is reserved for local paths/keys
+        default: rawValue
+        }
     }
 
     /// Label for the Q0 (base) weights. BF16 for Flux, FP8 for Ideogram 4.
@@ -137,6 +149,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase9B: "black-forest-labs/FLUX.2-klein-base-9B"
         case .flux2KleinBase4B: "black-forest-labs/FLUX.2-klein-base-4B"
         case .ideogram4: nil // gated — user must accept terms manually
+        case .krea2: "krea/Krea-2-Turbo"
         case .custom: nil
         }
     }
@@ -149,6 +162,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase9B: "flux.2-klein-base-9b"
         case .flux2KleinBase4B: "flux.2-klein-base-4b"
         case .ideogram4: "ideogram-4-fp8"
+        case .krea2: "krea-2-turbo"
         case .custom: ""
         }
     }
@@ -202,6 +216,15 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             case 4: return 15
             case 8: return 27
             default: return 28
+            }
+        }
+        // Krea 2 quantizes only the transformer; the Qwen3-VL text encoder + VAE stay
+        // BF16, so the saved dir is larger than the generic BF16×factor estimate.
+        if self == .krea2 {
+            switch quantize {
+            case 4: return 12
+            case 8: return 21
+            default: return 27
             }
         }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0

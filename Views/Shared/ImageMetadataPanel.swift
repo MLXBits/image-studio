@@ -108,6 +108,43 @@ struct ImageMetadataInfo {
         }
     }
 
+    init(krea2Job job: Krea2Job) {
+        prompt = job.prompt
+        negativePrompt = job.guidance != 1.0 ? job.negativePrompt : ""
+        modelName = "Krea 2 Turbo"
+        seed = job.resolvedSeed ?? job.seed
+        width = job.width
+        height = job.height
+        steps = job.steps
+        guidance = job.guidance
+        loras = job.loras
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
+        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
+    init?(krea2Item: GalleryItem) {
+        guard let meta = krea2Item.krea2Metadata else { return nil }
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt ?? ""
+        modelName = "Krea 2 Turbo"
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        loras = meta.loras ?? []
+        filePath = krea2Item.path
+        log = meta.log
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init(path: String) {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []

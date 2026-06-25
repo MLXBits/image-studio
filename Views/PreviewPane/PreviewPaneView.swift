@@ -4,6 +4,7 @@ enum PreviewState {
     case idle
     case activeJob(FluxJob)
     case activeIdeogram4Job(Ideogram4Job)
+    case activeKrea2Job(Krea2Job)
     case galleryItem(GalleryItem)
 }
 
@@ -16,6 +17,8 @@ struct PreviewPaneView: View {
     let onApplySettings: (GenerationMetadata) -> Void
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
+    var onRemixKrea2: ((Krea2Metadata) -> Void)?
+    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -79,6 +82,28 @@ struct PreviewPaneView: View {
                         ideogram4PendingView(job: job)
                     }
 
+                case let .activeKrea2Job(job):
+                    switch job.status {
+                    case .running:
+                        Krea2StepwisePreviewView(job: job, onCancel: onCancel)
+
+                    case .completed:
+                        Krea2CompletedPreviewView(
+                            job: job,
+                            onRemix: onRemixKrea2,
+                            onApplySettings: onApplyKrea2Settings
+                        )
+
+                    case let .failed(msg):
+                        krea2FailedView(message: msg, job: job)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        krea2PendingView(job: job)
+                    }
+
                 case let .galleryItem(item):
                     GalleryItemDetailView(
                         item: item,
@@ -86,6 +111,8 @@ struct PreviewPaneView: View {
                         onApplySettings: onApplySettings,
                         onRemixIdeogram: onRemixIdeogram,
                         onApplyIdeogramSettings: onApplyIdeogramSettings,
+                        onRemixKrea2: onRemixKrea2,
+                        onApplyKrea2Settings: onApplyKrea2Settings,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize
@@ -147,6 +174,10 @@ struct PreviewPaneView: View {
             return true
 
         case let .activeIdeogram4Job(job):
+            if case .running = job.status { return false }
+            return true
+
+        case let .activeKrea2Job(job):
             if case .running = job.status { return false }
             return true
 
@@ -308,6 +339,47 @@ struct PreviewPaneView: View {
     }
 
     private func pendingView(job: FluxJob) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "clock")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text("Waiting in queue")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text(job.displayName)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func krea2FailedView(message: String, job: Krea2Job) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text("Generation failed")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(job.log.isEmpty ? message : job.log)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                    Color.clear.frame(height: 1).id("errEnd")
+                }
+                .onAppear { proxy.scrollTo("errEnd") }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func krea2PendingView(job: Krea2Job) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
                 .font(.system(size: 40))

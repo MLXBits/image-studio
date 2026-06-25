@@ -16,6 +16,7 @@ struct GalleryItem: Identifiable, Equatable {
     var thumbnailImage: NSImage? // decoded from thumbnailData; not persisted
     var metadata: GenerationMetadata?
     var ideogram4Metadata: Ideogram4Metadata?
+    var krea2Metadata: Krea2Metadata?
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -29,7 +30,10 @@ struct GalleryItem: Identifiable, Equatable {
     /// currently selected model. Ideogram outputs are named with an "ideogram"
     /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux.
     var modelFamily: ModelFamily {
-        filename.lowercased().hasPrefix("ideogram") ? .ideogram4 : .flux
+        let name = filename.lowercased()
+        if name.hasPrefix("ideogram") { return .ideogram4 }
+        if name.hasPrefix("krea2") { return .krea2 }
+        return .flux
     }
 }
 
@@ -264,12 +268,14 @@ nonisolated private func scanDirectory(
         let prior = existing[url.path]
         let fluxMeta = MetadataSidecar.read(for: url.path)
         let ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
+        let krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             thumbnailImage: prior?.thumbnailImage,
             metadata: fluxMeta,
-            ideogram4Metadata: ideogramMeta
+            ideogram4Metadata: ideogramMeta,
+            krea2Metadata: krea2Meta
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }

@@ -88,6 +88,8 @@ class AppSettings {
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
         var ideogram4CfgEnd: Double?
+        /// Krea 2 last-used form (remembered across launches)
+        var lastKrea2: Krea2FormState?
         /// Notepad
         var notepadText: String?
 
@@ -288,6 +290,11 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Last-used Krea 2 form, restored on next launch.
+    var lastKrea2: Krea2FormState? {
+        didSet { save() }
+    }
+
     /// Stream Ideogram 4 transformer blocks from disk to reduce peak memory.
     var ideogram4LowRam: Bool {
         didSet { save() }
@@ -389,6 +396,7 @@ class AppSettings {
         lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
         lastIdeogramSeed = s.lastIdeogramSeed
+        lastKrea2 = s.lastKrea2
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
@@ -461,6 +469,7 @@ class AppSettings {
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
+        s.lastKrea2 = lastKrea2
         s.notepadText = notepadText
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
@@ -490,6 +499,10 @@ class AppSettings {
 
     func mfluxIdeogram4BinaryPath() -> String {
         BinaryDetector.mfluxGenerateIdeogram4(in: mfluxBinaryDir)
+    }
+
+    func mfluxKrea2BinaryPath() -> String {
+        BinaryDetector.mfluxGenerateKrea2(in: mfluxBinaryDir)
     }
 
     func mlxLmBinaryPath() -> String {

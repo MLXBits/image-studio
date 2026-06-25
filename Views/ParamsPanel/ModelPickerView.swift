@@ -63,6 +63,7 @@ struct ModelPickerView: View {
                     }
                     Divider()
                     modelMenuButton("Ideogram 4", value: .ideogram4)
+                    modelMenuButton("Krea 2 Turbo", value: .krea2)
                     Divider()
                     modelMenuButton("Custom…", value: .custom)
                 } label: {

@@ -7,6 +7,8 @@ struct GalleryItemDetailView: View {
     let onApplySettings: (GenerationMetadata) -> Void
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
+    var onRemixKrea2: ((Krea2Metadata) -> Void)?
+    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
@@ -15,9 +17,13 @@ struct GalleryItemDetailView: View {
     @State private var showingLog: Bool = false
 
     var body: some View {
-        let info = item.ideogram4Metadata != nil
-            ? ImageMetadataInfo(ideogram4Item: item)
-            : (ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path))
+        let info = if item.ideogram4Metadata != nil {
+            ImageMetadataInfo(ideogram4Item: item)
+        } else if item.krea2Metadata != nil {
+            ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else {
+            ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
+        }
         VStack(spacing: 0) {
             ZStack {
                 Color.black.opacity(0.05)
@@ -57,6 +63,10 @@ struct GalleryItemDetailView: View {
                     if let img = image {
                         Button("Adjust Boxes…") { onEditBoxesOverImage?(meta, img) }
                     }
+                } else if let meta = item.krea2Metadata {
+                    Divider()
+                    Button("Apply Settings") { onApplyKrea2Settings?(correctedKrea2(meta)) }
+                    Button("Remix (new seed)") { onRemixKrea2?(meta) }
                 }
                 if info.log != nil {
                     Divider()
@@ -72,7 +82,8 @@ struct GalleryItemDetailView: View {
                 info: info,
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
-                onUseInImg2Img: item.ideogram4Metadata == nil ? { onUseInImg2Img(item.path) } : nil,
+                onUseInImg2Img: item.ideogram4Metadata == nil && item.krea2Metadata == nil
+                    ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
@@ -98,12 +109,16 @@ struct GalleryItemDetailView: View {
         if let meta = item.ideogram4Metadata {
             return { onApplyIdeogramSettings(correctedIdeogram(meta)) }
         }
+        if let meta = item.krea2Metadata, let fn = onApplyKrea2Settings {
+            return { fn(correctedKrea2(meta)) }
+        }
         return nil
     }
 
     private var remixAction: (() -> Void)? {
         if let meta = item.metadata { return { onRemix(meta) } }
         if let meta = item.ideogram4Metadata { return { onRemixIdeogram(meta) } }
+        if let meta = item.krea2Metadata, let fn = onRemixKrea2 { return { fn(meta) } }
         return nil
     }
 
@@ -117,6 +132,12 @@ struct GalleryItemDetailView: View {
     /// Restores the board from the item's gallery folder (the sidecar may predate
     /// foldering or carry a stale value), matching the Flux Apply-Settings behavior.
     private func correctedIdeogram(_ meta: Ideogram4Metadata) -> Ideogram4Metadata {
+        var corrected = meta
+        corrected.board = item.board == "Default" ? nil : item.board
+        return corrected
+    }
+
+    private func correctedKrea2(_ meta: Krea2Metadata) -> Krea2Metadata {
         var corrected = meta
         corrected.board = item.board == "Default" ? nil : item.board
         return corrected

@@ -46,6 +46,13 @@ enum BinaryDetector {
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-ideogram4")
     }
 
+    /// Returns the full path to mflux-generate-krea2 given a binary directory.
+    static func mfluxGenerateKrea2(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-generate-krea2") }
+        let path = "\(dir)/mflux-generate-krea2"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-krea2")
+    }
+
     /// Returns the full path to the mlx_lm.generate binary for LLM caption generation.
     static func mlxLmGenerate(in dir: String) -> String {
         if dir.isEmpty { return detect("mlx_lm.generate") }

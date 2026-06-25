@@ -21,6 +21,8 @@ struct ContentView: View {
     @Environment(GalleryStore.self) private var gallery
     @Environment(Ideogram4JobStore.self) private var ideogram4Store
     @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
+    @Environment(Krea2JobStore.self) private var krea2Store
+    @Environment(Krea2JobRunner.self) private var krea2Runner
 
     @Environment(\.openSettings) private var openSettings
 
@@ -31,6 +33,7 @@ struct ContentView: View {
     @State private var showingOutputDirPrompt: Bool = false
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
+    @State private var krea2Params = Krea2ParamsPanelState()
     @State private var fullSizeImage: NSImage?
     @State private var boxOverlay: BoxOverlayContext?
 
@@ -43,11 +46,11 @@ struct ContentView: View {
     @State private var galleryDragBase: Double?
 
     private var isAnyStoreRunning: Bool {
-        store.isRunning || ideogram4Store.isRunning
+        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
     }
 
     private var paramsPane: some View {
-        ParamsPanelView(params: params, ideogramParams: ideogramParams)
+        ParamsPanelView(params: params, ideogramParams: ideogramParams, krea2Params: krea2Params)
             .frame(width: 350)
             .frame(maxHeight: .infinity)
     }
@@ -56,11 +59,17 @@ struct ContentView: View {
     /// the Ideogram choice. Mirrors the binding ParamsPanelView used to own.
     private var unifiedQuantize: Binding<Int> {
         Binding(
-            get: { params.model.isIdeogram4 ? ideogramParams.quantize : params.quantize },
+            get: {
+                if params.model.isIdeogram4 { return ideogramParams.quantize }
+                if params.model.isKrea2 { return krea2Params.quantize }
+                return params.quantize
+            },
             set: { v in
                 if params.model.isIdeogram4 {
                     ideogramParams.quantize = v
                     settings.lastIdeogramQuantize = v
+                } else if params.model.isKrea2 {
+                    krea2Params.quantize = v
                 } else {
                     params.quantize = v
                 }
@@ -80,6 +89,10 @@ struct ContentView: View {
         .onChange(of: params.model) { _, m in
             if m.isIdeogram4 {
                 ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                return
+            }
+            if m.isKrea2 {
+                krea2Params.loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
                 return
             }
             guard m != .custom else { return }
@@ -106,8 +119,10 @@ struct ContentView: View {
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
+            onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
+            onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel(); ideogram4Runner.cancel() },
+            onCancel: { runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel() },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
@@ -156,6 +171,7 @@ struct ContentView: View {
                 galleryWidth = savedGalleryWidth
                 params.applyDefaults(from: settings)
                 ideogramParams.applyDefaults(settings: settings)
+                krea2Params.applyDefaults(settings: settings)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 if settings.outputDir.isEmpty {
                     showingOutputDirPrompt = true
@@ -181,6 +197,7 @@ struct ContentView: View {
                     params.loras.append(entry)
                 }
                 ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
+                krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
             }
             .onChange(of: showingOutputDirPrompt) { _, showing in
                 if !showing, !settings.outputDir.isEmpty {
@@ -200,6 +217,14 @@ struct ContentView: View {
                 gallery.scan(outputDir: settings.outputDir)
             }
             .onChange(of: ideogram4Runner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: krea2Runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: krea2Runner.batchImageLanded) { _, count in
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
@@ -294,6 +319,11 @@ struct ContentView: View {
             selectedGalleryItem = nil
             previewState = .activeIdeogram4Job(job)
         }
+        .onChange(of: krea2Runner.activeJob?.id) { _, id in
+            guard let id, let job = krea2Store.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeKrea2Job(job)
+        }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
                 if selectedGalleryItem == nil { restoreActiveJobPreview() }
@@ -365,6 +395,19 @@ struct ContentView: View {
                     .environment(ideogram4Store)
                     .environment(ideogram4Runner)
                     .environment(settings)
+                } else if params.modelFamily == .krea2 {
+                    Krea2QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeKrea2Job(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeKrea2Job(j) }
+                        }
+                    ))
+                    .environment(krea2Store)
+                    .environment(krea2Runner)
+                    .environment(settings)
                 } else {
                     QueueDrawerView(selectedJob: Binding(
                         get: {
@@ -404,6 +447,8 @@ struct ContentView: View {
                         && (!params.isEditMode || !params.editImagePaths.isEmpty)
                 case .ideogram4:
                     ideogramParams.isReadyToGenerate(settings: settings)
+                case .krea2:
+                    krea2Params.isReadyToGenerate(settings: settings)
                 }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
@@ -417,9 +462,11 @@ struct ContentView: View {
                     .disabled(!canGenerate)
                     // Batch button: auto-generates N random seeds into one warm job.
                     // Shown for whichever family has a random (-1) seed selected.
-                    let seedIsRandom = params.modelFamily == .flux
-                        ? params.seed == -1
-                        : ideogramParams.seed == -1
+                    let seedIsRandom = switch params.modelFamily {
+                    case .flux: params.seed == -1
+                    case .ideogram4: ideogramParams.seed == -1
+                    case .krea2: krea2Params.seed == -1
+                    }
                     if seedIsRandom {
                         Rectangle()
                             .fill(.white.opacity(0.35))
@@ -475,7 +522,11 @@ struct ContentView: View {
 
     /// Whether the active model family has a fixed (non-random) seed set.
     private var seedIsFixed: Bool {
-        params.modelFamily == .flux ? params.seed != -1 : ideogramParams.seed != -1
+        switch params.modelFamily {
+        case .flux: params.seed != -1
+        case .ideogram4: ideogramParams.seed != -1
+        case .krea2: krea2Params.seed != -1
+        }
     }
 
     /// Pill shown next to the queue counter when a fixed seed is set; its ✕
@@ -489,6 +540,7 @@ struct ContentView: View {
                 Button {
                     params.seed = -1
                     ideogramParams.seed = -1
+                    krea2Params.seed = -1
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
@@ -541,6 +593,22 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         let remaining = ideogram4Store.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if krea2Store.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = krea2Runner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = krea2Store.pendingJobs.count + 1
                         Text("\(remaining) left")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -630,6 +698,13 @@ struct ContentView: View {
         ideogramParams.apply(metadata: meta, newSeed: newSeed)
     }
 
+    /// Switches the params panel to the Krea 2 family and replays a completed
+    /// generation's settings. Mirrors the Flux/Ideogram replay paths.
+    private func applyKrea2(_ meta: Krea2Metadata, newSeed: Bool) {
+        params.model = .krea2
+        krea2Params.apply(metadata: meta, newSeed: newSeed)
+    }
+
     /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
     /// form and opens the box-overlay editor over the image. Prompt fields, seed,
     /// and preset are left untouched so the user can adjust boxes in isolation.
@@ -677,6 +752,8 @@ struct ContentView: View {
             previewState = .activeJob(j)
         } else if let j = ideogram4Runner.activeJob {
             previewState = .activeIdeogram4Job(j)
+        } else if let j = krea2Runner.activeJob {
+            previewState = .activeKrea2Job(j)
         } else {
             previewState = .idle
         }
@@ -747,6 +824,18 @@ struct ContentView: View {
             let job = ideogramParams.makeJob(count: count)
             ideogram4Store.add(job)
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings)
+
+        case .krea2:
+            guard krea2Params.isReadyToGenerate(settings: settings) else { return }
+            settings.lastModel = .krea2 // remember family across sessions
+            settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
+            let job = krea2Params.makeJob(count: count)
+            krea2Store.add(job)
+            if krea2Runner.activeJob == nil {
+                selectedGalleryItem = nil
+                previewState = .activeKrea2Job(job)
+            }
+            krea2Runner.runNext(in: krea2Store, settings: settings)
         }
     }
 }

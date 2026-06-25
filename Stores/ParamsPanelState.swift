@@ -25,7 +25,11 @@ final class ParamsPanelState {
     var board: String = ""
 
     var modelFamily: ModelFamily {
-        model == .ideogram4 ? .ideogram4 : .flux
+        switch model {
+        case .ideogram4: .ideogram4
+        case .krea2: .krea2
+        default: .flux
+        }
     }
 
     func applyDefaults(from settings: AppSettings) {

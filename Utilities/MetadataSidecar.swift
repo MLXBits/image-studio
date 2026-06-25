@@ -87,6 +87,42 @@ nonisolated struct GenerationMetadata: Codable {
     var log: String?
 }
 
+// MARK: - Krea 2 metadata
+
+nonisolated struct Krea2Metadata: Codable {
+    @MainActor static func from(job: Krea2Job) -> Self {
+        Self(
+            prompt: job.prompt,
+            negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
+            seed: job.resolvedSeed ?? job.seed,
+            steps: job.steps,
+            guidance: job.guidance,
+            width: job.width,
+            height: job.height,
+            quantize: job.quantize,
+            loras: job.loras.isEmpty ? nil : job.loras,
+            board: job.board.isEmpty ? nil : job.board,
+            generatedAt: job.completedAt ?? Date(),
+            startedAt: job.startedAt,
+            log: job.log.isEmpty ? nil : job.log
+        )
+    }
+
+    var prompt: String
+    var negativePrompt: String?
+    var seed: Int
+    var steps: Int
+    var guidance: Double
+    var width: Int
+    var height: Int
+    var quantize: Int
+    var loras: [LoraEntry]?
+    var board: String?
+    var generatedAt: Date
+    var startedAt: Date?
+    var log: String?
+}
+
 enum MetadataSidecar {
     static func write(_ metadata: GenerationMetadata, for imagePath: String) {
         let url = sidecarURL(for: imagePath)
@@ -98,6 +134,15 @@ enum MetadataSidecar {
     }
 
     static func writeIdeogram4(_ metadata: Ideogram4Metadata, for imagePath: String) {
+        let url = sidecarURL(for: imagePath)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(metadata) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func writeKrea2(_ metadata: Krea2Metadata, for imagePath: String) {
         let url = sidecarURL(for: imagePath)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -120,6 +165,14 @@ enum MetadataSidecar {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(Ideogram4Metadata.self, from: data)
+    }
+
+    nonisolated static func readKrea2(for imagePath: String) -> Krea2Metadata? {
+        let url = sidecarURL(for: imagePath)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(Krea2Metadata.self, from: data)
     }
 
     nonisolated static func sidecarURL(for imagePath: String) -> URL {

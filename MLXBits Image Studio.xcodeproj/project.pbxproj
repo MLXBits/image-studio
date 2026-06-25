@@ -21,6 +21,7 @@
 		0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */; };
@@ -37,9 +38,12 @@
 		4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
+		4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */; };
+		50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */; };
 		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
 		5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */; };
+		5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */; };
 		62C2027429B9D3CD98665509 /* FullSizeImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B646F0AF9AC8FBF9494F772D /* FullSizeImageView.swift */; };
 		635C82517A4D9D8A01AC05AC /* ColorHexTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
@@ -52,6 +56,7 @@
 		79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */; };
 		7A4295660278E9FD1D06E5DC /* BBoxEditorView+Subviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
+		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
 		8C60284A9547C1107436C267 /* Ideogram4ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */; };
@@ -60,6 +65,7 @@
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
 		96FC70E999A49888475CAC44 /* BBoxGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */; };
 		98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */; };
+		99D652606CC5D99F504A7F79 /* Krea2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */; };
 		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
 		A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */; };
@@ -67,6 +73,7 @@
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
+		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
@@ -101,9 +108,12 @@
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
 		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
 		0DFB6BA799C59DAA55470EC3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2PreviewViews.swift; sourceTree = "<group>"; };
+		11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelView.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Subviews.swift"; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
@@ -125,6 +135,7 @@
 		5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionTests.swift; sourceTree = "<group>"; };
 		562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UvInstaller.swift; sourceTree = "<group>"; };
 		57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelState.swift; sourceTree = "<group>"; };
+		5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobRunner.swift; sourceTree = "<group>"; };
 		5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHexTests.swift; sourceTree = "<group>"; };
 		5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramElementCard.swift; sourceTree = "<group>"; };
 		607FDAD831E19BE75C734220 /* IdeogramCaption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaption.swift; sourceTree = "<group>"; };
@@ -134,11 +145,13 @@
 		654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorPaletteEditor.swift; sourceTree = "<group>"; };
 		655AC8400B9B30688813DF1A /* RunnerSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupport.swift; sourceTree = "<group>"; };
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
+		6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Krea2Form.swift"; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Gestures.swift"; sourceTree = "<group>"; };
 		7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Fields.swift"; sourceTree = "<group>"; };
 		72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Rows.swift"; sourceTree = "<group>"; };
+		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimator.swift; sourceTree = "<group>"; };
@@ -155,6 +168,7 @@
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
+		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
@@ -294,6 +308,7 @@
 			children = (
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
 				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
+				5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */,
 				655AC8400B9B30688813DF1A /* RunnerSupport.swift */,
 			);
 			path = Runner;
@@ -307,6 +322,16 @@
 			path = Resources;
 			sourceTree = "<group>";
 		};
+		AD60CB7312E59668249A564F /* Krea2 */ = {
+			isa = PBXGroup;
+			children = (
+				7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */,
+				11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */,
+				0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */,
+			);
+			path = Krea2;
+			sourceTree = "<group>";
+		};
 		AE6CA2D7C353EC349D6C918D /* Settings */ = {
 			isa = PBXGroup;
 			children = (
@@ -314,6 +339,7 @@
 				7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */,
 				318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */,
 				4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */,
+				6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */,
 				72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */,
 				141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */,
 				A31CFEFF049480510A99BB2F /* SettingsView.swift */,
@@ -338,6 +364,7 @@
 			children = (
 				DB23B4F3B654A98909C6B6E3 /* Gallery */,
 				9F055965043A2B57DBE5B81A /* Ideogram4 */,
+				AD60CB7312E59668249A564F /* Krea2 */,
 				72528118E0360DB5F808B0BC /* ParamsPanel */,
 				B4967038153E9BBCF696B8BA /* PreviewPane */,
 				03F175B8A6A79FC1A8184DE3 /* Queue */,
@@ -375,6 +402,7 @@
 				2E769B611A03FA4372F553CA /* Ideogram4Job.swift */,
 				915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */,
 				607FDAD831E19BE75C734220 /* IdeogramCaption.swift */,
+				ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */,
 				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
 				2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
@@ -390,6 +418,7 @@
 				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
 				FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */,
 				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
+				1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */,
 				B9474B6243420062519AB6BA /* ParamsPanelState.swift */,
 			);
 			path = Stores;
@@ -573,6 +602,12 @@
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */,
+				5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */,
+				50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */,
+				99D652606CC5D99F504A7F79 /* Krea2JobStore.swift in Sources */,
+				7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */,
+				1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */,
+				4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
 				932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */,
@@ -581,6 +616,7 @@
 				F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */,
 				67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */,
 				EF113144EC0E822A2551EF74 /* ModelDefaultsView+Ideogram4Form.swift in Sources */,
+				B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */,
 				3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */,
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
 				8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */,
