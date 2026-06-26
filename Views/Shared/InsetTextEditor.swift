@@ -17,6 +17,12 @@ struct InsetTextEditor: NSViewRepresentable {
             if ok { onFocus?() }
             return ok
         }
+
+        /// The shared `NSColorPanel` sends `changeColor:` down the responder chain, and a
+        /// plain-text NSTextView reacts by recoloring *all* of its text. So opening the
+        /// Ideogram color-palette picker while a prompt field was focused would tint that
+        /// field's text. These editors are single-color by design — swallow the message.
+        override func changeColor(_: Any?) {}
     }
 
     final class Coordinator: NSObject, NSTextViewDelegate {

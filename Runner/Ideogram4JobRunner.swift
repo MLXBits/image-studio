@@ -33,11 +33,16 @@ final class Ideogram4JobRunner {
 
     // MARK: - Public
 
-    func runNext(in store: Ideogram4JobStore, settings: AppSettings) {
-        guard runTask == nil, let job = store.pendingJobs.first else {
+    func runNext(in store: Ideogram4JobStore, settings: AppSettings, coordinator: GenerationCoordinator) {
+        guard runTask == nil else { return }
+        guard let job = store.pendingJobs.first else {
             inSession = false
+            coordinator.release(.ideogram4)
             return
         }
+        // Another family is mid-run: leave the job pending. ContentView pumps it once the
+        // active family drains (so only one mflux process runs at a time — OOM guard).
+        guard coordinator.tryAcquire(.ideogram4) else { return }
         if !inSession {
             inSession = true
             sessionCompleted = 0
@@ -52,7 +57,7 @@ final class Ideogram4JobRunner {
             }
             store.isRunning = false
             store.save()
-            self.runNext(in: store, settings: settings)
+            self.runNext(in: store, settings: settings, coordinator: coordinator)
         }
     }
 

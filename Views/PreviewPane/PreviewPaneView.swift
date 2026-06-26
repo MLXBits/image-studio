@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 enum PreviewState {
@@ -28,6 +29,17 @@ struct PreviewPaneView: View {
     var hasNext: Bool = false
     var onNavigatePrev: (() -> Void)?
     var onNavigateNext: (() -> Void)?
+    /// When true, Escape clears the previewed item even if the gallery grid doesn't hold
+    /// first responder. Disabled while a modal layer (sheet / full-size overlay) is in front.
+    var escapeEnabled: Bool = false
+
+    @State private var escapeMonitor: Any?
+
+    /// Escape should dismiss the preview whenever the ✕ would: any non-running active job
+    /// or a selected gallery item. (The running state has no ✕ and is dismissed via Cancel.)
+    private var escapeActive: Bool {
+        escapeEnabled && showsClearButton
+    }
 
     var body: some View {
         ZStack {
@@ -163,6 +175,11 @@ struct PreviewPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .onAppear { if escapeActive { installEscapeMonitor() } }
+        .onDisappear { removeEscapeMonitor() }
+        .onChange(of: escapeActive) { _, active in
+            if active { installEscapeMonitor() } else { removeEscapeMonitor() }
+        }
     }
 
     private var showsClearButton: Bool {
@@ -390,6 +407,33 @@ struct PreviewPaneView: View {
             Text(job.displayName)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
+        }
+    }
+
+    // MARK: - Escape monitor
+
+    /// A local key monitor makes Escape clear the preview regardless of which view holds
+    /// first responder — the gallery grid often loses focus (after generation resets the
+    /// responder, or after clicking into the detail pane), so its own keyDown handler can't
+    /// be relied on alone. Skips text editing and panel windows so it never steals Escape
+    /// from an in-progress edit or a system panel (e.g. the color picker).
+    private func installEscapeMonitor() {
+        guard escapeMonitor == nil else { return }
+        escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
+            guard event.keyCode == 53 else { return event } // Escape
+            if NSApp.keyWindow is NSPanel { return event }
+            if let responder = NSApp.keyWindow?.firstResponder, responder is NSText {
+                return event // mid-edit — let the field cancel instead
+            }
+            onClear()
+            return nil // consume so AppKit doesn't also exit zoomed/tiled window state
+        }
+    }
+
+    private func removeEscapeMonitor() {
+        if let monitor = escapeMonitor {
+            NSEvent.removeMonitor(monitor)
+            escapeMonitor = nil
         }
     }
 }

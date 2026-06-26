@@ -5,6 +5,7 @@ struct QueueDrawerView: View {
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
     @Environment(AppSettings.self) private var settings
+    @Environment(GenerationCoordinator.self) private var coordinator
 
     @Binding var selectedJob: FluxJob?
 
@@ -103,7 +104,7 @@ struct QueueDrawerView: View {
 
     private func restart(_ job: FluxJob) {
         store.restart(job)
-        runner.runNext(in: store, settings: settings)
+        runner.runNext(in: store, settings: settings, coordinator: coordinator)
     }
 
     private func cancelJob(_ job: FluxJob) {
@@ -124,6 +125,7 @@ struct Ideogram4QueueDrawerView: View {
     @Environment(Ideogram4JobStore.self) private var store
     @Environment(Ideogram4JobRunner.self) private var runner
     @Environment(AppSettings.self) private var settings
+    @Environment(GenerationCoordinator.self) private var coordinator
 
     @Binding var selectedJob: Ideogram4Job?
 
@@ -222,7 +224,7 @@ struct Ideogram4QueueDrawerView: View {
 
     private func restart(_ job: Ideogram4Job) {
         store.restart(job)
-        runner.runNext(in: store, settings: settings)
+        runner.runNext(in: store, settings: settings, coordinator: coordinator)
     }
 
     private func cancelJob(_ job: Ideogram4Job) {
@@ -339,6 +341,7 @@ struct Krea2QueueDrawerView: View {
     @Environment(Krea2JobStore.self) private var store
     @Environment(Krea2JobRunner.self) private var runner
     @Environment(AppSettings.self) private var settings
+    @Environment(GenerationCoordinator.self) private var coordinator
 
     @Binding var selectedJob: Krea2Job?
 
@@ -437,7 +440,7 @@ struct Krea2QueueDrawerView: View {
 
     private func restart(_ job: Krea2Job) {
         store.restart(job)
-        runner.runNext(in: store, settings: settings)
+        runner.runNext(in: store, settings: settings, coordinator: coordinator)
     }
 
     private func cancelJob(_ job: Krea2Job) {

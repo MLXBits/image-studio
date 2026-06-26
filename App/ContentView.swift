@@ -23,6 +23,7 @@ struct ContentView: View {
     @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
     @Environment(Krea2JobStore.self) private var krea2Store
     @Environment(Krea2JobRunner.self) private var krea2Runner
+    @Environment(GenerationCoordinator.self) private var coordinator
 
     @Environment(\.openSettings) private var openSettings
 
@@ -44,6 +45,9 @@ struct ContentView: View {
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
     @State private var galleryWidth: Double = 260
     @State private var galleryDragBase: Double?
+    /// Live width of the three-pane row, used to keep the fixed-width params pane from
+    /// being clipped when the window (or a wide gallery) over-constrains the layout.
+    @State private var contentWidth: CGFloat = 0
 
     private var isAnyStoreRunning: Bool {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
@@ -129,8 +133,17 @@ struct ContentView: View {
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
-            onNavigateNext: { navigateGallery(+1) }
+            onNavigateNext: { navigateGallery(+1) },
+            escapeEnabled: previewEscapeEnabled
         )
+    }
+
+    /// Escape should clear the previewed gallery item only when no modal layer sits in
+    /// front of it. While a sheet, the box editor, or the full-size overlay is up, those
+    /// own the escape key.
+    private var previewEscapeEnabled: Bool {
+        fullSizeImage == nil && !showingQueue && !showingNotepad
+            && !showingOutputDirPrompt && boxOverlay == nil
     }
 
     private var previewPane: some View {
@@ -154,8 +167,21 @@ struct ContentView: View {
 
     private var galleryPane: some View {
         galleryPaneView
-            .frame(width: CGFloat(galleryWidth))
+            .frame(width: clampedGalleryWidth)
             .frame(maxHeight: .infinity)
+    }
+
+    /// The gallery's on-screen width, capped so the fixed-width params pane (350) and the
+    /// preview's minimum (320) always stay visible. The user's preferred `galleryWidth` is
+    /// still honored whenever the window is wide enough — it only yields when space is tight,
+    /// so shrinking the window can never clip the params controls off the left edge.
+    private var clampedGalleryWidth: CGFloat {
+        let preferred = CGFloat(galleryWidth)
+        guard contentWidth > 0 else { return preferred }
+        let paramsSpace: CGFloat = showingParams ? 351 : 0 // params pane + its divider
+        let reserved = paramsSpace + 320 + 8 // + preview minimum + gallery divider
+        let maxGallery = max(160, contentWidth - reserved)
+        return min(preferred, maxGallery)
     }
 
     var body: some View {
@@ -228,6 +254,12 @@ struct ContentView: View {
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
+            // Cross-family queue hand-off: when whichever family was running finishes its
+            // own queue, start the next family's pending jobs. Only one runs at a time
+            // (the GenerationCoordinator gate), so this is what keeps queued work draining.
+            .onChange(of: store.isRunning) { _, running in if !running { pumpQueues() } }
+            .onChange(of: ideogram4Store.isRunning) { _, running in if !running { pumpQueues() } }
+            .onChange(of: krea2Store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: gallery.items) { _, newItems in
                 guard let path = pendingSelectPath,
                       let item = newItems.first(where: { $0.path == path }) else { return }
@@ -281,6 +313,7 @@ struct ContentView: View {
                 galleryPane
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { contentWidth = $0 }
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
                     topControlBar
@@ -395,6 +428,7 @@ struct ContentView: View {
                     .environment(ideogram4Store)
                     .environment(ideogram4Runner)
                     .environment(settings)
+                    .environment(coordinator)
                 } else if params.modelFamily == .krea2 {
                     Krea2QueueDrawerView(selectedJob: Binding(
                         get: {
@@ -408,6 +442,7 @@ struct ContentView: View {
                     .environment(krea2Store)
                     .environment(krea2Runner)
                     .environment(settings)
+                    .environment(coordinator)
                 } else {
                     QueueDrawerView(selectedJob: Binding(
                         get: {
@@ -421,6 +456,7 @@ struct ContentView: View {
                     .environment(store)
                     .environment(runner)
                     .environment(settings)
+                    .environment(coordinator)
                 }
             }
             .navigationTitle("Queue")
@@ -624,7 +660,9 @@ struct ContentView: View {
 
     private var galleryNavInfo: (hasPrev: Bool, hasNext: Bool) {
         guard let item = selectedGalleryItem else { return (false, false) }
-        let items = gallery.items.filter { $0.board == item.board }
+        // Match the gallery's own filtering (board + model family) so the prev/next arrows
+        // never page outside the set actually on screen.
+        let items = gallery.items.filter { $0.board == item.board && $0.modelFamily == params.modelFamily }
         guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return (false, false) }
         return (idx > 0, idx < items.count - 1)
     }
@@ -761,7 +799,8 @@ struct ContentView: View {
 
     private func navigateGallery(_ delta: Int) {
         guard let current = selectedGalleryItem else { return }
-        let items = gallery.items.filter { $0.board == current.board }
+        // Same board + model-family filter as the on-screen gallery (see galleryNavInfo).
+        let items = gallery.items.filter { $0.board == current.board && $0.modelFamily == params.modelFamily }
         guard !items.isEmpty else { return }
         if let idx = items.firstIndex(where: { $0.id == current.id }) {
             let next = max(0, min(items.count - 1, idx + delta))
@@ -799,12 +838,13 @@ struct ContentView: View {
             settings.lastModel = params.model
             settings.lastQuantize = params.quantize
             let job = params.makeJob(count: count, templates: settings.activeTemplates)
+            let wasIdle = !isAnyStoreRunning
             store.add(job)
-            if runner.activeJob == nil {
+            runner.runNext(in: store, settings: settings, coordinator: coordinator)
+            if wasIdle {
                 selectedGalleryItem = nil
                 previewState = .activeJob(job)
             }
-            runner.runNext(in: store, settings: settings)
 
         case .ideogram4:
             guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
@@ -822,20 +862,40 @@ struct ContentView: View {
             ideogramParams.lowRam = settings.ideogram4LowRam
             ideogramParams.strictValidation = settings.ideogram4StrictValidation
             let job = ideogramParams.makeJob(count: count)
+            let wasIdle = !isAnyStoreRunning
             ideogram4Store.add(job)
-            ideogram4Runner.runNext(in: ideogram4Store, settings: settings)
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator)
+            if wasIdle {
+                selectedGalleryItem = nil
+                previewState = .activeIdeogram4Job(job)
+            }
 
         case .krea2:
             guard krea2Params.isReadyToGenerate(settings: settings) else { return }
             settings.lastModel = .krea2 // remember family across sessions
             settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
             let job = krea2Params.makeJob(count: count)
+            let wasIdle = !isAnyStoreRunning
             krea2Store.add(job)
-            if krea2Runner.activeJob == nil {
+            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator)
+            if wasIdle {
                 selectedGalleryItem = nil
                 previewState = .activeKrea2Job(job)
             }
-            krea2Runner.runNext(in: krea2Store, settings: settings)
+        }
+    }
+
+    /// Starts the next pending job across all families, but only when the gate is free.
+    /// Each runner drains its own queue internally; this hands off to the next family once
+    /// the current one is fully idle (invoked from the `isRunning` onChange handlers).
+    private func pumpQueues() {
+        guard !isAnyStoreRunning else { return }
+        if !store.pendingJobs.isEmpty {
+            runner.runNext(in: store, settings: settings, coordinator: coordinator)
+        } else if !ideogram4Store.pendingJobs.isEmpty {
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator)
+        } else if !krea2Store.pendingJobs.isEmpty {
+            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator)
         }
     }
 }

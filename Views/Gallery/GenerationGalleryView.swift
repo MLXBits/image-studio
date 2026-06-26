@@ -177,7 +177,15 @@ struct GenerationGalleryView: View {
         .overlay(alignment: .bottom) { statusToast }
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
-            guard let id = newId, anchorItemId != id else { return }
+            guard let id = newId else {
+                // Preview was cleared externally (the pane's ✕, Escape, or a restore to the
+                // active job). Drop our own selection too so the highlighted cell doesn't
+                // linger out of sync with the now-empty preview pane.
+                selection = []
+                anchorItemId = nil
+                return
+            }
+            guard anchorItemId != id else { return }
             selection = [id]
             anchorItemId = id
         }
