@@ -22,6 +22,7 @@ struct ParamsPanelView: View {
     @Bindable var krea2Params: Krea2ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
+    @Environment(TimingStore.self) private var timing
 
     @State private var isImageDropTargeted: Bool = false
     @State private var isEditDropTargeted: Bool = false
@@ -29,6 +30,17 @@ struct ParamsPanelView: View {
 
     private var isDistilled: Bool {
         params.model.isDistilled
+    }
+
+    /// Learned-time estimate for the current Flux configuration. Keyed by
+    /// model/quantize/low-RAM; the per-step term is fitted against megapixels.
+    private var fluxEstimate: TimingStore.Estimate? {
+        timing.estimate(
+            model: TimingStore.fluxModelKey(params.model, customRepo: params.customModelRepo),
+            quantize: params.quantize, lowRam: params.lowRam,
+            steps: params.steps,
+            megapixels: Double(params.width * params.height) / 1_000_000
+        )
     }
 
     var body: some View {
@@ -122,11 +134,14 @@ struct ParamsPanelView: View {
         Divider()
 
         SectionContainerView(title: nil, info: nil) {
-            DimensionPickerView(
-                width: $params.width,
-                height: $params.height,
-                constraints: params.model.isFlux ? .flux2 : .legacy
-            )
+            VStack(alignment: .leading, spacing: 6) {
+                DimensionPickerView(
+                    width: $params.width,
+                    height: $params.height,
+                    constraints: params.model.isFlux ? .flux2 : .legacy
+                )
+                GenerationEstimateView(estimate: fluxEstimate)
+            }
         }
 
         Divider()

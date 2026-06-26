@@ -6,10 +6,22 @@ struct Ideogram4ParamsPanelView: View {
     @Bindable var params: Ideogram4ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
+    @Environment(TimingStore.self) private var timing
 
     @State private var batchSeedText: String = ""
     @State private var showBatchSeeds: Bool = false
     @State private var captionExpanded: Bool = true
+
+    /// Learned-time estimate for the current Ideogram 4 configuration. Low-RAM is a
+    /// Settings-level toggle, so it is read from settings to match what the run will use.
+    private var estimate: TimingStore.Estimate? {
+        timing.estimate(
+            model: "ideogram4",
+            quantize: params.quantize, lowRam: settings.ideogram4LowRam,
+            steps: params.preset.stepCount,
+            megapixels: Double(params.width * params.height) / 1_000_000
+        )
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -37,13 +49,16 @@ struct Ideogram4ParamsPanelView: View {
 
             // Dimensions
             SectionContainerView(title: "Dimensions", info: "Output image size. Range: 256–2048, multiples of 16.") {
-                DimensionPickerView(width: $params.width, height: $params.height)
-                    .onChange(of: params.width) { _, w in
-                        params.width = Ideogram4Preset.clampDimension(w)
-                    }
-                    .onChange(of: params.height) { _, h in
-                        params.height = Ideogram4Preset.clampDimension(h)
-                    }
+                VStack(alignment: .leading, spacing: 6) {
+                    DimensionPickerView(width: $params.width, height: $params.height)
+                        .onChange(of: params.width) { _, w in
+                            params.width = Ideogram4Preset.clampDimension(w)
+                        }
+                        .onChange(of: params.height) { _, h in
+                            params.height = Ideogram4Preset.clampDimension(h)
+                        }
+                    GenerationEstimateView(estimate: estimate)
+                }
             }
 
             Divider()

@@ -24,6 +24,7 @@ struct ContentView: View {
     @Environment(Krea2JobStore.self) private var krea2Store
     @Environment(Krea2JobRunner.self) private var krea2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
+    @Environment(TimingStore.self) private var timing
 
     @Environment(\.openSettings) private var openSettings
 
@@ -840,7 +841,7 @@ struct ContentView: View {
             let job = params.makeJob(count: count, templates: settings.activeTemplates)
             let wasIdle = !isAnyStoreRunning
             store.add(job)
-            runner.runNext(in: store, settings: settings, coordinator: coordinator)
+            runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
             if wasIdle {
                 selectedGalleryItem = nil
                 previewState = .activeJob(job)
@@ -864,7 +865,7 @@ struct ContentView: View {
             let job = ideogramParams.makeJob(count: count)
             let wasIdle = !isAnyStoreRunning
             ideogram4Store.add(job)
-            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator)
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
             if wasIdle {
                 selectedGalleryItem = nil
                 previewState = .activeIdeogram4Job(job)
@@ -877,7 +878,7 @@ struct ContentView: View {
             let job = krea2Params.makeJob(count: count)
             let wasIdle = !isAnyStoreRunning
             krea2Store.add(job)
-            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator)
+            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
             if wasIdle {
                 selectedGalleryItem = nil
                 previewState = .activeKrea2Job(job)
@@ -891,11 +892,11 @@ struct ContentView: View {
     private func pumpQueues() {
         guard !isAnyStoreRunning else { return }
         if !store.pendingJobs.isEmpty {
-            runner.runNext(in: store, settings: settings, coordinator: coordinator)
+            runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
         } else if !ideogram4Store.pendingJobs.isEmpty {
-            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator)
+            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
         } else if !krea2Store.pendingJobs.isEmpty {
-            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator)
+            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }
 }

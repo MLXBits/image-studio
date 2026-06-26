@@ -21,6 +21,7 @@
 		0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
+		19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */; };
 		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
@@ -70,6 +71,7 @@
 		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
 		A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */; };
+		A6E084DCFD1C9C68B12F9AFD /* GenerationEstimateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B73E05AF3B412407752562 /* GenerationEstimateView.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
@@ -93,6 +95,7 @@
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
 		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
+		FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2288F848C8AC536F933F7831 /* TimingModelTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -109,6 +112,7 @@
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
 		08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
 		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
+		0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingStore.swift; sourceTree = "<group>"; };
 		0DFB6BA799C59DAA55470EC3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
 		0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2PreviewViews.swift; sourceTree = "<group>"; };
 		11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelView.swift; sourceTree = "<group>"; };
@@ -118,6 +122,7 @@
 		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
+		2288F848C8AC536F933F7831 /* TimingModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingModelTests.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
 		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
 		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
@@ -155,6 +160,7 @@
 		72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Rows.swift"; sourceTree = "<group>"; };
 		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
+		79B73E05AF3B412407752562 /* GenerationEstimateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEstimateView.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimator.swift; sourceTree = "<group>"; };
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
@@ -260,6 +266,7 @@
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
+				2288F848C8AC536F933F7831 /* TimingModelTests.swift */,
 			);
 			path = Tests;
 			sourceTree = "<group>";
@@ -278,6 +285,7 @@
 			children = (
 				B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */,
 				96B20E83673119F893B43BBB /* FolderComboBox.swift */,
+				79B73E05AF3B412407752562 /* GenerationEstimateView.swift */,
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
@@ -423,6 +431,7 @@
 				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
 				1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */,
 				B9474B6243420062519AB6BA /* ParamsPanelState.swift */,
+				0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */,
 			);
 			path = Stores;
 			sourceTree = "<group>";
@@ -588,6 +597,7 @@
 				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */,
+				A6E084DCFD1C9C68B12F9AFD /* GenerationEstimateView.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
 				65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */,
 				1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */,
@@ -641,6 +651,7 @@
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
 				4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */,
+				19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */,
 				D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -654,6 +665,7 @@
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,
+				FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -11,6 +11,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var krea2Store = Krea2JobStore()
     @State private var krea2Runner = Krea2JobRunner()
     @State private var coordinator = GenerationCoordinator()
+    @State private var timing = TimingStore()
 
     var body: some Scene {
         WindowGroup {
@@ -24,6 +25,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(krea2Store)
                 .environment(krea2Runner)
                 .environment(coordinator)
+                .environment(timing)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)

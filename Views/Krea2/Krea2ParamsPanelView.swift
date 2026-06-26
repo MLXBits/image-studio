@@ -7,9 +7,20 @@ struct Krea2ParamsPanelView: View {
     @Bindable var params: Krea2ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
+    @Environment(TimingStore.self) private var timing
 
     private var cfgOn: Bool {
         params.guidance != 1.0
+    }
+
+    /// Learned-time estimate for the current Krea 2 configuration.
+    private var estimate: TimingStore.Estimate? {
+        timing.estimate(
+            model: "krea2",
+            quantize: params.quantize, lowRam: false,
+            steps: params.steps,
+            megapixels: Double(params.width * params.height) / 1_000_000
+        )
     }
 
     var body: some View {
@@ -53,7 +64,10 @@ struct Krea2ParamsPanelView: View {
         Divider()
 
         SectionContainerView(title: nil, info: nil) {
-            DimensionPickerView(width: $params.width, height: $params.height, constraints: .legacy)
+            VStack(alignment: .leading, spacing: 6) {
+                DimensionPickerView(width: $params.width, height: $params.height, constraints: .legacy)
+                GenerationEstimateView(estimate: estimate)
+            }
         }
 
         Divider()

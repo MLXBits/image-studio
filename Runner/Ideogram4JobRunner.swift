@@ -33,7 +33,7 @@ final class Ideogram4JobRunner {
 
     // MARK: - Public
 
-    func runNext(in store: Ideogram4JobStore, settings: AppSettings, coordinator: GenerationCoordinator) {
+    func runNext(in store: Ideogram4JobStore, settings: AppSettings, coordinator: GenerationCoordinator, timing: TimingStore) {
         guard runTask == nil else { return }
         guard let job = store.pendingJobs.first else {
             inSession = false
@@ -50,14 +50,14 @@ final class Ideogram4JobRunner {
         store.isRunning = true
         runTask = Task { [weak self] in
             guard let self else { return }
-            await self.run(job, settings: settings)
+            await self.run(job, settings: settings, timing: timing)
             self.runTask = nil
             if !job.seeds.isEmpty, case .completed = job.status {
                 store.expandBatchJob(job)
             }
             store.isRunning = false
             store.save()
-            self.runNext(in: store, settings: settings, coordinator: coordinator)
+            self.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }
 
@@ -68,7 +68,7 @@ final class Ideogram4JobRunner {
     // MARK: - Private execution
 
     // swiftlint:disable:next cyclomatic_complexity function_body_length
-    private func run(_ job: Ideogram4Job, settings: AppSettings) async {
+    private func run(_ job: Ideogram4Job, settings: AppSettings, timing: TimingStore) async {
         activeJob = job
         job.status = .running
         job.startedAt = Date()
@@ -195,7 +195,19 @@ final class Ideogram4JobRunner {
         if process.terminationStatus == 0 {
             let totalSecs = Date().timeIntervalSince(jobStartTime)
             let decodeSecs = denoiseEndTime.map { Date().timeIntervalSince($0) }
-            let timing = decodeSecs.map { "decoded in \(RunnerSupport.formatDuration($0)) · " } ?? ""
+            let timingLabel = decodeSecs.map { "decoded in \(RunnerSupport.formatDuration($0)) · " } ?? ""
+
+            if let loadEnd = loadEndTime, let denoiseEnd = denoiseEndTime, job.totalSteps > 0 {
+                timing.record(TimingStore.CompletedRun(
+                    model: "ideogram4",
+                    quantize: job.quantize, lowRam: job.lowRam,
+                    loadSec: loadEnd.timeIntervalSince(jobStartTime),
+                    denoiseSec: denoiseEnd.timeIntervalSince(loadEnd),
+                    decodeSec: decodeSecs,
+                    steps: job.totalSteps,
+                    megapixels: Double(job.width * job.height) / 1_000_000
+                ))
+            }
 
             if isMultiSeed {
                 let paths = batchPaths.map(\.path)
@@ -211,11 +223,11 @@ final class Ideogram4JobRunner {
                     meta.seed = item.seed
                     MetadataSidecar.writeIdeogram4(meta, for: item.path)
                 }
-                job.log += "▸ Saved \(paths.count) images  (\(timing)total \(RunnerSupport.formatDuration(totalSecs)))\n"
+                job.log += "▸ Saved \(paths.count) images  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
                 if job.completedSeedsInBatch == 0 { lastCompletedOutputPath = paths.first }
             } else {
                 job.outputPath = outputTemplate
-                job.log += "▸ Saved to: \(outputTemplate)  (\(timing)total \(RunnerSupport.formatDuration(totalSecs)))\n"
+                job.log += "▸ Saved to: \(outputTemplate)  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
                 job.thumbnailData = RunnerSupport.loadThumbnail(at: outputTemplate)
                 MetadataSidecar.writeIdeogram4(Ideogram4Metadata.from(job: job), for: outputTemplate)
                 lastCompletedOutputPath = outputTemplate
