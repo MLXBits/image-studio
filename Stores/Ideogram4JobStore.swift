@@ -16,6 +16,8 @@ final class Ideogram4JobStore {
     var jobs: [Ideogram4Job] = []
     var isRunning: Bool = false
 
+    @ObservationIgnored private let saveDebouncer = Debouncer()
+
     var pendingJobs: [Ideogram4Job] {
         jobs.filter { $0.status == .pending }
     }
@@ -126,7 +128,13 @@ final class Ideogram4JobStore {
         jobs = result
     }
 
+    /// Debounced: encoding up to 100 jobs (logs + thumbnails) after every mutation is
+    /// too heavy to do per call. The Debouncer flushes pending work at app termination.
     func save() {
+        saveDebouncer.schedule { [weak self] in self?.saveNow() }
+    }
+
+    private func saveNow() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(Array(jobs.prefix(Self.maxJobs))) {

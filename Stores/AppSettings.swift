@@ -337,6 +337,8 @@ class AppSettings {
     /// successful save. Observed by ``SettingsView`` to display an alert.
     var saveError: String?
 
+    @ObservationIgnored private let saveDebouncer = Debouncer()
+
     /// All templates: built-ins first, then user customs.
     var allTemplates: [PromptTemplate] {
         BuiltInTemplates.all + customTemplates
@@ -440,7 +442,14 @@ class AppSettings {
 
     // MARK: - Persistence
 
+    /// Debounced: every settable property calls this from `didSet`, and the notepad
+    /// autosaves per keystroke — coalesce so each burst costs one encode + write.
+    /// The Debouncer flushes pending work at app termination.
     func save() {
+        saveDebouncer.schedule { [weak self] in self?.saveNow() }
+    }
+
+    private func saveNow() {
         var s = Stored(
             mfluxBinaryDir: mfluxBinaryDir, outputDir: outputDir,
             defaultModel: defaultModel, defaultBoard: defaultBoard,

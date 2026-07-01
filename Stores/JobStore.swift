@@ -21,6 +21,8 @@ final class JobStore {
     var jobs: [FluxJob] = []
     var isRunning: Bool = false
 
+    @ObservationIgnored private let saveDebouncer = Debouncer()
+
     var pendingJobs: [FluxJob] {
         jobs.filter { $0.status == .pending }
     }
@@ -151,7 +153,13 @@ final class JobStore {
         jobs = result
     }
 
+    /// Debounced: encoding up to 100 jobs (logs + thumbnails) after every mutation is
+    /// too heavy to do per call. The Debouncer flushes pending work at app termination.
     func save() {
+        saveDebouncer.schedule { [weak self] in self?.saveNow() }
+    }
+
+    private func saveNow() {
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
         if let data = try? encoder.encode(Array(jobs.prefix(Self.maxJobs))) {
