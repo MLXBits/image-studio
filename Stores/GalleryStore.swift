@@ -266,9 +266,25 @@ nonisolated private func scanDirectory(
         let board = components.count > 1 ? String(components[0]) : "Default"
 
         let prior = existing[url.path]
-        let fluxMeta = MetadataSidecar.read(for: url.path)
-        let ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
-        let krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
+        let fluxMeta: GenerationMetadata?
+        let ideogramMeta: Ideogram4Metadata?
+        let krea2Meta: Krea2Metadata?
+        let priorHasMetadata = prior?.metadata != nil
+            || prior?.ideogram4Metadata != nil
+            || prior?.krea2Metadata != nil
+        if let prior, prior.modifiedAt == modDate, priorHasMetadata {
+            // Unchanged file already carrying sidecar metadata: skip the JSON re-read.
+            // Rescans fire after every completed image, so this is the hot path.
+            fluxMeta = prior.metadata
+            ideogramMeta = prior.ideogram4Metadata
+            krea2Meta = prior.krea2Metadata
+        } else {
+            // New or changed file — or one whose sidecar hadn't landed yet when last
+            // scanned (batch sidecars are written just after the PNG), so retry the read.
+            fluxMeta = MetadataSidecar.read(for: url.path)
+            ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
+            krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
+        }
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
