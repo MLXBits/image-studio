@@ -114,6 +114,8 @@ trailing_comma:
 
 type_contents_order:
   order:
+    - type_alias
+    - associated_type
     - case
     - subtype
     - type_property

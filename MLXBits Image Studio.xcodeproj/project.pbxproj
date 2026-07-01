@@ -93,6 +93,7 @@
 		F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */; };
 		F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
+		F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07C86B92053779C5988498B /* JobRunner.swift */; };
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
 		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
@@ -189,6 +190,7 @@
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
 		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
+		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -322,6 +324,7 @@
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
 				08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */,
 				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
+				D07C86B92053779C5988498B /* JobRunner.swift */,
 				5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */,
 				655AC8400B9B30688813DF1A /* RunnerSupport.swift */,
 			);
@@ -618,6 +621,7 @@
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
 				66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */,
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
+				F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */,
 				5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */,
