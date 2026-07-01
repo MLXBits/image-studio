@@ -1,6 +1,7 @@
 import Foundation
 
-enum BinaryDetector {
+// Nonisolated: pure filesystem probes, callable from the installers' background work.
+nonisolated enum BinaryDetector {
     static func detect(_ name: String) -> String {
         let home = NSHomeDirectory()
         let candidates = [

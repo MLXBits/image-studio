@@ -1,6 +1,7 @@
 import Foundation
 
-enum UvInstaller {
+/// Nonisolated so the download and tar subprocess run off the main actor.
+nonisolated enum UvInstaller {
     enum InstallError: LocalizedError {
         case unsupportedArch
         case downloadFailed(Error)

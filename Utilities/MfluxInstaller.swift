@@ -1,6 +1,8 @@
 import Foundation
 
-enum MfluxInstaller {
+/// Nonisolated so the blocking subprocess/download work runs off the main actor
+/// (the project defaults declarations to MainActor).
+nonisolated enum MfluxInstaller {
     enum InstallError: LocalizedError {
         case uvInstallFailed(Error)
         case mfluxInstallFailed(String)
@@ -32,10 +34,13 @@ enum MfluxInstaller {
         do { try process.run() } catch {
             throw InstallError.mfluxInstallFailed(error.localizedDescription)
         }
+        // Drain stderr *before* waiting: uv can emit more than the 64 KB pipe buffer,
+        // and a child blocked writing to a full, unread pipe never exits (deadlock).
+        let errData = errPipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
 
         guard process.terminationStatus == 0 else {
-            let msg = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8)?
+            let msg = String(data: errData, encoding: .utf8)?
                 .trimmingCharacters(in: .whitespacesAndNewlines) ?? "Unknown error"
             throw InstallError.mfluxInstallFailed(msg)
         }
