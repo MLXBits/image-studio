@@ -8,8 +8,9 @@ import Foundation
 /// views bind to them directly. Jobs are persisted by ``Krea2JobStore`` and
 /// survive app restarts.
 ///
-/// Krea 2 is turbo text-to-image only: no edit / img2img path, no custom-repo
-/// support. `negativePrompt` is only meaningful when `guidance != 1` (CFG on).
+/// Krea 2 is turbo text-to-image with an optional img2img path (no multi-image
+/// edit, no custom-repo support). `negativePrompt` is only meaningful when
+/// `guidance != 1` (CFG on). `imagePath` empty = pure text-to-image.
 @Observable
 final class Krea2Job: Identifiable {
     let id: UUID
@@ -25,6 +26,10 @@ final class Krea2Job: Identifiable {
     var guidance: Double
     var quantize: Int
     var loras: [LoraEntry]
+    /// Optional init image for img2img. Empty string = pure text-to-image.
+    var imagePath: String
+    /// How strongly the init image influences the output (0.05–0.95). Only used when `imagePath` is set.
+    var imageStrength: Double
     /// Output subfolder within the global output directory. Empty string = root.
     var board: String
 
@@ -71,6 +76,8 @@ final class Krea2Job: Identifiable {
         guidance: Double = 1.0,
         quantize: Int = 8,
         loras: [LoraEntry] = [],
+        imagePath: String = "",
+        imageStrength: Double = 0.75,
         board: String = "Default",
         createdAt: Date = Date()
     ) {
@@ -85,6 +92,8 @@ final class Krea2Job: Identifiable {
         self.guidance = guidance
         self.quantize = quantize
         self.loras = loras
+        self.imagePath = imagePath
+        self.imageStrength = imageStrength
         self.board = board
         status = .pending
         log = ""
@@ -97,7 +106,7 @@ final class Krea2Job: Identifiable {
 extension Krea2Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, prompt, negativePrompt
-        case width, height, seed, seeds, steps, guidance, quantize, loras, board
+        case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
@@ -116,6 +125,8 @@ extension Krea2Job: Codable {
             guidance: (try? c.decode(Double.self, forKey: .guidance)) ?? 1.0,
             quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 8,
             loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
+            imagePath: (try? c.decode(String.self, forKey: .imagePath)) ?? "",
+            imageStrength: (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75,
             board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
             createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
@@ -143,6 +154,8 @@ extension Krea2Job: Codable {
         try c.encode(guidance, forKey: .guidance)
         try c.encode(quantize, forKey: .quantize)
         try c.encode(loras, forKey: .loras)
+        try c.encode(imagePath, forKey: .imagePath)
+        try c.encode(imageStrength, forKey: .imageStrength)
         try c.encode(board, forKey: .board)
         try c.encode(status, forKey: .status)
         try c.encode(log, forKey: .log)

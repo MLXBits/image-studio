@@ -157,12 +157,15 @@ final class Krea2JobRunner {
         var seenLastStep = false
         var loadEndTime: Date?
         var denoiseEndTime: Date?
-        let expectedSteps = job.steps
 
         for await chunk in stream {
             job.log = RunnerSupport.appendLog(chunk, to: job.log)
+            // img2img runs fewer denoise steps than requested (the image-strength schedule
+            // drops the leading steps), so the tqdm total can be < job.steps. Accept any
+            // genuine tqdm bar up to the requested count rather than requiring exact equality,
+            // otherwise the UI stays stuck on "Loading model…" for the whole img2img run.
             if let progress = JobProgressParser.parseStep(from: job.log),
-               progress.total == expectedSteps {
+               progress.total <= job.steps {
                 if !seenFirstStep {
                     seenFirstStep = true
                     loadEndTime = Date()
@@ -350,6 +353,14 @@ final class Krea2JobRunner {
         // No saved weights yet (mflux-save unavailable/failed): quantize in memory.
         if job.quantize > 0, !FluxModelVariant.hasSavedWeights(at: savedPath) {
             args += ["--quantize", "\(job.quantize)"]
+        }
+
+        // img2img: an init image seeds the latents; empty path = pure text-to-image.
+        if !job.imagePath.isEmpty {
+            args += [
+                "--image-path", job.imagePath,
+                "--image-strength", String(format: "%.2f", job.imageStrength),
+            ]
         }
 
         let enabledLoras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }

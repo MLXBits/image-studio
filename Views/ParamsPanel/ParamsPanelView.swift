@@ -744,8 +744,9 @@ struct ParamsPanelView: View {
     }
 }
 
-private extension View {
+extension View {
     /// Highlights a drop target with an accent-colored rounded overlay while `active`.
+    /// Shared by the Flux and Krea 2 params panels.
     func dropHighlight(_ active: Bool) -> some View {
         overlay {
             if active {

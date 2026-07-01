@@ -13,6 +13,8 @@ struct Krea2FormState: Codable {
     var guidance: Double = 1.0
     var quantize: Int = 8
     var loras: [LoraEntry] = []
+    var imagePath: String = ""
+    var imageStrength: Double = 0.75
     var board: String = ""
 
     init() {}
@@ -27,6 +29,8 @@ struct Krea2FormState: Codable {
         guidance = (try? c.decode(Double.self, forKey: .guidance)) ?? 1.0
         quantize = (try? c.decode(Int.self, forKey: .quantize)) ?? 8
         loras = (try? c.decode([LoraEntry].self, forKey: .loras)) ?? []
+        imagePath = (try? c.decode(String.self, forKey: .imagePath)) ?? ""
+        imageStrength = (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75
         board = (try? c.decode(String.self, forKey: .board)) ?? ""
     }
 }
@@ -45,6 +49,8 @@ final class Krea2ParamsPanelState {
     var batchSeeds: [Int] = []
     var quantize: Int = 8
     var loras: [LoraEntry] = []
+    var imagePath: String = ""
+    var imageStrength: Double = 0.75
     var board: String = ""
 
     var canGenerate: Bool {
@@ -62,6 +68,8 @@ final class Krea2ParamsPanelState {
             steps = s.steps
             guidance = s.guidance
             quantize = s.quantize
+            imagePath = s.imagePath
+            imageStrength = s.imageStrength
             board = s.board
             loras = s.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .krea2 } : s.loras
             seed = -1
@@ -89,6 +97,8 @@ final class Krea2ParamsPanelState {
         s.guidance = guidance
         s.quantize = quantize
         s.loras = loras
+        s.imagePath = imagePath
+        s.imageStrength = imageStrength
         s.board = board
         return s
     }
@@ -105,6 +115,8 @@ final class Krea2ParamsPanelState {
         guidance = meta.guidance
         quantize = meta.quantize
         if let savedLoras = meta.loras { loras = savedLoras }
+        imagePath = meta.imagePath ?? ""
+        imageStrength = meta.imageStrength ?? 0.75
         board = meta.board ?? ""
         batchSeeds = []
         seed = newSeed ? -1 : meta.seed
@@ -121,6 +133,8 @@ final class Krea2ParamsPanelState {
             guidance: guidance,
             quantize: quantize,
             loras: loras,
+            imagePath: imagePath,
+            imageStrength: imageStrength,
             board: board
         )
         if count > 1 {

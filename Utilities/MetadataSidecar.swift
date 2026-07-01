@@ -101,6 +101,8 @@ nonisolated struct Krea2Metadata: Codable {
             height: job.height,
             quantize: job.quantize,
             loras: job.loras.isEmpty ? nil : job.loras,
+            imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
+            imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
             board: job.board.isEmpty ? nil : job.board,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
@@ -117,6 +119,8 @@ nonisolated struct Krea2Metadata: Codable {
     var height: Int
     var quantize: Int
     var loras: [LoraEntry]?
+    var imagePath: String?
+    var imageStrength: Double?
     var board: String?
     var generatedAt: Date
     var startedAt: Date?
