@@ -90,6 +90,19 @@ enum ThumbnailCache {
         forSourcePath path: String,
         maxPixelSize: CGFloat = defaultMaxPixelSize
     ) -> Data? {
+        guard let cgImage = makeThumbnailCGImage(forSourcePath: path, maxPixelSize: maxPixelSize) else {
+            return nil
+        }
+        let rep = NSBitmapImageRep(cgImage: cgImage)
+        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.75])
+    }
+
+    /// The ImageIO downscale-decode shared by ``makeThumbnailData(forSourcePath:maxPixelSize:)``
+    /// and ``RunnerSupport/loadThumbnail(at:)``.
+    nonisolated static func makeThumbnailCGImage(
+        forSourcePath path: String,
+        maxPixelSize: CGFloat = defaultMaxPixelSize
+    ) -> CGImage? {
         let url = URL(fileURLWithPath: path) as CFURL
         guard let source = CGImageSourceCreateWithURL(url, nil) else { return nil }
         let options: [CFString: Any] = [
@@ -98,10 +111,6 @@ enum ThumbnailCache {
             kCGImageSourceShouldCacheImmediately: true,
             kCGImageSourceThumbnailMaxPixelSize: maxPixelSize,
         ]
-        guard let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary) else {
-            return nil
-        }
-        let rep = NSBitmapImageRep(cgImage: cgImage)
-        return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.75])
+        return CGImageSourceCreateThumbnailAtIndex(source, 0, options as CFDictionary)
     }
 }

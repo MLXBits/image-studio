@@ -46,25 +46,44 @@ enum RunnerSupport {
         return tail.count == 4 && tail[0] == 0xAE && tail[1] == 0x42 && tail[2] == 0x60 && tail[3] == 0x82
     }
 
-    /// Center-crops the image at `path` to a 200×200 JPEG thumbnail.
-    static func loadThumbnail(at path: String) -> Data? {
-        guard let img = NSImage(contentsOfFile: path) else { return nil }
-        let imgSize = img.size
-        guard imgSize.width > 0, imgSize.height > 0 else { return nil }
-        let side = min(imgSize.width, imgSize.height)
-        let srcRect = NSRect(
-            x: (imgSize.width - side) / 2,
-            y: (imgSize.height - side) / 2,
+    /// Center-crops the image at `path` to a square JPEG thumbnail. Decodes via
+    /// ImageIO's downscaling path (no full-resolution decode) and is nonisolated so
+    /// batches can be generated off the main actor.
+    nonisolated static func loadThumbnail(at path: String) -> Data? {
+        guard let cg = ThumbnailCache.makeThumbnailCGImage(forSourcePath: path) else { return nil }
+        let side = min(cg.width, cg.height)
+        let crop = CGRect(
+            x: (cg.width - side) / 2, y: (cg.height - side) / 2,
             width: side, height: side
         )
-        let size = CGSize(width: 200, height: 200)
-        let thumb = NSImage(size: size)
-        thumb.lockFocus()
-        img.draw(in: NSRect(origin: .zero, size: size), from: srcRect, operation: .copy, fraction: 1.0)
-        thumb.unlockFocus()
-        guard let tiff = thumb.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff) else { return nil }
+        guard let squared = cg.cropping(to: crop) else { return nil }
+        let rep = NSBitmapImageRep(cgImage: squared)
         return rep.representation(using: .jpeg, properties: [.compressionFactor: 0.7])
+    }
+
+    /// Generates thumbnails for a completed batch off the main actor, in output order.
+    static func makeThumbnails(for paths: [String]) async -> [Data] {
+        await Task.detached(priority: .userInitiated) {
+            paths.map { loadThumbnail(at: $0) ?? Data() }
+        }.value
+    }
+
+    /// Re-verifies a finished batch against the filesystem: returns the `(seed, path)`
+    /// pairs whose PNGs actually landed, invoking `writeSidecar` for any that are
+    /// missing a metadata sidecar (the batch poller is asynchronous and may be
+    /// cancelled before it sees the last image, so the disk is the source of truth).
+    static func reconcileBatch(
+        _ batchPaths: [(seed: Int, path: String)],
+        writeSidecar: (Int, String) -> Void
+    ) -> [(seed: Int, path: String)] {
+        batchPaths.filter { item in
+            guard FileManager.default.fileExists(atPath: item.path),
+                  isPNGComplete(at: item.path) else { return false }
+            if !FileManager.default.fileExists(atPath: MetadataSidecar.sidecarURL(for: item.path).path) {
+                writeSidecar(item.seed, item.path)
+            }
+            return true
+        }
     }
 
     /// Stepwise frame PNGs in `dir` (excluding composites and dotfiles), newest first by
@@ -132,16 +151,35 @@ enum RunnerSupport {
         var result = log
         for char in chunk {
             if char == "\r" {
+                // Trim the current line in place rather than re-slicing the whole
+                // string — tqdm emits \r many times per second on a growing log.
                 if let nl = result.lastIndex(of: "\n") {
-                    result = String(result[...nl])
+                    result.removeSubrange(result.index(after: nl)...)
                 } else {
-                    result = ""
+                    result.removeAll(keepingCapacity: true)
                 }
             } else {
                 result.append(char)
             }
         }
         return result
+    }
+
+    /// The last `maxLines` lines of `log`. Per-chunk parsing (progress bars, status
+    /// lines) only ever needs the tail; scanning the whole log per chunk is O(n²)
+    /// over a run.
+    nonisolated static func logTail(_ log: String, maxLines: Int = 5) -> String {
+        var newlines = 0
+        var idx = log.endIndex
+        while idx > log.startIndex {
+            let prev = log.index(before: idx)
+            if log[prev] == "\n" {
+                newlines += 1
+                if newlines >= maxLines { return String(log[idx...]) }
+            }
+            idx = prev
+        }
+        return log
     }
 }
 
