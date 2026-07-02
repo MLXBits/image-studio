@@ -35,6 +35,7 @@
 		32CD239EE81E711BFC106E6F /* BBoxEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7487A27C328B569EF618E3BC /* BBoxEditorView.swift */; };
 		33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 174F374D4B5F7A05666D31B3 /* Assets.xcassets */; };
 		333970340121D49FD8E0298C /* PromptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4443AEA2099305CADF36EE5 /* PromptHistory.swift */; };
+		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
@@ -46,12 +47,14 @@
 		50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */; };
 		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
+		59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */; };
 		5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */; };
 		5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */; };
 		62C2027429B9D3CD98665509 /* FullSizeImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B646F0AF9AC8FBF9494F772D /* FullSizeImageView.swift */; };
 		635C82517A4D9D8A01AC05AC /* ColorHexTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
+		6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = FE1832089B5311712FEF1286 /* scenario_prompt.md */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
@@ -63,6 +66,7 @@
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
 		84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 729F046BC0201746ADC15A2C /* mflux_driver.py */; };
+		8939CD33C69686E0A6C49587 /* ScenarioGeneratorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */; };
 		8C60284A9547C1107436C267 /* Ideogram4ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */; };
@@ -100,6 +104,7 @@
 		F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */; };
 		F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */; };
 		F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */; };
+		F3821108E24EEEEA9C759A95 /* ScenarioGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */; };
 		F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07C86B92053779C5988498B /* JobRunner.swift */; };
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
 		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
@@ -134,6 +139,7 @@
 		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		2288F848C8AC536F933F7831 /* TimingModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingModelTests.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
+		2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorTests.swift; sourceTree = "<group>"; };
 		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
 		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
 		2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupportTests.swift; sourceTree = "<group>"; };
@@ -146,6 +152,7 @@
 		3FF15C1E147BEBBF910FCDEB /* BBoxKeyCatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxKeyCatcher.swift; sourceTree = "<group>"; };
 		41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometryTests.swift; sourceTree = "<group>"; };
 		4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Ideogram4Form.swift"; sourceTree = "<group>"; };
+		45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunner.swift; sourceTree = "<group>"; };
 		4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometry.swift; sourceTree = "<group>"; };
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
@@ -183,6 +190,7 @@
 		93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelView.swift; sourceTree = "<group>"; };
 		96B20E83673119F893B43BBB /* FolderComboBox.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FolderComboBox.swift; sourceTree = "<group>"; };
 		989B03F4B6A6D224348122FD /* WildcardExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpander.swift; sourceTree = "<group>"; };
+		9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGenerator.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
 		A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IdeogramCaptionEditorView+Actions.swift"; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
@@ -204,6 +212,7 @@
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
 		CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverProtocol.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
+		D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorView.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
@@ -217,6 +226,7 @@
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpanderTests.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
+		FE1832089B5311712FEF1286 /* scenario_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = scenario_prompt.md; sourceTree = "<group>"; };
 		FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -234,11 +244,13 @@
 			children = (
 				A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */,
 				CB933A545C60752280A661AE /* Debouncer.swift */,
+				45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */,
 				B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
 				D923D32E0D737D888C711FE7 /* KeychainHelper.swift */,
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
 				014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */,
+				9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */,
 				84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */,
 				562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */,
 				989B03F4B6A6D224348122FD /* WildcardExpander.swift */,
@@ -286,6 +298,7 @@
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
+				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
 				2288F848C8AC536F933F7831 /* TimingModelTests.swift */,
 				F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */,
 			);
@@ -312,6 +325,7 @@
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
 				8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */,
 				3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */,
+				D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */,
 				D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */,
 			);
 			path = ParamsPanel;
@@ -355,6 +369,7 @@
 			children = (
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
 				729F046BC0201746ADC15A2C /* mflux_driver.py */,
+				FE1832089B5311712FEF1286 /* scenario_prompt.md */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -549,6 +564,7 @@
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
 				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
+				6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -626,6 +642,7 @@
 				A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */,
 				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
+				3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */,
 				76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */,
 				A6E084DCFD1C9C68B12F9AFD /* GenerationEstimateView.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
@@ -680,6 +697,8 @@
 				0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */,
 				A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */,
 				8FB58B2482EBD66B089B3875 /* RunnerSupport.swift in Sources */,
+				F3821108E24EEEEA9C759A95 /* ScenarioGenerator.swift in Sources */,
+				8939CD33C69686E0A6C49587 /* ScenarioGeneratorView.swift in Sources */,
 				05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */,
 				98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */,
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
@@ -700,6 +719,7 @@
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,
+				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
 				FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */,
 				939D3FE8CED702E3C86445B9 /* WildcardExpanderTests.swift in Sources */,
 			);

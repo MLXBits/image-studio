@@ -13,7 +13,6 @@ extension ModelDefaultsView {
         Form {
             ideogramGenerationSection()
             ideogramCanvasSection()
-            ideogramAdvancedSection()
             ideogramResetSection()
         }
         .formStyle(.grouped)
@@ -105,41 +104,6 @@ extension ModelDefaultsView {
             Text("Canvas")
         } footer: {
             Text("Default image size for new Ideogram 4 jobs.")
-                .font(.caption).foregroundStyle(.tertiary)
-        }
-    }
-
-    /// Gemma caption model + uv status. These power structured Ideogram 4 caption
-    /// generation; they were previously in the global Settings → Advanced tab but
-    /// are Ideogram-specific, so they live with the rest of the Ideogram options.
-    private func ideogramAdvancedSection() -> some View {
-        let uvPath = NSHomeDirectory() + "/.local/bin/uv"
-        let uvFound = FileManager.default.fileExists(atPath: uvPath)
-        return Section {
-            VStack(alignment: .leading, spacing: 4) {
-                TextField("mlx-community/gemma-3-12b-it-4bit", text: settingsBinding(\.gemmaModelPath))
-                    .textFieldStyle(.roundedBorder)
-                Text(
-                    "HF repo ID or local path for the Gemma model used to generate structured Ideogram 4 captions. "
-                        + "Requires mlx_lm — install with: uv tool install mlx-lm"
-                )
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.vertical, 2)
-
-            HStack(spacing: 6) {
-                Image(systemName: uvFound ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundStyle(uvFound ? Color.green : Color.red)
-                Text(uvFound ? "uv found — mlx-lm>=0.31.3 managed automatically" : "uv not found at ~/.local/bin/uv")
-                    .font(.caption).foregroundStyle(.secondary)
-                    .lineLimit(1).truncationMode(.middle)
-            }
-            .padding(.vertical, 2)
-        } header: {
-            Text("Advanced")
-        } footer: {
-            Text("Gemma generates the structured captions Ideogram 4 expects from your prompt.")
                 .font(.caption).foregroundStyle(.tertiary)
         }
     }

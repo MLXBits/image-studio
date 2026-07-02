@@ -46,6 +46,8 @@ targets:
         buildPhase: resources
       - path: Resources/mflux_driver.py
         buildPhase: resources
+      - path: Resources/scenario_prompt.md
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:

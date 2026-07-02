@@ -16,7 +16,9 @@ enum IdeogramCaptionGeneratorError: LocalizedError {
         case .uvNotFound:
             "uv not found at ~/.local/bin/uv. Install from https://docs.astral.sh/uv/"
         case let .subprocessFailed(code, output):
-            "mlx_lm.generate failed (exit \(code)): \(output.prefix(200))"
+            // The tail, not the head — Python tracebacks put the actual
+            // exception on the last lines.
+            "mlx_lm.generate failed (exit \(code)):\n…\(output.suffix(600))"
         case let .noJSONFound(raw):
             "Model output contained no JSON object.\n\nRaw output:\n\(raw.prefix(2000))"
         case let .decodeFailed(json, reason):
@@ -66,24 +68,12 @@ extension IdeogramPromptConfig {
             throw IdeogramCaptionGeneratorError.promptFileNotFound
         }
 
-        func extract(_ heading: String) -> String {
-            let marker = "## \(heading)"
-            guard let markerRange = raw.range(of: marker) else { return "" }
-            let afterMarker = raw[markerRange.upperBound...]
-            let content: Substring = if let nextHeading = afterMarker.range(of: "\n## ") {
-                afterMarker[..<nextHeading.lowerBound]
-            } else {
-                afterMarker
-            }
-            return content.trimmingCharacters(in: .whitespacesAndNewlines)
-        }
-
         return Self(
-            system: extract("System Prompt"),
-            exampleAInput: extract("Example A Input"),
-            exampleAOutput: extract("Example A Output"),
-            exampleBInput: extract("Example B Input"),
-            exampleBOutput: extract("Example B Output")
+            system: GemmaChatRunner.section("System Prompt", in: raw),
+            exampleAInput: GemmaChatRunner.section("Example A Input", in: raw),
+            exampleAOutput: GemmaChatRunner.section("Example A Output", in: raw),
+            exampleBInput: GemmaChatRunner.section("Example B Input", in: raw),
+            exampleBOutput: GemmaChatRunner.section("Example B Output", in: raw)
         )
     }
 }
@@ -92,59 +82,43 @@ extension IdeogramPromptConfig {
 
 @MainActor
 final class IdeogramCaptionGenerator {
-    private static let uvPath = NSHomeDirectory() + "/.local/bin/uv"
-
     private(set) var lastLog: String = ""
 
     // MARK: - Public
 
     func generate(from description: String, settings: AppSettings) async throws -> IdeogramCaption {
-        guard FileManager.default.fileExists(atPath: Self.uvPath) else {
-            throw IdeogramCaptionGeneratorError.uvNotFound
-        }
-
         let config = try IdeogramPromptConfig.load()
         let modelPath = settings.gemmaModelPath.isEmpty
             ? "mlx-community/gemma-3-12b-it-8bit"
             : settings.gemmaModelPath
 
-        // Few-shot prompt: examples live in prior user/model turns so the model sees them
-        // as conversation history, not as content in the system prompt to copy from.
-        let fullPrompt =
-            "<start_of_turn>system\n\(config.system)<end_of_turn>\n"
-                + "<start_of_turn>user\n\(config.exampleAInput)<end_of_turn>\n"
-                + "<start_of_turn>model\n\(config.exampleAOutput)<end_of_turn>\n"
-                + "<start_of_turn>user\n\(config.exampleBInput)<end_of_turn>\n"
-                + "<start_of_turn>model\n\(config.exampleBOutput)<end_of_turn>\n"
-                + "<start_of_turn>user\nDescription to convert: \"\(description)\"<end_of_turn>\n"
-                + "<start_of_turn>model\n"
+        let fullPrompt = GemmaChatRunner.chatPrompt(
+            system: config.system,
+            examples: [
+                (config.exampleAInput, config.exampleAOutput),
+                (config.exampleBInput, config.exampleBOutput),
+            ],
+            finalUser: "Description to convert: \"\(description)\""
+        )
 
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: Self.uvPath)
-        process.arguments = [
-            "run", "--with", "mlx-lm>=0.31.3", "--",
-            "mlx_lm.generate",
-            "--model", modelPath,
-            "--prompt", fullPrompt,
-            "--max-tokens", "8192",
-            "--temp", "0.3",
-        ]
-
-        var env = ProcessInfo.processInfo.environment
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-        process.environment = env
-
-        let rawOutput = try await runProcessCollectingOutput(process)
+        let rawOutput: String
+        let exitCode: Int32
+        do {
+            (rawOutput, exitCode) = try await GemmaChatRunner.run(
+                modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.3,
+                environment: settings.buildEnvironment()
+            )
+        } catch GemmaChatRunnerError.uvNotFound {
+            throw IdeogramCaptionGeneratorError.uvNotFound
+        }
 
         lastLog = [
             "=== PROMPT ===", fullPrompt,
             "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
         ].joined(separator: "\n\n")
 
-        guard process.terminationStatus == 0 else {
-            throw IdeogramCaptionGeneratorError.subprocessFailed(
-                process.terminationStatus, String(rawOutput.suffix(2000))
-            )
+        guard exitCode == 0 else {
+            throw IdeogramCaptionGeneratorError.subprocessFailed(exitCode, String(rawOutput.suffix(2000)))
         }
 
         guard let extractedJSON = extractJSONString(from: rawOutput) else {
@@ -179,68 +153,11 @@ final class IdeogramCaptionGenerator {
 
     // MARK: - Private
 
-    /// Runs `process`, draining a single merged stdout+stderr pipe incrementally, and
-    /// returns the full combined output. Merging avoids the classic two-pipe deadlock
-    /// (child blocks writing stderr while we block reading stdout). Cancelling the
-    /// enclosing Task terminates the subprocess so a hung or long-running generation
-    /// can actually be stopped (otherwise the model stays resident on the GPU).
-    private func runProcessCollectingOutput(_ process: Process) async throws -> String {
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
-
-        try process.run()
-
-        return try await withTaskCancellationHandler {
-            var output = ""
-            for await chunk in stream {
-                output += chunk
-            }
-            process.waitUntilExit() // already exited once the pipe hit EOF; returns immediately
-            if Task.isCancelled {
-                throw CancellationError()
-            }
-            return output
-        } onCancel: {
-            process.terminate()
-        }
-    }
-
     /// Exposed (non-private) for unit testing; pure, so `nonisolated`.
     nonisolated func extractJSONString(from text: String) -> String? {
-        // mlx_lm.generate echoes the full prompt before the generated text, separated by
-        // "==========". The prompt contains example JSON, so searching from the start grabs
-        // example content instead of the model's reply. Skip past the last separator.
-        var searchText = text
-        if let sepRange = searchText.range(of: "==========", options: .backwards) {
-            let candidate = String(searchText[sepRange.upperBound...])
-            // The trailing separator precedes the stats block (no JSON there), so use the
-            // region between the first and last separator if both exist.
-            if let firstSep = searchText.range(of: "=========="),
-               firstSep.lowerBound != sepRange.lowerBound {
-                searchText = String(searchText[firstSep.upperBound ..< sepRange.lowerBound])
-            } else {
-                searchText = candidate
-            }
-        }
+        // mlx_lm.generate echoes the full prompt (which contains example JSON) before
+        // the reply, so restrict the search to the reply region between the separators.
+        let searchText = GemmaChatRunner.replyRegion(from: text)
 
         // Strip markdown code fences the model sometimes adds despite being told not to
         var cleaned = searchText

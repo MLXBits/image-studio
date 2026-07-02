@@ -204,6 +204,7 @@ struct ContentView: View {
                 ideogramParams.applyDefaults(settings: settings)
                 krea2Params.applyDefaults(settings: settings)
                 try? IdeogramPromptConfig.seedIfNeeded()
+                try? ScenarioPromptConfig.seedIfNeeded()
                 if settings.outputDir.isEmpty {
                     showingOutputDirPrompt = true
                 } else {

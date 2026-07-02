@@ -100,7 +100,12 @@ struct ParamsPanelView: View {
                 negativePromptEditor
             }
         } accessory: {
-            PromptHistoryButton { params.prompt = $0 }
+            // Explicit HStack: the accessory slot right-aligns its content as
+            // a whole; a bare two-view tuple would spread across the row.
+            HStack(spacing: 6) {
+                ScenarioGeneratorButton { params.prompt = $0 }
+                PromptHistoryButton { params.prompt = $0 }
+            }
         }
 
         // Image input

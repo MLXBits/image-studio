@@ -52,7 +52,10 @@ struct Krea2ParamsPanelView: View {
                 )
             }
         } accessory: {
-            PromptHistoryButton { params.prompt = $0 }
+            HStack(spacing: 6) {
+                ScenarioGeneratorButton { params.prompt = $0 }
+                PromptHistoryButton { params.prompt = $0 }
+            }
         }
 
         Divider()

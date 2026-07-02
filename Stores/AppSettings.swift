@@ -98,6 +98,11 @@ class AppSettings {
         var keepModelWarm: Bool?
         var warmIdleMinutes: Int?
         var warmTextEncoderPolicy: WarmTextEncoderPolicy?
+        /// Scenario generator (raw values so future category changes degrade
+        /// gracefully instead of failing the whole settings decode)
+        var lastScenarioOutline: String?
+        var scenarioCategories: [String]?
+        var scenarioWildcardMode: Bool?
 
         init() {}
         init(
@@ -353,6 +358,23 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - Scenario generator
+
+    /// Last outline entered in the scenario generator, restored across launches.
+    var lastScenarioOutline: String {
+        didSet { save() }
+    }
+
+    /// Detail categories the scenario generator is allowed to invent.
+    var scenarioCategories: Set<ScenarioCategory> {
+        didSet { save() }
+    }
+
+    /// Whether the scenario generator emits {a|b|c} wildcard groups.
+    var scenarioWildcardMode: Bool {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -442,6 +464,11 @@ class AppSettings {
         keepModelWarm = s.keepModelWarm ?? false
         warmIdleMinutes = s.warmIdleMinutes ?? 10
         warmTextEncoderPolicy = s.warmTextEncoderPolicy ?? .auto
+        lastScenarioOutline = s.lastScenarioOutline ?? ""
+        scenarioCategories = s.scenarioCategories
+            .map { Set($0.compactMap(ScenarioCategory.init)) }
+            ?? Set(ScenarioCategory.allCases)
+        scenarioWildcardMode = s.scenarioWildcardMode ?? false
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -549,6 +576,9 @@ class AppSettings {
         s.keepModelWarm = keepModelWarm
         s.warmIdleMinutes = warmIdleMinutes
         s.warmTextEncoderPolicy = warmTextEncoderPolicy
+        s.lastScenarioOutline = lastScenarioOutline
+        s.scenarioCategories = scenarioCategories.map(\.rawValue).sorted()
+        s.scenarioWildcardMode = scenarioWildcardMode
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()
