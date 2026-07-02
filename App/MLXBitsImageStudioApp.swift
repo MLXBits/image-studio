@@ -2,10 +2,11 @@ import SwiftUI
 
 @main
 struct MLXBitsImageStudioApp: App {
-    @State private var settings = AppSettings()
+    @State private var settings: AppSettings
     @State private var store = JobStore()
     @State private var gallery = GalleryStore()
-    @State private var runner = FluxJobRunner()
+    @State private var runner: FluxJobRunner
+    @State private var driverController: MfluxDriverController
     @State private var ideogram4Store = Ideogram4JobStore()
     @State private var ideogram4Runner = Ideogram4JobRunner()
     @State private var krea2Store = Krea2JobStore()
@@ -26,6 +27,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(krea2Runner)
                 .environment(coordinator)
                 .environment(timing)
+                .environment(driverController)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)
@@ -37,6 +39,17 @@ struct MLXBitsImageStudioApp: App {
             SettingsView()
                 .environment(settings)
                 .environment(gallery)
+                .environment(driverController)
         }
+    }
+
+    init() {
+        let settings = AppSettings()
+        let driver = MfluxDriverController(settings: settings)
+        let runner = FluxJobRunner()
+        runner.driver = driver // warm-model path is Flux-only for now
+        _settings = State(initialValue: settings)
+        _driverController = State(initialValue: driver)
+        _runner = State(initialValue: runner)
     }
 }

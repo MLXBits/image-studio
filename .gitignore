@@ -38,3 +38,4 @@ Carthage/Build/
 
 # Local secrets (Team ID, credentials) — never commit
 .env
+__pycache__/

@@ -94,6 +94,10 @@ class AppSettings {
         var notepadText: String?
         /// Prompt history (recorded on job enqueue)
         var promptHistory: [PromptHistoryEntry]?
+        /// Warm-model driver
+        var keepModelWarm: Bool?
+        var warmIdleMinutes: Int?
+        var warmTextEncoderPolicy: WarmTextEncoderPolicy?
 
         init() {}
         init(
@@ -331,6 +335,24 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - Warm-model driver
+
+    /// Route eligible Flux jobs through the persistent driver that keeps the
+    /// model loaded between generations (see ``MfluxDriverController``).
+    var keepModelWarm: Bool {
+        didSet { save() }
+    }
+
+    /// Minutes of idleness before the warm model is evicted. 0 = never.
+    var warmIdleMinutes: Int {
+        didSet { save() }
+    }
+
+    /// Text-encoder residency policy for warm generations.
+    var warmTextEncoderPolicy: WarmTextEncoderPolicy {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -417,6 +439,9 @@ class AppSettings {
         ideogram4CfgEnd = s.ideogram4CfgEnd
         notepadText = s.notepadText ?? ""
         promptHistory = s.promptHistory ?? []
+        keepModelWarm = s.keepModelWarm ?? false
+        warmIdleMinutes = s.warmIdleMinutes ?? 10
+        warmTextEncoderPolicy = s.warmTextEncoderPolicy ?? .auto
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -521,6 +546,9 @@ class AppSettings {
         s.lastKrea2 = lastKrea2
         s.notepadText = notepadText
         s.promptHistory = promptHistory
+        s.keepModelWarm = keepModelWarm
+        s.warmIdleMinutes = warmIdleMinutes
+        s.warmTextEncoderPolicy = warmTextEncoderPolicy
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()

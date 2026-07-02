@@ -19,6 +19,7 @@ struct SettingsView: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
+    @Environment(MfluxDriverController.self) private var driverController
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
     @State private var mfluxSetupPhase: SetupPhase = .idle
@@ -322,6 +323,37 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.tertiary)
             }
 
+            Section {
+                Toggle("Keep model warm between generations", isOn: $s.keepModelWarm)
+                    .onChange(of: s.keepModelWarm) { _, enabled in
+                        // Re-arm a driver that failed earlier (e.g. after the
+                        // user fixed the binary directory).
+                        if enabled { driverController.resetAvailability() }
+                    }
+                if s.keepModelWarm {
+                    LabeledContent("Evict after idle") {
+                        HStack(spacing: 4) {
+                            TextField("10", value: $s.warmIdleMinutes, format: .number)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 60)
+                                .multilineTextAlignment(.trailing)
+                            Text("min")
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    Picker("Text encoder", selection: $s.warmTextEncoderPolicy) {
+                        ForEach(WarmTextEncoderPolicy.allCases, id: \.self) { policy in
+                            Text(policy.displayName).tag(policy)
+                        }
+                    }
+                }
+            } header: {
+                Text("Keep Model Warm")
+            } footer: {
+                Text(warmModelFooter)
+                    .font(.caption).foregroundStyle(.tertiary)
+            }
+
             Section("UI") {
                 HStack {
                     Text("Log font size")
@@ -332,6 +364,23 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Footer for the Keep Model Warm section, with a memory warning on
+    /// smaller Macs (per the warm-driver plan: caution at ≤32 GB).
+    private var warmModelFooter: String {
+        var text = "Runs Flux generations in a persistent driver so the model stays loaded between "
+            + "jobs — back-to-back generations skip the model load. Edit-mode, low-RAM, and "
+            + "custom-model jobs still use the one-shot CLI. 0 min = never evict on idle."
+        let physicalGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
+        if physicalGB <= 33 {
+            text += String(
+                format: " ⚠️ This Mac has %.0f GB unified memory — a warm 9B model leaves "
+                    + "little headroom for other apps.",
+                physicalGB
+            )
+        }
+        return text
     }
 
     // MARK: - Helpers

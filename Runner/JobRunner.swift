@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 
 // MARK: - Protocols
@@ -83,10 +84,18 @@ protocol JobRunnerSpec {
     static func timingLowRam(job: Job) -> Bool
     /// Writes the metadata sidecar for one finished image.
     static func writeMetadata(job: Job, seed: Int, startedAt: Date?, generatedAt: Date, path: String)
+    /// Warm-driver request when the job is eligible for the persistent driver
+    /// (see ``MfluxDriverController``), or nil to always use the CLI
+    /// subprocess. Default: nil (family not supported by the driver).
+    static func driverRequest(job: Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest?
 }
 
 extension JobRunnerSpec {
     static func makePromptFile(job _: Job) -> URL? {
+        nil
+    }
+
+    static func driverRequest(job _: Job, ctx _: JobRunContext, settings _: AppSettings) -> DriverGenerateRequest? {
         nil
     }
 }
@@ -120,6 +129,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     private enum SaveResult { case success, cancelled, failed }
 
+    /// Per-driver-run state shared between the event handler and finalization.
+    /// A class so the escaping event closure can mutate it.
+    private final class DriverRunProgress {
+        var loadEnd: Date?
+        var denoiseEnd: Date?
+        var lastImageAt: Date?
+        var landed: [(seed: Int, path: String)] = []
+    }
+
     private static var cacheBase: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
@@ -131,8 +149,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
     private(set) var batchImageLanded: Int = 0 // set per-seed; ContentView scans gallery on change
     private(set) var sessionCompleted: Int = 0
     private(set) var inSession: Bool = false
+    /// Warm-model driver for this family, or nil to always use the CLI
+    /// subprocess. Set at app startup (Flux only for now).
+    var driver: MfluxDriverController?
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
+    private var driverJobActive = false
     private let stepwiseWatcher = StepwiseWatcher()
     private var batchPollingTask: Task<Void, Never>?
 
@@ -167,7 +189,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 
     func cancel() {
-        currentProcess?.terminate()
+        if driverJobActive {
+            // A protocol message, not SIGTERM — the driver aborts at the next
+            // denoise step and the warm model survives the cancellation.
+            driver?.cancel()
+        } else {
+            currentProcess?.terminate()
+        }
     }
 
     // MARK: - Private execution
@@ -234,6 +262,18 @@ final class JobRunner<Spec: JobRunnerSpec> {
             seed: effectiveSeed, outputFile: outputTemplate,
             stepwiseDir: stepDir, promptFile: promptFile
         )
+
+        // Warm-driver path: eligible jobs go to the persistent driver; any
+        // startup failure falls through to the one-shot CLI below.
+        if let driver, settings.keepModelWarm,
+           let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
+            if await driver.ensureRunning() {
+                await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
+                return
+            }
+            job.log += "⚠️  Warm driver unavailable — falling back to one-shot CLI.\n"
+        }
+
         let args = Spec.buildArgs(job: job, ctx: ctx, settings: settings)
         job.log += "$ \(binaryPath) \(args.joined(separator: " "))\n\n"
 
@@ -354,6 +394,128 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 .last { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? "Unknown error"
             finishJob(job, status: .failed(lastLine), stepDir: stepDir)
         }
+    }
+
+    // MARK: - Warm-driver execution
+
+    private func runViaDriver(
+        _ driver: MfluxDriverController,
+        request: DriverGenerateRequest,
+        job: Job,
+        stepDir: URL,
+        timing: TimingStore
+    ) async {
+        driverJobActive = true
+        defer {
+            driverJobActive = false
+            driver.onLog = nil
+        }
+
+        let jobStart = Date()
+        let progress = DriverRunProgress()
+        let warmAtStart = driver.loadedFingerprint == request.fingerprint
+        job.log += warmAtStart ? "▸ Model warm — \(Spec.encodingLabel)...\n" : "▸ Loading model...\n"
+        job.statusLine = warmAtStart ? "\(Spec.encodingLabel)…" : "Loading model…"
+        driver.onLog = { [weak job] chunk in
+            guard let job else { return }
+            job.log = RunnerSupport.appendLog(chunk, to: job.log)
+        }
+
+        let result = await driver.run(request: request) { [weak self, weak job] event in
+            guard let self, let job else { return }
+            handleDriverEvent(event, job: job, progress: progress)
+        }
+
+        switch result {
+        case .completed:
+            await finalizeDriverCompletion(
+                job: job, jobStart: jobStart, progress: progress, timing: timing, stepDir: stepDir
+            )
+        case .cancelled:
+            finishJob(job, status: .cancelled, stepDir: stepDir)
+        case let .failed(message):
+            job.log += "⚠️  \(message)\n"
+            finishJob(job, status: .failed(message), stepDir: stepDir)
+        }
+    }
+
+    private func handleDriverEvent(_ event: DriverEvent, job: Job, progress: DriverRunProgress) {
+        switch event.event {
+        case "loading":
+            job.statusLine = event.component == "text_encoder" ? "Loading text encoder…" : "Loading model…"
+        case "loaded":
+            progress.loadEnd = Date()
+            let memory = event.memoryGb.map { String(format: " · %.1f GB", $0) } ?? ""
+            let seconds = event.seconds.map { "in \(RunnerSupport.formatDuration($0))" } ?? ""
+            job.log += "▸ Model loaded \(seconds)\(memory)\n▸ \(Spec.encodingLabel)...\n"
+            job.statusLine = "\(Spec.encodingLabel)…"
+        case "progress":
+            guard let step = event.step, let total = event.total else { return }
+            job.isDenoising = true
+            job.currentStep = step
+            job.totalSteps = total
+            if step == total { progress.denoiseEnd = Date() }
+        case "image":
+            guard let seed = event.seed, let path = event.path else { return }
+            let generatedAt = Date()
+            Spec.writeMetadata(
+                job: job, seed: seed,
+                startedAt: progress.lastImageAt ?? job.startedAt,
+                generatedAt: generatedAt, path: path
+            )
+            progress.lastImageAt = generatedAt
+            progress.landed.append((seed: seed, path: path))
+            job.completedSeedsInBatch = progress.landed.count
+            if progress.landed.count == 1 { lastCompletedOutputPath = path }
+            batchImageLanded += 1
+        default:
+            break
+        }
+    }
+
+    private func finalizeDriverCompletion(
+        job: Job,
+        jobStart: Date,
+        progress: DriverRunProgress,
+        timing: TimingStore,
+        stepDir: URL
+    ) async {
+        let totalSecs = Date().timeIntervalSince(jobStart)
+        // Only cold-start driver runs feed the learned-timing model: warm runs
+        // have no load phase and would drag the load estimate toward zero.
+        if let loadEnd = progress.loadEnd, let denoiseEnd = progress.denoiseEnd, job.totalSteps > 0 {
+            timing.record(TimingStore.CompletedRun(
+                model: Spec.timingModelKey(job: job),
+                quantize: job.quantize, lowRam: Spec.timingLowRam(job: job),
+                loadSec: loadEnd.timeIntervalSince(jobStart),
+                denoiseSec: denoiseEnd.timeIntervalSince(loadEnd),
+                decodeSec: nil,
+                steps: job.totalSteps,
+                megapixels: Double(job.width * job.height) / 1_000_000
+            ))
+        }
+
+        let paths = progress.landed.map(\.path)
+        guard !paths.isEmpty else {
+            finishJob(job, status: .failed("Driver reported success but no images landed"), stepDir: stepDir)
+            return
+        }
+        if job.seeds.isEmpty {
+            job.outputPath = paths[0]
+            job.thumbnailData = RunnerSupport.loadThumbnail(at: paths[0])
+            lastCompletedOutputPath = paths[0]
+            job.log += "▸ Saved to: \(paths[0])  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
+        } else {
+            job.outputPaths = paths
+            job.outputThumbnails = await RunnerSupport.makeThumbnails(for: paths)
+            job.outputPath = paths.first
+            job.thumbnailData = job.outputThumbnails.first
+            job.completedSeedsInBatch = paths.count
+            batchImageLanded = paths.count
+            lastCompletedOutputPath = paths.count == 1 ? paths.first : paths.last
+            job.log += "▸ Saved \(paths.count) images  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
+        }
+        finishJob(job, status: .completed, stepDir: stepDir)
     }
 
     // MARK: - mflux-save for quantized weights

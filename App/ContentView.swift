@@ -25,6 +25,7 @@ struct ContentView: View {
     @Environment(Krea2JobRunner.self) private var krea2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
+    @Environment(MfluxDriverController.self) private var driverController
 
     @Environment(\.openSettings) private var openSettings
 
@@ -92,6 +93,9 @@ struct ContentView: View {
             quantize: unifiedQuantize
         )
         .onChange(of: params.model) { _, m in
+            // Pattern 5: a committed model switch proactively evicts a warm
+            // model of a different variant (debounced in the controller).
+            driverController.modelPickerChanged(to: m.rawValue)
             if m.isIdeogram4 {
                 ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
                 return
@@ -547,6 +551,7 @@ struct ContentView: View {
             HStack {
                 headerModelPicker
                 Spacer(minLength: 0)
+                warmModelChip()
             }
         }
         .padding(.horizontal, 16)
@@ -850,6 +855,7 @@ struct ContentView: View {
 
         case .ideogram4:
             guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
+            driverController.eject(reason: "model_switch") // free memory before another family loads
             settings.lastModel = .ideogram4 // remember family across sessions
             settings.lastIdeogramPreset = ideogramParams.preset
             settings.lastIdeogramWidth = ideogramParams.width
@@ -874,6 +880,7 @@ struct ContentView: View {
 
         case .krea2:
             guard krea2Params.isReadyToGenerate(settings: settings) else { return }
+            driverController.eject(reason: "model_switch") // free memory before another family loads
             settings.lastModel = .krea2 // remember family across sessions
             settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
             settings.recordPromptUse(krea2Params.prompt)
@@ -888,6 +895,46 @@ struct ContentView: View {
         }
     }
 
+    // MARK: - Warm model chip (LM Studio-style eject)
+
+    /// Header indicator for the driver's resident model: name, measured
+    /// memory, and an eject button. Hidden when nothing is warm.
+    @ViewBuilder
+    private func warmModelChip() -> some View {
+        if let label = driverController.loadedModelLabel {
+            HStack(spacing: 6) {
+                Image(systemName: "memorychip")
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(label)
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                    if let gb = driverController.loadedMemoryGB {
+                        Text(String(format: "%.1f GB warm", gb))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                Button {
+                    driverController.eject()
+                } label: {
+                    Image(systemName: "eject.fill")
+                        .font(.caption2)
+                        .frame(width: 20, height: 20)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(.secondary)
+                .disabled(driverController.isGenerating)
+                .help(driverController.isGenerating ? "Generating — cannot eject" : "Eject warm model")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.fill.quaternary, in: Capsule())
+        }
+    }
+
     /// Starts the next pending job across all families, but only when the gate is free.
     /// Each runner drains its own queue internally; this hands off to the next family once
     /// the current one is fully idle (invoked from the `isRunning` onChange handlers).
@@ -896,8 +943,10 @@ struct ContentView: View {
         if !store.pendingJobs.isEmpty {
             runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
         } else if !ideogram4Store.pendingJobs.isEmpty {
+            driverController.eject(reason: "model_switch")
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
         } else if !krea2Store.pendingJobs.isEmpty {
+            driverController.eject(reason: "model_switch")
             krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }

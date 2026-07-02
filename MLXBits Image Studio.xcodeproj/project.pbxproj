@@ -19,6 +19,7 @@
 		0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */; };
+		0F280E349F7241B82C9D7EC7 /* DriverProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */; };
@@ -60,6 +61,7 @@
 		7A4295660278E9FD1D06E5DC /* BBoxEditorView+Subviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
+		84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 729F046BC0201746ADC15A2C /* mflux_driver.py */; };
 		8C60284A9547C1107436C267 /* Ideogram4ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */; };
 		8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */; };
 		8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */; };
@@ -75,6 +77,7 @@
 		A6E084DCFD1C9C68B12F9AFD /* GenerationEstimateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 79B73E05AF3B412407752562 /* GenerationEstimateView.swift */; };
 		A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */; };
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
+		ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8A946E00348D9BD857672E /* MfluxDriverController.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
@@ -115,6 +118,7 @@
 /* Begin PBXFileReference section */
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
 		08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
+		0B8A946E00348D9BD857672E /* MfluxDriverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverController.swift; sourceTree = "<group>"; };
 		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
 		0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingStore.swift; sourceTree = "<group>"; };
 		0DFB6BA799C59DAA55470EC3 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
@@ -161,6 +165,7 @@
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Gestures.swift"; sourceTree = "<group>"; };
 		7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Fields.swift"; sourceTree = "<group>"; };
+		729F046BC0201746ADC15A2C /* mflux_driver.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mflux_driver.py; sourceTree = "<group>"; };
 		72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Rows.swift"; sourceTree = "<group>"; };
 		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
@@ -194,6 +199,7 @@
 		C4443AEA2099305CADF36EE5 /* PromptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistory.swift; sourceTree = "<group>"; };
 		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
+		CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverProtocol.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
 		D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataPanel.swift; sourceTree = "<group>"; };
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
@@ -326,11 +332,13 @@
 		9F6BCBE28C9814EF7779D261 /* Runner */ = {
 			isa = PBXGroup;
 			children = (
+				CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */,
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
 				08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */,
 				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
 				D07C86B92053779C5988498B /* JobRunner.swift */,
 				5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */,
+				0B8A946E00348D9BD857672E /* MfluxDriverController.swift */,
 				655AC8400B9B30688813DF1A /* RunnerSupport.swift */,
 			);
 			path = Runner;
@@ -340,6 +348,7 @@
 			isa = PBXGroup;
 			children = (
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
+				729F046BC0201746ADC15A2C /* mflux_driver.py */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -533,6 +542,7 @@
 			files = (
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
+				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -600,6 +610,7 @@
 				1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */,
 				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
 				DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */,
+				0F280E349F7241B82C9D7EC7 /* DriverProtocol.swift in Sources */,
 				9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */,
 				C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */,
 				6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */,
@@ -640,6 +651,7 @@
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
 				932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
+				ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */,
 				01EC5BBB642DD0CE2EB3D400 /* MfluxInstaller.swift in Sources */,
 				F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */,
 				67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */,

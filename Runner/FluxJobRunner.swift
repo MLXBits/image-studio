@@ -64,6 +64,63 @@ enum FluxRunnerSpec: JobRunnerSpec {
         MetadataSidecar.write(meta, for: path)
     }
 
+    /// Driver eligibility + request. Edit mode drives a different mflux class,
+    /// low-RAM must stream from disk (one-shot by design), and custom repos
+    /// need `--base-model` semantics the driver doesn't replicate — all three
+    /// fall back to the CLI subprocess.
+    static func driverRequest(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
+        guard !job.isEditMode, !job.lowRam, job.model != .custom else { return nil }
+
+        // Resolve the model argument exactly like buildArgs: override repo →
+        // pre-quantized repo → locally saved weights → base repo (+ in-memory
+        // quantize only in the last case).
+        var model = job.model.mfluxModelID
+        var quantizeArg: Int?
+        if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
+            model = override
+        } else if job.quantize > 0 {
+            if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
+                model = preQuantizedRepo
+            } else {
+                let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+                if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                    model = savedPath.path
+                } else {
+                    quantizeArg = job.quantize
+                }
+            }
+        }
+
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
+        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
+        let outputs: [DriverOutput] = job.seeds.isEmpty
+            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
+            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
+            .map { DriverOutput(seed: $0.seed, path: $0.path) }
+
+        return DriverGenerateRequest(
+            id: job.id.uuidString,
+            fingerprint: "\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            model: model,
+            quantize: quantizeArg,
+            loraPaths: loras.map(\.path),
+            loraScales: loras.map(\.strength),
+            prompt: job.prompt,
+            width: job.width,
+            height: job.height,
+            steps: job.steps,
+            guidance: job.guidance,
+            imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
+            imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
+            outputs: outputs,
+            stepwiseDir: ctx.stepwiseDir.path,
+            tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
+            cacheLimitGb: settings.mlxCacheLimitGB,
+            modelVariantRaw: job.model.rawValue,
+            modelLabel: job.model.displayName
+        )
+    }
+
     static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
