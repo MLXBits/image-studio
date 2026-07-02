@@ -91,7 +91,9 @@ struct ParamsPanelView: View {
         SectionContainerView(
             title: "Prompt",
             info: "Describe what you want to generate. Be specific about subjects, " +
-                "lighting, style, and mood. More detail generally produces better results."
+                "lighting, style, and mood. More detail generally produces better results.\n\n" +
+                "Wildcards: {red|black|white} makes Generate run one job per option " +
+                "(up to 10), in order. Smaller groups cycle; a batch count overrides."
         ) {
             promptEditor
             if params.model.supportsNegativePrompt {

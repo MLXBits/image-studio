@@ -73,6 +73,74 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
         MetadataSidecar.writeIdeogram4(meta, for: path)
     }
 
+    /// Driver eligibility + request. Low-RAM jobs stream blocks from disk and
+    /// stay on the one-shot CLI. The caption travels inline as its JSON string
+    /// (no prompt file needed on this path). Note the driver never evicts the
+    /// Ideogram text encoder — its config is weight-layout-dependent — but the
+    /// model's native prompt cache still skips re-encodes of the same caption.
+    static func driverRequest(job: Ideogram4Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
+        guard !job.lowRam else { return nil }
+
+        let override = (settings.ideogram4ModelRepoOverride ?? "").isEmpty
+            ? nil
+            : settings.ideogram4ModelRepoOverride
+        var model = "ideogram4"
+        var quantizeArg: Int?
+        if let override {
+            model = override
+        } else if job.quantize > 0 {
+            if let preQuantizedRepo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize) {
+                model = preQuantizedRepo
+            } else {
+                let savedPath = FluxModelVariant.ideogram4.savedModelPath(
+                    quantize: job.quantize, in: settings.effectiveMfluxCacheDir
+                )
+                if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                    model = savedPath.path
+                } else {
+                    quantizeArg = job.quantize
+                }
+            }
+        }
+
+        let prompt = job.usePlainPrompt
+            ? job.plainPrompt
+            : (job.caption.toJSON() ?? job.caption.highLevelDescription)
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .ideogram4 }
+        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
+        let outputs: [DriverOutput] = job.seeds.isEmpty
+            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
+            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
+            .map { DriverOutput(seed: $0.seed, path: $0.path) }
+        let cfgEnd = settings.ideogram4CfgEnd.flatMap { $0 < 1.0 ? $0 : nil }
+
+        return DriverGenerateRequest(
+            id: job.id.uuidString,
+            family: "ideogram4",
+            fingerprint: "ideogram4|\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            model: model,
+            quantize: quantizeArg,
+            loraPaths: loras.map(\.path),
+            loraScales: loras.map(\.strength),
+            prompt: prompt,
+            width: job.width,
+            height: job.height,
+            steps: job.preset.stepCount,
+            guidance: 1.0, // unused — the preset defines the guidance schedule
+            imagePath: nil,
+            imageStrength: nil,
+            preset: job.preset.rawValue,
+            strictCaptionValidation: job.strictValidation,
+            cfgEnd: cfgEnd,
+            outputs: outputs,
+            stepwiseDir: ctx.stepwiseDir.path,
+            tePolicy: WarmTextEncoderPolicy.keep.rawValue, // driver forces keep for ideogram4
+            cacheLimitGb: settings.mlxCacheLimitGB,
+            modelVariantRaw: FluxModelVariant.ideogram4.rawValue,
+            modelLabel: FluxModelVariant.ideogram4.displayName
+        )
+    }
+
     static func buildArgs(job: Ideogram4Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 

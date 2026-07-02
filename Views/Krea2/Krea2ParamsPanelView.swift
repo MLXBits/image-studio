@@ -33,7 +33,9 @@ struct Krea2ParamsPanelView: View {
         SectionContainerView(
             title: "Prompt",
             info: "Describe what you want to generate. Krea 2 Turbo runs at CFG 1.0 by default; "
-                + "raise Guidance above 1 to enable the negative prompt and stricter adherence."
+                + "raise Guidance above 1 to enable the negative prompt and stricter adherence.\n\n"
+                + "Wildcards: {red|black|white} makes Generate run one job per option "
+                + "(up to 10), in order. Smaller groups cycle; a batch count overrides."
         ) {
             GrowingPromptField(
                 text: $params.prompt,

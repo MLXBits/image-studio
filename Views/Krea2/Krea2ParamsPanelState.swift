@@ -122,10 +122,17 @@ final class Krea2ParamsPanelState {
         seed = newSeed ? -1 : meta.seed
     }
 
-    func makeJob(count: Int = 1) -> Krea2Job {
+    /// How many jobs the current prompt naturally expands to (largest
+    /// wildcard group across prompt + negative); 1 when there are no
+    /// wildcards. Uncapped — the caller applies the batch cap.
+    func wildcardVariantCount() -> Int {
+        max(WildcardExpander.variantCount(prompt), WildcardExpander.variantCount(negativePrompt))
+    }
+
+    func makeJob(count: Int = 1, wildcardVariant: Int = 0) -> Krea2Job {
         let job = Krea2Job(
-            prompt: prompt,
-            negativePrompt: negativePrompt,
+            prompt: WildcardExpander.expandVariant(prompt, index: wildcardVariant),
+            negativePrompt: WildcardExpander.expandVariant(negativePrompt, index: wildcardVariant),
             width: width,
             height: height,
             seed: seed,

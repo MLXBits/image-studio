@@ -65,6 +65,58 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         MetadataSidecar.writeKrea2(meta, for: path)
     }
 
+    /// Driver eligibility + request. Every Krea 2 job qualifies (no edit or
+    /// low-RAM modes); model resolution mirrors buildArgs.
+    static func driverRequest(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
+        var model = FluxModelVariant.krea2.mfluxModelID
+        var quantizeArg: Int?
+        if job.quantize > 0 {
+            let savedPath = FluxModelVariant.krea2.savedModelPath(
+                quantize: job.quantize, in: settings.effectiveMfluxCacheDir
+            )
+            if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                model = savedPath.path
+            } else {
+                quantizeArg = job.quantize
+            }
+        }
+
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }
+        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
+        let outputs: [DriverOutput] = job.seeds.isEmpty
+            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
+            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
+            .map { DriverOutput(seed: $0.seed, path: $0.path) }
+        let trimmedNegative = job.negativePrompt.trimmingCharacters(in: .whitespaces)
+
+        return DriverGenerateRequest(
+            id: job.id.uuidString,
+            family: "krea2",
+            fingerprint: "krea2|\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            model: model,
+            quantize: quantizeArg,
+            loraPaths: loras.map(\.path),
+            loraScales: loras.map(\.strength),
+            prompt: job.prompt,
+            negativePrompt: job.guidance != 1.0 && !trimmedNegative.isEmpty ? job.negativePrompt : nil,
+            width: job.width,
+            height: job.height,
+            steps: job.steps,
+            guidance: job.guidance,
+            imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
+            imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
+            preset: nil,
+            strictCaptionValidation: nil,
+            cfgEnd: nil,
+            outputs: outputs,
+            stepwiseDir: ctx.stepwiseDir.path,
+            tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
+            cacheLimitGb: settings.mlxCacheLimitGB,
+            modelVariantRaw: FluxModelVariant.krea2.rawValue,
+            modelLabel: FluxModelVariant.krea2.displayName
+        )
+    }
+
     static func buildArgs(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 

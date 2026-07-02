@@ -47,9 +47,13 @@ struct MLXBitsImageStudioApp: App {
         let settings = AppSettings()
         let driver = MfluxDriverController(settings: settings)
         let runner = FluxJobRunner()
-        runner.driver = driver // warm-model path is Flux-only for now
+        runner.driver = driver
         _settings = State(initialValue: settings)
         _driverController = State(initialValue: driver)
         _runner = State(initialValue: runner)
+        // One shared driver across families — it keeps a single warm model,
+        // so cross-family switches evict before loading (see coordinator gate).
+        ideogram4Runner.driver = driver
+        krea2Runner.driver = driver
     }
 }

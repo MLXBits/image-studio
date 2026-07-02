@@ -369,9 +369,9 @@ struct SettingsView: View {
     /// Footer for the Keep Model Warm section, with a memory warning on
     /// smaller Macs (per the warm-driver plan: caution at ≤32 GB).
     private var warmModelFooter: String {
-        var text = "Runs Flux generations in a persistent driver so the model stays loaded between "
-            + "jobs — back-to-back generations skip the model load. Edit-mode, low-RAM, and "
-            + "custom-model jobs still use the one-shot CLI. 0 min = never evict on idle."
+        var text = "Runs generations (Flux, Krea 2, Ideogram 4) in a persistent driver so the model "
+            + "stays loaded between jobs — back-to-back generations skip the model load. Edit-mode, "
+            + "low-RAM, and custom-model jobs still use the one-shot CLI. 0 min = never evict on idle."
         let physicalGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
         if physicalGB <= 33 {
             text += String(

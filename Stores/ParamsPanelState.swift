@@ -83,10 +83,10 @@ final class ParamsPanelState {
         seed = newSeed ? -1 : meta.seed
     }
 
-    func makeJob(count: Int = 1, templates: [PromptTemplate] = []) -> FluxJob {
-        let seeds: [Int] = count > 1
-            ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
-            : []
+    /// Prompt + negative with the active templates chained on, before
+    /// wildcard resolution. Wildcards resolve after templates so template
+    /// text can carry {a|b} groups too.
+    private func templatedPrompts(templates: [PromptTemplate]) -> (positive: String, negative: String) {
         var finalPrompt = prompt
         var finalNegative = negativePrompt
         for template in templates {
@@ -98,6 +98,24 @@ final class ParamsPanelState {
             finalPrompt = applied.positive
             finalNegative = applied.negative
         }
+        return (finalPrompt, finalNegative)
+    }
+
+    /// How many jobs the current prompt naturally expands to (largest
+    /// wildcard group across prompt + negative, templates applied); 1 when
+    /// there are no wildcards. Uncapped — the caller applies the batch cap.
+    func wildcardVariantCount(templates: [PromptTemplate]) -> Int {
+        let (positive, negative) = templatedPrompts(templates: templates)
+        return max(WildcardExpander.variantCount(positive), WildcardExpander.variantCount(negative))
+    }
+
+    func makeJob(count: Int = 1, templates: [PromptTemplate] = [], wildcardVariant: Int = 0) -> FluxJob {
+        let seeds: [Int] = count > 1
+            ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+            : []
+        let templated = templatedPrompts(templates: templates)
+        let finalPrompt = WildcardExpander.expandVariant(templated.positive, index: wildcardVariant)
+        let finalNegative = WildcardExpander.expandVariant(templated.negative, index: wildcardVariant)
         return FluxJob(
             model: model,
             customModelRepo: customModelRepo,

@@ -29,23 +29,33 @@ struct DriverOutput: Codable {
 struct DriverGenerateRequest: Codable {
     var cmd: String = "generate"
     var id: String
-    /// Warm-instance identity: resolved model + quantize + LoRA stack. A
-    /// mismatch makes the driver unload before loading (never two resident).
+    /// Model family adapter in the driver: "flux2", "krea2", or "ideogram4".
+    var family: String
+    /// Warm-instance identity: family + resolved model + quantize + LoRA
+    /// stack. A mismatch makes the driver unload before loading (never two
+    /// resident).
     var fingerprint: String
     /// Resolved model argument (repo ID or local path), mirroring the CLI
-    /// resolution in `FluxRunnerSpec.buildArgs`.
+    /// resolution in the family spec's `buildArgs`.
     var model: String
     /// Present only when falling back to in-memory quantization (BF16 base).
     var quantize: Int?
     var loraPaths: [String]
     var loraScales: [Double]
     var prompt: String
+    /// Krea 2 only; nil elsewhere (FLUX.2 rejects it, Ideogram has none).
+    var negativePrompt: String?
     var width: Int
     var height: Int
     var steps: Int
     var guidance: Double
     var imagePath: String?
     var imageStrength: Double?
+    /// Ideogram 4 only: sampler preset name, strict caption validation, and
+    /// CFG truncation point.
+    var preset: String?
+    var strictCaptionValidation: Bool?
+    var cfgEnd: Double?
     /// Explicit per-seed output paths — the driver saves exactly here and
     /// emits an `image` event per path, so no filesystem reconciliation.
     var outputs: [DriverOutput]

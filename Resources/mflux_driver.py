@@ -1,8 +1,9 @@
 """Warm-model generation driver for MLXBits Image Studio.
 
 Runs inside the mflux tool venv (interpreter discovered from the
-mflux-generate-flux2 shim's shebang) and keeps a Flux2 Klein model resident
-between jobs so back-to-back generations skip the model load.
+mflux-generate-flux2 shim's shebang) and keeps one model resident between
+jobs so back-to-back generations skip the model load. Supports the flux2,
+krea2, and ideogram4 families (one warm model at a time, fingerprint-keyed).
 
 Protocol: newline-delimited JSON. Requests on stdin (hello, generate, cancel,
 unload, ping, quit); events on the *original* stdout (ready, loading, loaded,
@@ -43,20 +44,26 @@ def emit(obj):
 
 
 class WarmModel:
-    """A resident Flux2 Klein plus the prompt-embedding cache that makes
-    text-encoder eviction safe: embeddings are memoized per (prompt, negative)
-    and force-evaluated before the encoder may be dropped, so the encoder is
-    only needed again when the prompt actually changes."""
+    """A resident model plus the machinery that makes text-encoder eviction
+    safe. flux2 gets a driver-side embedding cache (its encoder has none);
+    krea2 relies on its native prompt_cache with a reload-on-miss wrapper.
+    ideogram4's encoder config is weight-layout-dependent, so its TE is never
+    evicted (its native prompt_cache still skips re-encodes)."""
 
-    def __init__(self, model, fingerprint, model_path):
+    def __init__(self, model, fingerprint, family, model_path):
         self.model = model
         self.fingerprint = fingerprint
+        self.family = family
         self.model_path = model_path
         self.embed_cache = OrderedDict()
-        self._orig_encode = model._encode_prompt_pair
-        model._encode_prompt_pair = self._cached_encode
+        if family == "flux2":
+            self._orig_encode = model._encode_prompt_pair
+            model._encode_prompt_pair = self._flux2_cached_encode
+        elif family == "krea2":
+            self._orig_encode = model._encode_prompts
+            model._encode_prompts = self._krea2_ensured_encode
 
-    def _cached_encode(self, *, prompt, negative_prompt, guidance):
+    def _flux2_cached_encode(self, *, prompt, negative_prompt, guidance):
         import mlx.core as mx
 
         key = (prompt, negative_prompt if (guidance or 0) > 1.0 else None)
@@ -72,6 +79,31 @@ class WarmModel:
             self.embed_cache.popitem(last=False)
         return result
 
+    def _krea2_ensured_encode(self, *, prompt, negative_prompt, guidance):
+        """Krea2's encoder checks its prompt_cache before touching the text
+        encoder, so cached prompts survive eviction for free; a cache miss
+        with the encoder gone fails, and we reload + retry."""
+        try:
+            return self._orig_encode(prompt=prompt, negative_prompt=negative_prompt, guidance=guidance)
+        except Exception:
+            if self.model.text_encoder is not None:
+                raise
+            self.ensure_text_encoder()
+            return self._orig_encode(prompt=prompt, negative_prompt=negative_prompt, guidance=guidance)
+
+    def _te_definition_and_encoder(self):
+        if self.family == "flux2":
+            from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
+            from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
+
+            return Flux2KleinWeightDefinition, Qwen3TextEncoder(**self.model.model_config.text_encoder_overrides)
+        if self.family == "krea2":
+            from mflux.models.krea2.model.krea2_text_encoder.text_encoder import Krea2TextEncoder
+            from mflux.models.krea2.weights.krea2_weight_definition import Krea2WeightDefinition
+
+            return Krea2WeightDefinition, Krea2TextEncoder()
+        raise RuntimeError(f"text-encoder reload unsupported for family {self.family}")
+
     def ensure_text_encoder(self):
         """Reloads just the text_encoder component after an eviction."""
         if getattr(self.model, "text_encoder", None) is not None:
@@ -81,10 +113,8 @@ class WarmModel:
         from mflux.models.common.weights.loading.loaded_weights import LoadedWeights, MetaData
         from mflux.models.common.weights.loading.weight_applier import WeightApplier
         from mflux.models.common.weights.loading.weight_loader import WeightLoader
-        from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
-        from mflux.models.flux2.weights.flux2_weight_definition import Flux2KleinWeightDefinition
 
-        definition = Flux2KleinWeightDefinition
+        definition, encoder = self._te_definition_and_encoder()
         component = next(c for c in definition.get_components() if c.name == "text_encoder")
         root = PathResolution.resolve(path=self.model_path, patterns=definition.get_download_patterns())
         raw, q_level, version = WeightLoader._load_component(root, component)
@@ -92,7 +122,6 @@ class WarmModel:
             components={"text_encoder": raw},
             meta_data=MetaData(quantization_level=q_level, mflux_version=version),
         )
-        encoder = Qwen3TextEncoder(**self.model.model_config.text_encoder_overrides)
         WeightApplier.apply_and_quantize_single(
             weights=loaded,
             model=encoder,
@@ -105,6 +134,8 @@ class WarmModel:
     def evict_text_encoder(self):
         import mlx.core as mx
 
+        if self.family == "ideogram4":
+            return  # layout-dependent TE config; reload is unreliable — keep resident
         if getattr(self.model, "text_encoder", None) is None:
             return
         self.model.text_encoder = None
@@ -148,19 +179,65 @@ def _unload(reason):
         return
     import mlx.core as mx
 
-    _warm.model._encode_prompt_pair = _warm._orig_encode
+    # Remove the instance-level encode wrapper so no cycle keeps the model
+    # (and its weights) alive after we drop our reference.
+    if _warm.family == "flux2":
+        _warm.model._encode_prompt_pair = _warm._orig_encode
+    elif _warm.family == "krea2":
+        _warm.model._encode_prompts = _warm._orig_encode
     _warm = None
     gc.collect()
     mx.clear_cache()
     emit({"event": "unloaded", "reason": reason})
 
 
+def _construct_model(req):
+    """Mirrors each family CLI's model construction, including the parser's
+    builtin-name vs model-path split."""
+    family = req.get("family", "flux2")
+    kwargs = {
+        "quantize": req.get("quantize"),
+        "lora_paths": req.get("lora_paths") or None,
+        "lora_scales": req.get("lora_scales") or None,
+    }
+    from mflux.models.common.config import ModelConfig
+
+    if family == "flux2":
+        from mflux.models.flux2.variants import Flux2Klein
+
+        return Flux2Klein(model_config=ModelConfig.from_name(model_name=req["model"]), **kwargs)
+    if family == "krea2":
+        from mflux.models.krea2.variants.txt2img.krea2 import Krea2
+
+        # The app always sends a repo ID or saved-weights path here.
+        return Krea2(model_config=ModelConfig.krea2(), model_path=req["model"], **kwargs)
+    if family == "ideogram4":
+        from mflux.models.ideogram4.variants.txt2img.ideogram4 import Ideogram4
+        from mflux.models.ideogram4.weights.ideogram4_weight_definition import Ideogram4WeightDefinition
+
+        if Ideogram4WeightDefinition.is_builtin_name(req["model"]):
+            return Ideogram4(model_config=ModelConfig.from_name(req["model"]), model_path=None, **kwargs)
+        return Ideogram4(model_config=ModelConfig.ideogram4_fp8(), model_path=req["model"], **kwargs)
+    raise RuntimeError(f"unknown family: {family}")
+
+
+def _latent_creator(family):
+    if family == "krea2":
+        from mflux.models.krea2.latent_creator import Krea2LatentCreator
+
+        return Krea2LatentCreator
+    if family == "ideogram4":
+        from mflux.models.ideogram4.latent_creator import Ideogram4LatentCreator
+
+        return Ideogram4LatentCreator
+    from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
+
+    return Flux2LatentCreator
+
+
 def _load_model(req):
     global _warm
     import mlx.core as mx
-
-    from mflux.models.common.config import ModelConfig
-    from mflux.models.flux2.variants import Flux2Klein
 
     fingerprint = req["fingerprint"]
     if _warm is not None and _warm.fingerprint != fingerprint:
@@ -170,14 +247,14 @@ def _load_model(req):
 
     emit({"event": "loading", "component": "model"})
     started = time.monotonic()
-    model = Flux2Klein(
-        model_config=ModelConfig.from_name(model_name=req["model"]),
-        quantize=req.get("quantize"),
-        lora_paths=req.get("lora_paths") or None,
-        lora_scales=req.get("lora_scales") or None,
-    )
+    model = _construct_model(req)
     mx.eval(model.parameters())
-    _warm = WarmModel(model=model, fingerprint=fingerprint, model_path=req["model"])
+    _warm = WarmModel(
+        model=model,
+        fingerprint=fingerprint,
+        family=req.get("family", "flux2"),
+        model_path=req["model"],
+    )
     emit({
         "event": "loaded",
         "fingerprint": fingerprint,
@@ -187,12 +264,51 @@ def _load_model(req):
     return _warm
 
 
+def _generate_kwargs(req, seed, prompt):
+    """Per-family generate_image kwargs, mirroring each family's CLI call."""
+    family = req.get("family", "flux2")
+    if family == "flux2":
+        return {
+            "seed": seed,
+            "prompt": prompt,
+            "num_inference_steps": req["steps"],
+            "height": req["height"],
+            "width": req["width"],
+            "guidance": req.get("guidance", 1.0),
+            "image_path": req.get("image_path"),
+            "image_strength": req.get("image_strength"),
+            "scheduler": "flow_match_euler_discrete",
+        }
+    if family == "krea2":
+        return {
+            "seed": seed,
+            "prompt": prompt,
+            "num_inference_steps": req["steps"],
+            "height": req["height"],
+            "width": req["width"],
+            "guidance": req.get("guidance", 1.0),
+            "negative_prompt": req.get("negative_prompt"),
+            "image_path": req.get("image_path"),
+            "image_strength": req.get("image_strength"),
+        }
+    # ideogram4: the preset defines steps and guidance schedule; prompt is the
+    # caption JSON string (or a plain description).
+    return {
+        "seed": seed,
+        "prompt": prompt,
+        "height": req["height"],
+        "width": req["width"],
+        "preset": req.get("preset"),
+        "strict_caption_validation": bool(req.get("strict_caption_validation")),
+        "cfg_end": req.get("cfg_end"),
+    }
+
+
 def _generate_once(req):
     import mlx.core as mx
 
     from mflux.callbacks.callback_registry import CallbackRegistry
     from mflux.callbacks.instances.stepwise_handler import StepwiseHandler
-    from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
     from mflux.utils.image_util import ImageUtil
 
     if req.get("cache_limit_gb"):
@@ -205,21 +321,16 @@ def _generate_once(req):
     model.callbacks.register(_ProgressEmitter(total_steps=req["steps"]))
     if req.get("stepwise_dir"):
         model.callbacks.register(
-            StepwiseHandler(model=model, output_dir=req["stepwise_dir"], latent_creator=Flux2LatentCreator)
+            StepwiseHandler(
+                model=model,
+                output_dir=req["stepwise_dir"],
+                latent_creator=_latent_creator(req.get("family", "flux2")),
+            )
         )
 
     for out in req["outputs"]:
-        image = model.generate_image(
-            seed=out["seed"],
-            prompt=req["prompt"],
-            num_inference_steps=req["steps"],
-            height=req["height"],
-            width=req["width"],
-            guidance=req.get("guidance", 1.0),
-            image_path=req.get("image_path"),
-            image_strength=req.get("image_strength"),
-            scheduler="flow_match_euler_discrete",
-        )
+        prompt = out.get("prompt") or req["prompt"]
+        image = model.generate_image(**_generate_kwargs(req, out["seed"], prompt))
         ImageUtil.save_image(image=image, path=out["path"], export_json_metadata=False)
         emit({"event": "image", "seed": out["seed"], "path": out["path"]})
 
