@@ -92,6 +92,8 @@ class AppSettings {
         var lastKrea2: Krea2FormState?
         /// Notepad
         var notepadText: String?
+        /// Prompt history (recorded on job enqueue)
+        var promptHistory: [PromptHistoryEntry]?
 
         init() {}
         init(
@@ -130,6 +132,9 @@ class AppSettings {
             self.lastIdeogramQuantize = lastIdeogramQuantize
         }
     }
+
+    /// Maximum number of unpinned ``promptHistory`` entries kept.
+    static let promptHistoryCap = 200
 
     static let appSupportURL: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
@@ -318,6 +323,14 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - Prompt history
+
+    /// Prompts recorded when jobs are queued, newest first. Unpinned entries are
+    /// capped at ``promptHistoryCap``; pinned entries are never evicted.
+    var promptHistory: [PromptHistoryEntry] {
+        didSet { save() }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -403,6 +416,7 @@ class AppSettings {
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
         notepadText = s.notepadText ?? ""
+        promptHistory = s.promptHistory ?? []
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -438,6 +452,32 @@ class AppSettings {
         } else {
             activeTemplateIDs.append(id)
         }
+    }
+
+    // MARK: - Prompt history helpers
+
+    /// Records a queued prompt: bumps the existing entry on an exact (trimmed)
+    /// match, otherwise prepends a new one and evicts the oldest unpinned
+    /// entries beyond ``promptHistoryCap``.
+    func recordPromptUse(_ prompt: String) {
+        let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let idx = promptHistory.firstIndex(where: { $0.prompt == trimmed }) {
+            promptHistory[idx].lastUsedAt = Date()
+            promptHistory[idx].useCount += 1
+        } else {
+            promptHistory.insert(PromptHistoryEntry(prompt: trimmed, lastUsedAt: Date()), at: 0)
+        }
+        let excess = promptHistory.filter { !$0.pinned }.count - Self.promptHistoryCap
+        guard excess > 0 else { return }
+        let evictable = Set(
+            promptHistory
+                .filter { !$0.pinned }
+                .sorted { $0.lastUsedAt < $1.lastUsedAt }
+                .prefix(excess)
+                .map(\.id)
+        )
+        promptHistory.removeAll { evictable.contains($0.id) }
     }
 
     // MARK: - Persistence
@@ -480,6 +520,7 @@ class AppSettings {
         s.ideogram4CfgEnd = ideogram4CfgEnd
         s.lastKrea2 = lastKrea2
         s.notepadText = notepadText
+        s.promptHistory = promptHistory
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()

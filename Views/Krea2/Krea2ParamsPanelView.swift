@@ -49,6 +49,8 @@ struct Krea2ParamsPanelView: View {
                     hint: "Describe elements to avoid (only used when Guidance > 1)"
                 )
             }
+        } accessory: {
+            PromptHistoryButton { params.prompt = $0 }
         }
 
         Divider()

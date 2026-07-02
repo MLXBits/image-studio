@@ -32,6 +32,7 @@
 		2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */ = {isa = PBXBuildFile; fileRef = D923D32E0D737D888C711FE7 /* KeychainHelper.swift */; };
 		32CD239EE81E711BFC106E6F /* BBoxEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7487A27C328B569EF618E3BC /* BBoxEditorView.swift */; };
 		33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 174F374D4B5F7A05666D31B3 /* Assets.xcassets */; };
+		333970340121D49FD8E0298C /* PromptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4443AEA2099305CADF36EE5 /* PromptHistory.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
@@ -80,6 +81,7 @@
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
+		C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */; };
 		C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
 		CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9474B6243420062519AB6BA /* ParamsPanelState.swift */; };
@@ -166,6 +168,7 @@
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimator.swift; sourceTree = "<group>"; };
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
+		8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistoryPickerView.swift; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
@@ -188,6 +191,7 @@
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
+		C4443AEA2099305CADF36EE5 /* PromptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistory.swift; sourceTree = "<group>"; };
 		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
@@ -294,6 +298,7 @@
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
+				8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */,
 				3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */,
 				D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */,
 			);
@@ -422,6 +427,7 @@
 				ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */,
 				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
 				2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */,
+				C4443AEA2099305CADF36EE5 /* PromptHistory.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
 				85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */,
 			);
@@ -649,6 +655,8 @@
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,
 				C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */,
 				2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */,
+				333970340121D49FD8E0298C /* PromptHistory.swift in Sources */,
+				C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */,
 				3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */,
 				79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */,
 				0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */,

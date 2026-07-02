@@ -833,6 +833,7 @@ struct ContentView: View {
             guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
                   !params.isEditMode || !params.editImagePaths.isEmpty else { return }
             settings.lastPrompt = params.prompt
+            settings.recordPromptUse(params.prompt)
             settings.lastWidth = params.width
             settings.lastHeight = params.height
             settings.lastLoras = params.loras
@@ -875,6 +876,7 @@ struct ContentView: View {
             guard krea2Params.isReadyToGenerate(settings: settings) else { return }
             settings.lastModel = .krea2 // remember family across sessions
             settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
+            settings.recordPromptUse(krea2Params.prompt)
             let job = krea2Params.makeJob(count: count)
             let wasIdle = !isAnyStoreRunning
             krea2Store.add(job)

@@ -97,6 +97,8 @@ struct ParamsPanelView: View {
             if params.model.supportsNegativePrompt {
                 negativePromptEditor
             }
+        } accessory: {
+            PromptHistoryButton { params.prompt = $0 }
         }
 
         // Image input
