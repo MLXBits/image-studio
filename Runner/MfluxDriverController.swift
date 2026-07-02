@@ -71,6 +71,13 @@ final class MfluxDriverController {
     private var stdoutTail = ""
     private var handshake: CheckedContinuation<Bool, Never>?
     private var jobEventHandler: ((DriverEvent) -> Void)?
+    /// Resolver for the in-flight `run(request:)` continuation, so a hard
+    /// cancel (or crash) can settle it without a driver event.
+    private var finishRun: ((DriverRunResult) -> Void)?
+    /// Set when `cancel()` terminates the process, so `processDied` reports the
+    /// interrupted run as cancelled rather than a crash and keeps the driver
+    /// available for the next job.
+    private var intentionalKill = false
     private var idleTask: Task<Void, Never>?
     private var switchEvictTask: Task<Void, Never>?
     /// Peak MLX memory (GB) reported by the last completed job; drives the
@@ -176,7 +183,9 @@ final class MfluxDriverController {
     }
 
     private func processDied() {
-        let wasGenerating = jobEventHandler != nil
+        let wasGenerating = finishRun != nil
+        let cancelled = intentionalKill
+        intentionalKill = false
         process = nil
         stdinHandle = nil
         loadedFingerprint = nil
@@ -185,9 +194,14 @@ final class MfluxDriverController {
         loadedMemoryGB = nil
         idleTask?.cancel()
         resolveHandshake(false, reason: "Driver exited during startup")
-        if wasGenerating {
+        guard wasGenerating else { return }
+        if cancelled {
+            // Intentional hard kill: settle as cancelled and stay available so
+            // the next job starts a fresh driver and reloads the model.
+            finishRun?(.cancelled)
+        } else {
             availability = .unavailable("Driver process died mid-job")
-            deliver(DriverEvent(event: "error", message: "Warm driver process died"))
+            finishRun?(.failed("Warm driver process died"))
         }
     }
 
@@ -204,15 +218,18 @@ final class MfluxDriverController {
         defer {
             isGenerating = false
             jobEventHandler = nil
+            finishRun = nil
             scheduleIdleEviction()
         }
         return await withCheckedContinuation { (cont: CheckedContinuation<DriverRunResult, Never>) in
             var finished = false
-            let finish: (DriverRunResult) -> Void = { result in
+            let finish: (DriverRunResult) -> Void = { [weak self] result in
                 guard !finished else { return }
                 finished = true
+                self?.finishRun = nil
                 cont.resume(returning: result)
             }
+            finishRun = finish
             jobEventHandler = { [weak self] event in
                 switch event.event {
                 case "loaded":
@@ -242,10 +259,15 @@ final class MfluxDriverController {
         }
     }
 
-    /// Cancels the in-flight generate (the driver aborts at the next denoise
-    /// step; the warm model survives).
+    /// Hard-cancels the in-flight generate by terminating the driver process.
+    /// MLX compute can't be interrupted from another thread, so a cooperative
+    /// flag only takes effect between denoise steps — useless during model
+    /// load, prompt encode, or VAE decode. SIGTERM stops it immediately; the
+    /// warm model is lost and the driver restarts on the next job.
     func cancel() {
-        send(["cmd": "cancel"])
+        guard isGenerating, let process, process.isRunning else { return }
+        intentionalKill = true
+        process.terminate()
     }
 
     // MARK: - Eviction policy

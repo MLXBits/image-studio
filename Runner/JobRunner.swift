@@ -190,8 +190,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     func cancel() {
         if driverJobActive {
-            // A protocol message, not SIGTERM — the driver aborts at the next
-            // denoise step and the warm model survives the cancellation.
+            // Hard kill: MLX compute isn't interruptible cooperatively, so the
+            // driver process is terminated outright. The warm model is lost and
+            // reloads on the next job.
             driver?.cancel()
         } else {
             currentProcess?.terminate()
