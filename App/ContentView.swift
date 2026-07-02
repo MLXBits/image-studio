@@ -866,7 +866,6 @@ struct ContentView: View {
 
         case .ideogram4:
             guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
-            driverController.eject(reason: "model_switch") // free memory before another family loads
             settings.lastModel = .ideogram4 // remember family across sessions
             settings.lastIdeogramPreset = ideogramParams.preset
             settings.lastIdeogramWidth = ideogramParams.width
@@ -891,7 +890,6 @@ struct ContentView: View {
 
         case .krea2:
             guard krea2Params.isReadyToGenerate(settings: settings) else { return }
-            driverController.eject(reason: "model_switch") // free memory before another family loads
             settings.lastModel = .krea2 // remember family across sessions
             settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
             settings.recordPromptUse(krea2Params.prompt)
