@@ -50,7 +50,7 @@ struct ScenarioGeneratorView: View {
                 outlineSection
                 categorySection
                 wildcardRow
-                generateRow
+                generatingRow
                 if let err = session.generateError { errorBox(err) }
                 if !session.result.isEmpty { resultPreview }
             }
@@ -110,8 +110,8 @@ struct ScenarioGeneratorView: View {
             .foregroundStyle(.secondary)
             .help("The editable prompt file governs what the model will write")
             Spacer()
-            Button("Reroll") { startGenerate() }
-                .disabled(session.isGenerating || session.result.isEmpty)
+            Button("Generate") { startGenerate() }
+                .disabled(session.isGenerating || session.outline.trimmingCharacters(in: .whitespaces).isEmpty)
             Button("Use") {
                 onSelect(session.result)
                 onClose()
@@ -177,31 +177,21 @@ struct ScenarioGeneratorView: View {
         }
     }
 
-    private var generateRow: some View {
-        HStack(spacing: 8) {
-            Button {
-                startGenerate()
-            } label: {
-                HStack(spacing: 6) {
-                    if session.isGenerating {
-                        ProgressView().controlSize(.small)
-                    } else {
-                        Image(systemName: "sparkles")
-                    }
-                    Text(session.isGenerating ? "Generating…" : "Generate")
-                }
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.small)
-            .disabled(session.isGenerating || session.outline.trimmingCharacters(in: .whitespaces).isEmpty)
-
-            if session.isGenerating {
+    /// Progress + cancel indicator shown only while generating. The Generate action
+    /// itself lives in the footer (a single button that also re-rolls).
+    @ViewBuilder
+    private var generatingRow: some View {
+        if session.isGenerating {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                Text("Generating…")
+                    .font(.caption).foregroundStyle(.secondary)
                 Button("Cancel") { session.task?.cancel() }
                     .buttonStyle(.plain)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                Spacer()
             }
-            Spacer()
         }
     }
 
