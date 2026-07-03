@@ -13,6 +13,12 @@ struct FullSizeImageView: View {
     var hasNext: Bool = false
     var onNavigatePrev: (() -> Void)?
     var onNavigateNext: (() -> Void)?
+    // Culling: current verdict for the shown image, plus callbacks to change it.
+    // When these are nil the overlay is a plain viewer (e.g. showing an active job).
+    var flag: PickFlag?
+    var rating: Int = 0
+    var onFlag: ((PickFlag?) -> Void)?
+    var onRating: ((Int) -> Void)?
 
     @State private var keyMonitor: Any?
     @State private var scrollMonitor: Any?
@@ -104,6 +110,17 @@ struct FullSizeImageView: View {
                 .opacity(chromeVisible ? 1 : 0)
                 .animation(.easeOut(duration: 0.5), value: chromeVisible)
             }
+
+            // Culling status pill — bottom-center, fades with chrome.
+            if onFlag != nil || onRating != nil {
+                VStack {
+                    Spacer()
+                    cullPill
+                        .opacity(chromeVisible ? 1 : 0)
+                        .animation(.easeOut(duration: 0.5), value: chromeVisible)
+                        .padding(.bottom, 20)
+                }
+            }
         }
         .onContinuousHover { phase in
             if case .active = phase { showChrome() }
@@ -118,6 +135,32 @@ struct FullSizeImageView: View {
             removeScrollMonitor()
             hideTask?.cancel()
         }
+    }
+
+    // MARK: - Culling status pill
+
+    private var cullPill: some View {
+        HStack(spacing: 10) {
+            switch flag {
+            case .pick:
+                Label("Pick", systemImage: "flag.fill").foregroundStyle(.green)
+            case .reject:
+                Label("Reject", systemImage: "xmark").foregroundStyle(.red)
+            case nil:
+                Label("Unflagged", systemImage: "flag").foregroundStyle(.white.opacity(0.7))
+            }
+            Divider().frame(height: 12).overlay(.white.opacity(0.3))
+            HStack(spacing: 2) {
+                ForEach(1 ... 5, id: \.self) { star in
+                    Image(systemName: star <= rating ? "star.fill" : "star")
+                        .foregroundStyle(star <= rating ? .yellow : .white.opacity(0.35))
+                }
+            }
+        }
+        .font(.caption.weight(.medium))
+        .padding(.horizontal, 14).padding(.vertical, 8)
+        .background(.black.opacity(0.55), in: Capsule())
+        .overlay(Capsule().strokeBorder(.white.opacity(0.15)))
     }
 
     // MARK: - Zoom & pan
@@ -214,10 +257,57 @@ struct FullSizeImageView: View {
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 53 else { return event } // Escape
+            handleKey(event)
+        }
+    }
+
+    /// Handles keys while the overlay is up. Arrow keys drive *linear* prev/next
+    /// through the gallery (not the grid's row-aware 2D navigation), so the right
+    /// arrow advances past a row's edge to the next image. Culling keys mirror the
+    /// grid: p/x/u flag, 0–5 rate, with pick/reject auto-advancing to the next image.
+    private func handleKey(_ event: NSEvent) -> NSEvent? {
+        if event.keyCode == 53 { // Escape
             onDismiss()
             return nil // consume — prevents system from exiting tiled/zoomed window state
         }
+        switch event.keyCode {
+        case 123: // Left
+            navigate(prev: true); return nil
+        case 124: // Right
+            navigate(prev: false); return nil
+        default:
+            break
+        }
+        // Culling keys — only when this overlay owns a gallery item (callbacks set).
+        guard onFlag != nil || onRating != nil,
+              !event.modifierFlags.contains(.command),
+              let chars = event.charactersIgnoringModifiers, chars.count == 1 else { return event }
+        switch chars {
+        case "p", "P":
+            onFlag?(.pick); showChrome(); advanceIfPossible(); return nil
+        case "x", "X":
+            onFlag?(.reject); showChrome(); advanceIfPossible(); return nil
+        case "u", "U":
+            onFlag?(nil); showChrome(); return nil
+        case "0", "1", "2", "3", "4", "5":
+            onRating?(Int(chars) ?? 0); showChrome(); return nil
+        default:
+            return event
+        }
+    }
+
+    private func navigate(prev: Bool) {
+        guard prev ? hasPrev : hasNext else { return }
+        showChrome()
+        resetZoom()
+        if prev { onNavigatePrev?() } else { onNavigateNext?() }
+    }
+
+    /// Auto-advance after a pick/reject, matching Lightroom's cull rhythm.
+    private func advanceIfPossible() {
+        guard hasNext else { return }
+        resetZoom()
+        onNavigateNext?()
     }
 
     private func removeKeyMonitor() {

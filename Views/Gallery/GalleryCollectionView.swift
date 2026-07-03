@@ -29,6 +29,8 @@ private struct ThumbnailCellView: View, Equatable {
     static func == (lhs: Self, rhs: Self) -> Bool {
         lhs.item.id == rhs.item.id &&
             (lhs.item.thumbnailImage == nil) == (rhs.item.thumbnailImage == nil) &&
+            lhs.item.flag == rhs.item.flag &&
+            lhs.item.rating == rhs.item.rating &&
             lhs.isSelected == rhs.isSelected &&
             lhs.isInMultiSelection == rhs.isInMultiSelection &&
             lhs.hasAnySelection == rhs.hasAnySelection
@@ -79,6 +81,46 @@ private struct ThumbnailCellView: View, Equatable {
                     .font(.body).padding(4)
             }
         }
+        .overlay(alignment: .topTrailing) { flagBadge }
+        .overlay(alignment: .bottomLeading) { ratingBadge }
+    }
+
+    @ViewBuilder
+    private var flagBadge: some View {
+        switch item.flag {
+        case .pick:
+            cullBadge(systemName: "flag.fill", tint: .green)
+        case .reject:
+            cullBadge(systemName: "xmark", tint: .red)
+        case nil:
+            EmptyView()
+        }
+    }
+
+    @ViewBuilder
+    private var ratingBadge: some View {
+        if item.rating > 0 {
+            HStack(spacing: 1) {
+                ForEach(0 ..< item.rating, id: \.self) { _ in
+                    Image(systemName: "star.fill")
+                        .font(.system(size: 7))
+                }
+            }
+            .foregroundStyle(.yellow)
+            .padding(.horizontal, 4).padding(.vertical, 2)
+            .background(.black.opacity(0.45), in: Capsule())
+            .padding(4)
+        }
+    }
+
+    private func cullBadge(systemName: String, tint: Color) -> some View {
+        Image(systemName: systemName)
+            .font(.caption2.weight(.bold))
+            .foregroundStyle(.white)
+            .padding(3)
+            .background(tint, in: Circle())
+            .overlay(Circle().strokeBorder(.white.opacity(0.85), lineWidth: 1))
+            .padding(4)
     }
 }
 
@@ -270,6 +312,22 @@ final class GalleryNSCollectionView: NSCollectionView {
             eventDelegate?.escapeKeyPressed()
 
         default:
+            // Lightroom-style culling keys act on the current anchor item, then
+            // auto-advance (flags) so the whole cull can be done from the keyboard.
+            // Match on characters so it's keyboard-layout independent; ignore when a
+            // modifier is held so Cmd-shortcuts (copy, etc.) still pass through.
+            if !event.modifierFlags.contains(.command),
+               let chars = event.charactersIgnoringModifiers, chars.count == 1 {
+                switch chars {
+                case "p", "P": eventDelegate?.cullFlagKeyPressed(.pick); return
+                case "x", "X": eventDelegate?.cullFlagKeyPressed(.reject); return
+                case "u", "U": eventDelegate?.cullFlagKeyPressed(nil); return
+                case "0", "1", "2", "3", "4", "5":
+                    eventDelegate?.cullRatingKeyPressed(Int(chars) ?? 0); return
+                default:
+                    break
+                }
+            }
             super.keyDown(with: event)
         }
     }
@@ -348,6 +406,8 @@ protocol GalleryCollectionViewEvents: AnyObject {
     func rightClick(at path: IndexPath, event: NSEvent)
     func deleteKeyPressed(shift: Bool)
     func escapeKeyPressed()
+    func cullFlagKeyPressed(_ flag: PickFlag?)
+    func cullRatingKeyPressed(_ rating: Int)
     // Drag destination — view-level so they fire over headers, not only over items
     func dragUpdated(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView)
     func dropPerformed(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView) -> Bool
@@ -470,6 +530,14 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func escapeKeyPressed() {
             parent.onEscape()
+        }
+
+        func cullFlagKeyPressed(_ flag: PickFlag?) {
+            parent.onCullFlag(flag)
+        }
+
+        func cullRatingKeyPressed(_ rating: Int) {
+            parent.onCullRating(rating)
         }
 
         /// Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
@@ -736,6 +804,8 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteImmediate: (GalleryItem) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void
+    var onCullFlag: (PickFlag?) -> Void
+    var onCullRating: (Int) -> Void
     var onRemix: (GenerationMetadata) -> Void
     var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
     var onRemixIdeogram: (Ideogram4Metadata) -> Void

@@ -17,6 +17,10 @@ struct GalleryItem: Identifiable, Equatable {
     var metadata: GenerationMetadata?
     var ideogram4Metadata: Ideogram4Metadata?
     var krea2Metadata: Krea2Metadata?
+    /// Lightroom-style cull verdict, persisted as an xattr on the file (see ``GalleryCulling``).
+    var flag: PickFlag?
+    /// 0–5 star rating, persisted as an xattr on the file.
+    var rating: Int = 0
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -238,6 +242,34 @@ final class GalleryStore {
             : "Could not strip metadata from: \(failures.joined(separator: ", "))"
         return succeeded
     }
+
+    // MARK: - Culling (pick/reject flags + star ratings)
+
+    /// Sets (or clears, with `nil`) the pick/reject flag for an item. The xattr write
+    /// is the source of truth; the in-memory item is updated optimistically so the grid
+    /// and preview reflect the change without waiting for a rescan.
+    func setFlag(_ flag: PickFlag?, for item: GalleryItem) {
+        GalleryCulling.writeFlag(flag, path: item.path)
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            items[idx].flag = flag
+        }
+    }
+
+    /// Sets the 0–5 star rating for an item (0 clears it), persisting to xattr and
+    /// updating the in-memory item optimistically.
+    func setRating(_ rating: Int, for item: GalleryItem) {
+        let clamped = min(5, max(0, rating))
+        GalleryCulling.writeRating(clamped, path: item.path)
+        if let idx = items.firstIndex(where: { $0.id == item.id }) {
+            items[idx].rating = clamped
+        }
+    }
+
+    /// Every reject-flagged image in the given model family, across all boards —
+    /// the target set for "delete all rejects in one pass".
+    func rejectedItems(modelFamily: ModelFamily) -> [GalleryItem] {
+        items.filter { $0.modelFamily == modelFamily && $0.flag == .reject }
+    }
 }
 
 // MARK: - Free function (nonisolated, safe to call from Task.detached)
@@ -285,13 +317,18 @@ nonisolated private func scanDirectory(
             ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
             krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
         }
+        // Flags/ratings live in xattrs and never change the file's mtime, so the
+        // mtime-based skip above can't be used for them — read them fresh each scan.
+        // These are lightweight syscalls (no file open), so the cost is negligible.
         result.append(GalleryItem(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             thumbnailImage: prior?.thumbnailImage,
             metadata: fluxMeta,
             ideogram4Metadata: ideogramMeta,
-            krea2Metadata: krea2Meta
+            krea2Metadata: krea2Meta,
+            flag: GalleryCulling.readFlag(path: url.path),
+            rating: GalleryCulling.readRating(path: url.path)
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }
@@ -320,13 +357,22 @@ nonisolated private func scanBoardFolders(_ outputDir: String) -> [String] {
 nonisolated private func stripImageMetadata(atPath path: String) -> Bool {
     let url = URL(fileURLWithPath: path)
     let originalDate = (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
+    // The strip paths below rewrite the file atomically, which drops extended
+    // attributes. Capture the cull flag/rating first and re-apply after so a
+    // sanitized copy keeps its pick/reject verdict and stars.
+    let flag = GalleryCulling.readFlag(path: path)
+    let rating = GalleryCulling.readRating(path: path)
 
     let stripped = url.pathExtension.lowercased() == "png"
         ? stripPNGMetadata(at: url)
         : stripMetadataViaImageIO(at: url)
 
-    if stripped, let originalDate {
-        try? FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: path)
+    if stripped {
+        if let originalDate {
+            try? FileManager.default.setAttributes([.modificationDate: originalDate], ofItemAtPath: path)
+        }
+        GalleryCulling.writeFlag(flag, path: path)
+        GalleryCulling.writeRating(rating, path: path)
     }
     return stripped
 }

@@ -334,7 +334,11 @@ struct ContentView: View {
                     hasPrev: galleryNavInfo.hasPrev,
                     hasNext: galleryNavInfo.hasNext,
                     onNavigatePrev: { navigateGallery(-1) },
-                    onNavigateNext: { navigateGallery(+1) }
+                    onNavigateNext: { navigateGallery(+1) },
+                    flag: fullSizeCullItem?.flag,
+                    rating: fullSizeCullItem?.rating ?? 0,
+                    onFlag: fullSizeCullItem == nil ? nil : { flag in cullFullSize(flag: flag) },
+                    onRating: fullSizeCullItem == nil ? nil : { rating in cullFullSize(rating: rating) }
                 )
                 .transition(.opacity)
                 .zIndex(1)
@@ -665,6 +669,14 @@ struct ContentView: View {
 
     // MARK: - Gallery navigation
 
+    /// The gallery item currently shown in the full-size overlay, if the overlay was
+    /// opened from a gallery image (rather than a live/completed job preview). Read
+    /// from the store so its flag/rating are always current.
+    private var fullSizeCullItem: GalleryItem? {
+        guard let id = selectedGalleryItem?.id else { return nil }
+        return gallery.items.first { $0.id == id }
+    }
+
     private var galleryNavInfo: (hasPrev: Bool, hasNext: Bool) {
         guard let item = selectedGalleryItem else { return (false, false) }
         // Match the gallery's own filtering (board + model family) so the prev/next arrows
@@ -814,6 +826,28 @@ struct ContentView: View {
             let next = max(0, min(items.count - 1, idx + delta))
             if next != idx { selectedGalleryItem = items[next] }
         }
+    }
+
+    // MARK: - Full-size culling
+
+    private func cullFullSize(flag: PickFlag?) {
+        guard let item = fullSizeCullItem else { return }
+        let newFlag = item.flag == flag ? nil : flag
+        gallery.setFlag(newFlag, for: item)
+        refreshSelectedGalleryItem()
+    }
+
+    private func cullFullSize(rating: Int) {
+        guard let item = fullSizeCullItem else { return }
+        gallery.setRating(rating, for: item)
+        refreshSelectedGalleryItem()
+    }
+
+    /// Re-reads the selected item from the store so views bound to the snapshot pick up
+    /// the new flag/rating. Keeps the same id, so it does not trigger an image reload.
+    private func refreshSelectedGalleryItem() {
+        guard let id = selectedGalleryItem?.id else { return }
+        selectedGalleryItem = gallery.items.first { $0.id == id }
     }
 
     private func checkAndAutoInstallMflux() async {

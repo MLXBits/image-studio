@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -37,13 +38,41 @@ struct GenerationGalleryView: View {
     // Transient confirmation toast (e.g. after stripping metadata).
     @State private var statusMessage: String?
     @State private var statusDismissTask: Task<Void, Never>?
+    // Culling filter bar state.
+    @State private var searchText: String = ""
+    @State private var flagFilter: FlagFilter = .all
+    @State private var minRating: Int = 0
+    @State private var showingDeleteRejectsConfirm: Bool = false
 
     /// Store items limited to the selected model family — the source of truth for
     /// everything the gallery displays and navigates (sections, board counts,
     /// adjacency, range selection). Mutating operations still address the full
     /// store by id, so they are unaffected by this filter.
     private var modelItems: [GalleryItem] {
-        gallery.items.filter { $0.modelFamily == modelFilter }
+        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
+        return gallery.items.filter { item in
+            guard item.modelFamily == modelFilter else { return false }
+            switch flagFilter {
+            case .all: break
+            case .picks: if item.flag != .pick { return false }
+            case .rejects: if item.flag != .reject { return false }
+            case .unflagged: if item.flag != nil { return false }
+            }
+            if item.rating < minRating { return false }
+            if !query.isEmpty, !searchHaystack(for: item).contains(query) { return false }
+            return true
+        }
+    }
+
+    /// Whether any culling filter is narrowing the gallery (drives the "clear" affordance).
+    private var isFiltering: Bool {
+        flagFilter != .all || minRating > 0 || !searchText.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// All reject-flagged images in the current model family, across every board —
+    /// the target set for "delete all rejects in one pass".
+    private var allRejects: [GalleryItem] {
+        gallery.rejectedItems(modelFamily: modelFilter)
     }
 
     private var orderedBoards: [String] {
@@ -67,6 +96,10 @@ struct GenerationGalleryView: View {
             headerRow
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
+
+            filterBar
+                .padding(.horizontal, 8)
+                .padding(.bottom, 6)
 
             Divider()
 
@@ -127,6 +160,8 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
+                    onCullFlag: { flag in cullCurrent(flag: flag) },
+                    onCullRating: { rating in cullCurrent(rating: rating) },
                     onRemix: onRemix,
                     onApplySettings: { _, meta in onApplySettings(meta) },
                     onRemixIdeogram: onRemixIdeogram,
@@ -281,6 +316,24 @@ struct GenerationGalleryView: View {
                     + "image\(count == 1 ? "" : "s") (plus their metadata files).")
             }
         }
+        .confirmationDialog(
+            "Delete \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s")?",
+            isPresented: $showingDeleteRejectsConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete", role: .destructive) {
+                let rejects = allRejects
+                let ids = Set(rejects.map(\.id))
+                if let anchorId = anchorItemId, ids.contains(anchorId) {
+                    clearSelection(nextItem: nil)
+                }
+                gallery.deleteItems(rejects, outputDir: settings.outputDir)
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("This permanently deletes every reject-flagged image in this model's "
+                + "gallery (and their metadata files), across all groups.")
+        }
     }
 
     // MARK: - Header
@@ -297,6 +350,89 @@ struct GenerationGalleryView: View {
             .help("New group")
             .popover(isPresented: $showingNewGroup) { newGroupPopover }
         }
+    }
+
+    // MARK: - Filter / culling bar
+
+    private var filterBar: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.caption2).foregroundStyle(.secondary)
+            TextField("Prompt, LoRA, seed…", text: $searchText)
+                .textFieldStyle(.plain)
+                .font(.caption)
+            if !searchText.isEmpty {
+                Button { searchText = "" } label: {
+                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                }
+                .buttonStyle(.plain).foregroundStyle(.tertiary)
+            }
+
+            Divider().frame(height: 14)
+
+            flagFilterMenu
+            ratingFilterMenu
+            if isFiltering {
+                Button { clearFilters() } label: {
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill").font(.caption)
+                }
+                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .help("Clear filters")
+            }
+            if !allRejects.isEmpty {
+                Button(role: .destructive) { showingDeleteRejectsConfirm = true } label: {
+                    Label("\(allRejects.count)", systemImage: "trash").font(.caption)
+                }
+                .buttonStyle(.plain).foregroundStyle(.red)
+                .help("Delete all \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s")")
+            }
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(isFiltering ? Color.accentColor.opacity(0.10) : Color.secondary.opacity(0.08))
+        )
+    }
+
+    private var flagFilterMenu: some View {
+        Menu {
+            Picker("Flag", selection: $flagFilter) {
+                ForEach(FlagFilter.allCases) { option in
+                    Label(option.label, systemImage: option.systemImage).tag(option)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            Image(systemName: flagFilter.systemImage)
+                .font(.caption)
+                .foregroundStyle(flagFilter == .all ? Color.secondary : Color.accentColor)
+        }
+        .menuStyle(.borderlessButton).fixedSize()
+        .help("Filter by pick/reject flag")
+    }
+
+    private var ratingFilterMenu: some View {
+        Menu {
+            Picker("Minimum rating", selection: $minRating) {
+                Text("Any rating").tag(0)
+                ForEach(1 ... 5, id: \.self) { stars in
+                    Text(String(repeating: "★", count: stars) + " & up").tag(stars)
+                }
+            }
+            .pickerStyle(.inline)
+        } label: {
+            HStack(spacing: 1) {
+                Image(systemName: minRating > 0 ? "star.fill" : "star")
+                    .font(.caption)
+                if minRating > 0 {
+                    Text("\(minRating)+").font(.caption2)
+                }
+            }
+            .foregroundStyle(minRating > 0 ? Color.accentColor : Color.secondary)
+        }
+        .menuStyle(.borderlessButton).fixedSize()
+        .help("Filter by minimum star rating")
     }
 
     // MARK: - Batch action bar (shown only when 2+ items selected)
@@ -479,5 +615,89 @@ struct GenerationGalleryView: View {
         guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return nil }
         let nextIdx = idx + 1 < boardItems.count ? idx + 1 : idx - 1
         return nextIdx >= 0 ? boardItems[nextIdx] : nil
+    }
+
+    private func clearFilters() {
+        searchText = ""
+        flagFilter = .all
+        minRating = 0
+    }
+
+    /// Lower-cased blob of the sidecar fields the search box matches against:
+    /// prompt text, seed, model, and LoRA names.
+    private func searchHaystack(for item: GalleryItem) -> String {
+        var parts: [String] = [item.filename]
+        if let meta = item.metadata {
+            parts.append(meta.prompt)
+            parts.append(meta.negativePrompt)
+            parts.append(String(meta.seed))
+            parts.append("\(meta.model)")
+            parts.append(contentsOf: meta.loras.map(\.displayName))
+        }
+        if let meta = item.ideogram4Metadata {
+            parts.append(meta.plainPrompt)
+            parts.append(String(meta.seed))
+            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
+        }
+        if let meta = item.krea2Metadata {
+            parts.append(meta.prompt)
+            parts.append(String(meta.seed))
+            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
+        }
+        return parts.joined(separator: " ").lowercased()
+    }
+
+    // MARK: - Culling (keyboard-driven pick/reject + ratings)
+
+    /// The images a cull key acts on: the whole selection when several are selected
+    /// (group triage), otherwise just the anchor item.
+    private func cullTargets() -> [GalleryItem] {
+        if selection.count > 1 {
+            return gallery.items.filter { selection.contains($0.id) }
+        }
+        guard let id = anchorItemId, let item = gallery.items.first(where: { $0.id == id }) else { return [] }
+        return [item]
+    }
+
+    /// Applies a pick/reject flag. With one image selected it toggles the anchor and
+    /// auto-advances so the board can be culled from the keyboard. With several selected
+    /// it flags the whole group at once (clearing only when every one already has that
+    /// flag) and keeps the selection — no auto-advance. The `u` key passes `nil` to unflag.
+    private func cullCurrent(flag: PickFlag?) {
+        let targets = cullTargets()
+        guard !targets.isEmpty else { return }
+        if targets.count > 1 {
+            let allHaveIt = flag != nil && targets.allSatisfy { $0.flag == flag }
+            let newFlag = allHaveIt ? nil : flag
+            for item in targets {
+                gallery.setFlag(newFlag, for: item)
+            }
+        } else {
+            let item = targets[0]
+            let newFlag = item.flag == flag ? nil : flag
+            gallery.setFlag(newFlag, for: item)
+            advanceAnchorAfterCull(from: item)
+        }
+    }
+
+    /// Sets the star rating on the selected image(s). Applies to the whole selection for
+    /// group triage. Unlike flags, ratings never auto-advance — you often adjust a rating
+    /// in place before moving on.
+    private func cullCurrent(rating: Int) {
+        for item in cullTargets() {
+            gallery.setRating(rating, for: item)
+        }
+    }
+
+    /// Moves the anchor (and the previewed item) to the next image in the same board,
+    /// respecting the active filter. Stays put when already at the end.
+    private func advanceAnchorAfterCull(from item: GalleryItem) {
+        let boardItems = modelItems.filter { $0.board == item.board }
+        guard let idx = boardItems.firstIndex(where: { $0.id == item.id }),
+              idx + 1 < boardItems.count else { return }
+        let next = boardItems[idx + 1]
+        selection = [next.id]
+        anchorItemId = next.id
+        selectedItem = next
     }
 }
