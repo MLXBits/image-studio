@@ -322,6 +322,7 @@ final class GalleryNSCollectionView: NSCollectionView {
                 case "p", "P": eventDelegate?.cullFlagKeyPressed(.pick); return
                 case "x", "X": eventDelegate?.cullFlagKeyPressed(.reject); return
                 case "u", "U": eventDelegate?.cullFlagKeyPressed(nil); return
+                case "c", "C": eventDelegate?.compareKeyPressed(); return
                 case "0", "1", "2", "3", "4", "5":
                     eventDelegate?.cullRatingKeyPressed(Int(chars) ?? 0); return
                 default:
@@ -408,6 +409,7 @@ protocol GalleryCollectionViewEvents: AnyObject {
     func escapeKeyPressed()
     func cullFlagKeyPressed(_ flag: PickFlag?)
     func cullRatingKeyPressed(_ rating: Int)
+    func compareKeyPressed()
     // Drag destination — view-level so they fire over headers, not only over items
     func dragUpdated(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView)
     func dropPerformed(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView) -> Bool
@@ -538,6 +540,10 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func cullRatingKeyPressed(_ rating: Int) {
             parent.onCullRating(rating)
+        }
+
+        func compareKeyPressed() {
+            parent.onCompareKey()
         }
 
         /// Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
@@ -732,6 +738,38 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         // MARK: Context menu builder
 
+        /// Appends Flag and Rating submenus, with a checkmark on the item's current state.
+        private func addCullMenuItems(to menu: NSMenu, for item: GalleryItem) {
+            let flagMenu = NSMenu(title: "Flag")
+            let pick = menuItem("Pick") { [weak self] in self?.parent.onSetFlagItem(item, .pick) }
+            pick.state = item.flag == .pick ? .on : .off
+            let reject = menuItem("Reject") { [weak self] in self?.parent.onSetFlagItem(item, .reject) }
+            reject.state = item.flag == .reject ? .on : .off
+            let unflag = menuItem("Unflag") { [weak self] in self?.parent.onSetFlagItem(item, nil) }
+            unflag.state = item.flag == nil ? .on : .off
+            flagMenu.addItem(pick)
+            flagMenu.addItem(reject)
+            flagMenu.addItem(unflag)
+            let flagItem = NSMenuItem(title: "Flag", action: nil, keyEquivalent: "")
+            flagItem.submenu = flagMenu
+            menu.addItem(flagItem)
+
+            let ratingMenu = NSMenu(title: "Rating")
+            let none = menuItem("None") { [weak self] in self?.parent.onSetRatingItem(item, 0) }
+            none.state = item.rating == 0 ? .on : .off
+            ratingMenu.addItem(none)
+            for stars in 1 ... 5 {
+                let entry = menuItem(String(repeating: "★", count: stars)) { [weak self] in
+                    self?.parent.onSetRatingItem(item, stars)
+                }
+                entry.state = item.rating == stars ? .on : .off
+                ratingMenu.addItem(entry)
+            }
+            let ratingItem = NSMenuItem(title: "Rating", action: nil, keyEquivalent: "")
+            ratingItem.submenu = ratingMenu
+            menu.addItem(ratingItem)
+        }
+
         private func buildMenu(for item: GalleryItem) -> NSMenu {
             let menu = NSMenu()
 
@@ -741,6 +779,10 @@ struct GalleryCollectionView: NSViewRepresentable {
                 NSPasteboard.general.writeObjects([img])
                 _ = self // suppress capture warning
             })
+
+            menu.addItem(.separator())
+            addCullMenuItems(to: menu, for: item)
+            menu.addItem(menuItem("Compare") { [weak self] in self?.parent.onCompareItem(item) })
 
             if let meta = item.metadata {
                 menu.addItem(.separator())
@@ -806,6 +848,10 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteMultiImmediate: () -> Void
     var onCullFlag: (PickFlag?) -> Void
     var onCullRating: (Int) -> Void
+    var onCompareKey: () -> Void
+    var onCompareItem: (GalleryItem) -> Void
+    var onSetFlagItem: (GalleryItem, PickFlag?) -> Void
+    var onSetRatingItem: (GalleryItem, Int) -> Void
     var onRemix: (GenerationMetadata) -> Void
     var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
     var onRemixIdeogram: (Ideogram4Metadata) -> Void

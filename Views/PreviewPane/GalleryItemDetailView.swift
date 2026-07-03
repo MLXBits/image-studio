@@ -12,6 +12,8 @@ struct GalleryItemDetailView: View {
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
+    var onSetFlag: ((PickFlag?) -> Void)?
+    var onSetRating: ((Int) -> Void)?
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
@@ -78,6 +80,11 @@ struct GalleryItemDetailView: View {
                 }
             }
 
+            if onSetFlag != nil || onSetRating != nil {
+                cullControlRow
+                Divider()
+            }
+
             ImageMetadataPanel(
                 info: info,
                 onApplySettings: applySettingsAction,
@@ -94,6 +101,40 @@ struct GalleryItemDetailView: View {
         .onAppear { loadImage() }
         .onChange(of: item.id) { _, _ in loadImage() }
         .sheet(isPresented: $showingLog) { logSheet(log: info.log ?? "") }
+    }
+
+    /// Interactive cull row — pick/reject toggles and 0–5 stars, mirroring the
+    /// keyboard shortcuts for mouse users. Clicking the current top star clears down
+    /// one; clicking an active flag clears it.
+    private var cullControlRow: some View {
+        HStack(spacing: 12) {
+            Button { onSetFlag?(item.flag == .pick ? nil : .pick) } label: {
+                Image(systemName: item.flag == .pick ? "flag.fill" : "flag")
+                    .foregroundStyle(item.flag == .pick ? .green : .secondary)
+            }
+            .buttonStyle(.plain).help("Pick (P)")
+
+            Button { onSetFlag?(item.flag == .reject ? nil : .reject) } label: {
+                Image(systemName: "xmark")
+                    .foregroundStyle(item.flag == .reject ? .red : .secondary)
+            }
+            .buttonStyle(.plain).help("Reject (X)")
+
+            Divider().frame(height: 14)
+
+            HStack(spacing: 3) {
+                ForEach(1 ... 5, id: \.self) { star in
+                    Button { onSetRating?(item.rating == star ? star - 1 : star) } label: {
+                        Image(systemName: star <= item.rating ? "star.fill" : "star")
+                            .foregroundStyle(star <= item.rating ? .yellow : .secondary)
+                    }
+                    .buttonStyle(.plain).help("Rate \(star)")
+                }
+            }
+            Spacer()
+        }
+        .font(.callout)
+        .padding(.horizontal, 12).padding(.vertical, 6)
     }
 
     /// Apply-Settings closure for the metadata panel footer, selecting the Flux or

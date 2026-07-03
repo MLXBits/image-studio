@@ -18,6 +18,7 @@ struct GenerationGalleryView: View {
     let onUseInImg2Img: (String) -> Void
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
+    var onCompare: ((GalleryItem, GalleryItem) -> Void)?
     var isFullSizeShowing: Bool = false
 
     @State private var deleteTarget: GalleryItem?
@@ -162,6 +163,10 @@ struct GenerationGalleryView: View {
                     },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
+                    onCompareKey: { startCompare() },
+                    onCompareItem: { item in compareItem(item) },
+                    onSetFlagItem: { item, flag in setMenuFlag(flag, on: item) },
+                    onSetRatingItem: { item, rating in setMenuRating(rating, on: item) },
                     onRemix: onRemix,
                     onApplySettings: { _, meta in onApplySettings(meta) },
                     onRemixIdeogram: onRemixIdeogram,
@@ -442,6 +447,11 @@ struct GenerationGalleryView: View {
             Text("\(selection.count) selected")
                 .font(.caption).foregroundStyle(.secondary)
             Spacer()
+            Button { startCompare() } label: {
+                Label("Compare", systemImage: "rectangle.split.2x1").font(.caption)
+            }
+            .buttonStyle(.borderless).help("Compare two images side by side (c)")
+
             Menu {
                 ForEach(orderedBoards, id: \.self) { board in
                     Button(board) { batchMove(to: board) }
@@ -687,6 +697,56 @@ struct GenerationGalleryView: View {
         for item in cullTargets() {
             gallery.setRating(rating, for: item)
         }
+    }
+
+    /// Sets a flag from the context menu — no auto-advance. Applies to the whole
+    /// selection when the right-clicked item is part of a multi-selection, otherwise
+    /// just that item (mirrors the strip/delete context actions).
+    private func setMenuFlag(_ flag: PickFlag?, on item: GalleryItem) {
+        for target in menuTargets(for: item) {
+            gallery.setFlag(flag, for: target)
+        }
+    }
+
+    private func setMenuRating(_ rating: Int, on item: GalleryItem) {
+        for target in menuTargets(for: item) {
+            gallery.setRating(rating, for: target)
+        }
+    }
+
+    private func menuTargets(for item: GalleryItem) -> [GalleryItem] {
+        if selection.count > 1, selection.contains(item.id) {
+            return gallery.items.filter { selection.contains($0.id) }
+        }
+        return [item]
+    }
+
+    // MARK: - Compare
+
+    /// Opens Compare from the anchor: pins it as the select, and picks the candidate —
+    /// the other selected image if two-plus are selected, otherwise the next sibling.
+    private func startCompare() {
+        guard let id = anchorItemId, let anchor = gallery.items.first(where: { $0.id == id }) else { return }
+        let boardItems = modelItems.filter { $0.board == anchor.board }
+        let candidate: GalleryItem? = if selection.count >= 2 {
+            boardItems.first { selection.contains($0.id) && $0.id != anchor.id }
+        } else if let idx = boardItems.firstIndex(where: { $0.id == anchor.id }) {
+            idx + 1 < boardItems.count ? boardItems[idx + 1] : (idx > 0 ? boardItems[idx - 1] : nil)
+        } else {
+            nil
+        }
+        guard let candidate else { return }
+        onCompare?(anchor, candidate)
+    }
+
+    /// Opens Compare from the context menu: the clicked item is the select, its next
+    /// sibling the candidate.
+    private func compareItem(_ item: GalleryItem) {
+        let boardItems = modelItems.filter { $0.board == item.board }
+        guard let idx = boardItems.firstIndex(where: { $0.id == item.id }) else { return }
+        let candidate = idx + 1 < boardItems.count ? boardItems[idx + 1] : (idx > 0 ? boardItems[idx - 1] : nil)
+        guard let candidate else { return }
+        onCompare?(item, candidate)
     }
 
     /// Moves the anchor (and the previewed item) to the next image in the same board,

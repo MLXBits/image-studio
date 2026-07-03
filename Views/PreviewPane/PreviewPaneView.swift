@@ -25,6 +25,8 @@ struct PreviewPaneView: View {
     let onClear: () -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
+    var onSetGalleryFlag: ((PickFlag?) -> Void)?
+    var onSetGalleryRating: ((Int) -> Void)?
     var hasPrev: Bool = false
     var hasNext: Bool = false
     var onNavigatePrev: (() -> Void)?
@@ -127,7 +129,9 @@ struct PreviewPaneView: View {
                         onApplyKrea2Settings: onApplyKrea2Settings,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
-                        onShowFullSize: onShowFullSize
+                        onShowFullSize: onShowFullSize,
+                        onSetFlag: onSetGalleryFlag,
+                        onSetRating: onSetGalleryRating
                     )
                 }
 

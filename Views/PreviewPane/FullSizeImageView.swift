@@ -111,15 +111,17 @@ struct FullSizeImageView: View {
                 .animation(.easeOut(duration: 0.5), value: chromeVisible)
             }
 
-            // Culling status pill — bottom-center, fades with chrome.
+            // Culling status pill + key hint — bottom-center, fades with chrome.
             if onFlag != nil || onRating != nil {
-                VStack {
+                VStack(spacing: 6) {
                     Spacer()
                     cullPill
-                        .opacity(chromeVisible ? 1 : 0)
-                        .animation(.easeOut(duration: 0.5), value: chromeVisible)
-                        .padding(.bottom, 20)
+                    Text("P pick · X reject · U unflag · 0–5 rate · ←/→ navigate")
+                        .font(.caption2).foregroundStyle(.white.opacity(0.55))
                 }
+                .opacity(chromeVisible ? 1 : 0)
+                .animation(.easeOut(duration: 0.5), value: chromeVisible)
+                .padding(.bottom, 20)
             }
         }
         .onContinuousHover { phase in

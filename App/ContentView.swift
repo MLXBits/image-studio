@@ -38,6 +38,7 @@ struct ContentView: View {
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
     @State private var fullSizeImage: NSImage?
+    @State private var comparePair: ComparePair?
     @State private var boxOverlay: BoxOverlayContext?
 
     @State private var showingParams: Bool = true
@@ -135,6 +136,8 @@ struct ContentView: View {
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
+            onSetGalleryFlag: { flag in setPreviewFlag(flag) },
+            onSetGalleryRating: { rating in setPreviewRating(rating) },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -147,7 +150,7 @@ struct ContentView: View {
     /// front of it. While a sheet, the box editor, or the full-size overlay is up, those
     /// own the escape key.
     private var previewEscapeEnabled: Bool {
-        fullSizeImage == nil && !showingQueue && !showingNotepad
+        fullSizeImage == nil && comparePair == nil && !showingQueue && !showingNotepad
             && !showingOutputDirPrompt && boxOverlay == nil
     }
 
@@ -166,6 +169,11 @@ struct ContentView: View {
             onUseInImg2Img: useInImg2Img,
             onSelectBoard: { name in params.board = name },
             onClearPreview: clearPreview,
+            onCompare: { select, candidate in
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    comparePair = ComparePair(selectId: select.id, candidateId: candidate.id)
+                }
+            },
             isFullSizeShowing: fullSizeImage != nil
         )
     }
@@ -342,6 +350,23 @@ struct ContentView: View {
                 )
                 .transition(.opacity)
                 .zIndex(1)
+            }
+
+            if let select = compareSelectItem, let candidate = compareCandidateItem {
+                let siblings = compareSiblings(of: select)
+                CompareView(
+                    selectItem: select,
+                    candidateItem: candidate,
+                    candidatePosition: (siblings.firstIndex { $0.id == candidate.id }.map { $0 + 1 }) ?? 1,
+                    candidateCount: siblings.count,
+                    onDismiss: { withAnimation(.easeInOut(duration: 0.2)) { comparePair = nil } },
+                    onCycleCandidate: { delta in cycleCompareCandidate(delta) },
+                    onSwap: { swapCompare() },
+                    onFlagCandidate: { flag in compareFlagCandidate(flag) },
+                    onRateCandidate: { rating in compareRateCandidate(rating) }
+                )
+                .transition(.opacity)
+                .zIndex(2)
             }
         }
         .toolbar { mainToolbar }
@@ -677,6 +702,18 @@ struct ContentView: View {
         return gallery.items.first { $0.id == id }
     }
 
+    /// The Compare overlay's two images, resolved fresh from the store so their
+    /// flag/rating badges stay current. Both are nil when Compare isn't active.
+    private var compareSelectItem: GalleryItem? {
+        guard let id = comparePair?.selectId else { return nil }
+        return gallery.items.first { $0.id == id }
+    }
+
+    private var compareCandidateItem: GalleryItem? {
+        guard let id = comparePair?.candidateId else { return nil }
+        return gallery.items.first { $0.id == id }
+    }
+
     private var galleryNavInfo: (hasPrev: Bool, hasNext: Bool) {
         guard let item = selectedGalleryItem else { return (false, false) }
         // Match the gallery's own filtering (board + model family) so the prev/next arrows
@@ -848,6 +885,64 @@ struct ContentView: View {
     private func refreshSelectedGalleryItem() {
         guard let id = selectedGalleryItem?.id else { return }
         selectedGalleryItem = gallery.items.first { $0.id == id }
+    }
+
+    /// Detail-pane cull actions. The detail view already resolves the toggle, so these
+    /// set the value directly, then refresh both the selection snapshot and the preview
+    /// state (same id, so no image reload) so the badge/stars update in place.
+    private func setPreviewFlag(_ flag: PickFlag?) {
+        guard let id = selectedGalleryItem?.id,
+              let item = gallery.items.first(where: { $0.id == id }) else { return }
+        gallery.setFlag(flag, for: item)
+        if let fresh = gallery.items.first(where: { $0.id == id }) {
+            selectedGalleryItem = fresh
+            previewState = .galleryItem(fresh)
+        }
+    }
+
+    private func setPreviewRating(_ rating: Int) {
+        guard let id = selectedGalleryItem?.id,
+              let item = gallery.items.first(where: { $0.id == id }) else { return }
+        gallery.setRating(rating, for: item)
+        if let fresh = gallery.items.first(where: { $0.id == id }) {
+            selectedGalleryItem = fresh
+            previewState = .galleryItem(fresh)
+        }
+    }
+
+    // MARK: - Compare
+
+    /// The candidate's cycle set: same board + model family as the pinned select,
+    /// matching the gallery's own filtering.
+    private func compareSiblings(of item: GalleryItem) -> [GalleryItem] {
+        gallery.items.filter { $0.board == item.board && $0.modelFamily == params.modelFamily }
+    }
+
+    private func cycleCompareCandidate(_ delta: Int) {
+        guard let pair = comparePair,
+              let select = gallery.items.first(where: { $0.id == pair.selectId }) else { return }
+        let siblings = compareSiblings(of: select).filter { $0.id != pair.selectId }
+        guard !siblings.isEmpty else { return }
+        let current = siblings.firstIndex { $0.id == pair.candidateId } ?? 0
+        let next = (current + delta + siblings.count) % siblings.count
+        comparePair = ComparePair(selectId: pair.selectId, candidateId: siblings[next].id)
+    }
+
+    private func swapCompare() {
+        guard let pair = comparePair else { return }
+        comparePair = ComparePair(selectId: pair.candidateId, candidateId: pair.selectId)
+    }
+
+    private func compareFlagCandidate(_ flag: PickFlag?) {
+        guard let id = comparePair?.candidateId,
+              let item = gallery.items.first(where: { $0.id == id }) else { return }
+        gallery.setFlag(item.flag == flag ? nil : flag, for: item)
+    }
+
+    private func compareRateCandidate(_ rating: Int) {
+        guard let id = comparePair?.candidateId,
+              let item = gallery.items.first(where: { $0.id == id }) else { return }
+        gallery.setRating(rating, for: item)
     }
 
     private func checkAndAutoInstallMflux() async {
