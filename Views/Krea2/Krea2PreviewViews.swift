@@ -65,18 +65,10 @@ struct Krea2StepwisePreviewView: View {
     }
 
     private var logView: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                Text(job.log.isEmpty ? "No output yet." : job.log)
-                    .font(.system(size: settings.logFontSize, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-                Color.clear.frame(height: 1).id("logEnd")
-            }
-            .onChange(of: job.log) { _, _ in proxy.scrollTo("logEnd") }
-            .onAppear { proxy.scrollTo("logEnd") }
-        }
+        LogTextView(
+            text: job.log.isEmpty ? "No output yet." : job.log,
+            fontSize: settings.logFontSize
+        )
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
@@ -195,19 +187,14 @@ struct Krea2CompletedPreviewView: View {
 
     private var logSheet: some View {
         NavigationStack {
-            ScrollView {
-                Text(job.log)
-                    .font(.system(.caption, design: .monospaced))
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding()
-            }
-            .navigationTitle("Generation Log")
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { showingLog = false }
+            LogTextView(text: job.log, fontSize: NSFont.smallSystemFontSize)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .navigationTitle("Generation Log")
+                .toolbar {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Done") { showingLog = false }
+                    }
                 }
-            }
         }
         .frame(width: 640, height: 480)
     }

@@ -1,35 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// NSTextView-backed log viewer. SwiftUI Text + textSelection re-lays the full document on
-/// every append, causing beachballs on long generations. NSTextView only re-lays new content.
-private struct LogTextView: NSViewRepresentable {
-    let text: String
-    let fontSize: CGFloat
-
-    func makeNSView(context _: Context) -> NSScrollView {
-        let scrollView = NSTextView.scrollableTextView()
-        // swiftlint:disable:next force_cast
-        let textView = scrollView.documentView as! NSTextView
-        textView.isEditable = false
-        textView.isSelectable = true
-        textView.drawsBackground = false
-        textView.textContainerInset = NSSize(width: 4, height: 4)
-        textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
-        textView.string = text
-        return scrollView
-    }
-
-    func updateNSView(_ scrollView: NSScrollView, context _: Context) {
-        guard let textView = scrollView.documentView as? NSTextView else { return }
-        if textView.string != text {
-            textView.font = .monospacedSystemFont(ofSize: fontSize, weight: .regular)
-            textView.string = text
-            textView.scrollToEndOfDocument(nil)
-        }
-    }
-}
-
 struct StepwisePreviewView: View {
     let job: FluxJob
     let onCancel: () -> Void

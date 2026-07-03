@@ -28,6 +28,7 @@
 		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
+		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
 		2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
 		2CE5231419CEA80AC78A2EEB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFB6BA799C59DAA55470EC3 /* ContentView.swift */; };
@@ -223,6 +224,7 @@
 		D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionContainerView.swift; sourceTree = "<group>"; };
 		D923D32E0D737D888C711FE7 /* KeychainHelper.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainHelper.swift; sourceTree = "<group>"; };
 		DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionEditorView.swift; sourceTree = "<group>"; };
+		DB287891C14528C187C1AC45 /* LogTextView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogTextView.swift; sourceTree = "<group>"; };
 		DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepwisePreviewView.swift; sourceTree = "<group>"; };
 		DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelPickerView.swift; sourceTree = "<group>"; };
 		DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
@@ -275,6 +277,7 @@
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
 				AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */,
+				DB287891C14528C187C1AC45 /* LogTextView.swift */,
 				620B629F83341AF0145AA278 /* NotepadView.swift */,
 				221656805C1026EDD0D6B9EA /* PassiveTextField.swift */,
 				1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */,
@@ -682,6 +685,7 @@
 				7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */,
 				1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */,
 				4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */,
+				28A278E311B31F4464A171CC /* LogTextView.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
 				932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */,
