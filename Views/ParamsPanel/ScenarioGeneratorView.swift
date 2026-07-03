@@ -27,19 +27,25 @@ final class ScenarioSession {
 struct ScenarioGeneratorView: View {
     @Bindable var session: ScenarioSession
     let onSelect: (String) -> Void
+    /// Closes the hosting floating panel (the window titlebar's close button and the
+    /// "Use" action both route through here).
+    var onClose: () -> Void = {}
 
     @Environment(AppSettings.self) private var settings
-    @Environment(\.dismiss) private var dismiss
 
     @State private var showGemmaLog: Bool = false
 
     var body: some View {
         VStack(spacing: 0) {
-            header
-            Divider()
-            // No outer ScrollView: the popover sizes to content and grows when
-            // the result appears. The result and error boxes cap their own
-            // height internally, so total height stays bounded.
+            // The window titlebar carries the "Scenario Generator" name, so the only
+            // in-view chrome is the Gemma-log button — shown once a log exists.
+            if !session.lastGemmaLog.isEmpty {
+                gemmaLogBar
+                Divider()
+            }
+            // Content sits at the top; the Spacer below pushes the footer to the
+            // bottom of the fixed-size (resizable) panel. The result and error boxes
+            // cap their own height internally and scroll overflow.
             VStack(alignment: .leading, spacing: 10) {
                 outlineSection
                 categorySection
@@ -49,11 +55,12 @@ struct ScenarioGeneratorView: View {
                 if !session.result.isEmpty { resultPreview }
             }
             .padding(12)
+            Spacer(minLength: 0)
             Divider()
             footer
         }
-        .frame(width: 400)
-        .onExitCommand { dismiss() }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        .onExitCommand { onClose() }
         .onAppear {
             guard !session.hasSeeded else { return }
             session.hasSeeded = true
@@ -66,35 +73,30 @@ struct ScenarioGeneratorView: View {
         .onChange(of: session.outline) { _, value in settings.lastScenarioOutline = value }
         .onChange(of: session.categories) { _, value in settings.scenarioCategories = value }
         .onChange(of: session.wildcardMode) { _, value in settings.scenarioWildcardMode = value }
-        // Free the warm LLM when the popover closes (kept resident across
-        // re-rolls while it's open, so only the first generation loads cold).
-        .onDisappear { session.generator.shutdown() }
+        // The warm LLM is freed when the panel closes — see ScenarioPanelController's
+        // windowWillClose, which fires reliably even when the panel is only ordered out.
         .sheet(isPresented: $showGemmaLog) { gemmaLogSheet }
     }
 
     // MARK: - Header / footer
 
-    private var header: some View {
+    private var gemmaLogBar: some View {
         HStack {
-            Text("Scenario Generator")
-                .font(.headline)
             Spacer()
-            if !session.lastGemmaLog.isEmpty {
-                Button {
-                    showGemmaLog = true
-                } label: {
-                    Image(systemName: "text.alignleft")
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.plain)
-                .focusEffectDisabled()
-                .foregroundStyle(.secondary)
-                .help("Show Gemma generation log")
+            Button {
+                showGemmaLog = true
+            } label: {
+                Image(systemName: "text.alignleft")
+                    .frame(width: 24, height: 24)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .focusEffectDisabled()
+            .foregroundStyle(.secondary)
+            .help("Show Gemma generation log")
         }
         .padding(.horizontal, 12)
-        .padding(.vertical, 10)
+        .padding(.vertical, 8)
     }
 
     private var footer: some View {
@@ -112,7 +114,7 @@ struct ScenarioGeneratorView: View {
                 .disabled(session.isGenerating || session.result.isEmpty)
             Button("Use") {
                 onSelect(session.result)
-                dismiss()
+                onClose()
             }
             .keyboardShortcut(.return, modifiers: [])
             .buttonStyle(.borderedProminent)
@@ -302,15 +304,19 @@ struct ScenarioGeneratorView: View {
 
 /// The sparkle-wand affordance that opens the scenario generator; lives in
 /// the Prompt section header (Flux and Krea 2 panels) beside the history
-/// button. Owns the session so popover dismissal never loses state.
+/// button. Owns the session so closing the window never loses state, and the
+/// controller so a click toggles the floating panel.
 struct ScenarioGeneratorButton: View {
     let onSelect: (String) -> Void
 
+    @Environment(AppSettings.self) private var settings
     @State private var session = ScenarioSession()
-    @State private var showingGenerator: Bool = false
+    @State private var controller = ScenarioPanelController()
 
     var body: some View {
-        Button { showingGenerator = true } label: {
+        Button {
+            controller.toggle(session: session, settings: settings, onSelect: onSelect)
+        } label: {
             Image(systemName: "wand.and.stars")
                 .font(.system(size: 10))
                 .frame(width: 18, height: 18)
@@ -319,8 +325,77 @@ struct ScenarioGeneratorButton: View {
         .buttonStyle(.plain)
         .foregroundStyle(.secondary)
         .help("Scenario generator")
-        .popover(isPresented: $showingGenerator) {
-            ScenarioGeneratorView(session: session, onSelect: onSelect)
+    }
+}
+
+/// Hosts the scenario generator in a floating utility panel rather than a popover, so
+/// it stays open beside the params while you tweak and re-roll. One controller per
+/// button; the panel is reused (never released) so a click toggles it, and closing it
+/// frees the warm Gemma model.
+@MainActor
+final class ScenarioPanelController: NSObject, NSWindowDelegate {
+    private var panel: NSPanel?
+    private weak var session: ScenarioSession?
+
+    func toggle(session: ScenarioSession, settings: AppSettings, onSelect: @escaping (String) -> Void) {
+        if let panel {
+            if panel.isVisible { panel.close() } else { attachAndShow(panel) }
+            return
         }
+        self.session = session
+        let root = ScenarioGeneratorView(
+            session: session,
+            onSelect: { [weak self] text in
+                onSelect(text)
+                self?.panel?.close()
+            },
+            onClose: { [weak self] in self?.panel?.close() }
+        )
+        .environment(settings)
+
+        // A resizable panel with a fixed default size — NOT NSHostingController's
+        // `.preferredContentSize` auto-sizing, which resizes the window mid display
+        // cycle and throws in `_postWindowNeedsUpdateConstraints` (hard crash).
+        let hosting = NSHostingController(rootView: root)
+
+        let panel = NSPanel(
+            contentRect: NSRect(x: 0, y: 0, width: 420, height: 640),
+            styleMask: [.titled, .closable, .resizable, .utilityWindow],
+            backing: .buffered,
+            defer: false
+        )
+        panel.title = "Scenario Generator"
+        // Added as a child of the main app window (see attachAndShow): it stays above the
+        // app's own windows but, at normal level, recedes behind other apps when you switch
+        // away — unlike `.floating`, which keeps it above every app (e.g. over VS Code).
+        panel.isFloatingPanel = false
+        panel.hidesOnDeactivate = false
+        panel.isReleasedWhenClosed = false
+        panel.collectionBehavior = [.fullScreenAuxiliary]
+        panel.minSize = NSSize(width: 380, height: 420)
+        panel.contentViewController = hosting
+        panel.delegate = self
+        panel.center()
+        panel.setFrameAutosaveName("ScenarioGeneratorPanel")
+        self.panel = panel
+        attachAndShow(panel)
+    }
+
+    /// Attaches the panel as a child of the app's main window so it floats above the app
+    /// but not other applications, then brings it forward. Re-attaches on reopen because
+    /// closing a child window detaches it from its parent.
+    private func attachAndShow(_ panel: NSPanel) {
+        if panel.parent == nil,
+           let parent = NSApp.mainWindow ?? NSApp.keyWindow
+           ?? NSApp.windows.first(where: { $0.isVisible && $0 !== panel }) {
+            parent.addChildWindow(panel, ordered: .above)
+        }
+        panel.makeKeyAndOrderFront(nil)
+    }
+
+    /// Fires on both the titlebar close button and programmatic `close()`, so the warm
+    /// LLM is always released (kept resident across re-rolls only while the panel is up).
+    func windowWillClose(_: Notification) {
+        session?.generator.shutdown()
     }
 }
