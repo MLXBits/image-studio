@@ -368,7 +368,10 @@ struct GenerationGalleryView: View {
                 .font(.caption)
             if !searchText.isEmpty {
                 Button { searchText = "" } label: {
-                    Image(systemName: "xmark.circle.fill").font(.caption2)
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption2)
+                        .frame(width: 20, height: 22)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).foregroundStyle(.tertiary)
             }
@@ -379,14 +382,25 @@ struct GenerationGalleryView: View {
             ratingFilterMenu
             if isFiltering {
                 Button { clearFilters() } label: {
-                    Image(systemName: "line.3.horizontal.decrease.circle.fill").font(.caption)
+                    Image(systemName: "line.3.horizontal.decrease.circle.fill")
+                        .font(.caption)
+                        .frame(width: 26, height: 22)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).foregroundStyle(.secondary)
                 .help("Clear filters")
             }
             if !allRejects.isEmpty {
                 Button(role: .destructive) { showingDeleteRejectsConfirm = true } label: {
-                    Label("\(allRejects.count)", systemImage: "trash").font(.caption)
+                    HStack(spacing: 3) {
+                        Image(systemName: "trash")
+                        Text("\(allRejects.count)")
+                    }
+                    .font(.caption)
+                    .frame(height: 22)
+                    .padding(.horizontal, 7)
+                    .contentShape(Rectangle())
+                    .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                 }
                 .buttonStyle(.plain).foregroundStyle(.red)
                 .help("Delete all \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s")")
@@ -412,6 +426,9 @@ struct GenerationGalleryView: View {
             Image(systemName: flagFilter.systemImage)
                 .font(.caption)
                 .foregroundStyle(flagFilter == .all ? Color.secondary : Color.accentColor)
+                .frame(height: 22)
+                .padding(.horizontal, 3)
+                .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton).fixedSize()
         .help("Filter by pick/reject flag")
@@ -435,6 +452,9 @@ struct GenerationGalleryView: View {
                 }
             }
             .foregroundStyle(minRating > 0 ? Color.accentColor : Color.secondary)
+            .frame(height: 22)
+            .padding(.horizontal, 3)
+            .contentShape(Rectangle())
         }
         .menuStyle(.borderlessButton).fixedSize()
         .help("Filter by minimum star rating")
