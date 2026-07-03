@@ -299,7 +299,11 @@ struct FullSizeImageView: View {
     }
 
     private func navigate(prev: Bool) {
-        guard prev ? hasPrev : hasNext else { return }
+        // Don't gate on hasPrev/hasNext here: this runs inside the key monitor's closure,
+        // which captured the view as it was when fullscreen opened, so those booleans are
+        // frozen at their open-time values and go stale as the selection moves. The
+        // parent's navigateGallery clamps at both ends (a no-op at the edge), so an
+        // unconditional call is safe. (The on-screen arrow buttons still use live values.)
         showChrome()
         resetZoom()
         if prev { onNavigatePrev?() } else { onNavigateNext?() }
@@ -307,7 +311,7 @@ struct FullSizeImageView: View {
 
     /// Auto-advance after a pick/reject, matching Lightroom's cull rhythm.
     private func advanceIfPossible() {
-        guard hasNext else { return }
+        // See navigate(prev:) — rely on the bounds-safe parent instead of the stale hasNext.
         resetZoom()
         onNavigateNext?()
     }
