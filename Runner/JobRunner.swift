@@ -30,6 +30,7 @@ protocol GeneratedJob: AnyObject, Identifiable {
     var statusLine: String { get set }
     var stepTiming: String? { get set }
     var isDenoising: Bool { get set }
+    var createdAt: Date { get }
     var startedAt: Date? { get set }
     var completedAt: Date? { get set }
 }
@@ -162,7 +163,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     func runNext(in store: Spec.Store, settings: AppSettings, coordinator: GenerationCoordinator, timing: TimingStore) {
         guard runTask == nil else { return }
-        guard let job = store.pendingJobs.first else {
+        // FIFO by submission time: the oldest pending job runs next, so a second
+        // batch doesn't preempt the first (which would thrash the warm model —
+        // e.g. reloading/re-fusing LoRAs at each batch boundary). The store
+        // lists newest-first for display; execution order is independent of it.
+        guard let job = store.pendingJobs.min(by: { $0.createdAt < $1.createdAt }) else {
             inSession = false
             coordinator.release(Spec.family)
             return
