@@ -35,8 +35,7 @@ struct Krea2StepwisePreviewView: View {
                 if !showLog {
                     Group {
                         if job.isDenoising, job.totalSteps > 0 {
-                            let inProgress = min(job.currentStep + 1, job.totalSteps)
-                            ProgressView(value: Double(inProgress) / Double(job.totalSteps))
+                            ProgressView(value: Double(job.currentStep) / Double(job.totalSteps))
                         } else {
                             ProgressView()
                         }
@@ -85,8 +84,8 @@ struct Krea2StepwisePreviewView: View {
     private var progressLabel: some View {
         if job.isDenoising {
             VStack(alignment: .leading, spacing: 1) {
-                let inProgress = min(job.currentStep + 1, job.totalSteps)
-                Text("Step \(inProgress)/\(job.totalSteps)")
+                // Mirror tqdm exactly: currentStep is the completed-step count the CLI shows.
+                Text("Step \(job.currentStep)/\(job.totalSteps)")
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)

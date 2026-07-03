@@ -34,8 +34,7 @@ struct StepwisePreviewView: View {
                 if !showLog {
                     Group {
                         if job.isDenoising, job.totalSteps > 0 {
-                            let inProgress = min(job.currentStep + 1, job.totalSteps)
-                            ProgressView(value: Double(inProgress) / Double(job.totalSteps))
+                            ProgressView(value: Double(job.currentStep) / Double(job.totalSteps))
                         } else {
                             ProgressView()
                         }
@@ -94,10 +93,8 @@ struct StepwisePreviewView: View {
     private var progressLabel: some View {
         if job.isDenoising {
             VStack(alignment: .leading, spacing: 1) {
-                // currentStep = completed steps; display the in-progress step as currentStep+1,
-                // capped at totalSteps (when all done, stays at N/N before decode clears isDenoising)
-                let inProgress = min(job.currentStep + 1, job.totalSteps)
-                Text("Step \(inProgress)/\(job.totalSteps)")
+                // Mirror tqdm exactly: currentStep is the completed-step count the CLI shows.
+                Text("Step \(job.currentStep)/\(job.totalSteps)")
                     .font(.caption)
                     .monospacedDigit()
                     .foregroundStyle(.secondary)
@@ -175,8 +172,7 @@ struct Ideogram4StepwisePreviewView: View {
                 if !showLog {
                     Group {
                         if job.isDenoising, job.totalSteps > 0 {
-                            let inProgress = min(job.currentStep + 1, job.totalSteps)
-                            ProgressView(value: Double(inProgress) / Double(job.totalSteps))
+                            ProgressView(value: Double(job.currentStep) / Double(job.totalSteps))
                         } else {
                             ProgressView()
                         }
@@ -187,8 +183,7 @@ struct Ideogram4StepwisePreviewView: View {
                 HStack(spacing: 8) {
                     if job.isDenoising {
                         VStack(alignment: .leading, spacing: 1) {
-                            let inProgress = min(job.currentStep + 1, job.totalSteps)
-                            Text("Step \(inProgress)/\(job.totalSteps)")
+                            Text("Step \(job.currentStep)/\(job.totalSteps)")
                                 .font(.caption).monospacedDigit().foregroundStyle(.secondary)
                             if let timing = job.stepTiming {
                                 Text(timing)
