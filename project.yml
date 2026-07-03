@@ -48,6 +48,8 @@ targets:
         buildPhase: resources
       - path: Resources/scenario_prompt.md
         buildPhase: resources
+      - path: Resources/scenario_llm_driver.py
+        buildPhase: resources
     info:
       path: Resources/Info.plist
       properties:

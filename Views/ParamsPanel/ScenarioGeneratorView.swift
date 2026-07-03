@@ -66,6 +66,9 @@ struct ScenarioGeneratorView: View {
         .onChange(of: session.outline) { _, value in settings.lastScenarioOutline = value }
         .onChange(of: session.categories) { _, value in settings.scenarioCategories = value }
         .onChange(of: session.wildcardMode) { _, value in settings.scenarioWildcardMode = value }
+        // Free the warm LLM when the popover closes (kept resident across
+        // re-rolls while it's open, so only the first generation loads cold).
+        .onDisappear { session.generator.shutdown() }
         .sheet(isPresented: $showGemmaLog) { gemmaLogSheet }
     }
 

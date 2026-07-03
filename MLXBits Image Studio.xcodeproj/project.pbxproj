@@ -85,6 +85,7 @@
 		AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 64A7412A576F846395336217 /* ModelDefaultsView.swift */; };
 		ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8A946E00348D9BD857672E /* MfluxDriverController.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
+		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
@@ -178,6 +179,7 @@
 		72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Rows.swift"; sourceTree = "<group>"; };
 		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
+		79628AB5261A09BED858E668 /* scenario_llm_driver.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = scenario_llm_driver.py; sourceTree = "<group>"; };
 		79B73E05AF3B412407752562 /* GenerationEstimateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEstimateView.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimator.swift; sourceTree = "<group>"; };
@@ -369,6 +371,7 @@
 			children = (
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
 				729F046BC0201746ADC15A2C /* mflux_driver.py */,
+				79628AB5261A09BED858E668 /* scenario_llm_driver.py */,
 				FE1832089B5311712FEF1286 /* scenario_prompt.md */,
 			);
 			path = Resources;
@@ -564,6 +567,7 @@
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
 				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
+				AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */,
 				6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -180,6 +180,18 @@ final class ScenarioGenerator {
 
     private(set) var lastLog: String = ""
 
+    // Persistent warm-LLM driver: kept alive across re-rolls so the model
+    // loads once, and torn down (``shutdown()``) when the popover closes. Any
+    // startup failure falls back to the one-shot CLI, so the feature degrades
+    // gracefully.
+    private var process: Process?
+    private var stdinHandle: FileHandle?
+    private var stdoutTail = ""
+    private var driverUnavailable = false
+    private var handshake: CheckedContinuation<Bool, Never>?
+    private var pending: CheckedContinuation<String, Error>?
+    private var cancelling = false
+
     func generate(
         outline: String,
         categories: Set<ScenarioCategory>,
@@ -187,9 +199,15 @@ final class ScenarioGenerator {
         settings: AppSettings
     ) async throws -> String {
         let config = try ScenarioPromptConfig.load()
-        let modelPath = settings.gemmaModelPath.isEmpty
+        let rawModel = settings.gemmaModelPath.isEmpty
             ? "mlx-community/gemma-3-12b-it-8bit"
             : settings.gemmaModelPath
+        // A local path that doesn't exist would otherwise die deep inside the
+        // library with an opaque traceback — catch it here.
+        let modelPath = (rawModel as NSString).expandingTildeInPath
+        if modelPath.hasPrefix("/"), !FileManager.default.fileExists(atPath: modelPath) {
+            throw GemmaChatRunnerError.modelNotFound(modelPath)
+        }
 
         let fullPrompt = GemmaChatRunner.chatPrompt(
             system: config.system,
@@ -197,13 +215,178 @@ final class ScenarioGenerator {
             finalUser: Self.buildUserTurn(outline: outline, categories: categories, wildcardMode: wildcardMode)
         )
 
+        if let text = try await generateWarm(prompt: fullPrompt, modelPath: modelPath, settings: settings) {
+            lastLog = ["=== PROMPT ===", fullPrompt, "=== MODEL OUTPUT (warm) ===", text].joined(separator: "\n\n")
+            guard let reply = Self.extractReply(from: text) else { throw ScenarioGeneratorError.emptyReply(text) }
+            return reply
+        }
+        return try await generateOneShot(prompt: fullPrompt, modelPath: modelPath, settings: settings)
+    }
+
+    /// Terminates the warm driver, freeing the model. Called when the popover
+    /// closes; the next generate spawns a fresh (cold) driver.
+    func shutdown() {
+        pending?.resume(throwing: CancellationError())
+        pending = nil
+        handshake?.resume(returning: false)
+        handshake = nil
+        process?.terminate()
+        process = nil
+        stdinHandle = nil
+        driverUnavailable = false // allow a retry next session
+    }
+
+    // MARK: - Warm driver
+
+    /// Runs one generation through the persistent driver. Returns nil when the
+    /// driver can't be used (caller falls back to the one-shot CLI); throws on
+    /// a generation error or cancellation.
+    private func generateWarm(prompt: String, modelPath: String, settings: AppSettings) async throws -> String? {
+        guard await ensureDriverRunning(settings: settings) else { return nil }
+        let request: [String: Any] = [
+            "cmd": "generate", "model": modelPath, "prompt": prompt,
+            "max_tokens": 8192, "temp": 0.7,
+        ]
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
+                pending = cont
+                guard send(request) else {
+                    pending = nil
+                    cont.resume(throwing: ScenarioGeneratorError.emptyReply("Could not reach the warm LLM driver"))
+                    return
+                }
+            }
+        } onCancel: {
+            Task { @MainActor in self.cancelActiveGeneration() }
+        }
+    }
+
+    private func cancelActiveGeneration() {
+        // MLX compute can't be interrupted mid-generation, so terminate the
+        // process; the stdout EOF handler resolves the pending continuation.
+        guard pending != nil else { return }
+        cancelling = true
+        process?.terminate()
+        process = nil
+        stdinHandle = nil
+    }
+
+    private func ensureDriverRunning(settings: AppSettings) async -> Bool {
+        if driverUnavailable { return false }
+        if process?.isRunning == true { return true }
+        return await startDriver(settings: settings)
+    }
+
+    private func startDriver(settings: AppSettings) async -> Bool {
+        guard FileManager.default.fileExists(atPath: GemmaChatRunner.uvPath),
+              let script = Bundle.main.url(forResource: "scenario_llm_driver", withExtension: "py") else {
+            driverUnavailable = true
+            return false
+        }
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: GemmaChatRunner.uvPath)
+        proc.arguments = [
+            "run", "--with", GemmaChatRunner.mlxLMRequirement, "--with", GemmaChatRunner.mlxVLMRequirement,
+            "--", "python", script.path,
+        ]
+        var env = settings.buildEnvironment()
+        env["PYTHONDONTWRITEBYTECODE"] = "1"
+        env["PYTHONUNBUFFERED"] = "1"
+        proc.environment = env
+
+        let stdinPipe = Pipe()
+        let stdoutPipe = Pipe()
+        proc.standardInput = stdinPipe
+        proc.standardOutput = stdoutPipe
+        proc.standardError = FileHandle.nullDevice
+        do { try proc.run() } catch {
+            driverUnavailable = true
+            return false
+        }
+        process = proc
+        stdinHandle = stdinPipe.fileHandleForWriting
+        stdoutTail = ""
+        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
+            let data = handle.availableData
+            Task { @MainActor [weak self] in self?.consumeStdout(data) }
+        }
+
+        _ = send(["cmd": "hello"])
+        let ready = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
+            handshake = cont
+            Task { [weak self] in
+                try? await Task.sleep(for: .seconds(120)) // first uv resolve can be slow
+                await MainActor.run { self?.resolveHandshake(false) }
+            }
+        }
+        if !ready { driverUnavailable = true }
+        return ready
+    }
+
+    private func resolveHandshake(_ ok: Bool) {
+        guard let cont = handshake else { return }
+        handshake = nil
+        if !ok { process?.terminate(); process = nil; stdinHandle = nil }
+        cont.resume(returning: ok)
+    }
+
+    private func consumeStdout(_ data: Data) {
+        if data.isEmpty {
+            // EOF — the process exited (crash, cancel, or quit).
+            let error: Error = cancelling ? CancellationError()
+                : ScenarioGeneratorError.emptyReply("Warm LLM driver exited unexpectedly")
+            cancelling = false
+            pending?.resume(throwing: error)
+            pending = nil
+            resolveHandshake(false)
+            return
+        }
+        stdoutTail += String(bytes: data, encoding: .utf8) ?? ""
+        while let newline = stdoutTail.firstIndex(of: "\n") {
+            let line = String(stdoutTail[..<newline])
+            stdoutTail.removeSubrange(...newline)
+            guard let lineData = line.data(using: .utf8), !line.isEmpty,
+                  let event = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { continue }
+            handleEvent(event)
+        }
+    }
+
+    private func handleEvent(_ event: [String: Any]) {
+        switch event["event"] as? String {
+        case "ready":
+            resolveHandshake(true)
+        case "fatal":
+            resolveHandshake(false)
+        case "result":
+            pending?.resume(returning: event["text"] as? String ?? "")
+            pending = nil
+        case "error":
+            pending?.resume(throwing: ScenarioGeneratorError.subprocessFailed(1, event["message"] as? String ?? "error"))
+            pending = nil
+        default:
+            break // loading/loaded — informational
+        }
+    }
+
+    @discardableResult
+    private func send(_ obj: [String: Any]) -> Bool {
+        guard let stdinHandle, let data = try? JSONSerialization.data(withJSONObject: obj) else { return false }
+        do {
+            try stdinHandle.write(contentsOf: data + Data("\n".utf8))
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    // MARK: - One-shot fallback
+
+    private func generateOneShot(prompt: String, modelPath: String, settings: AppSettings) async throws -> String {
         let rawOutput: String
         let exitCode: Int32
         do {
-            // Hotter than the caption generator's JSON-tuned 0.3 — invention
-            // benefits from temperature.
             (rawOutput, exitCode) = try await GemmaChatRunner.run(
-                modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.7,
+                modelPath: modelPath, prompt: prompt, maxTokens: 8192, temp: 0.7,
                 environment: settings.buildEnvironment()
             )
         } catch GemmaChatRunnerError.uvNotFound {
@@ -211,7 +394,7 @@ final class ScenarioGenerator {
         }
 
         lastLog = [
-            "=== PROMPT ===", fullPrompt,
+            "=== PROMPT ===", prompt,
             "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
         ].joined(separator: "\n\n")
 
