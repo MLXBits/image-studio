@@ -1,6 +1,6 @@
 # MLXBits Image Studio
 
-A native macOS Swift app for **FLUX and Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, and browse your history — empower your creative workflow. No CLI needed, NOT yet another Electron container "app".
+A native macOS Swift app for **FLUX, Krea 2, and (prototype) Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
 
 > **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) is installed automatically on first launch.
 
@@ -29,16 +29,22 @@ A native macOS Swift app for **FLUX and Ideogram 4 image generation** powered by
 
 ## Features
 
-- **Text-to-image and image-to-image** generation via FLUX.2 Klein models
-- **Ideogram 4** — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring (see [Ideogram 4](#ideogram-4) below)
+- **Text-to-image and image-to-image** generation via FLUX.2 Klein and Krea 2 Turbo models
+- **Krea 2 Turbo** — fast photographic model family, with img2img support
+- **Ideogram 4** *(prototype)* — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring (see [Ideogram 4](#ideogram-4) below)
+- **Warm-model engine** — keeps the model loaded between generations, eliminating reload time on consecutive runs
+- **Scenario generator** — turn a rough outline into finished prompts with a local LLM (no API key, no network round-trip)
 - **Step-by-step live preview** — watch the image denoise in real time
-- **Persistent job queue** — queue multiple jobs, they survive app restarts
-- **Gallery** — scrollable history of every generation with thumbnail cache and metadata sidecars
-- **LoRA support** — add any number of LoRA adapters with per-adapter strength sliders
-- **Batch generation** — run 1, 3, 5 or a custom count with auto-incrementing seeds
+- **Persistent job queue** — queue multiple jobs (processed FIFO), they survive app restarts
+- **Lightroom-style gallery** — cull with pick/reject flags, filter by metadata or model family, and compare results side-by-side; thumbnail cache and metadata sidecars keep scans fast
+- **Prompt history & notepad** — searchable, pinnable prompt history plus a markdown notepad for reusable notes
+- **Wildcards & batches** — independent wildcard sampling, spread-across-batch seeds, and img2img prompt adoption
+- **LoRA support** — add any number of LoRA adapters with per-adapter strength sliders and reordering
+- **Batch generation** — run 1, 3, 5 or a custom count with auto-incrementing seeds, plus a learned generation-time estimate
 - **Shortcut Keys** - `Command + Enter` for one-shot generation, `Option + Command + Enter` for batch generation
 - **Model defaults** — save per-model presets (steps, guidance, LoRAs, dimensions)
 - **Prompt templates** — save and reuse favorite prompt fragments like lighting, camera style
+- **Metadata tools** — token counter with a 512 soft-cap for FLUX.2, and one-click stripping of embedded metadata from exported images
 - **Low-RAM mode** — streams transformer blocks to cut peak Metal memory ~75%
 - **HuggingFace integration** — enter your HF token once (stored in Keychain); gated models download automatically
 
@@ -50,12 +56,18 @@ A native macOS Swift app for **FLUX and Ideogram 4 image generation** powered by
 | FLUX.2 Klein 9B (distilled) | 4     | Best quality/speed trade-off                                            |
 | FLUX.2 Klein 4B (base)      | ~50   | Full diffusion                                                          |
 | FLUX.2 Klein 9B (base)      | ~50   | Full diffusion                                                          |
-| Ideogram 4                  | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace) |
+| Krea 2 Turbo                | ~few  | Fast photographic model; text-to-image and img2img                      |
+| Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Requires unreleased mflux support — see below |
 | Custom                      | any   | Any HuggingFace repo ID or local path (only Flux.2 compatible, for now) |
 
 ---
 
-## Ideogram 4
+## Ideogram 4 *(prototype)*
+
+> **Prototype:** Ideogram 4 support is fully built out in the app, but generation
+> depends on mflux CLI support that has not landed in a published mflux release
+> yet (see the note below). Until then, treat it as a preview of the editor and
+> workflow rather than a working generation path.
 
 Ideogram 4 is a structured-caption model: instead of a single prompt string it
 takes a JSON caption describing a high-level scene, an optional style block, and
@@ -136,8 +148,8 @@ export DEVELOPMENT_TEAM=YOUR_TEAM_ID
 # or store it in a gitignored .env file:  echo "DEVELOPMENT_TEAM=YOUR_TEAM_ID" > .env && source .env
 
 # 3. Run the release script
-./release.sh 0.1.0
-# → build/MLXBits_Image_Studio_0.1.0.dmg (notarized + stapled)
+./release.sh 0.5.0
+# → build/MLXBits_Image_Studio_0.5.0.dmg (notarized + stapled)
 ```
 
 ---
@@ -146,10 +158,10 @@ export DEVELOPMENT_TEAM=YOUR_TEAM_ID
 
 ```
 App/           App entry point and root layout
-Models/        Data models (FluxJob, Ideogram4Job, IdeogramCaption, LoraEntry, catalog)
-Runner/        FluxJobRunner + Ideogram4JobRunner — spawn mflux subprocess, stream output
-               (shared subprocess/stepwise plumbing in RunnerSupport)
-Stores/        AppSettings, JobStore, Ideogram4JobStore, GalleryStore (Observable state)
+Models/        Data models (FluxJob, Krea2Job, Ideogram4Job, IdeogramCaption, LoraEntry, catalog)
+Runner/        Generic JobRunner engine + per-family runners (Flux/Krea2/Ideogram4),
+               warm-driver controller, and shared subprocess/stepwise plumbing (RunnerSupport)
+Stores/        AppSettings, JobStore, Krea2JobStore, Ideogram4JobStore, GalleryStore, TimingStore (Observable state)
 Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4)
 Utilities/     KeychainHelper, MetadataSidecar, IdeogramCaptionGenerator, progress parser
 Tests/         Swift Testing unit tests (RunnerSupport, BBoxGeometry, caption JSON, hex color)
