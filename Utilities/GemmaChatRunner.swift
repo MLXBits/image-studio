@@ -27,6 +27,14 @@ enum GemmaChatRunner {
     /// resolution, so raise these when a model needs a newer architecture.
     static let mlxLMRequirement = "mlx-lm>=0.31.3"
     static let mlxVLMRequirement = "mlx-vlm>=0.6.3"
+    /// Upper-bound transformers below 5.13. mlx-lm 0.31.3 registers its
+    /// NewlineTokenizer with `AutoTokenizer.register("NewlineTokenizer", …)`
+    /// — passing a string — which transformers 5.13 rejects (it now requires a
+    /// config *class*), so every generate dies with an opaque
+    /// `'str' object has no attribute '__module__'` traceback. mlx-lm requires
+    /// transformers>=5.0.0, so the working window is 5.0–5.12. Remove this pin
+    /// once mlx-lm ships a build compatible with transformers 5.13+.
+    static let transformersRequirement = "transformers<5.13"
 
     /// Extracts one `## Heading` section's body from an editable prompt
     /// config markdown file (content up to the next `## ` or EOF, trimmed;
@@ -129,7 +137,7 @@ enum GemmaChatRunner {
 
         func arguments(command: String, package: String, extra: [String]) -> [String] {
             [
-                "run", "--with", package, "--",
+                "run", "--with", package, "--with", transformersRequirement, "--",
                 command,
                 "--model", expandedModel,
                 "--prompt", prompt,
