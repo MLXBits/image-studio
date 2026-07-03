@@ -103,6 +103,16 @@ final class Krea2ParamsPanelState {
         return s
     }
 
+    /// Adopts a generated candidate's resolved prompt when it becomes the
+    /// img2img reference and the prompt box still holds wildcards, so
+    /// refinement varies the exact base instead of re-sampling.
+    func adoptResolvedPromptForImg2Img(at path: String) {
+        guard WildcardExpander.containsWildcards(prompt),
+              let meta = MetadataSidecar.readKrea2(for: path) else { return }
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt ?? ""
+    }
+
     /// Replays a completed generation's settings back into the form.
     /// `newSeed == true` (Remix) resets the seed to random; otherwise the original
     /// seed is restored. LoRAs are restored when present in the sidecar.
@@ -122,17 +132,16 @@ final class Krea2ParamsPanelState {
         seed = newSeed ? -1 : meta.seed
     }
 
-    /// How many jobs the current prompt naturally expands to (largest
-    /// wildcard group across prompt + negative); 1 when there are no
-    /// wildcards. Uncapped — the caller applies the batch cap.
-    func wildcardVariantCount() -> Int {
-        max(WildcardExpander.variantCount(prompt), WildcardExpander.variantCount(negativePrompt))
-    }
-
-    func makeJob(count: Int = 1, wildcardVariant: Int = 0) -> Krea2Job {
+    /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text for
+    /// wildcard batches; when nil, any wildcards collapse to a single sample.
+    func makeJob(count: Int = 1, resolvedPrompt: (positive: String, negative: String)? = nil) -> Krea2Job {
+        let finalPrompt = resolvedPrompt?.positive
+            ?? WildcardExpander.expandVariants(prompt, count: 1).first ?? prompt
+        let finalNegative = resolvedPrompt?.negative
+            ?? WildcardExpander.expandVariants(negativePrompt, count: 1).first ?? negativePrompt
         let job = Krea2Job(
-            prompt: WildcardExpander.expandVariant(prompt, index: wildcardVariant),
-            negativePrompt: WildcardExpander.expandVariant(negativePrompt, index: wildcardVariant),
+            prompt: finalPrompt,
+            negativePrompt: finalNegative,
             width: width,
             height: height,
             seed: seed,

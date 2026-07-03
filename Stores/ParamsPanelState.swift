@@ -64,6 +64,18 @@ final class ParamsPanelState {
         prompt = settings.lastPrompt
     }
 
+    /// When a generated candidate becomes the img2img reference while the
+    /// prompt box still holds wildcards, adopt that candidate's resolved
+    /// prompt so refinement varies the exact base (and collapses to one job)
+    /// instead of re-sampling. No-op for external images (no sidecar) or a
+    /// hand-written plain prompt.
+    func adoptResolvedPromptForImg2Img(at path: String) {
+        guard WildcardExpander.containsWildcards(prompt),
+              let meta = MetadataSidecar.read(for: path) else { return }
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt
+    }
+
     func apply(metadata meta: GenerationMetadata, newSeed: Bool) {
         model = meta.model
         customModelRepo = meta.customModelRepo
@@ -86,7 +98,7 @@ final class ParamsPanelState {
     /// Prompt + negative with the active templates chained on, before
     /// wildcard resolution. Wildcards resolve after templates so template
     /// text can carry {a|b} groups too.
-    private func templatedPrompts(templates: [PromptTemplate]) -> (positive: String, negative: String) {
+    func templatedPrompts(templates: [PromptTemplate]) -> (positive: String, negative: String) {
         var finalPrompt = prompt
         var finalNegative = negativePrompt
         for template in templates {
@@ -101,21 +113,27 @@ final class ParamsPanelState {
         return (finalPrompt, finalNegative)
     }
 
-    /// How many jobs the current prompt naturally expands to (largest
-    /// wildcard group across prompt + negative, templates applied); 1 when
-    /// there are no wildcards. Uncapped — the caller applies the batch cap.
-    func wildcardVariantCount(templates: [PromptTemplate]) -> Int {
-        let (positive, negative) = templatedPrompts(templates: templates)
-        return max(WildcardExpander.variantCount(positive), WildcardExpander.variantCount(negative))
-    }
-
-    func makeJob(count: Int = 1, templates: [PromptTemplate] = [], wildcardVariant: Int = 0) -> FluxJob {
+    /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text
+    /// (templates + wildcards already applied) for wildcard batches; when nil,
+    /// templates are applied and any wildcards collapse to a single sample.
+    func makeJob(
+        count: Int = 1,
+        templates: [PromptTemplate] = [],
+        resolvedPrompt: (positive: String, negative: String)? = nil
+    ) -> FluxJob {
         let seeds: [Int] = count > 1
             ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
             : []
-        let templated = templatedPrompts(templates: templates)
-        let finalPrompt = WildcardExpander.expandVariant(templated.positive, index: wildcardVariant)
-        let finalNegative = WildcardExpander.expandVariant(templated.negative, index: wildcardVariant)
+        let finalPrompt: String
+        let finalNegative: String
+        if let resolvedPrompt {
+            finalPrompt = resolvedPrompt.positive
+            finalNegative = resolvedPrompt.negative
+        } else {
+            let templated = templatedPrompts(templates: templates)
+            finalPrompt = WildcardExpander.expandVariants(templated.positive, count: 1).first ?? templated.positive
+            finalNegative = WildcardExpander.expandVariants(templated.negative, count: 1).first ?? templated.negative
+        }
         return FluxJob(
             model: model,
             customModelRepo: customModelRepo,

@@ -85,6 +85,12 @@ struct ScenarioGeneratorTests {
         #expect(GemmaChatRunner.firstTurn(of: "Plain answer, no tokens.") == "Plain answer, no tokens.")
     }
 
+    @Test func firstTurnStripsLeakedVLMTokens() {
+        // VLM templates leak pipe-bearing angle tokens mid-text (e.g. <image|>).
+        #expect(GemmaChatRunner.firstTurn(of: "The room is<image|>decorated.") == "The room isdecorated.")
+        #expect(GemmaChatRunner.firstTurn(of: "a <|channel>b<turn|> c") == "a b c")
+    }
+
     @Test func userTurnPlacesCategories() {
         let turn = ScenarioGenerator.buildUserTurn(
             outline: "a quiet cafe scene",

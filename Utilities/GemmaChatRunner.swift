@@ -69,6 +69,12 @@ enum GemmaChatRunner {
         for token in ["<start_of_turn>", "<end_of_turn>"] {
             text = text.replacingOccurrences(of: token, with: "")
         }
+        // Strip stray special tokens that leak from VLM templates — angle-bracket
+        // tokens containing a pipe, e.g. <image|>, <|channel>, <turn|>. Real
+        // prose never puts a | inside <…>, so this is safe.
+        text = text.replacingOccurrences(
+            of: "<[^>]*\\|[^>]*>", with: "", options: .regularExpression
+        )
         // Drop a leading role label the model sometimes echoes (e.g. "model\n").
         for role in ["model\n", "assistant\n"] where text.hasPrefix(role) {
             text = String(text.dropFirst(role.count))

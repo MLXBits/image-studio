@@ -733,6 +733,7 @@ struct ContentView: View {
             if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
         } else {
             params.imagePath = path
+            params.adoptResolvedPromptForImg2Img(at: path)
         }
     }
 
@@ -846,16 +847,7 @@ struct ContentView: View {
             settings.lastModel = params.model
             settings.lastQuantize = params.quantize
             let wasIdle = !isAnyStoreRunning
-            // Wildcards expand deterministically: job i takes option i from
-            // every {a|b|c} group (smaller groups cycle). Plain Generate runs
-            // one job per option of the largest group (capped at 10); an
-            // explicit batch count overrides and cycles. Each job gets its
-            // own resolved prompt + sidecar; the warm driver skips reloads.
-            let variants = min(params.wildcardVariantCount(templates: settings.activeTemplates), 10)
-            let jobCount = count > 1 ? count : variants
-            let jobs = variants > 1
-                ? (0 ..< jobCount).map { params.makeJob(count: 1, templates: settings.activeTemplates, wildcardVariant: $0) }
-                : [params.makeJob(count: count, templates: settings.activeTemplates)]
+            let jobs = fluxJobs(count: count)
             for job in jobs {
                 store.add(job)
             }
@@ -895,11 +887,18 @@ struct ContentView: View {
             settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
             settings.recordPromptUse(krea2Params.prompt)
             let wasIdle = !isAnyStoreRunning
-            let krea2Variants = min(krea2Params.wildcardVariantCount(), 10)
-            let krea2JobCount = count > 1 ? count : krea2Variants
-            let krea2Jobs = krea2Variants > 1
-                ? (0 ..< krea2JobCount).map { krea2Params.makeJob(count: 1, wildcardVariant: $0) }
-                : [krea2Params.makeJob(count: count)]
+            let krea2Variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
+            let krea2Jobs: [Krea2Job]
+            if krea2Variants > 1 {
+                let krea2JobCount = count > 1 ? count : krea2Variants
+                let positives = WildcardExpander.expandVariants(krea2Params.prompt, count: krea2JobCount)
+                let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: krea2JobCount)
+                krea2Jobs = (0 ..< krea2JobCount).map {
+                    krea2Params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
+                }
+            } else {
+                krea2Jobs = [krea2Params.makeJob(count: count)]
+            }
             for job in krea2Jobs {
                 krea2Store.add(job)
             }
@@ -948,6 +947,25 @@ struct ContentView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(.fill.quaternary, in: Capsule())
+        }
+    }
+
+    /// Builds the Flux jobs for one Generate press. Wildcards expand by
+    /// independent sampling: the largest {a|b|c} group is covered (each option
+    /// once), other groups vary per job, and full combinations are de-duped.
+    /// Plain Generate runs one job per option of the largest group (capped 10);
+    /// a batch count overrides. Each job gets its own resolved prompt + sidecar.
+    private func fluxJobs(count: Int) -> [FluxJob] {
+        let templated = params.templatedPrompts(templates: settings.activeTemplates)
+        let variants = min(WildcardExpander.variantCount(templated.positive), 10)
+        guard variants > 1 else {
+            return [params.makeJob(count: count, templates: settings.activeTemplates)]
+        }
+        let jobCount = count > 1 ? count : variants
+        let positives = WildcardExpander.expandVariants(templated.positive, count: jobCount)
+        let negatives = WildcardExpander.expandVariants(templated.negative, count: jobCount)
+        return (0 ..< jobCount).map {
+            params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
         }
     }
 

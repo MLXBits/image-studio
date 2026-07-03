@@ -466,6 +466,7 @@ struct ParamsPanelView: View {
             let ext = (path as NSString).pathExtension.lowercased()
             guard Self.imageExtensions.contains(ext) else { return false }
             params.imagePath = path
+            params.adoptResolvedPromptForImg2Img(at: path)
             return true
         }, isTargeted: { isImageDropTargeted = $0 })
         .onDrop(of: [.fileURL], isTargeted: $isImageDropTargeted) { providers in
@@ -474,7 +475,10 @@ struct ParamsPanelView: View {
                       let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
                 let ext = url.pathExtension.lowercased()
                 guard Self.imageExtensions.contains(ext) else { return }
-                DispatchQueue.main.async { self.params.imagePath = url.path }
+                DispatchQueue.main.async {
+                    self.params.imagePath = url.path
+                    self.params.adoptResolvedPromptForImg2Img(at: url.path)
+                }
             }
             return true
         }
