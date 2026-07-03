@@ -137,6 +137,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var denoiseEnd: Date?
         var lastImageAt: Date?
         var landed: [(seed: Int, path: String)] = []
+        // Warm-driver step ETA: the driver emits step/total but no timing, so we
+        // derive elapsed/remaining from the first denoise step's timestamp.
+        var denoiseStart: Date?
+        var firstStep: Int?
     }
 
     private static var cacheBase: URL {
@@ -460,7 +464,21 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.isDenoising = true
             job.currentStep = step
             job.totalSteps = total
-            if step == total { progress.denoiseEnd = Date() }
+            let now = Date()
+            // Establish the denoise start on the first step, then estimate remaining
+            // time from the average per-step cost since then (mirrors tqdm's rate).
+            if progress.denoiseStart == nil {
+                progress.denoiseStart = now
+                progress.firstStep = step
+            } else if let start = progress.denoiseStart, let first = progress.firstStep,
+                      step > first, step < total {
+                let elapsed = now.timeIntervalSince(start)
+                let perStep = elapsed / Double(step - first)
+                let remaining = perStep * Double(total - step)
+                job.stepTiming = "\(RunnerSupport.formatClock(elapsed)) elapsed · "
+                    + "\(RunnerSupport.formatClock(remaining)) left"
+            }
+            if step == total { progress.denoiseEnd = now }
         case "image":
             guard let seed = event.seed, let path = event.path else { return }
             let generatedAt = Date()
