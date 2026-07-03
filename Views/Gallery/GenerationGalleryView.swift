@@ -705,8 +705,13 @@ struct GenerationGalleryView: View {
         } else {
             let item = targets[0]
             let newFlag = item.flag == flag ? nil : flag
+            // Snapshot the filtered board ordering *before* mutating: setting the flag
+            // can drop the culled item out of a flag-filtered view (e.g. "unflagged"),
+            // and the post-mutation list would no longer contain it to advance from.
+            let boardItems = modelItems.filter { $0.board == item.board }
+            let idx = boardItems.firstIndex { $0.id == item.id }
             gallery.setFlag(newFlag, for: item)
-            advanceAnchorAfterCull(from: item)
+            advanceAnchorAfterCull(item: item, boardItems: boardItems, idx: idx)
         }
     }
 
@@ -769,15 +774,20 @@ struct GenerationGalleryView: View {
         onCompare?(item, candidate)
     }
 
-    /// Moves the anchor (and the previewed item) to the next image in the same board,
-    /// respecting the active filter. Stays put when already at the end.
-    private func advanceAnchorAfterCull(from item: GalleryItem) {
-        let boardItems = modelItems.filter { $0.board == item.board }
-        guard let idx = boardItems.firstIndex(where: { $0.id == item.id }),
-              idx + 1 < boardItems.count else { return }
-        let next = boardItems[idx + 1]
-        selection = [next.id]
-        anchorItemId = next.id
-        selectedItem = next
+    /// Moves the anchor (and the previewed item) to the next image after a cull, using the
+    /// pre-mutation board ordering (`boardItems`/`idx`) so it works even when setting the
+    /// flag just removed the culled item from a flag-filtered view. Prefers the following
+    /// sibling; if the culled item left the active filter and was last, falls back to the
+    /// previous sibling (or clears when the board is now empty); if it is still visible and
+    /// last, stays put.
+    private func advanceAnchorAfterCull(item: GalleryItem, boardItems: [GalleryItem], idx: Int?) {
+        guard let idx else { return }
+        let stillVisible = modelItems.contains { $0.id == item.id }
+        if idx + 1 < boardItems.count {
+            clearSelection(nextItem: boardItems[idx + 1])
+        } else if !stillVisible {
+            clearSelection(nextItem: idx - 1 >= 0 ? boardItems[idx - 1] : nil)
+        }
+        // else: still visible and at the end — keep it selected.
     }
 }
