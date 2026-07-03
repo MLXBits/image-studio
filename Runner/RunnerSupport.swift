@@ -133,13 +133,6 @@ enum RunnerSupport {
         return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
     }
 
-    /// `M:SS` clock format, matching tqdm's elapsed/remaining rendering. Used for the
-    /// warm-driver step ETA, which is computed app-side rather than parsed from tqdm.
-    static func formatClock(_ seconds: TimeInterval) -> String {
-        let total = max(0, Int(seconds.rounded()))
-        return String(format: "%d:%02d", total / 60, total % 60)
-    }
-
     /// Inserts `text` immediately before the last (possibly incomplete) line. Used to
     /// place stage markers ahead of tqdm output that has no trailing newline.
     static func insertBeforeLastLine(_ log: String, text: String) -> String {

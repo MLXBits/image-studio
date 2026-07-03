@@ -137,10 +137,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var denoiseEnd: Date?
         var lastImageAt: Date?
         var landed: [(seed: Int, path: String)] = []
-        // Warm-driver step ETA: the driver emits step/total but no timing, so we
-        // derive elapsed/remaining from the first denoise step's timestamp.
-        var denoiseStart: Date?
-        var firstStep: Int?
     }
 
     private static var cacheBase: URL {
@@ -429,6 +425,18 @@ final class JobRunner<Spec: JobRunnerSpec> {
         driver.onLog = { [weak job] chunk in
             guard let job else { return }
             job.log = RunnerSupport.appendLog(chunk, to: job.log)
+            // Drive the visible step and ETA straight from tqdm — the exact line the CLI
+            // prints — so the numbers match it precisely. The structured `progress` events
+            // run slightly ahead of tqdm and carry no timing, so they are used only for
+            // internal timing markers (see handleDriverEvent).
+            guard let bar = JobProgressParser.parseStep(from: RunnerSupport.logTail(job.log)),
+                  Spec.acceptsProgressTotal(bar.total, job: job) else { return }
+            job.isDenoising = true
+            job.currentStep = bar.current
+            job.totalSteps = bar.total
+            if let elapsed = bar.elapsed, let remaining = bar.remaining {
+                job.stepTiming = "\(elapsed) elapsed · \(remaining) left"
+            }
         }
 
         let result = await driver.run(request: request) { [weak self, weak job] event in
@@ -460,25 +468,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.log += "▸ Model loaded \(seconds)\(memory)\n▸ \(Spec.encodingLabel)...\n"
             job.statusLine = "\(Spec.encodingLabel)…"
         case "progress":
+            // The visible step/ETA come from tqdm in the log (see onLog); this structured
+            // event only marks the denoise end for the learned-timing model.
             guard let step = event.step, let total = event.total else { return }
-            job.isDenoising = true
-            job.currentStep = step
-            job.totalSteps = total
-            let now = Date()
-            // Establish the denoise start on the first step, then estimate remaining
-            // time from the average per-step cost since then (mirrors tqdm's rate).
-            if progress.denoiseStart == nil {
-                progress.denoiseStart = now
-                progress.firstStep = step
-            } else if let start = progress.denoiseStart, let first = progress.firstStep,
-                      step > first, step < total {
-                let elapsed = now.timeIntervalSince(start)
-                let perStep = elapsed / Double(step - first)
-                let remaining = perStep * Double(total - step)
-                job.stepTiming = "\(RunnerSupport.formatClock(elapsed)) elapsed · "
-                    + "\(RunnerSupport.formatClock(remaining)) left"
-            }
-            if step == total { progress.denoiseEnd = now }
+            if step == total { progress.denoiseEnd = Date() }
         case "image":
             guard let seed = event.seed, let path = event.path else { return }
             let generatedAt = Date()
