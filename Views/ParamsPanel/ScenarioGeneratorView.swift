@@ -43,19 +43,19 @@ struct ScenarioGeneratorView: View {
                 gemmaLogBar
                 Divider()
             }
-            // Content sits at the top; the Spacer below pushes the footer to the
-            // bottom of the fixed-size (resizable) panel. The result and error boxes
-            // cap their own height internally and scroll overflow.
-            VStack(alignment: .leading, spacing: 10) {
-                outlineSection
-                categorySection
-                wildcardRow
-                generatingRow
-                if let err = session.generateError { errorBox(err) }
-                if !session.result.isEmpty { resultPreview }
+            // The content scrolls so the auto-growing Outline and Result fields can
+            // expand with their text without ever clipping the pinned footer.
+            ScrollView {
+                VStack(alignment: .leading, spacing: 10) {
+                    outlineSection
+                    categorySection
+                    wildcardRow
+                    generatingRow
+                    if let err = session.generateError { errorBox(err) }
+                    if !session.result.isEmpty { resultPreview }
+                }
+                .padding(12)
             }
-            .padding(12)
-            Spacer(minLength: 0)
             Divider()
             footer
         }
@@ -199,19 +199,16 @@ struct ScenarioGeneratorView: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Result")
                 .font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
-            // A DEFINITE height (not maxHeight — that collapses a ScrollView to
-            // nothing) reserves the region and scrolls overflow, so long prompts
-            // stay readable without the popover clipping past AppKit's max.
-            ScrollView {
-                Text(session.result)
-                    .font(.caption)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(6)
-            }
-            .frame(height: 200)
-            .background(Color.primary.opacity(0.06))
-            .clipShape(RoundedRectangle(cornerRadius: 6))
+            // Same auto-growing editor as the Outline: it expands with the generated
+            // text (the surrounding ScrollView absorbs overflow) and stays editable so
+            // the expanded prompt can be tweaked before "Use".
+            GrowingPromptField(
+                text: $session.result,
+                placeholder: "",
+                label: "Generated scenario",
+                hint: "The expanded prompt — edit before using it if you like",
+                minHeight: 80
+            )
             if session.wildcardMode, !WildcardExpander.containsWildcards(session.result) {
                 Text("No valid {a|b|c} groups in this result — it will run as a single prompt.")
                     .font(.caption2)
