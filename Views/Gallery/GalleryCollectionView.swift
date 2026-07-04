@@ -276,8 +276,24 @@ final class GalleryNSCollectionView: NSCollectionView {
     /// true clicks — exactly when we want singleClick to run.
     private var pendingClickPath: IndexPath?
 
+    /// Width the flow layout last sized cells against. `sizeForItemAt` derives the
+    /// column count and cell width from `bounds.width`, but the first `reloadData()`
+    /// runs while SwiftUI is still settling the split-view column, so cells get cached
+    /// at a stale width and render oversized/spaced. Re-invalidate whenever the real
+    /// width arrives so that initial pass self-corrects (matching what a manual column
+    /// resize or a new-image reload already do).
+    private var lastLaidOutWidth: CGFloat = -1
+
     override var acceptsFirstResponder: Bool {
         true
+    }
+
+    override func layout() {
+        super.layout()
+        if abs(bounds.width - lastLaidOutWidth) > 0.5 {
+            lastLaidOutWidth = bounds.width
+            collectionViewLayout?.invalidateLayout()
+        }
     }
 
     override func keyDown(with event: NSEvent) {
