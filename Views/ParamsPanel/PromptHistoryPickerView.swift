@@ -51,6 +51,7 @@ struct PromptHistoryPickerView: View {
                         .font(.caption2)
                         .buttonStyle(.plain)
                         .foregroundStyle(.secondary)
+                        .focusEffectDisabled()
                         .help("Remove all unpinned prompts")
                 }
             }

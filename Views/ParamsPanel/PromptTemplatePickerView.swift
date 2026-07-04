@@ -43,6 +43,7 @@ struct PromptTemplatePickerView: View {
                     .font(.caption2)
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
+                    .focusEffectDisabled()
             }
             Button { showingAddSheet = true } label: {
                 Image(systemName: "plus")
