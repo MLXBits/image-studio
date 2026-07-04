@@ -830,7 +830,8 @@ struct ContentView: View {
                 outputWidth: ctx.width,
                 outputHeight: ctx.height,
                 isExpanded: true,
-                backgroundImage: ctx.image
+                backgroundImage: ctx.image,
+                cameraStyle: $ideogramParams.caption.styleDescription
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

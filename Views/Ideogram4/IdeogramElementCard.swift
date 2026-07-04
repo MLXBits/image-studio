@@ -18,6 +18,10 @@ struct IdeogramElementCard: View {
     /// (the embedded NSTextView swallows the tap that drives `onSelect`).
     var onTextFocus: (() -> Void)?
     var onRemove: () -> Void
+    /// Stacking-order controls (bbox side panel only). Array order is the front/back
+    /// order the model reads on overlap. Nil hides the buttons (e.g. single element).
+    var onMoveForward: (() -> Void)?
+    var onMoveBackward: (() -> Void)?
 
     @State private var showPalette = false
 
@@ -101,6 +105,10 @@ struct IdeogramElementCard: View {
                 .buttonStyle(.plain)
                 .help("Remove element")
 
+                if onMoveForward != nil || onMoveBackward != nil {
+                    zOrderButtons
+                }
+
                 paletteButton
 
                 Text(el.type == .text ? "T" : "O")
@@ -151,6 +159,34 @@ struct IdeogramElementCard: View {
         .help(hasColors
             ? "Edit element colors (\(paletteColors.count))"
             : "Add element colors")
+    }
+
+    /// Bring-forward / send-backward controls stacked in one 24pt slot.
+    private var zOrderButtons: some View {
+        HStack(spacing: 1) {
+            Button { onMoveBackward?() } label: {
+                Image(systemName: "chevron.backward")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 11, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(onMoveBackward == nil)
+            .help("Send backward")
+
+            Button { onMoveForward?() } label: {
+                Image(systemName: "chevron.forward")
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(.secondary)
+                    .frame(width: 11, height: 18)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(onMoveForward == nil)
+            .help("Bring forward")
+        }
+        .frame(width: 24, height: 24)
     }
 
     private var elementPaletteSection: some View {

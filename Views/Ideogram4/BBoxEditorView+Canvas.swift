@@ -87,6 +87,142 @@ extension BBoxEditorView {
             .truncationMode(.tail)
     }
 
+    // MARK: - Composition guides
+
+    /// Rule-of-thirds lines and a center cross. Mid-gray dashes read on both light
+    /// and dark backgrounds and over most imagery without competing with the boxes.
+    func drawGuides(ctx: GraphicsContext, size _: CGSize, canvasSize: CGSize) {
+        let g = BBoxGeometry.gridLines(in: canvasSize)
+        let thirds = Color.gray.opacity(backgroundImage != nil ? 0.45 : 0.35)
+        let center = Color.gray.opacity(backgroundImage != nil ? 0.6 : 0.5)
+        let dash = StrokeStyle(lineWidth: 1, dash: [3, 4])
+
+        for x in g.verticalThirds {
+            ctx.stroke(vLine(x, canvasSize), with: .color(thirds), style: dash)
+        }
+        for y in g.horizontalThirds {
+            ctx.stroke(hLine(y, canvasSize), with: .color(thirds), style: dash)
+        }
+        ctx.stroke(vLine(g.centerX, canvasSize), with: .color(center), style: dash)
+        ctx.stroke(hLine(g.centerY, canvasSize), with: .color(center), style: dash)
+    }
+
+    private func vLine(_ x: CGFloat, _ canvas: CGSize) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: x, y: 0))
+        p.addLine(to: CGPoint(x: x, y: canvas.height))
+        return p
+    }
+
+    private func hLine(_ y: CGFloat, _ canvas: CGSize) -> Path {
+        var p = Path()
+        p.move(to: CGPoint(x: 0, y: y))
+        p.addLine(to: CGPoint(x: canvas.width, y: y))
+        return p
+    }
+
+    // MARK: - Depth (stacking-order) badges
+
+    /// A small "n" badge at each box's top-right corner. Draw order = array order =
+    /// front/back order the model reads on overlap, so a higher number sits in front.
+    func depthBadgeOverlay(canvasSize: CGSize) -> some View {
+        ZStack(alignment: .topLeading) {
+            ForEach(Array(elements.enumerated()), id: \.element.id) { index, element in
+                let rect = BBoxGeometry.normRect(element.bbox, in: canvasSize)
+                let color = BBoxGeometry.boxColor(at: index, type: element.type)
+                Text("\(index + 1)")
+                    .font(.system(size: 9, weight: .bold, design: .rounded))
+                    .foregroundStyle(.white)
+                    .frame(width: 15, height: 15)
+                    .background(Circle().fill(color))
+                    .overlay(Circle().strokeBorder(.white.opacity(0.7), lineWidth: 0.5))
+                    .offset(x: rect.maxX - 15, y: rect.minY)
+            }
+        }
+        .frame(width: canvasSize.width, height: canvasSize.height, alignment: .topLeading)
+        .allowsHitTesting(false)
+    }
+
+    // MARK: - Horizon line (camera POV)
+
+    /// Draggable horizon line spanning the canvas. The line is non-interactive; the
+    /// knob at the right edge takes the drag. Releasing writes `style_description.photo`.
+    func horizonOverlay(canvasSize: CGSize) -> some View {
+        let y = canvasSize.height * CGFloat(displayHorizonNorm) / 1000
+        return ZStack(alignment: .topLeading) {
+            Rectangle()
+                .fill(Color.orange.opacity(0.85))
+                .frame(width: canvasSize.width, height: 1.5)
+                .offset(y: y - 0.75)
+                .allowsHitTesting(false)
+
+            Text("horizon · \(displayPOV.label.lowercased())")
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.orange)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .background(RoundedRectangle(cornerRadius: 3).fill(.black.opacity(0.5)))
+                .offset(x: 4, y: max(2, y - 16))
+                .allowsHitTesting(false)
+
+            Circle()
+                .fill(Color.orange)
+                .stroke(.white, lineWidth: 1.5)
+                .frame(width: 12, height: 12)
+                .frame(width: 26, height: 26)
+                .contentShape(Rectangle())
+                .offset(x: canvasSize.width - 26, y: y - 13)
+                .gesture(horizonDragGesture(canvasSize: canvasSize))
+        }
+        .frame(width: canvasSize.width, height: canvasSize.height, alignment: .topLeading)
+    }
+
+    // MARK: - Orientation anchor (writes desc)
+
+    /// Two labeled, draggable endpoints (default "head" → "feet") inside the selected
+    /// box. The box stays the whole-object rectangle; the arrow only annotates the
+    /// orientation of its contents into `desc`.
+    func anchorOverlay(for element: IdeogramCaptionElement, canvasSize: CGSize) -> some View {
+        let a = effectiveAnchorA(element)
+        let b = effectiveAnchorB(element)
+        let pa = anchorPoint(a, canvasSize)
+        let pb = anchorPoint(b, canvasSize)
+        return ZStack(alignment: .topLeading) {
+            Path { p in
+                p.move(to: pa)
+                p.addLine(to: pb)
+            }
+            .stroke(Color.pink.opacity(0.9), style: StrokeStyle(lineWidth: 2, dash: [5, 3]))
+            .frame(width: canvasSize.width, height: canvasSize.height, alignment: .topLeading)
+            .allowsHitTesting(false)
+
+            anchorKnob(label: anchorLabelA, at: pa, isA: true, canvasSize: canvasSize)
+            anchorKnob(label: anchorLabelB, at: pb, isA: false, canvasSize: canvasSize)
+        }
+        .frame(width: canvasSize.width, height: canvasSize.height, alignment: .topLeading)
+    }
+
+    private func anchorKnob(
+        label: String, at pt: CGPoint, isA: Bool, canvasSize: CGSize
+    ) -> some View {
+        VStack(spacing: 1) {
+            Text(label)
+                .font(.system(size: 9, weight: .semibold))
+                .foregroundStyle(.white)
+                .padding(.horizontal, 3)
+                .padding(.vertical, 1)
+                .background(RoundedRectangle(cornerRadius: 3).fill(Color.pink.opacity(0.9)))
+            Circle()
+                .fill(Color.pink)
+                .stroke(.white, lineWidth: 1.5)
+                .frame(width: 11, height: 11)
+        }
+        .frame(width: 44, height: 30)
+        .contentShape(Rectangle())
+        .offset(x: pt.x - 22, y: pt.y - 20)
+        .gesture(anchorDragGesture(isA: isA, canvasSize: canvasSize))
+    }
+
     @ViewBuilder
     func handleOverlay(for element: IdeogramCaptionElement, canvasSize: CGSize) -> some View {
         let rect = BBoxGeometry.normRect(element.bbox, in: canvasSize)

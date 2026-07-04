@@ -13,6 +13,16 @@ enum BBoxResizeHandle: CaseIterable {
 /// `[y_min, x_min, y_max, x_max]` in 0–1000 normalized space; `canvas` is the
 /// fitted pixel size of the drawing surface.
 enum BBoxGeometry {
+    /// Rule-of-thirds + center line positions (in canvas pixels) for the guide
+    /// overlay. `verticalThirds`/`horizontalThirds` are the two thirds lines on
+    /// each axis; `centerX`/`centerY` are the center cross.
+    struct GuideLines: Equatable {
+        var verticalThirds: [CGFloat]
+        var horizontalThirds: [CGFloat]
+        var centerX: CGFloat
+        var centerY: CGFloat
+    }
+
     /// Pixel rect for a normalized bbox on a canvas of the given size.
     static func normRect(_ bbox: [Int], in canvas: CGSize) -> CGRect {
         guard bbox.count == 4 else { return .zero }
@@ -126,6 +136,30 @@ enum BBoxGeometry {
             if leftHandles.contains(handle) { x1 = x2 - minBox } else { x2 = x1 + minBox }
         }
         return [y1, x1, y2, x2]
+    }
+
+    // MARK: - Composition guides
+
+    static func gridLines(in canvas: CGSize) -> GuideLines {
+        GuideLines(
+            verticalThirds: [canvas.width / 3, canvas.width * 2 / 3],
+            horizontalThirds: [canvas.height / 3, canvas.height * 2 / 3],
+            centerX: canvas.width / 2,
+            centerY: canvas.height / 2
+        )
+    }
+
+    // MARK: - Frame zones (orientation authoring)
+
+    /// Human-readable frame zone for a 0–1000 normalized point, e.g.
+    /// "bottom left of frame", "top center of frame", "center of frame". Used to
+    /// translate an orientation anchor into `desc` language. `pt.x`/`pt.y` are the
+    /// normalized x/y (not the y-first bbox order).
+    static func frameZone(forNorm pt: CGPoint) -> String {
+        let row = pt.y < 333 ? "top" : (pt.y < 667 ? "center" : "bottom")
+        let col = pt.x < 333 ? "left" : (pt.x < 667 ? "center" : "right")
+        if row == "center" && col == "center" { return "center of frame" }
+        return "\(row) \(col) of frame"
     }
 
     /// Largest canvas size with the output aspect ratio that fits `available`.

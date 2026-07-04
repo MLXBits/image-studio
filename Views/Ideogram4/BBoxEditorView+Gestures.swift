@@ -131,4 +131,134 @@ extension BBoxEditorView {
               ) else { return }
         elements[idx].bbox = resized
     }
+
+    // MARK: - Z-order (stacking) — array order is the front/back order
+
+    func moveForward(id: UUID) {
+        guard let idx = elements.firstIndex(where: { $0.id == id }), idx < elements.count - 1 else { return }
+        elements.swapAt(idx, idx + 1)
+    }
+
+    func moveBackward(id: UUID) {
+        guard let idx = elements.firstIndex(where: { $0.id == id }), idx > 0 else { return }
+        elements.swapAt(idx, idx - 1)
+    }
+
+    // MARK: - Composition templates
+
+    func chooseTemplate(_ template: BBoxTemplate) {
+        if elements.isEmpty {
+            applyTemplate(template, replace: true)
+        } else {
+            pendingTemplate = template
+            showTemplateConfirm = true
+        }
+    }
+
+    func applyTemplate(_ template: BBoxTemplate, replace: Bool) {
+        // Fresh ids: the static library holds fixed UUIDs, so appending the same
+        // template twice would collide without regenerating them.
+        let fresh = template.elements.map { el -> IdeogramCaptionElement in
+            var copy = el
+            copy.id = UUID()
+            return copy
+        }
+        if replace { elements = fresh } else { elements += fresh }
+        selectedID = nil
+        mode = .select
+        pendingTemplate = nil
+    }
+
+    // MARK: - Camera angle → style_description.photo (horizon line)
+
+    private func writeCameraPOV(_ pov: CameraPOV) {
+        guard let cameraStyle else { return }
+        var style = cameraStyle.wrappedValue ?? IdeogramCaptionStyle()
+        style.photo = pov.write(to: style.photo)
+        cameraStyle.wrappedValue = style
+    }
+
+    func horizonDragGesture(canvasSize: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(BBoxEditorView.canvasSpace))
+            .onChanged { value in
+                draggingHorizon = true
+                let ny = Int((value.location.y / max(canvasSize.height, 1) * 1000).rounded())
+                horizonNorm = max(0, min(1000, ny))
+            }
+            .onEnded { _ in
+                draggingHorizon = false
+                writeCameraPOV(CameraPOV.forHorizon(horizonNorm))
+            }
+    }
+
+    // MARK: - Orientation anchor → element desc
+
+    /// Head endpoint default: top-center of the box.
+    func defaultAnchorA(_ el: IdeogramCaptionElement) -> CGPoint {
+        let cx = CGFloat(el.bbox[1] + el.bbox[3]) / 2
+        let margin = max(30, CGFloat(el.bbox[2] - el.bbox[0]) / 6)
+        return CGPoint(x: cx, y: CGFloat(el.bbox[0]) + margin)
+    }
+
+    /// Feet endpoint default: bottom-center of the box.
+    func defaultAnchorB(_ el: IdeogramCaptionElement) -> CGPoint {
+        let cx = CGFloat(el.bbox[1] + el.bbox[3]) / 2
+        let margin = max(30, CGFloat(el.bbox[2] - el.bbox[0]) / 6)
+        return CGPoint(x: cx, y: CGFloat(el.bbox[2]) - margin)
+    }
+
+    func effectiveAnchorA(_ el: IdeogramCaptionElement) -> CGPoint {
+        anchorA ?? defaultAnchorA(el)
+    }
+
+    func effectiveAnchorB(_ el: IdeogramCaptionElement) -> CGPoint {
+        anchorB ?? defaultAnchorB(el)
+    }
+
+    /// 0–1000 norm point → canvas pixels.
+    func anchorPoint(_ norm: CGPoint, _ canvas: CGSize) -> CGPoint {
+        CGPoint(x: canvas.width * norm.x / 1000, y: canvas.height * norm.y / 1000)
+    }
+
+    /// Canvas pixels → 0–1000 norm point, clamped.
+    func anchorNorm(_ pt: CGPoint, _ canvas: CGSize) -> CGPoint {
+        CGPoint(
+            x: max(0, min(1000, pt.x / max(canvas.width, 1) * 1000)),
+            y: max(0, min(1000, pt.y / max(canvas.height, 1) * 1000))
+        )
+    }
+
+    /// Clears anchors when the selection or orientation mode changes so the next
+    /// box gets sensible defaults.
+    func resetAnchors() {
+        anchorForID = selectedID
+        anchorA = nil
+        anchorB = nil
+    }
+
+    func anchorDragGesture(isA: Bool, canvasSize: CGSize) -> some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(BBoxEditorView.canvasSpace))
+            .onChanged { value in
+                let norm = anchorNorm(value.location, canvasSize)
+                if isA { anchorA = norm } else { anchorB = norm }
+            }
+            .onEnded { _ in writeOrientation() }
+    }
+
+    /// Writes the orientation clause to the selected element's `desc`, replacing any
+    /// previously-written clause rather than duplicating it.
+    func writeOrientation() {
+        guard let id = selectedID,
+              let idx = elements.firstIndex(where: { $0.id == id }) else { return }
+        let el = elements[idx]
+        let zoneA = BBoxGeometry.frameZone(forNorm: effectiveAnchorA(el))
+        let zoneB = BBoxGeometry.frameZone(forNorm: effectiveAnchorB(el))
+        let labelA = anchorLabelA.trimmingCharacters(in: .whitespaces)
+        let labelB = anchorLabelB.trimmingCharacters(in: .whitespaces)
+        elements[idx].desc = OrientationClause.apply(
+            partA: labelA.isEmpty ? "head" : labelA, zoneA: zoneA,
+            partB: labelB.isEmpty ? "feet" : labelB, zoneB: zoneB,
+            to: el.desc
+        )
+    }
 }

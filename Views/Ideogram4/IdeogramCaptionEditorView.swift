@@ -153,7 +153,8 @@ struct IdeogramCaptionEditorView: View {
                     BBoxEditorView(
                         elements: $caption.compositionalDeconstruction.elements,
                         outputWidth: outputWidth,
-                        outputHeight: outputHeight
+                        outputHeight: outputHeight,
+                        cameraStyle: $caption.styleDescription
                     )
                     .frame(height: 220)
                     .clipShape(RoundedRectangle(cornerRadius: 8))

@@ -21,6 +21,10 @@ enum BBoxEditorMode { case draw, select }
 /// coordinate math in `BBoxGeometry`, and the key handler in `BBoxKeyCatcher`.
 /// The `@State` is internal (not private) so those extensions can reach it.
 struct BBoxEditorView: View {
+    /// Named coordinate space for the canvas-sized container, so small draggable
+    /// overlays (horizon knob, orientation anchors) get canvas-relative locations.
+    static let canvasSpace = "bboxCanvas"
+
     @Binding var elements: [IdeogramCaptionElement]
     let outputWidth: Int
     let outputHeight: Int
@@ -28,6 +32,10 @@ struct BBoxEditorView: View {
     /// When set, drawn behind the boxes (filling the coordinate-space canvas) so
     /// boxes can be adjusted against the image that generated them.
     var backgroundImage: NSImage?
+    /// Optional binding to the caption's style, so the camera-POV control can write
+    /// `style_description.photo` (camera lives in its own JSON field, never in a
+    /// bbox). When nil, the POV control and horizon line are hidden.
+    var cameraStyle: Binding<IdeogramCaptionStyle?>?
 
     @State var mode: BBoxEditorMode = .select
     @State var selectedID: UUID?
@@ -45,6 +53,26 @@ struct BBoxEditorView: View {
     @State var showExpandedSheet: Bool = false
     @State var focusRequest: Int = 0
     @FocusState var isPopoverFocused: Bool
+
+    /// Composition guides (rule-of-thirds + center + horizon).
+    @State var showGuides: Bool = true
+    /// Live horizon position (0–1000 y) *while dragging only*. When not dragging,
+    /// the rendered line is derived from the shared POV so every editor instance
+    /// shows the same line for the same caption — see `displayHorizonNorm`.
+    @State var horizonNorm: Int = 500
+    @State var draggingHorizon: Bool = false
+
+    // Orientation anchor (writes the selected element's `desc`).
+    @State var orientationMode: Bool = false
+    @State var anchorForID: UUID?
+    @State var anchorA: CGPoint? // 0–1000 norm (x,y); "head" endpoint
+    @State var anchorB: CGPoint? // 0–1000 norm (x,y); "feet" endpoint
+    @State var anchorLabelA: String = "head"
+    @State var anchorLabelB: String = "feet"
+
+    // Composition templates.
+    @State var pendingTemplate: BBoxTemplate?
+    @State var showTemplateConfirm: Bool = false
 
     let handleRadius: CGFloat = 5
     /// Side of the transparent square hit area around each resize handle. Larger
@@ -68,6 +96,56 @@ struct BBoxEditorView: View {
             }
         }
         .sheet(isPresented: $showExpandedSheet) { expandedSheet }
+        .onAppear {
+            if let pov = CameraPOV.current(in: cameraStyle?.wrappedValue?.photo) {
+                horizonNorm = pov.defaultHorizon
+            }
+        }
+        .onChange(of: selectedID) { _, _ in resetAnchors() }
+        .onChange(of: orientationMode) { _, _ in resetAnchors() }
+        .confirmationDialog(
+            "Apply “\(pendingTemplate?.name ?? "")” layout?",
+            isPresented: $showTemplateConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Replace existing boxes", role: .destructive) {
+                if let t = pendingTemplate { applyTemplate(t, replace: true) }
+            }
+            Button("Add to existing") {
+                if let t = pendingTemplate { applyTemplate(t, replace: false) }
+            }
+            Button("Cancel", role: .cancel) { pendingTemplate = nil }
+        } message: {
+            Text("You already have boxes on the canvas.")
+        }
+    }
+
+    // MARK: - Camera POV helpers
+
+    /// Whether the camera-POV control applies: a style binding exists and the
+    /// caption isn't in explicit art-style mode (`photo` is photo-mode only).
+    var cameraAvailable: Bool {
+        guard cameraStyle != nil else { return false }
+        return (cameraStyle?.wrappedValue?.artStyle ?? "").isEmpty
+    }
+
+    /// POV currently reflected in `photo`, falling back to the horizon position.
+    var currentPOV: CameraPOV {
+        CameraPOV.current(in: cameraStyle?.wrappedValue?.photo)
+            ?? CameraPOV.forHorizon(horizonNorm)
+    }
+
+    /// POV to show right now: tracks the finger while dragging, otherwise the
+    /// shared `photo` value. Drives both the line position and its label so they
+    /// never diverge (and stay in sync across editor instances).
+    var displayPOV: CameraPOV {
+        draggingHorizon ? CameraPOV.forHorizon(horizonNorm) : currentPOV
+    }
+
+    /// Rendered horizon-line position (0–1000 y): the live drag value while
+    /// dragging, otherwise the shared POV's canonical position.
+    var displayHorizonNorm: Int {
+        draggingHorizon ? horizonNorm : displayPOV.defaultHorizon
     }
 
     var editorCanvas: some View {
@@ -105,6 +183,16 @@ struct BBoxEditorView: View {
                                 .shadow(color: .black.opacity(0.15), radius: 4, x: 0, y: 2)
                         }
 
+                        // Composition guides sit above the background but below the
+                        // boxes, so they never obscure the boxes.
+                        if showGuides {
+                            Canvas { ctx, size in
+                                drawGuides(ctx: ctx, size: size, canvasSize: canvasSize)
+                            }
+                            .frame(width: canvasSize.width, height: canvasSize.height)
+                            .allowsHitTesting(false)
+                        }
+
                         Canvas { ctx, size in
                             drawBoxes(ctx: ctx, size: size, canvasSize: canvasSize)
                         }
@@ -112,6 +200,11 @@ struct BBoxEditorView: View {
 
                         // Native-text labels above the box Canvas (crisp glyphs).
                         labelOverlay(canvasSize: canvasSize)
+
+                        // Stacking-order badges so overlap reads as front/back.
+                        if elements.count > 1 {
+                            depthBadgeOverlay(canvasSize: canvasSize)
+                        }
 
                         // Color.clear is BELOW the handle overlay so handle circles
                         // sit on top and receive drag events before the canvas does.
@@ -158,8 +251,20 @@ struct BBoxEditorView: View {
                         if let sel = selectedElement, mode == .select {
                             handleOverlay(for: sel, canvasSize: canvasSize)
                         }
+
+                        // Draggable horizon line (camera POV). Above the boxes so its
+                        // knob wins drags; the line itself is non-interactive.
+                        if showGuides && cameraAvailable {
+                            horizonOverlay(canvasSize: canvasSize)
+                        }
+
+                        // Orientation anchor for the selected box (writes `desc`).
+                        if orientationMode, let sel = selectedElement, mode == .select {
+                            anchorOverlay(for: sel, canvasSize: canvasSize)
+                        }
                     }
                     .frame(width: canvasSize.width, height: canvasSize.height)
+                    .coordinateSpace(name: Self.canvasSpace)
                     .offset(x: canvasOrigin.x, y: canvasOrigin.y)
                     .popover(isPresented: $showCreatePopover, arrowEdge: .bottom) {
                         createPopover
