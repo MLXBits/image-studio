@@ -13,6 +13,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var krea2Runner = Krea2JobRunner()
     @State private var coordinator = GenerationCoordinator()
     @State private var timing = TimingStore()
+    @State private var loraLibrary = LoraLibraryStore()
 
     var body: some Scene {
         WindowGroup {
@@ -28,6 +29,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(coordinator)
                 .environment(timing)
                 .environment(driverController)
+                .environment(loraLibrary)
                 .frame(minWidth: 900, minHeight: 600)
         }
         .windowResizability(.contentMinSize)
@@ -40,6 +42,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(settings)
                 .environment(gallery)
                 .environment(driverController)
+                .environment(loraLibrary)
         }
     }
 

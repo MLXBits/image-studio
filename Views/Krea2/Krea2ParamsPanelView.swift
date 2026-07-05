@@ -12,6 +12,7 @@ struct Krea2ParamsPanelView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
+    @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var isImageDropTargeted: Bool = false
 
@@ -117,10 +118,13 @@ struct Krea2ParamsPanelView: View {
             loras: $params.loras,
             showAdd: false,
             defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .krea2 },
-            modelFamily: .krea2
-        ) {
-            params.loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
-        }
+            modelFamily: .krea2,
+            library: loraLibrary,
+            onInsertTriggerWords: { params.prompt = insertTriggerWords($0, into: params.prompt) },
+            onReset: {
+                params.loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+            }
+        )
         .padding(.bottom, 8)
     }
 

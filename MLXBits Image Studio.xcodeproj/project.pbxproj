@@ -43,6 +43,7 @@
 		3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
 		4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 620B629F83341AF0145AA278 /* NotepadView.swift */; };
+		496D74D402C4B89472069404 /* LoraLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */; };
 		4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */; };
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
@@ -62,6 +63,7 @@
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
+		71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */; };
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */; };
 		79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */; };
@@ -104,6 +106,7 @@
 		D83BE145C93A460F115D96E8 /* CompareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E7AEA39A7CEEEC9D948F54 /* CompareView.swift */; };
 		DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */; };
 		DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */; };
+		E2E41732CD031DA45C3E19BA /* LoraLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */; };
 		E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */; };
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
 		EF113144EC0E822A2551EF74 /* ModelDefaultsView+Ideogram4Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */; };
@@ -159,6 +162,7 @@
 		41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometryTests.swift; sourceTree = "<group>"; };
 		4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Ideogram4Form.swift"; sourceTree = "<group>"; };
 		45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunner.swift; sourceTree = "<group>"; };
+		46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryEditorView.swift; sourceTree = "<group>"; };
 		4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometry.swift; sourceTree = "<group>"; };
 		4FC7445FBA2C696BE4141103 /* GalleryRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryRating.swift; sourceTree = "<group>"; };
 		502FC77E6C94D5C5CAA181B2 /* BBoxTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxTemplates.swift; sourceTree = "<group>"; };
@@ -187,6 +191,7 @@
 		72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Rows.swift"; sourceTree = "<group>"; };
 		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
+		75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryStore.swift; sourceTree = "<group>"; };
 		79628AB5261A09BED858E668 /* scenario_llm_driver.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = scenario_llm_driver.py; sourceTree = "<group>"; };
 		79B73E05AF3B412407752562 /* GenerationEstimateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEstimateView.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
@@ -236,6 +241,7 @@
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
+		F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibrary.swift; sourceTree = "<group>"; };
 		F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpanderTests.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
 		FE1832089B5311712FEF1286 /* scenario_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = scenario_prompt.md; sourceTree = "<group>"; };
@@ -404,6 +410,7 @@
 		AE6CA2D7C353EC349D6C918D /* Settings */ = {
 			isa = PBXGroup;
 			children = (
+				46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */,
 				64A7412A576F846395336217 /* ModelDefaultsView.swift */,
 				7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */,
 				318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */,
@@ -474,6 +481,7 @@
 				607FDAD831E19BE75C734220 /* IdeogramCaption.swift */,
 				ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */,
 				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
+				F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */,
 				2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */,
 				C4443AEA2099305CADF36EE5 /* PromptHistory.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
@@ -490,6 +498,7 @@
 				FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */,
 				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
 				1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */,
+				75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */,
 				B9474B6243420062519AB6BA /* ParamsPanelState.swift */,
 				0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */,
 			);
@@ -695,6 +704,9 @@
 				4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */,
 				28A278E311B31F4464A171CC /* LogTextView.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
+				496D74D402C4B89472069404 /* LoraLibrary.swift in Sources */,
+				71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */,
+				E2E41732CD031DA45C3E19BA /* LoraLibraryStore.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
 				932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,

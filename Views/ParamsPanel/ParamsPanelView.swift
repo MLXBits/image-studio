@@ -23,6 +23,7 @@ struct ParamsPanelView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
+    @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var isImageDropTargeted: Bool = false
     @State private var isEditDropTargeted: Bool = false
@@ -175,11 +176,14 @@ struct ParamsPanelView: View {
         LoraManagerView(
             loras: $params.loras,
             showAdd: false,
-            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .flux }
-        ) {
-            let d = settings.resolvedDefaults(for: params.model)
-            params.loras = d.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .flux } : d.loras
-        }
+            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .flux },
+            library: loraLibrary,
+            onInsertTriggerWords: { params.prompt = insertTriggerWords($0, into: params.prompt) },
+            onReset: {
+                let d = settings.resolvedDefaults(for: params.model)
+                params.loras = d.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .flux } : d.loras
+            }
+        )
         .padding(.bottom, 8)
     }
 

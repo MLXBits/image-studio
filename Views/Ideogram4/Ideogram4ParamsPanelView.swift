@@ -7,6 +7,7 @@ struct Ideogram4ParamsPanelView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
+    @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var batchSeedText: String = ""
     @State private var showBatchSeeds: Bool = false
@@ -74,10 +75,21 @@ struct Ideogram4ParamsPanelView: View {
             LoraManagerView(
                 loras: $params.loras,
                 defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .ideogram4 },
-                modelFamily: .ideogram4
-            ) {
-                params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
-            }
+                modelFamily: .ideogram4,
+                library: loraLibrary,
+                onInsertTriggerWords: { triggers in
+                    // Route triggers to whichever prompt field is active.
+                    if params.usePlainPrompt {
+                        params.plainPrompt = insertTriggerWords(triggers, into: params.plainPrompt)
+                    } else {
+                        params.caption.highLevelDescription =
+                            insertTriggerWords(triggers, into: params.caption.highLevelDescription)
+                    }
+                },
+                onReset: {
+                    params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                }
+            )
 
             // HF token warning — every Ideogram variant (FP8 + the MLXBits Q8/Q4
             // repos) is gated, so a token is required unless a model-source override

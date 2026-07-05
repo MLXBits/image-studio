@@ -7,9 +7,16 @@ struct LoraManagerView: View {
     var showAdd: Bool = true
     var defaultLoras: [LoraEntry] = []
     var modelFamily: ModelFamily = .flux
+    /// When set, a library/stacks picker button appears in the header. Nil in
+    /// contexts that only edit a raw list (e.g. Settings defaults).
+    var library: LoraLibraryStore?
+    /// Called with a library LoRA's trigger words when it (or a stack) is
+    /// activated, so the host can insert them into the prompt.
+    var onInsertTriggerWords: ((String) -> Void)?
     var onReset: (() -> Void)?
     @AppStorage("lorasSectionExpanded") private var isExpanded: Bool = false
     @State private var showingAdd: Bool = false
+    @State private var showingPicker: Bool = false
     @State private var newPath: String = ""
     @State private var editingID: UUID?
 
@@ -20,6 +27,7 @@ struct LoraManagerView: View {
                 loraList
             }
             .sheet(isPresented: $showingAdd) { addLoraSheet }
+            .sheet(isPresented: $showingPicker) { pickerSheet }
         } else {
             DisclosureGroup(isExpanded: $isExpanded) {
                 loraList
@@ -29,6 +37,7 @@ struct LoraManagerView: View {
                     .onTapGesture { withAnimation { isExpanded.toggle() } }
             }
             .sheet(isPresented: $showingAdd) { addLoraSheet }
+            .sheet(isPresented: $showingPicker) { pickerSheet }
         }
     }
 
@@ -50,6 +59,16 @@ struct LoraManagerView: View {
                     .font(.caption2)
                     .buttonStyle(.plain)
                     .foregroundStyle(.secondary)
+            }
+            if library != nil {
+                Button { showingPicker = true } label: {
+                    Image(systemName: "books.vertical")
+                        .font(.caption)
+                        .frame(width: 24, height: 24)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .help("Add from library or apply a stack")
             }
             if showAdd {
                 Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
@@ -139,6 +158,50 @@ struct LoraManagerView: View {
         loras.append(LoraEntry(path: trimmed, modelFamily: modelFamily))
         newPath = ""
         showingAdd = false
+    }
+
+    // MARK: - Library & stacks picker
+
+    @ViewBuilder
+    private var pickerSheet: some View {
+        if let library {
+            LoraPickerSheet(
+                library: library,
+                family: modelFamily,
+                onAddLibrary: { addFromLibrary($0) },
+                onApplyStack: { applyStack($0) }
+            )
+        }
+    }
+
+    /// Adds a library LoRA (deduped by path) and inserts its trigger words.
+    private func addFromLibrary(_ lib: LibraryLora) {
+        if !loras.contains(where: { $0.path == lib.path }) {
+            loras.append(lib.toEntry())
+        }
+        if let onInsertTriggerWords, !lib.triggerWords.isEmpty {
+            onInsertTriggerWords(lib.triggerWords)
+        }
+    }
+
+    /// Merges a stack into the current list — adds missing entries by path,
+    /// updates strength/enabled on existing ones — then inserts every member's
+    /// trigger words (looked up in the library by path).
+    private func applyStack(_ stack: LoraStack) {
+        for entry in stack.loras {
+            if let idx = loras.firstIndex(where: { $0.path == entry.path }) {
+                loras[idx].strength = entry.strength
+                loras[idx].enabled = entry.enabled
+            } else {
+                loras.append(entry)
+            }
+        }
+        guard let onInsertTriggerWords, let library else { return }
+        let triggers = stack.loras
+            .compactMap { library.libraryEntry(path: $0.path)?.triggerWords }
+            .filter { !$0.isEmpty }
+            .joined(separator: ", ")
+        if !triggers.isEmpty { onInsertTriggerWords(triggers) }
     }
 
     private func browseLocalFile() {
@@ -233,5 +296,124 @@ private struct LoraRowView: View {
             let rounded = round(v / 0.05) * 0.05
             if abs(v - rounded) > 1e-10 { lora.strength = rounded }
         }
+    }
+}
+
+// MARK: - Library & stacks picker sheet
+
+private struct LoraPickerSheet: View {
+    let library: LoraLibraryStore
+    let family: ModelFamily
+    let onAddLibrary: (LibraryLora) -> Void
+    let onApplyStack: (LoraStack) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+    @State private var search: String = ""
+
+    private var entries: [LibraryLora] {
+        let all = library.entries(for: family)
+        guard !search.isEmpty else { return all }
+        let q = search.lowercased()
+        return all.filter {
+            $0.displayName.lowercased().contains(q)
+                || $0.triggerWords.lowercased().contains(q)
+                || $0.tags.contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    private var stacks: [LoraStack] {
+        let all = library.stacks(for: family)
+        guard !search.isEmpty else { return all }
+        let q = search.lowercased()
+        return all.filter {
+            $0.displayName.lowercased().contains(q)
+                || $0.tags.contains { $0.lowercased().contains(q) }
+        }
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("\(family.rawValue) LoRA Library").font(.headline)
+                Spacer()
+                Button("Done") { dismiss() }.keyboardShortcut(.defaultAction)
+            }
+
+            TextField("Search name, trigger, or tag", text: $search)
+                .textFieldStyle(.roundedBorder)
+
+            if entries.isEmpty && stacks.isEmpty {
+                Text(library.entries(for: family).isEmpty && library.stacks(for: family).isEmpty
+                    ? "No library LoRAs or stacks for \(family.rawValue). Add them in Settings › LoRAs."
+                    : "No matches.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .padding(.vertical, 30)
+            } else {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if !stacks.isEmpty {
+                            sectionHeader("Stacks")
+                            ForEach(stacks) { stack in stackRow(stack) }
+                        }
+                        if !entries.isEmpty {
+                            sectionHeader("LoRAs")
+                            ForEach(entries) { entry in libraryRow(entry) }
+                        }
+                    }
+                }
+            }
+        }
+        .padding()
+        .frame(width: 460, height: 420)
+    }
+
+    private func sectionHeader(_ text: String) -> some View {
+        Text(text)
+            .font(.caption.weight(.semibold))
+            .foregroundStyle(.secondary)
+    }
+
+    private func libraryRow(_ entry: LibraryLora) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(entry.displayName).font(.callout).lineLimit(1).truncationMode(.middle)
+                if !entry.triggerWords.isEmpty {
+                    Text("Trigger: \(entry.triggerWords)")
+                        .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Add") { onAddLibrary(entry) }
+                .controlSize(.small)
+        }
+        .padding(8)
+        .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
+    }
+
+    private func stackRow(_ stack: LoraStack) -> some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 6) {
+                    Text(stack.displayName).font(.callout).lineLimit(1)
+                    Text("\(stack.loras.count)")
+                        .font(.caption2)
+                        .padding(.horizontal, 5).padding(.vertical, 1)
+                        .background(.blue.opacity(0.2), in: Capsule())
+                }
+                let names = stack.loras.map(\.displayName).joined(separator: ", ")
+                if !names.isEmpty {
+                    Text(names).font(.caption2).foregroundStyle(.secondary)
+                        .lineLimit(1).truncationMode(.middle)
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Apply") { onApplyStack(stack) }
+                .controlSize(.small)
+                .buttonStyle(.borderedProminent)
+        }
+        .padding(8)
+        .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
     }
 }

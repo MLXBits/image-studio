@@ -24,7 +24,17 @@ struct SettingsView: View {
     @State private var showingOutputDirPrompt: Bool = false
     @State private var mfluxSetupPhase: SetupPhase = .idle
     @State private var loraFamily: ModelFamily = .flux
+    @State private var loraTabMode: LoraTabMode = .defaults
     @State private var hfTokenDraft: String = ""
+
+    private enum LoraTabMode: String, CaseIterable, Identifiable {
+        case defaults = "Defaults"
+        case library = "Library"
+        case stacks = "Stacks"
+        var id: String {
+            rawValue
+        }
+    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -203,24 +213,36 @@ struct SettingsView: View {
             }
         )
         return VStack(alignment: .leading, spacing: 8) {
+            Picker("", selection: $loraTabMode) {
+                ForEach(LoraTabMode.allCases) { Text($0.rawValue).tag($0) }
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+
             Picker("", selection: $loraFamily) {
                 ForEach(ModelFamily.allCases, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()
 
-            Text("Default LoRAs are added to every new \(loraFamily.rawValue) generation.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-
-            ScrollView {
-                LoraManagerView(
-                    loras: filteredBinding,
-                    showNotes: true,
-                    alwaysExpanded: true,
-                    modelFamily: loraFamily
-                )
-                .frame(maxWidth: .infinity, alignment: .top)
+            switch loraTabMode {
+            case .defaults:
+                Text("Default LoRAs are added to every new \(loraFamily.rawValue) generation.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                ScrollView {
+                    LoraManagerView(
+                        loras: filteredBinding,
+                        showNotes: true,
+                        alwaysExpanded: true,
+                        modelFamily: loraFamily
+                    )
+                    .frame(maxWidth: .infinity, alignment: .top)
+                }
+            case .library:
+                LoraLibraryEditorView(family: loraFamily)
+            case .stacks:
+                LoraStacksEditorView(family: loraFamily)
             }
         }
         .padding()
