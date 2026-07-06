@@ -24,11 +24,10 @@ struct SettingsView: View {
     @State private var showingOutputDirPrompt: Bool = false
     @State private var mfluxSetupPhase: SetupPhase = .idle
     @State private var loraFamily: ModelFamily = .flux
-    @State private var loraTabMode: LoraTabMode = .defaults
+    @State private var loraTabMode: LoraTabMode = .library
     @State private var hfTokenDraft: String = ""
 
     private enum LoraTabMode: String, CaseIterable, Identifiable {
-        case defaults = "Defaults"
         case library = "Library"
         case stacks = "Stacks"
         var id: String {
@@ -205,14 +204,7 @@ struct SettingsView: View {
     // MARK: - LoRAs
 
     private var lorasTab: some View {
-        @Bindable var s = settings
-        let filteredBinding = Binding<[LoraEntry]>(
-            get: { s.defaultLoras.filter { $0.modelFamily == loraFamily } },
-            set: { updated in
-                s.defaultLoras = s.defaultLoras.filter { $0.modelFamily != loraFamily } + updated
-            }
-        )
-        return VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 8) {
             Picker("", selection: $loraTabMode) {
                 ForEach(LoraTabMode.allCases) { Text($0.rawValue).tag($0) }
             }
@@ -226,19 +218,6 @@ struct SettingsView: View {
             .labelsHidden()
 
             switch loraTabMode {
-            case .defaults:
-                Text("Default LoRAs are added to every new \(loraFamily.rawValue) generation.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                ScrollView {
-                    LoraManagerView(
-                        loras: filteredBinding,
-                        showNotes: true,
-                        alwaysExpanded: true,
-                        modelFamily: loraFamily
-                    )
-                    .frame(maxWidth: .infinity, alignment: .top)
-                }
             case .library:
                 LoraLibraryEditorView(family: loraFamily)
             case .stacks:

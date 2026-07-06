@@ -44,9 +44,16 @@ private struct TagChips: View {
 // MARK: - Library editor
 
 /// Manages the curated ``LibraryLora`` entries for a single model family.
+///
+/// The library is the single catalog of LoRAs. "Default" is not a separate
+/// list — it's a per-entry toggle here that writes through to
+/// ``AppSettings/defaultLoras`` (kept as the stored projection the per-model
+/// override system reads). A saved combo is a ``LoraStack``, built from these
+/// same entries.
 struct LoraLibraryEditorView: View {
     let family: ModelFamily
     @Environment(LoraLibraryStore.self) private var libraryStore
+    @Environment(AppSettings.self) private var settings
     @State private var editing: LibraryLora?
 
     private var entries: [LibraryLora] {
@@ -55,10 +62,12 @@ struct LoraLibraryEditorView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            HStack {
-                Text("Cataloged LoRAs with trigger words and tags. Add them to a job from the LoRA picker in the params panel.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+            HStack(alignment: .top) {
+                Text(
+                    "Your catalog of \(family.rawValue) LoRAs. Toggle **Default** to auto-apply one to every new generation; add any to a job or Stack from the LoRA picker."
+                )
+                .font(.caption)
+                .foregroundStyle(.secondary)
                 Spacer()
                 Button {
                     editing = LibraryLora(modelFamily: family)
@@ -84,14 +93,27 @@ struct LoraLibraryEditorView: View {
                 }
             }
         }
+        // Fold any pre-existing default LoRAs that predate the library into it,
+        // so the toggle reflects reality and nothing is orphaned. Idempotent.
+        .onChange(of: family, initial: true) { _, _ in importOrphanDefaults() }
         .sheet(item: $editing) { entry in
             LibraryLoraEditSheet(draft: entry, family: family)
                 .environment(libraryStore)
+                .environment(settings)
         }
     }
 
     private func row(_ entry: LibraryLora) -> some View {
         HStack(spacing: 8) {
+            Toggle(isOn: Binding(
+                get: { isDefault(entry) },
+                set: { setDefault($0, entry) }
+            )) {
+                Text("Default").font(.caption2)
+            }
+            .toggleStyle(.checkbox)
+            .help("Auto-apply to every new \(family.rawValue) generation")
+
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
                     Text(entry.displayName)
@@ -112,7 +134,7 @@ struct LoraLibraryEditorView: View {
             Button("Edit") { editing = entry }
                 .controlSize(.small)
             Button {
-                libraryStore.deleteLibrary(id: entry.id)
+                delete(entry)
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
@@ -121,12 +143,52 @@ struct LoraLibraryEditorView: View {
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
     }
+
+    // MARK: - Default membership (projected into settings.defaultLoras)
+
+    private func isDefault(_ entry: LibraryLora) -> Bool {
+        settings.defaultLoras.contains { $0.path == entry.path && $0.modelFamily == family }
+    }
+
+    private func setDefault(_ on: Bool, _ entry: LibraryLora) {
+        var list = settings.defaultLoras
+        if on {
+            if !list.contains(where: { $0.path == entry.path && $0.modelFamily == family }) {
+                var applied = entry.toEntry(); applied.enabled = true; list.append(applied)
+            }
+        } else {
+            list.removeAll { $0.path == entry.path && $0.modelFamily == family }
+        }
+        settings.defaultLoras = list
+    }
+
+    private func delete(_ entry: LibraryLora) {
+        // Removing from the catalog also removes it as a default.
+        settings.defaultLoras.removeAll { $0.path == entry.path && $0.modelFamily == family }
+        libraryStore.deleteLibrary(id: entry.id)
+    }
+
+    private func importOrphanDefaults() {
+        let libraryPaths = Set(libraryStore.library.map(\.path))
+        let orphans = settings.defaultLoras.filter {
+            $0.modelFamily == family && !libraryPaths.contains($0.path)
+        }
+        for orphan in orphans {
+            libraryStore.upsert(LibraryLora(
+                path: orphan.path,
+                modelFamily: family,
+                defaultStrength: orphan.strength,
+                notes: orphan.notes
+            ))
+        }
+    }
 }
 
 private struct LibraryLoraEditSheet: View {
     @State private var draft: LibraryLora
     let family: ModelFamily
     @Environment(LoraLibraryStore.self) private var libraryStore
+    @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
     @State private var tagsText: String
 
@@ -213,6 +275,13 @@ private struct LibraryLoraEditSheet: View {
         draft.modelFamily = family
         draft.tags = parseTags(tagsText)
         libraryStore.upsert(draft)
+        // A LoRA has one strength: if this entry is currently a default, keep
+        // the applied strength in sync with the edited default strength.
+        if let idx = settings.defaultLoras.firstIndex(
+            where: { $0.path == draft.path && $0.modelFamily == family }
+        ) {
+            settings.defaultLoras[idx].strength = draft.defaultStrength
+        }
         dismiss()
     }
 
@@ -371,7 +440,8 @@ private struct LoraStackEditSheet: View {
                     loras: $draft.loras,
                     showNotes: false,
                     alwaysExpanded: true,
-                    modelFamily: family
+                    modelFamily: family,
+                    library: libraryStore
                 )
             }
             .frame(minHeight: 160, maxHeight: 260)

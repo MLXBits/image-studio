@@ -82,6 +82,14 @@ struct LoraManagerView: View {
         }
     }
 
+    /// Rows are editable (delete + reorder) whenever the list can be added to —
+    /// either via the manual add button or the library/stacks picker. Prevents
+    /// the "can add but can't remove" asymmetry in the Flux/Krea 2 panels, which
+    /// hide manual add but still offer the library picker.
+    private var rowsEditable: Bool {
+        showAdd || library != nil
+    }
+
     private var loraList: some View {
         VStack(spacing: 19) {
             ForEach($loras) { $lora in
@@ -89,7 +97,7 @@ struct LoraManagerView: View {
                 LoraRowView(
                     lora: $lora,
                     showNotes: showNotes,
-                    showDelete: showAdd,
+                    showDelete: rowsEditable,
                     canMoveUp: index > 0,
                     canMoveDown: index < loras.count - 1,
                     onMoveUp: { move(from: index, to: index - 1) },

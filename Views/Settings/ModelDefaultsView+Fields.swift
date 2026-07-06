@@ -201,7 +201,7 @@ extension ModelDefaultsView {
     func loraOverrideSection(model: FluxModelVariant, current: [LoraEntry]?) -> some View {
         let globals = settings.defaultLoras
         if globals.isEmpty {
-            Text("No LoRAs configured. Add them in the LoRAs tab.")
+            Text("No default LoRAs. Toggle Default on entries in the LoRAs › Library tab.")
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         } else {
