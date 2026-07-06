@@ -1,41 +1,70 @@
 #!/usr/bin/env bash
 set -eo pipefail
 
-# Usage: ./release.sh <version>
-# Example: ./release.sh 0.1.0
+# Usage: ./release.sh [version]
+#
+# The VERSION file is the single source of truth. Bump it, run this, done:
+# the script syncs project.yml, builds/signs/notarizes the DMG, tags the
+# commit, pushes, and publishes the GitHub release. Pass a version argument
+# only to override the VERSION file for a one-off.
 #
 # Prerequisites:
-#   1. Developer ID Application certificate in Keychain
+#   1. Developer ID Application certificate in Keychain.
 #   2. notarytool credentials stored once via:
 #      xcrun notarytool store-credentials "notarytool" \
-#        --apple-id "your@email.com" \
-#        --team-id XXXXXXXXXX \
-#        --password "xxxx-xxxx-xxxx-xxxx"   # app-specific password from appleid.apple.com
+#        --apple-id "your@email.com" --team-id XXXXXXXXXX \
+#        --password "xxxx-xxxx-xxxx-xxxx"   # app-specific password
+#   3. A local .env (gitignored) exporting DEVELOPMENT_TEAM (and optionally
+#      NOTARYTOOL_PROFILE). Sourced automatically.
+#   4. gh CLI authenticated with push access to the GitHub repo.
 
-VERSION="${1:?Usage: ./release.sh <version>  e.g. ./release.sh 0.1.0}"
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+cd "$SCRIPT_DIR"
+
+# Local secrets (Team ID, notarytool profile).
+# shellcheck disable=SC1091
+[ -f "$SCRIPT_DIR/.env" ] && source "$SCRIPT_DIR/.env"
+
+# Version: VERSION file is the source of truth; a CLI arg overrides it.
+VERSION="${1:-$(tr -d '[:space:]' < "$SCRIPT_DIR/VERSION")}"
+[ -n "$VERSION" ] || { echo "No version found (set VERSION file or pass an arg)."; exit 1; }
+
 SCHEME="MLXBits Image Studio"
 APP_NAME="MLXBits Image Studio"
 NOTARYTOOL_PROFILE="${NOTARYTOOL_PROFILE:-notarytool}"
+GH_REPO="MLXBits/image-studio"
+PUSH_REMOTE="all"
+TAG="v${VERSION}"
 
-# Your 10-character Apple Developer Team ID. Set via env var or a local
-# .env file (both gitignored) rather than hardcoding here.
-#   export DEVELOPMENT_TEAM=XXXXXXXXXX   # or source .env
-DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:?Set DEVELOPMENT_TEAM to your Apple Developer Team ID}"
+# Your 10-character Apple Developer Team ID, from .env (gitignored).
+DEVELOPMENT_TEAM="${DEVELOPMENT_TEAM:?Set DEVELOPMENT_TEAM in .env to your Apple Developer Team ID}"
 
-SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 BUILD_DIR="$SCRIPT_DIR/build"
 ARCHIVE="$BUILD_DIR/archive.xcarchive"
 EXPORT_DIR="$BUILD_DIR/export"
 APP_PATH="$EXPORT_DIR/$APP_NAME.app"
 DMG_PATH="$BUILD_DIR/${APP_NAME// /_}_${VERSION}.dmg"
 
+echo "==> Releasing $TAG"
+
+# Keep project.yml's MARKETING_VERSION in sync with VERSION so plain builds and
+# the committed source always match the release — no separate manual bump.
+sed -i '' "s/^\( *MARKETING_VERSION:\).*/\1 \"$VERSION\"/" project.yml
+
 echo "==> Cleaning build dir..."
 rm -rf "$BUILD_DIR"
 mkdir -p "$BUILD_DIR"
 
 echo "==> Regenerating Xcode project..."
-cd "$SCRIPT_DIR"
 xcodegen generate
+
+# Commit the version bump (VERSION + project.yml + regenerated pbxproj) if
+# anything changed, so the tag points at source that matches the release.
+if ! git diff --quiet -- VERSION project.yml "MLXBits Image Studio.xcodeproj/project.pbxproj"; then
+  git add VERSION project.yml "MLXBits Image Studio.xcodeproj/project.pbxproj"
+  git commit -q -m "chore: release $TAG"
+  echo "    Committed version bump."
+fi
 
 # Build number = total git commit count. Monotonically increases with every
 # commit, so it never collides and never needs a manual bump.
@@ -112,8 +141,28 @@ xcrun notarytool submit "$DMG_PATH" \
 echo "==> Stapling notarization ticket..."
 xcrun stapler staple "$DMG_PATH"
 
+# Everything below runs only after a signed, notarized, stapled DMG exists.
+
+echo "==> Tagging $TAG and pushing to $PUSH_REMOTE..."
+if ! git rev-parse "$TAG" >/dev/null 2>&1; then
+  git tag -a "$TAG" -m "$TAG"
+fi
+git push "$PUSH_REMOTE" HEAD:main
+git push "$PUSH_REMOTE" "$TAG"
+
+echo "==> Publishing GitHub release..."
+if gh release view "$TAG" -R "$GH_REPO" >/dev/null 2>&1; then
+  gh release upload "$TAG" "$DMG_PATH" -R "$GH_REPO" --clobber
+  echo "    Release already existed; DMG uploaded."
+else
+  gh release create "$TAG" "$DMG_PATH" \
+    -R "$GH_REPO" \
+    --title "$TAG" \
+    --verify-tag \
+    --generate-notes
+fi
+
 echo ""
-echo "Done. Release artifact:"
+echo "Done. Released $TAG:"
+echo "  https://github.com/${GH_REPO}/releases/tag/${TAG}"
 echo "  $DMG_PATH"
-echo ""
-echo "Upload to GitHub Releases as v${VERSION}."
