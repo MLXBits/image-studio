@@ -26,7 +26,16 @@ enum GemmaChatRunner {
     /// uv `--with` requirements. Bumping a floor forces uv past its cached
     /// resolution, so raise these when a model needs a newer architecture.
     static let mlxLMRequirement = "mlx-lm>=0.31.3"
-    static let mlxVLMRequirement = "mlx-vlm>=0.6.3"
+    /// Pinned to 0.6.3 (not a floor). mlx-vlm 0.6.4 regressed gemma4_unified:
+    /// its Gemma4UnifiedProcessor unconditionally passes `video_processor=` to
+    /// transformers' ProcessorMixin, which — with no torchvision in the MLX env —
+    /// drops "video_processor" from its accepted attributes and raises
+    /// `TypeError: Unexpected keyword argument video_processor`. mlx-vlm's
+    /// AutoProcessor patch swallows that under a bare `except: pass` and falls
+    /// through to the stock loader, surfacing the misleading
+    /// `Could not import module 'Gemma4UnifiedProcessor'`. 0.6.3 loads the model
+    /// cleanly under the transformers<5.13 pin below. Bump once mlx-vlm fixes it.
+    static let mlxVLMRequirement = "mlx-vlm==0.6.3"
     /// Upper-bound transformers below 5.13. mlx-lm 0.31.3 registers its
     /// NewlineTokenizer with `AutoTokenizer.register("NewlineTokenizer", …)`
     /// — passing a string — which transformers 5.13 rejects (it now requires a
