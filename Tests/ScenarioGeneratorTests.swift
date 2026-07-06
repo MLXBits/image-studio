@@ -80,6 +80,24 @@ struct ScenarioGeneratorTests {
         #expect(ScenarioGenerator.extractReply(from: raw) == "A vivid prose prompt.")
     }
 
+    @Test func extractReplyStripsUvPreambleWithoutSeparators() {
+        // mlx_vlm --no-verbose one-shot: no `==========`, so replyRegion
+        // returns the whole merged output with uv's install noise on top.
+        let raw = """
+        Resolved 71 packages in 12ms
+        Installed 70 packages in 124ms
+        A woman reads by a rain-streaked window.
+        """
+        #expect(ScenarioGenerator.extractReply(from: raw) == "A woman reads by a rain-streaked window.")
+    }
+
+    @Test func stripToolPreambleLeavesBodyMentionsAlone() {
+        // Only leading uv lines are dropped — prose that later says "Installed"
+        // survives untouched.
+        let text = "A neon sign reads Installed.\nResolved to stay all night."
+        #expect(GemmaChatRunner.stripToolPreamble(from: text) == text)
+    }
+
     @Test func firstTurnStripsResidualTokens() {
         #expect(GemmaChatRunner.firstTurn(of: "model\nThe answer.<end_of_turn>trailing") == "The answer.")
         #expect(GemmaChatRunner.firstTurn(of: "Plain answer, no tokens.") == "Plain answer, no tokens.")

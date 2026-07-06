@@ -90,6 +90,32 @@ enum GemmaChatRunner {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Strips leading `uv` status lines (e.g. "Installed 70 packages in
+    /// 124ms", "Resolved …", package `+ pkg==ver` lines) from a reply. uv
+    /// prints these to stderr, which the one-shot runner merges into stdout;
+    /// on the `mlx_vlm.generate --no-verbose` path there are no `==========`
+    /// separators for ``replyRegion`` to bound the reply, so they land at the
+    /// top of the extracted prompt. Only leading lines are removed, so a
+    /// prompt that legitimately mentions such words later is untouched.
+    nonisolated static func stripToolPreamble(from text: String) -> String {
+        let pattern =
+            "^(Resolved|Prepared|Installed|Downloaded|Uninstalled|Audited|Built|Building|Updated|Bytecode compiled)\\b.*$"
+                + "|^[+-] \\S+.*$"
+        let regex = try? NSRegularExpression(pattern: pattern)
+        var lines = text.components(separatedBy: "\n")
+        while let first = lines.first {
+            let trimmed = first.trimmingCharacters(in: .whitespaces)
+            if trimmed.isEmpty {
+                lines.removeFirst()
+                continue
+            }
+            let range = NSRange(trimmed.startIndex ..< trimmed.endIndex, in: trimmed)
+            guard let regex, regex.firstMatch(in: trimmed, range: range) != nil else { break }
+            lines.removeFirst()
+        }
+        return lines.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     /// Gemma chat-template few-shot prompt: examples live in prior user/model
     /// turns so the model sees them as conversation history, not as content
     /// in the system prompt to copy from.

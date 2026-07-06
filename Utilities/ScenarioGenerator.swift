@@ -175,6 +175,9 @@ final class ScenarioGenerator {
         // mlx-vlm (and some models) continue the few-shot pattern past their
         // answer — keep only the first turn's text.
         reply = GemmaChatRunner.firstTurn(of: reply)
+        // The mlx_vlm --no-verbose one-shot has no separators, so replyRegion
+        // returns the whole merged stdout+stderr, including uv's install noise.
+        reply = GemmaChatRunner.stripToolPreamble(from: reply)
         return reply.isEmpty ? nil : reply
     }
 
