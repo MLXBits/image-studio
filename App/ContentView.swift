@@ -37,6 +37,12 @@ struct ContentView: View {
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
+    /// Armed in `onAppear` when restoring the last-used model will change
+    /// `params.model` away from its initial default. Swallows the resulting
+    /// `onChange(of: params.model)` so the interactive "switch model → reset to
+    /// that model's defaults" path doesn't clobber the last-used LoRAs that
+    /// `applyDefaults` just restored. Consumed exactly once.
+    @State private var suppressModelResetOnRestore = false
     @State private var fullSizeImage: NSImage?
     @State private var comparePair: ComparePair?
     @State private var boxOverlay: BoxOverlayContext?
@@ -97,6 +103,14 @@ struct ContentView: View {
             // Pattern 5: a committed model switch proactively evicts a warm
             // model of a different variant (debounced in the controller).
             driverController.modelPickerChanged(to: m.rawValue)
+            // The launch-time restore in `onAppear` seeds `params.model` from
+            // `lastModel`, which fires this handler before any user interaction.
+            // Skip the defaults reset that one time so it doesn't overwrite the
+            // last-used LoRAs `applyDefaults` just restored.
+            if suppressModelResetOnRestore {
+                suppressModelResetOnRestore = false
+                return
+            }
             if m.isIdeogram4 {
                 ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
                 return
@@ -208,6 +222,11 @@ struct ContentView: View {
             }
             .onAppear {
                 galleryWidth = savedGalleryWidth
+                // Arm the suppression only when the restore will actually change
+                // the model (and thus fire onChange). If lastModel already equals
+                // the initial default, onChange won't fire and the flag must stay
+                // down so the next genuine user switch isn't swallowed.
+                suppressModelResetOnRestore = settings.lastModel != params.model
                 params.applyDefaults(from: settings)
                 ideogramParams.applyDefaults(settings: settings)
                 krea2Params.applyDefaults(settings: settings)
