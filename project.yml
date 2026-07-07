@@ -15,7 +15,7 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
-    MARKETING_VERSION: "0.6.0"
+    MARKETING_VERSION: "0.6.1"
     CURRENT_PROJECT_VERSION: "1"
   configs:
     # Team only on Release so Debug builds stay unsigned/adhoc and don't
