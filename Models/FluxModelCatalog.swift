@@ -105,13 +105,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     /// Soft cap (in estimated tokens) for the prompt field, or `nil` to hide the
-    /// counter. FLUX.2 Klein encodes prompts with Qwen3 at `max_sequence_length=512`;
-    /// text beyond that is truncated by the backend before it reaches the model.
-    /// Ideogram routes through its own params panel; `custom` has an unknown encoder.
+    /// counter. FLUX.2 Klein and Krea 2 encode prompts with Qwen at
+    /// `max_sequence_length=512`; text beyond that is truncated by the backend
+    /// before it reaches the model. Ideogram routes through its own params panel;
+    /// `custom` has an unknown encoder.
     var promptTokenSoftCap: Int? {
         switch self {
-        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: 512
-        case .ideogram4, .krea2, .custom: nil
+        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B, .krea2: 512
+        case .ideogram4, .custom: nil
         }
     }
 

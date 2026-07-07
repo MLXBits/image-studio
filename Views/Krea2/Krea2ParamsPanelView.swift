@@ -42,7 +42,8 @@ struct Krea2ParamsPanelView: View {
                 text: $params.prompt,
                 placeholder: "Describe your image…",
                 label: "Prompt",
-                hint: "Describe the image you want to generate"
+                hint: "Describe the image you want to generate",
+                tokenSoftCap: FluxModelVariant.krea2.promptTokenSoftCap
             )
             if cfgOn {
                 GrowingPromptField(
