@@ -19,7 +19,8 @@ settings:
     CURRENT_PROJECT_VERSION: "1"
   configs:
     # Team only on Release so Debug builds stay unsigned/adhoc and don't
-    # require a provisioning round-trip. release.sh archives Release.
+    # require a provisioning round-trip. CI archives Release (see
+    # .github/workflows/release.yml), overriding DEVELOPMENT_TEAM at build time.
     # Replace XXXXXXXXXX with your Apple Developer Team ID (10-char string from
     # developer.apple.com → Membership). Only needed to build a signed release.
     Release:

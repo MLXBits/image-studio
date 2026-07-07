@@ -134,23 +134,31 @@ open "MLXBits Image Studio.xcodeproj"
 
 ---
 
-## Creating a signed release DMG
+## Cutting a release
+
+Releases are built, signed, notarized, and published automatically by GitHub Actions
+([`.github/workflows/release.yml`](.github/workflows/release.yml)) whenever a `vX.Y.Z` tag is
+pushed. The tag name is the source of truth for the release version.
 
 ```bash
-# 1. Store notarytool credentials once
-xcrun notarytool store-credentials "notarytool" \
-  --apple-id "your@email.com" \
-  --team-id YOUR_TEAM_ID \
-  --password "xxxx-xxxx-xxxx-xxxx"   # app-specific password from appleid.apple.com
-
-# 2. Set your Team ID (10-char string from developer.apple.com → Membership)
-export DEVELOPMENT_TEAM=YOUR_TEAM_ID
-# or store it in a gitignored .env file:  echo "DEVELOPMENT_TEAM=YOUR_TEAM_ID" > .env && source .env
-
-# 3. Run the release script
-./release.sh 0.5.0
-# → build/MLXBits_Image_Studio_0.5.0.dmg (notarized + stapled)
+# 1. Bump the VERSION file to the new number, commit, and push as usual.
+# 2. Tag and push the tag:
+git tag v0.6.3
+git push all v0.6.3    # → triggers the release workflow
 ```
+
+The workflow derives the version from the tag, builds the Release archive with Developer ID
+signing, creates a notarized + stapled DMG, and publishes a GitHub release with generated notes.
+
+**One-time setup** — add these repository secrets (Settings → Secrets and variables → Actions):
+
+| Secret | Value |
+| --- | --- |
+| `DEVELOPER_ID_CERT_P12_BASE64` | `base64 < DeveloperID.p12` — the "Developer ID Application" cert exported **with private key** |
+| `DEVELOPER_ID_CERT_PASSWORD` | the `.p12` export password |
+| `DEVELOPMENT_TEAM` | your 10-char Apple Team ID |
+| `APPLE_ID` | Apple ID email for notarization |
+| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password from appleid.apple.com |
 
 ---
 
@@ -167,5 +175,5 @@ Utilities/     KeychainHelper, MetadataSidecar, IdeogramCaptionGenerator, progre
 Tests/         Swift Testing unit tests (RunnerSupport, BBoxGeometry, caption JSON, hex color)
 Resources/     Info.plist, entitlements
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
-release.sh     Archive → notarize → DMG pipeline
+VERSION        Release version marker; a matching vX.Y.Z tag drives the release workflow
 ```
