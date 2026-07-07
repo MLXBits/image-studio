@@ -224,6 +224,9 @@ struct SettingsView: View {
                 LoraStacksEditorView(family: loraFamily)
             }
         }
+        // Pin the controls to the top; without a greedy child (e.g. the empty
+        // Stacks state) the VStack would otherwise float to the vertical center.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()
     }
 
