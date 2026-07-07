@@ -824,7 +824,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             }
 
             let allBoards = sections.map(\.board)
-            let boardsMenu = NSMenu(title: "Move to Group")
+            let boardsMenu = NSMenu(title: "Move to…")
             boardsMenu.addItem(menuItem("Default") { [weak self] in self?.parent.onMoveToBoard(item, "Default") })
             let others = allBoards.filter { $0 != "Default" && $0 != item.board }
             if !others.isEmpty {
@@ -833,7 +833,9 @@ struct GalleryCollectionView: NSViewRepresentable {
                     boardsMenu.addItem(menuItem(board) { [weak self] in self?.parent.onMoveToBoard(item, board) })
                 }
             }
-            let boardsItem = NSMenuItem(title: "Move to Group", action: nil, keyEquivalent: "")
+            boardsMenu.addItem(.separator())
+            boardsMenu.addItem(menuItem("New Group…") { [weak self] in self?.parent.onNewGroup(item) })
+            let boardsItem = NSMenuItem(title: "Move to…", action: nil, keyEquivalent: "")
             boardsItem.submenu = boardsMenu
             menu.addItem(boardsItem)
 
@@ -874,6 +876,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
     var onUseInImg2Img: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
+    var onNewGroup: (GalleryItem) -> Void
     var onStripMetadata: (GalleryItem) -> Void
     var onRevealInFinder: (String) -> Void
     var onToggleSection: (String) -> Void

@@ -179,6 +179,16 @@ struct GenerationGalleryView: View {
                             gallery.moveItem(item, toBoard: board, outputDir: settings.outputDir)
                         }
                     },
+                    onNewGroup: { item in
+                        // Ensure the right-clicked item is the move target, then reuse
+                        // the shared new-group popover (confirmNewGroup moves the selection).
+                        if !selection.contains(item.id) {
+                            selection = [item.id]
+                            anchorItemId = item.id
+                            selectedItem = item
+                        }
+                        showingNewGroup = true
+                    },
                     onStripMetadata: { item in
                         let targets = selection.contains(item.id)
                             ? gallery.items.filter { selection.contains($0.id) }

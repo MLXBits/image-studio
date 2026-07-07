@@ -116,7 +116,6 @@
 		F3821108E24EEEEA9C759A95 /* ScenarioGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */; };
 		F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07C86B92053779C5988498B /* JobRunner.swift */; };
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
-		FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB0CE758913192CEFE013E01 /* GalleryItemView.swift */; };
 		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
 		FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2288F848C8AC536F933F7831 /* TimingModelTests.swift */; };
 /* End PBXBuildFile section */
@@ -239,7 +238,6 @@
 		DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
 		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
-		EB0CE758913192CEFE013E01 /* GalleryItemView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibrary.swift; sourceTree = "<group>"; };
 		F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpanderTests.swift; sourceTree = "<group>"; };
@@ -455,7 +453,6 @@
 			isa = PBXGroup;
 			children = (
 				DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */,
-				EB0CE758913192CEFE013E01 /* GalleryItemView.swift */,
 				B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */,
 			);
 			path = Gallery;
@@ -671,7 +668,6 @@
 				62C2027429B9D3CD98665509 /* FullSizeImageView.swift in Sources */,
 				475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */,
 				A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */,
-				FAD7A841102F60BD95DC06FF /* GalleryItemView.swift in Sources */,
 				1B8C89C99300F30608BBA29F /* GalleryRating.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */,
