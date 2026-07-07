@@ -90,6 +90,8 @@ struct LoraLibraryEditorView: View {
                             row(entry)
                         }
                     }
+                    // Keep the overlay scrollbar off the row's trailing buttons.
+                    .padding(.trailing, 14)
                 }
             }
         }
@@ -345,6 +347,8 @@ struct LoraStacksEditorView: View {
                             row(stack)
                         }
                     }
+                    // Keep the overlay scrollbar off the row's trailing buttons.
+                    .padding(.trailing, 14)
                 }
             }
         }
@@ -443,6 +447,9 @@ private struct LoraStackEditSheet: View {
                     modelFamily: family,
                     library: libraryStore
                 )
+                // Reserve the overlay scrollbar's gutter so it doesn't sit on
+                // top of the strength fields / delete buttons at the right edge.
+                .padding(.trailing, 14)
             }
             .frame(minHeight: 160, maxHeight: 260)
 
