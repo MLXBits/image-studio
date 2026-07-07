@@ -116,7 +116,14 @@ struct ContentView: View {
                 return
             }
             if m.isKrea2 {
-                krea2Params.loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+                // Restore the last-used Krea 2 LoRAs (mirrors `applyDefaults`), falling
+                // back to defaults only when none were saved. Wiping straight to
+                // defaults here dropped the remembered stack the moment the user
+                // re-selected Krea 2 in the picker.
+                let saved = settings.lastKrea2?.loras ?? []
+                krea2Params.loras = saved.isEmpty
+                    ? settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+                    : saved
                 return
             }
             guard m != .custom else { return }
