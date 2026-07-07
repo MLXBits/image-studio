@@ -150,6 +150,24 @@ fi
 git push "$PUSH_REMOTE" HEAD:main
 git push "$PUSH_REMOTE" "$TAG"
 
+# Build release notes from the commits since the previous tag. Each line is a
+# clickable short hash, so the notes work even without PRs (--generate-notes
+# only lists merged PRs and otherwise degrades to a bare compare link).
+NOTES_FILE="$BUILD_DIR/notes.md"
+PREV_TAG="$(git describe --tags --abbrev=0 "${TAG}^" 2>/dev/null || true)"
+{
+  echo "## What's Changed"
+  echo
+  git log --no-merges --invert-grep --grep="^chore: release " \
+    --pretty=format:"- %s ([\`%h\`](https://github.com/${GH_REPO}/commit/%H))" \
+    "${PREV_TAG:+$PREV_TAG..}HEAD"
+  echo
+  if [ -n "$PREV_TAG" ]; then
+    echo
+    echo "**Full Changelog**: https://github.com/${GH_REPO}/compare/${PREV_TAG}...${TAG}"
+  fi
+} > "$NOTES_FILE"
+
 echo "==> Publishing GitHub release..."
 if gh release view "$TAG" -R "$GH_REPO" >/dev/null 2>&1; then
   gh release upload "$TAG" "$DMG_PATH" -R "$GH_REPO" --clobber
@@ -159,7 +177,7 @@ else
     -R "$GH_REPO" \
     --title "$TAG" \
     --verify-tag \
-    --generate-notes
+    --notes-file "$NOTES_FILE"
 fi
 
 echo ""
