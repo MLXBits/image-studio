@@ -35,12 +35,6 @@ jobs:
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
           echo "TAG=$GITHUB_REF_NAME" >> "$GITHUB_ENV"
           echo "BUILD_NUMBER=$(git rev-list --count HEAD)" >> "$GITHUB_ENV"
-          # Guard: the committed VERSION file must match the tag.
-          FILE_VERSION="$(tr -d '[:space:]' < VERSION)"
-          if [ "$FILE_VERSION" != "$VERSION" ]; then
-            echo "::error::Tag $GITHUB_REF_NAME implies version '$VERSION' but VERSION file is '$FILE_VERSION'. Bump VERSION to match the tag."
-            exit 1
-          fi
           echo "Releasing $GITHUB_REF_NAME (version $VERSION, build $(git rev-list --count HEAD))"
 
       - name: Import Developer ID signing certificate

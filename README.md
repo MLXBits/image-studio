@@ -141,14 +141,14 @@ Releases are built, signed, notarized, and published automatically by GitHub Act
 pushed. The tag name is the source of truth for the release version.
 
 ```bash
-# 1. Bump the VERSION file to the new number, commit, and push as usual.
-# 2. Tag and push the tag:
 git tag v0.6.3
 git push all v0.6.3    # → triggers the release workflow
 ```
 
 The workflow derives the version from the tag, builds the Release archive with Developer ID
 signing, creates a notarized + stapled DMG, and publishes a GitHub release with generated notes.
+The tag is the sole source of truth for the version. (Optionally bump `MARKETING_VERSION` in
+`project.yml` too, so local Debug builds report the new number — CI overrides it either way.)
 
 **One-time setup** — add these repository secrets (Settings → Secrets and variables → Actions):
 
@@ -175,5 +175,4 @@ Utilities/     KeychainHelper, MetadataSidecar, IdeogramCaptionGenerator, progre
 Tests/         Swift Testing unit tests (RunnerSupport, BBoxGeometry, caption JSON, hex color)
 Resources/     Info.plist, entitlements
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
-VERSION        Release version marker; a matching vX.Y.Z tag drives the release workflow
 ```
