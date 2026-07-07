@@ -88,7 +88,7 @@ struct SettingsView: View {
             Form {
                 Section {
                     Picker("Default model", selection: $s.defaultModel) {
-                        ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+                        ForEach(FluxModelVariant.allModels, id: \.self) { v in
                             Text(v.displayName).tag(v)
                         }
                     }
