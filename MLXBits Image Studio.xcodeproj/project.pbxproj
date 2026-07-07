@@ -24,6 +24,7 @@
 		16DC20A31C83D44C009AA770 /* WildcardExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989B03F4B6A6D224348122FD /* WildcardExpander.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */; };
+		1A5F45C560C1C0085844AF7B /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */; };
 		1B8C89C99300F30608BBA29F /* GalleryRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC7445FBA2C696BE4141103 /* GalleryRating.swift */; };
 		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
@@ -40,6 +41,7 @@
 		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
+		3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */; };
 		3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
 		4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 620B629F83341AF0145AA278 /* NotepadView.swift */; };
@@ -105,6 +107,7 @@
 		D380D3C1477B19506CEEB0BF /* Debouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB933A545C60752280A661AE /* Debouncer.swift */; };
 		D83BE145C93A460F115D96E8 /* CompareView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85E7AEA39A7CEEEC9D948F54 /* CompareView.swift */; };
 		DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */; };
+		DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */; };
 		DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */; };
 		E2E41732CD031DA45C3E19BA /* LoraLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */; };
 		E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */; };
@@ -223,6 +226,7 @@
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
 		C4443AEA2099305CADF36EE5 /* PromptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistory.swift; sourceTree = "<group>"; };
+		C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
 		CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverProtocol.swift; sourceTree = "<group>"; };
@@ -239,6 +243,8 @@
 		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
+		EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibrary.swift; sourceTree = "<group>"; };
 		F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpanderTests.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
@@ -269,6 +275,7 @@
 				014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */,
 				9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */,
 				84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */,
+				EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */,
 				562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */,
 				989B03F4B6A6D224348122FD /* WildcardExpander.swift */,
 			);
@@ -278,6 +285,7 @@
 		3E5DE97DAACB7E26744F7BE9 /* Shared */ = {
 			isa = PBXGroup;
 			children = (
+				C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */,
 				6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */,
 				654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */,
 				B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */,
@@ -318,6 +326,7 @@
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
 				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
 				2288F848C8AC536F933F7831 /* TimingModelTests.swift */,
+				F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */,
 				F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */,
 			);
 			path = Tests;
@@ -641,6 +650,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */,
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
 				2E333F44B71226EA3F597955 /* BBoxEditorView+Canvas.swift in Sources */,
 				C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */,
@@ -737,6 +747,7 @@
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
 				4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */,
 				19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */,
+				1A5F45C560C1C0085844AF7B /* UpdateChecker.swift in Sources */,
 				D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */,
 				16DC20A31C83D44C009AA770 /* WildcardExpander.swift in Sources */,
 			);
@@ -753,6 +764,7 @@
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,
 				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
 				FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */,
+				3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */,
 				939D3FE8CED702E3C86445B9 /* WildcardExpanderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

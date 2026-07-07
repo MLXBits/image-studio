@@ -14,6 +14,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var coordinator = GenerationCoordinator()
     @State private var timing = TimingStore()
     @State private var loraLibrary = LoraLibraryStore()
+    @State private var updateChecker = UpdateChecker()
 
     var body: some Scene {
         WindowGroup {
@@ -30,12 +31,24 @@ struct MLXBitsImageStudioApp: App {
                 .environment(timing)
                 .environment(driverController)
                 .environment(loraLibrary)
+                .environment(updateChecker)
                 .frame(minWidth: 900, minHeight: 600)
+                // Launch-time update check; drives the toolbar badge when a newer
+                // GitHub release exists. Coalesced so multiple windows check once.
+                .task { await updateChecker.check() }
         }
         .windowResizability(.contentMinSize)
         .commands {
             CommandGroup(replacing: .newItem) {}
+            AboutCommands()
         }
+
+        Window("About MLXBits Image Studio", id: AboutCommands.windowID) {
+            AboutView()
+                .environment(updateChecker)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
 
         Settings {
             SettingsView()
@@ -58,5 +71,21 @@ struct MLXBitsImageStudioApp: App {
         // so cross-family switches evict before loading (see coordinator gate).
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
+    }
+}
+
+/// Replaces the standard "About" menu item so it opens our custom About window,
+/// which shows the running version and checks GitHub for the latest release.
+struct AboutCommands: Commands {
+    static let windowID = "about"
+
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some Commands {
+        CommandGroup(replacing: .appInfo) {
+            Button("About MLXBits Image Studio") {
+                openWindow(id: Self.windowID)
+            }
+        }
     }
 }

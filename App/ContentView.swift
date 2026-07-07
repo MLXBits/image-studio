@@ -26,8 +26,10 @@ struct ContentView: View {
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
     @Environment(MfluxDriverController.self) private var driverController
+    @Environment(UpdateChecker.self) private var updates
 
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.openURL) private var openURL
 
     @State private var previewState: PreviewState = .idle
     @State private var selectedGalleryItem: GalleryItem?
@@ -455,6 +457,23 @@ struct ContentView: View {
             }
             .help("Toggle params panel")
         }
+
+        // Debug builds carry the in-repo MARKETING_VERSION, which trails the
+        // latest tag, so the badge would always show. Release builds get the tag
+        // version injected by CI, so this only nags when genuinely behind.
+        #if !DEBUG
+            if updates.isUpdateAvailable {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        if let url = updates.releaseURL { openURL(url) }
+                    } label: {
+                        Label("Update available", systemImage: "arrow.down.circle.fill")
+                            .foregroundStyle(Color.accentColor)
+                    }
+                    .help("A new release (\(updates.latestVersion ?? "")) is available — click to view it on GitHub")
+                }
+            }
+        #endif
 
         ToolbarItem(placement: .primaryAction) {
             Button { showingNotepad = true } label: {
