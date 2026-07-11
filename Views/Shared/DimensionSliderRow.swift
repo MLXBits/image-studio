@@ -8,6 +8,13 @@ struct DimensionSliderRow: View {
     var range: ClosedRange<Int> = 64 ... 2048
     var step: Int = 16
 
+    // Typing is buffered here so intermediate keystrokes never reach `value`.
+    // Committing every digit lets coupled logic (locked-ratio recompute, area
+    // fit) rewrite the field mid-edit, which corrupts what the user is typing —
+    // so we only commit on Return or focus-out. Slider/stepper stay live.
+    @State private var text: String = ""
+    @FocusState private var focused: Bool
+
     var body: some View {
         HStack(spacing: 10) {
             Text(label)
@@ -32,17 +39,33 @@ struct DimensionSliderRow: View {
                 in: range,
                 step: step
             ) {
-                TextField("", value: $value, format: .number.grouping(.never))
+                TextField("", text: $text)
                     .textFieldStyle(.roundedBorder)
                     .font(.system(.body, design: .monospaced))
                     .multilineTextAlignment(.trailing)
                     .frame(width: 60)
-                    .onSubmit { value = snap(value) }
+                    .focused($focused)
+                    .onSubmit(commitText)
+                    .onChange(of: focused) { _, isFocused in
+                        if !isFocused { commitText() }
+                    }
+                    .onChange(of: value) { _, newValue in
+                        // Reflect slider/stepper/preset-driven changes, but never
+                        // clobber the field while the user is actively typing.
+                        if !focused { text = String(newValue) }
+                    }
                     .accessibilityLabel(label)
                     .accessibilityValue("\(value)")
                     .accessibilityHint("Type a value or use arrows. Snaps to nearest \(step) pixels.")
             }
         }
+        .onAppear { text = String(value) }
+    }
+
+    private func commitText() {
+        let digits = text.filter(\.isNumber)
+        value = snap(Int(digits) ?? value)
+        text = String(value)
     }
 
     private func snap(_ n: Int) -> Int {

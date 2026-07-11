@@ -265,10 +265,12 @@ struct DimensionPickerView: View {
     }
 
     private func resyncAspect(w: Int, h: Int) {
+        // Auto-detection must never re-lock: once the user unlocks, typing a value
+        // that happens to line up with a preset ratio should keep the aspect unlocked.
+        guard aspectLocked else { return }
         let detected = AspectPreset.detect(w: w, h: h)
         if detected != .free {
             selectedAspect = detected
-            aspectLocked = true
         } else {
             aspectLocked = false
         }
