@@ -25,7 +25,7 @@ final class Ideogram4ParamsPanelState {
         return !caption.highLevelDescription.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    func applyDefaults(settings: AppSettings) {
+    func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         preset = settings.lastIdeogramPreset ?? .normal
         width = settings.lastIdeogramWidth ?? 1024
         height = settings.lastIdeogramHeight ?? 1024
@@ -37,7 +37,7 @@ final class Ideogram4ParamsPanelState {
         if let cap = settings.lastIdeogramCaption { caption = cap }
         if let prompt = settings.lastIdeogramPlainPrompt { plainPrompt = prompt }
         if let usePlain = settings.lastIdeogramUsePlainPrompt { usePlainPrompt = usePlain }
-        loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+        loras = library.defaultLoras(for: .ideogram4)
     }
 
     /// Replays a completed generation's settings back into the form.

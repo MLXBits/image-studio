@@ -10,7 +10,6 @@ struct ModelDefaults: Codable, Equatable {
         let quantize: Int
         let lowRam: Bool
         let negativePrompt: String
-        let loras: [LoraEntry]
         let width: Int
         let height: Int
         let modelRepoOverride: String?
@@ -21,7 +20,6 @@ struct ModelDefaults: Codable, Equatable {
     var quantize: Int?
     var lowRam: Bool?
     var negativePrompt: String?
-    var loras: [LoraEntry]?
     var width: Int?
     var height: Int?
     var modelRepoOverride: String? // HF repo ID or local path; replaces the mflux default when set
@@ -36,7 +34,6 @@ extension ModelDefaults {
             quantize: quantize ?? model.recommendedQuantize,
             lowRam: lowRam ?? false,
             negativePrompt: model.supportsNegativePrompt ? (negativePrompt ?? "") : "",
-            loras: loras ?? [],
             width: width ?? 1024,
             height: height ?? 1024,
             modelRepoOverride: modelRepoOverride.flatMap { $0.isEmpty ? nil : $0 }
@@ -183,7 +180,9 @@ class AppSettings {
         didSet { save() }
     }
 
-    var defaultLoras: [LoraEntry] {
+    /// Legacy pre-library default list. Kept only so ``drainLegacyDefaultLoras()``
+    /// can fold it into `LibraryLora.isDefault` at launch; always empty afterwards.
+    private var legacyDefaultLoras: [LoraEntry] {
         didSet { save() }
     }
 
@@ -427,7 +426,7 @@ class AppSettings {
         defaultBoard = s.defaultBoard ?? ""
         defaultWidth = s.defaultWidth ?? 1024
         defaultHeight = s.defaultHeight ?? 1024
-        defaultLoras = s.defaultLoras ?? []
+        legacyDefaultLoras = s.defaultLoras ?? []
         mlxCacheLimitGB = s.mlxCacheLimitGB ?? 0
         hfHome = s.hfHome ?? ""
         mfluxCacheDir = s.mfluxCacheDir ?? ""
@@ -478,6 +477,16 @@ class AppSettings {
         } else {
             activeTemplateIDs = []
         }
+    }
+
+    // MARK: - Legacy migration
+
+    /// Returns and clears the legacy default-LoRA list (one-time migration hook;
+    /// see `LoraLibraryStore.migrateLegacyDefaults`).
+    func drainLegacyDefaultLoras() -> [LoraEntry] {
+        let drained = legacyDefaultLoras
+        if !drained.isEmpty { legacyDefaultLoras = [] }
+        return drained
     }
 
     // MARK: - Per-model helpers
@@ -546,7 +555,7 @@ class AppSettings {
             mfluxBinaryDir: mfluxBinaryDir, outputDir: outputDir,
             defaultModel: defaultModel, defaultBoard: defaultBoard,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
-            defaultLoras: defaultLoras,
+            defaultLoras: legacyDefaultLoras,
             mlxCacheLimitGB: mlxCacheLimitGB, hfHome: hfHome,
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
             logFontSize: logFontSize, lastPrompt: lastPrompt,

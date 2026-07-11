@@ -118,12 +118,12 @@ struct Krea2ParamsPanelView: View {
         LoraManagerView(
             loras: $params.loras,
             showAdd: false,
-            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .krea2 },
+            defaultLoras: loraLibrary.defaultLoras(for: .krea2),
             modelFamily: .krea2,
             library: loraLibrary,
             onInsertTriggerWords: { params.prompt = insertTriggerWords($0, into: params.prompt) },
             onReset: {
-                params.loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+                params.loras = loraLibrary.defaultLoras(for: .krea2)
             }
         )
         .padding(.bottom, 8)

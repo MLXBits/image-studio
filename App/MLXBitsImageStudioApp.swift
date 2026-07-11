@@ -71,6 +71,8 @@ struct MLXBitsImageStudioApp: App {
         // so cross-family switches evict before loading (see coordinator gate).
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
+        // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
+        loraLibrary.migrateLegacyDefaults(from: settings)
     }
 }
 

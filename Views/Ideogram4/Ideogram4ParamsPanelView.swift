@@ -74,7 +74,7 @@ struct Ideogram4ParamsPanelView: View {
             // LoRAs
             LoraManagerView(
                 loras: $params.loras,
-                defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .ideogram4 },
+                defaultLoras: loraLibrary.defaultLoras(for: .ideogram4),
                 modelFamily: .ideogram4,
                 library: loraLibrary,
                 onInsertTriggerWords: { triggers in
@@ -87,7 +87,7 @@ struct Ideogram4ParamsPanelView: View {
                     }
                 },
                 onReset: {
-                    params.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                    params.loras = loraLibrary.defaultLoras(for: .ideogram4)
                 }
             )
 

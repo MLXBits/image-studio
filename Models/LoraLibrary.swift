@@ -24,7 +24,8 @@ enum LoraRating: String, Codable, CaseIterable {
 /// state). Activating a library entry mints a fresh ``LoraEntry`` via ``toEntry()``.
 struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
-        case id, name, path, modelFamily, defaultStrength, triggerWords, tags, rating, thumbnailPath, notes
+        case id, name, path, modelFamily, defaultStrength, triggerWords, tags, rating, thumbnailPath, notes,
+             isDefault
     }
 
     var id = UUID()
@@ -38,6 +39,8 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     /// Reserved for a future preview thumbnail; no UI in v1.
     var thumbnailPath: String?
     var notes: String = ""
+    /// Auto-applied to every new generation for this entry's model family.
+    var isDefault: Bool = false
 
     /// Display name, falling back to the filename/repo tail of `path`.
     var displayName: String {
@@ -54,8 +57,11 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     }
 
     /// A per-job entry seeded from this library LoRA's identity and default strength.
+    /// Reuses the library `id` so repeated derivations (e.g. the default-LoRA lists
+    /// computed from the library each render) compare equal; job lists dedupe by
+    /// `path`, so the shared id never collides within one list.
     func toEntry() -> LoraEntry {
-        LoraEntry(path: path, strength: defaultStrength, modelFamily: modelFamily)
+        LoraEntry(id: id, path: path, strength: defaultStrength, notes: notes, modelFamily: modelFamily)
     }
 
     init(
@@ -68,7 +74,8 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         tags: [String] = [],
         rating: LoraRating = .unrated,
         thumbnailPath: String? = nil,
-        notes: String = ""
+        notes: String = "",
+        isDefault: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -80,6 +87,7 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         self.rating = rating
         self.thumbnailPath = thumbnailPath
         self.notes = notes
+        self.isDefault = isDefault
     }
 
     init(from decoder: Decoder) throws {
@@ -94,13 +102,14 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         rating = try c.decodeIfPresent(LoraRating.self, forKey: .rating) ?? .unrated
         thumbnailPath = try c.decodeIfPresent(String.self, forKey: .thumbnailPath)
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
     }
 }
 
 /// A named, reusable combination of LoRAs at set strengths — applied to a job
 /// in one click. Stores self-contained ``LoraEntry`` values (not references to
 /// the library) so editing a library entry never silently mutates a saved
-/// stack, matching how `AppSettings.defaultLoras` already behaves.
+/// stack.
 struct LoraStack: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, name, modelFamily, loras, tags, rating

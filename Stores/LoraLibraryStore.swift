@@ -29,6 +29,12 @@ final class LoraLibraryStore {
     /// successful save.
     var saveError: String?
 
+    /// Default-flagged entries across all families; observed by ContentView to
+    /// react when the default set (or a default's notes/strength) changes.
+    var allDefaultLoras: [LoraEntry] {
+        library.filter(\.isDefault).map { $0.toEntry() }
+    }
+
     @ObservationIgnored private let saveDebouncer = Debouncer()
 
     init() {
@@ -61,6 +67,13 @@ final class LoraLibraryStore {
         library.first { $0.path == path }
     }
 
+    /// Per-job entries for every default-flagged library LoRA of `family`,
+    /// at their library strength. This is the single source of the "default
+    /// LoRAs" applied to new generations.
+    func defaultLoras(for family: ModelFamily) -> [LoraEntry] {
+        entries(for: family).filter(\.isDefault).map { $0.toEntry() }
+    }
+
     // MARK: - Mutations
 
     func upsert(_ entry: LibraryLora) {
@@ -85,6 +98,32 @@ final class LoraLibraryStore {
 
     func deleteStack(id: UUID) {
         stacks.removeAll { $0.id == id }
+    }
+
+    // MARK: - Legacy migration
+
+    /// One-time fold of the pre-library `AppSettings.defaultLoras` list into
+    /// `LibraryLora.isDefault` flags, cataloging any entry not yet in the
+    /// library. Drains the legacy list so it never reapplies.
+    func migrateLegacyDefaults(from settings: AppSettings) {
+        let legacy = settings.drainLegacyDefaultLoras()
+        guard !legacy.isEmpty else { return }
+        for entry in legacy {
+            if let idx = library.firstIndex(
+                where: { $0.path == entry.path && $0.modelFamily == entry.modelFamily }
+            ) {
+                library[idx].isDefault = true
+                library[idx].defaultStrength = entry.strength
+            } else {
+                library.append(LibraryLora(
+                    path: entry.path,
+                    modelFamily: entry.modelFamily,
+                    defaultStrength: entry.strength,
+                    notes: entry.notes,
+                    isDefault: true
+                ))
+            }
+        }
     }
 
     // MARK: - Persistence

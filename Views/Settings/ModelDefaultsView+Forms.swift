@@ -44,18 +44,6 @@ extension ModelDefaultsView {
             }
 
             Section {
-                loraOverrideSection(model: model, current: d.loras)
-            } header: {
-                Text("LoRAs")
-            } footer: {
-                Text(
-                    "Adjusts which LoRAs from the LoRAs tab are enabled and at what"
-                        + " strength for this model. Add or remove LoRAs in Settings → LoRAs."
-                )
-                .font(.caption).foregroundStyle(.tertiary)
-            }
-
-            Section {
                 Button("Reset to Defaults", role: .destructive) {
                     settings.updateDefaults(ModelDefaults(), for: model)
                 }

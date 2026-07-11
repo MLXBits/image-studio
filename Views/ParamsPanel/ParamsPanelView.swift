@@ -176,12 +176,11 @@ struct ParamsPanelView: View {
         LoraManagerView(
             loras: $params.loras,
             showAdd: false,
-            defaultLoras: settings.defaultLoras.filter { $0.modelFamily == .flux },
+            defaultLoras: loraLibrary.defaultLoras(for: .flux),
             library: loraLibrary,
             onInsertTriggerWords: { params.prompt = insertTriggerWords($0, into: params.prompt) },
             onReset: {
-                let d = settings.resolvedDefaults(for: params.model)
-                params.loras = d.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .flux } : d.loras
+                params.loras = loraLibrary.defaultLoras(for: .flux)
             }
         )
         .padding(.bottom, 8)

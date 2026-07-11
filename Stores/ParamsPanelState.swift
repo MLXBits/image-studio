@@ -32,7 +32,7 @@ final class ParamsPanelState {
         }
     }
 
-    func applyDefaults(from settings: AppSettings) {
+    func applyDefaults(from settings: AppSettings, library: LoraLibraryStore) {
         let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
         model = m
@@ -46,8 +46,8 @@ final class ParamsPanelState {
         lowRam = d.lowRam
         negativePrompt = d.negativePrompt
         // Build last-run lookup (safe against duplicate paths). Only include FLUX LoRAs —
-        // global defaults may contain Ideogram entries that the Flux runner must not receive.
-        let fluxDefaultLoras = settings.defaultLoras.filter { $0.modelFamily == .flux }
+        // the last-run list may contain Ideogram entries that the Flux runner must not receive.
+        let fluxDefaultLoras = library.defaultLoras(for: .flux)
         let fluxLastLoras = settings.lastLoras.filter { $0.modelFamily == .flux }
         let lastByPath = Dictionary(
             fluxLastLoras.map { ($0.path, $0) }

@@ -57,7 +57,7 @@ final class Krea2ParamsPanelState {
         !prompt.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    func applyDefaults(settings: AppSettings) {
+    func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         // Restore the last-used form across launches when present; otherwise fall
         // back to the model defaults from Settings → Models.
         if let s = settings.lastKrea2 {
@@ -71,7 +71,7 @@ final class Krea2ParamsPanelState {
             imagePath = s.imagePath
             imageStrength = s.imageStrength
             board = s.board
-            loras = s.loras.isEmpty ? settings.defaultLoras.filter { $0.modelFamily == .krea2 } : s.loras
+            loras = s.loras.isEmpty ? library.defaultLoras(for: .krea2) : s.loras
             seed = -1
             return
         }
@@ -83,7 +83,7 @@ final class Krea2ParamsPanelState {
         height = d.height
         board = settings.defaultBoard
         seed = -1
-        loras = settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+        loras = library.defaultLoras(for: .krea2)
     }
 
     /// Captures the current form for cross-launch persistence (seed excluded).

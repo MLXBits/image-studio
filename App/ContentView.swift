@@ -26,6 +26,7 @@ struct ContentView: View {
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
     @Environment(MfluxDriverController.self) private var driverController
+    @Environment(LoraLibraryStore.self) private var loraLibrary
     @Environment(UpdateChecker.self) private var updates
 
     @Environment(\.openSettings) private var openSettings
@@ -114,7 +115,7 @@ struct ContentView: View {
                 return
             }
             if m.isIdeogram4 {
-                ideogramParams.loras = settings.defaultLoras.filter { $0.modelFamily == .ideogram4 }
+                ideogramParams.loras = loraLibrary.defaultLoras(for: .ideogram4)
                 return
             }
             if m.isKrea2 {
@@ -124,7 +125,7 @@ struct ContentView: View {
                 // re-selected Krea 2 in the picker.
                 let saved = settings.lastKrea2?.loras ?? []
                 krea2Params.loras = saved.isEmpty
-                    ? settings.defaultLoras.filter { $0.modelFamily == .krea2 }
+                    ? loraLibrary.defaultLoras(for: .krea2)
                     : saved
                 return
             }
@@ -137,9 +138,7 @@ struct ContentView: View {
             params.negativePrompt = d.negativePrompt
             params.width = d.width
             params.height = d.height
-            params.loras = d.loras.isEmpty
-                ? settings.defaultLoras.filter { $0.modelFamily == .flux }
-                : d.loras
+            params.loras = loraLibrary.defaultLoras(for: .flux)
             params.isEditMode = false
             params.editImagePaths = []
         }
@@ -236,9 +235,9 @@ struct ContentView: View {
                 // the initial default, onChange won't fire and the flag must stay
                 // down so the next genuine user switch isn't swallowed.
                 suppressModelResetOnRestore = settings.lastModel != params.model
-                params.applyDefaults(from: settings)
-                ideogramParams.applyDefaults(settings: settings)
-                krea2Params.applyDefaults(settings: settings)
+                params.applyDefaults(from: settings, library: loraLibrary)
+                ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
+                krea2Params.applyDefaults(settings: settings, library: loraLibrary)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 if settings.outputDir.isEmpty {
@@ -251,7 +250,7 @@ struct ContentView: View {
                 }
             }
             .task { await checkAndAutoInstallMflux() }
-            .onChange(of: settings.defaultLoras) { _, updated in
+            .onChange(of: loraLibrary.allDefaultLoras) { _, updated in
                 let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
                     e.notes.isEmpty ? nil : (e.path, e.notes)
                 })
