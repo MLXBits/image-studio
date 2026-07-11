@@ -161,9 +161,9 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
-                    onDeleteRejects: {
-                        if !allRejects.isEmpty { showingDeleteRejectsConfirm = true }
-                    },
+                    // ⌘⌫ deletes immediately — reaching for the shortcut implies intent,
+                    // so only the mouse-clicked trash button asks for confirmation.
+                    onDeleteRejects: { deleteAllRejects() },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
                     onCompareKey: { startCompare() },
@@ -339,14 +339,7 @@ struct GenerationGalleryView: View {
             isPresented: $showingDeleteRejectsConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete", role: .destructive) {
-                let rejects = allRejects
-                let ids = Set(rejects.map(\.id))
-                if let anchorId = anchorItemId, ids.contains(anchorId) {
-                    clearSelection(nextItem: nil)
-                }
-                gallery.deleteItems(rejects, outputDir: settings.outputDir)
-            }
+            Button("Delete", role: .destructive) { deleteAllRejects() }
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("This permanently deletes every reject-flagged image in this model's "
@@ -611,6 +604,16 @@ struct GenerationGalleryView: View {
         selection = nextItem.map { [$0.id] } ?? []
         anchorItemId = nextItem?.id
         selectedItem = nextItem
+    }
+
+    private func deleteAllRejects() {
+        let rejects = allRejects
+        guard !rejects.isEmpty else { return }
+        let ids = Set(rejects.map(\.id))
+        if let anchorId = anchorItemId, ids.contains(anchorId) {
+            clearSelection(nextItem: nil)
+        }
+        gallery.deleteItems(rejects, outputDir: settings.outputDir)
     }
 
     // MARK: - Range select (shift+click)
