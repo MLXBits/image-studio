@@ -161,6 +161,9 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
+                    onDeleteRejects: {
+                        if !allRejects.isEmpty { showingDeleteRejectsConfirm = true }
+                    },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
                     onCompareKey: { startCompare() },
@@ -413,7 +416,7 @@ struct GenerationGalleryView: View {
                     .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                 }
                 .buttonStyle(.plain).foregroundStyle(.red)
-                .help("Delete all \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s")")
+                .help("Delete all \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s") (⌘⌫)")
             }
         }
         .padding(.horizontal, 8)

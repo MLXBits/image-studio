@@ -322,7 +322,12 @@ final class GalleryNSCollectionView: NSCollectionView {
             }
 
         case 51, 117: // Delete / Forward Delete
-            eventDelegate?.deleteKeyPressed(shift: event.modifierFlags.contains(.shift))
+            if event.modifierFlags.contains(.command) {
+                // ⌘⌫ — Lightroom's "Delete Rejected Photos"
+                eventDelegate?.deleteRejectsKeyPressed()
+            } else {
+                eventDelegate?.deleteKeyPressed(shift: event.modifierFlags.contains(.shift))
+            }
 
         case 53: // Escape
             eventDelegate?.escapeKeyPressed()
@@ -422,6 +427,7 @@ protocol GalleryCollectionViewEvents: AnyObject {
     func didNavigate(to path: IndexPath)
     func rightClick(at path: IndexPath, event: NSEvent)
     func deleteKeyPressed(shift: Bool)
+    func deleteRejectsKeyPressed()
     func escapeKeyPressed()
     func cullFlagKeyPressed(_ flag: PickFlag?)
     func cullRatingKeyPressed(_ rating: Int)
@@ -544,6 +550,10 @@ struct GalleryCollectionView: NSViewRepresentable {
         func deleteKeyPressed(shift: Bool) {
             guard !parent.multiSelectionIds.isEmpty else { return }
             if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
+        }
+
+        func deleteRejectsKeyPressed() {
+            parent.onDeleteRejects()
         }
 
         func escapeKeyPressed() {
@@ -864,6 +874,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteImmediate: (GalleryItem) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void
+    var onDeleteRejects: () -> Void
     var onCullFlag: (PickFlag?) -> Void
     var onCullRating: (Int) -> Void
     var onCompareKey: () -> Void
