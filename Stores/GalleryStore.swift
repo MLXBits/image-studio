@@ -72,6 +72,16 @@ final class GalleryStore {
     var deleteError: String?
     /// Set when a metadata strip fails. Observed by ``GenerationGalleryView``.
     var stripError: String?
+    /// Absolute paths currently attached to an img2img / edit drop area. Any
+    /// operation that would move, rename away, or delete one of these would
+    /// rug-pull a queued or future generation, so they are protected — such
+    /// operations are refused and surface ``lockError``. Kept in sync by
+    /// ``ContentView`` from the live params-panel state.
+    var lockedPaths: Set<String> = []
+    /// Set when an operation is refused because it targets an image attached to an
+    /// img2img / edit drop area (see ``lockedPaths``). Distinct from ``deleteError``:
+    /// this is an intentional block, not a failure. Observed by ``GenerationGalleryView``.
+    var lockError: String?
 
     var displayedItems: [GalleryItem] {
         if selectedBoard == "All" { return items }
@@ -132,7 +142,32 @@ final class GalleryStore {
         }
     }
 
+    // MARK: - img2img lock helpers
+
+    /// Standard "this image is attached to a drop area" message for a single file.
+    private func lockMessage(_ name: String) -> String {
+        "\(name) is in use as an img2img source. Clear it from the drop area first."
+    }
+
+    /// Standard message when a batch operation skips some attached sources.
+    private func lockMessage(skipped: [GalleryItem]) -> String {
+        "Skipped \(skipped.count) image\(skipped.count == 1 ? "" : "s") in use "
+            + "as an img2img source: \(skipped.map(\.filename).joined(separator: ", "))"
+    }
+
+    /// Filename of an attached img2img source living under `dir`, if any. Used to
+    /// block folder-wide operations (delete/rename) that would take the source with them.
+    private func lockedName(under dir: URL) -> String? {
+        let prefix = dir.path.hasSuffix("/") ? dir.path : dir.path + "/"
+        return lockedPaths.first { $0.hasPrefix(prefix) }
+            .map { URL(fileURLWithPath: $0).lastPathComponent }
+    }
+
     func moveItem(_ item: GalleryItem, toBoard board: String, outputDir: String) {
+        if lockedPaths.contains(item.path) {
+            lockError = lockMessage(item.filename)
+            return
+        }
         let src = URL(fileURLWithPath: item.path)
         let destDir = board == "Default"
             ? URL(fileURLWithPath: outputDir)
@@ -151,6 +186,10 @@ final class GalleryStore {
     }
 
     func delete(_ item: GalleryItem, outputDir: String) {
+        if lockedPaths.contains(item.path) {
+            lockError = lockMessage(item.filename)
+            return
+        }
         do {
             try FileManager.default.removeItem(atPath: item.path)
         } catch {
@@ -166,6 +205,13 @@ final class GalleryStore {
     func deleteBoard(_ board: String, outputDir: String) {
         guard board != "Default" else { return }
         let dir = URL(fileURLWithPath: outputDir).appendingPathComponent(board)
+        // Deleting the folder wholesale would take any attached img2img source
+        // inside it down too, so block the whole delete if one lives here.
+        if let name = lockedName(under: dir) {
+            lockError = "\"\(board)\" contains \(name), which is in use as an "
+                + "img2img source. Clear it from the drop area first."
+            return
+        }
         // Purge cache entries for every image we know lives under this board
         // before the folder goes away. The post-scan sweep then catches any we
         // didn't know about (e.g., images added externally since the last scan).
@@ -184,6 +230,13 @@ final class GalleryStore {
         let outputURL = URL(fileURLWithPath: outputDir)
         let oldDir = outputURL.appendingPathComponent(oldName)
         let newDir = outputURL.appendingPathComponent(newName)
+        // Renaming moves every file under the board to a new path, which would
+        // rug-pull an attached img2img source living here.
+        if let name = lockedName(under: oldDir) {
+            lockError = "\"\(oldName)\" contains \(name), which is in use as an "
+                + "img2img source. Clear it from the drop area first."
+            return
+        }
         // Every image under the board changes path, so its cache key changes too.
         ThumbnailCache.purge(paths: items.filter { $0.board == oldName }.map(\.path))
         try? FileManager.default.moveItem(at: oldDir, to: newDir)
@@ -191,8 +244,12 @@ final class GalleryStore {
     }
 
     func moveItems(_ items: [GalleryItem], toBoard board: String, outputDir: String) {
+        // Skip images attached to a drop area — moving them changes their path and
+        // would rug-pull a queued or future generation. The rest move normally.
+        let locked = items.filter { lockedPaths.contains($0.path) }
+        let movable = items.filter { !lockedPaths.contains($0.path) }
         var purgedPaths: [String] = []
-        for item in items {
+        for item in movable {
             guard item.board != board else { continue }
             let src = URL(fileURLWithPath: item.path)
             let destDir = board == "Default"
@@ -209,12 +266,17 @@ final class GalleryStore {
             purgedPaths.append(item.path)
         }
         ThumbnailCache.purge(paths: purgedPaths)
+        if !locked.isEmpty { lockError = lockMessage(skipped: locked) }
         scan(outputDir: outputDir)
     }
 
     func deleteItems(_ items: [GalleryItem], outputDir: String) {
+        // Skip images attached to an img2img/edit drop area — deleting them would
+        // rug-pull a queued or future generation. The rest are deleted normally.
+        let locked = items.filter { lockedPaths.contains($0.path) }
+        let deletable = items.filter { !lockedPaths.contains($0.path) }
         var failures: [String] = []
-        for item in items {
+        for item in deletable {
             do {
                 try FileManager.default.removeItem(atPath: item.path)
             } catch {
@@ -222,9 +284,12 @@ final class GalleryStore {
             }
             try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         }
-        ThumbnailCache.purge(paths: items.map(\.path))
+        ThumbnailCache.purge(paths: deletable.map(\.path))
         if !failures.isEmpty {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
+        }
+        if !locked.isEmpty {
+            lockError = lockMessage(skipped: locked)
         }
         scan(outputDir: outputDir)
     }

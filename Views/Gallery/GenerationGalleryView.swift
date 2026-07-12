@@ -253,6 +253,14 @@ struct GenerationGalleryView: View {
         } message: {
             Text(gallery.deleteError ?? "")
         }
+        .alert("Image in use", isPresented: Binding(
+            get: { gallery.lockError != nil },
+            set: { if !$0 { gallery.lockError = nil } }
+        )) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text(gallery.lockError ?? "")
+        }
         .alert("Could not strip metadata", isPresented: Binding(
             get: { gallery.stripError != nil },
             set: { if !$0 { gallery.stripError = nil } }

@@ -76,6 +76,17 @@ struct ContentView: View {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning || seedVR2Store.isRunning
     }
 
+    /// Every image currently attached to an img2img / edit drop area, across the
+    /// Flux and Krea 2 panels. Fed to ``GalleryStore/lockedPaths`` so the gallery
+    /// refuses to delete a source out from under a queued or future generation.
+    private var img2imgLockedPaths: Set<String> {
+        var paths: Set<String> = []
+        if !params.imagePath.isEmpty { paths.insert(params.imagePath) }
+        paths.formUnion(params.editImagePaths)
+        if !krea2Params.imagePath.isEmpty { paths.insert(krea2Params.imagePath) }
+        return paths
+    }
+
     private var paramsPane: some View {
         ParamsPanelView(params: params, ideogramParams: ideogramParams, krea2Params: krea2Params)
             .frame(width: 350)
@@ -258,9 +269,13 @@ struct ContentView: View {
                 } else {
                     gallery.scan(outputDir: settings.outputDir)
                 }
+                gallery.lockedPaths = img2imgLockedPaths
                 Task { @MainActor in
                     NSApp.keyWindow?.makeFirstResponder(nil)
                 }
+            }
+            .onChange(of: img2imgLockedPaths) { _, newValue in
+                gallery.lockedPaths = newValue
             }
             .task { await checkAndAutoInstallMflux() }
             .onChange(of: loraLibrary.allDefaultLoras) { _, updated in
