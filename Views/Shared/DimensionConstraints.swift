@@ -12,6 +12,11 @@ struct DimensionConstraints: Equatable {
     /// Used by Ideogram 4 (which layers its own 256 floor on top) and custom models.
     static let legacy = Self(range: 64 ... 2048, step: 16, maxArea: nil)
 
+    /// Krea 2: per-axis up to 4096, multiples of 16, no area cap. Krea 2 can render up
+    /// to 4096×4096; our defaults sit well below that, but the picker allows the full
+    /// range for anyone who wants to push higher and accepts the trade-offs.
+    static let krea2 = Self(range: 64 ... 4096, step: 16, maxArea: nil)
+
     /// FLUX.2 (all variants — distilled *klein* and dev *klein-base*, 4B and 9B —
     /// share one architecture and the same ~4 MP ceiling). Multiples of 32 to match
     /// the FLUX.2 VAE stride. The per-axis ceiling is generous (4096) so wide aspect
