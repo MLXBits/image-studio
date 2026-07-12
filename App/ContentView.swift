@@ -15,6 +15,13 @@ struct ContentView: View {
         let height: Int
     }
 
+    /// A source image awaiting the SeedVR2 Upscale sheet (path + its gallery board).
+    private struct UpscaleTarget: Identifiable {
+        let id = UUID()
+        let path: String
+        let board: String
+    }
+
     @Environment(AppSettings.self) private var settings
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
@@ -23,6 +30,8 @@ struct ContentView: View {
     @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
     @Environment(Krea2JobStore.self) private var krea2Store
     @Environment(Krea2JobRunner.self) private var krea2Runner
+    @Environment(SeedVR2JobStore.self) private var seedVR2Store
+    @Environment(SeedVR2JobRunner.self) private var seedVR2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
     @Environment(MfluxDriverController.self) private var driverController
@@ -37,6 +46,8 @@ struct ContentView: View {
     @State private var showingQueue: Bool = false
     @State private var showingNotepad: Bool = false
     @State private var showingOutputDirPrompt: Bool = false
+    /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
+    @State private var upscaleTarget: UpscaleTarget?
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
@@ -62,7 +73,7 @@ struct ContentView: View {
     @State private var contentWidth: CGFloat = 0
 
     private var isAnyStoreRunning: Bool {
-        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
+        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning || seedVR2Store.isRunning
     }
 
     private var paramsPane: some View {
@@ -154,12 +165,13 @@ struct ContentView: View {
             onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
             onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel() },
+            onCancel: { runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel(); seedVR2Runner.cancel() },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
             onSetGalleryFlag: { flag in setPreviewFlag(flag) },
             onSetGalleryRating: { rating in setPreviewRating(rating) },
+            onUpscale: { path in promptUpscale(path: path) },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -189,6 +201,7 @@ struct ContentView: View {
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
+            onUpscale: { path in promptUpscale(path: path) },
             onSelectBoard: { name in params.board = name },
             onClearPreview: clearPreview,
             onCompare: { select, candidate in
@@ -295,12 +308,17 @@ struct ContentView: View {
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
+            .onChange(of: seedVR2Runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
             // (the GenerationCoordinator gate), so this is what keeps queued work draining.
             .onChange(of: store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: ideogram4Store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: krea2Store.isRunning) { _, running in if !running { pumpQueues() } }
+            .onChange(of: seedVR2Store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: gallery.items) { _, newItems in
                 guard let path = pendingSelectPath,
                       let item = newItems.first(where: { $0.path == path }) else { return }
@@ -418,6 +436,23 @@ struct ContentView: View {
             guard let id, let job = krea2Store.jobs.first(where: { $0.id == id }) else { return }
             selectedGalleryItem = nil
             previewState = .activeKrea2Job(job)
+        }
+        .onChange(of: seedVR2Runner.activeJob?.id) { _, id in
+            guard let id, let job = seedVR2Store.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeSeedVR2Job(job)
+        }
+        .sheet(item: $upscaleTarget) { target in
+            SeedVR2UpscaleSheet(
+                sourcePath: target.path,
+                board: target.board,
+                settings: settings,
+                onConfirm: { job in
+                    upscaleTarget = nil
+                    startUpscale(job)
+                },
+                onCancel: { upscaleTarget = nil }
+            )
         }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
@@ -564,6 +599,8 @@ struct ContentView: View {
                     ideogramParams.isReadyToGenerate(settings: settings)
                 case .krea2:
                     krea2Params.isReadyToGenerate(settings: settings)
+                case .seedvr2:
+                    false // upscaler — never the picker-selected family
                 }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
@@ -581,6 +618,7 @@ struct ContentView: View {
                     case .flux: params.seed == -1
                     case .ideogram4: ideogramParams.seed == -1
                     case .krea2: krea2Params.seed == -1
+                    case .seedvr2: false
                     }
                     if seedIsRandom {
                         Rectangle()
@@ -642,6 +680,7 @@ struct ContentView: View {
         case .flux: params.seed != -1
         case .ideogram4: ideogramParams.seed != -1
         case .krea2: krea2Params.seed != -1
+        case .seedvr2: false
         }
     }
 
@@ -894,9 +933,46 @@ struct ContentView: View {
             previewState = .activeIdeogram4Job(j)
         } else if let j = krea2Runner.activeJob {
             previewState = .activeKrea2Job(j)
+        } else if let j = seedVR2Runner.activeJob {
+            previewState = .activeSeedVR2Job(j)
         } else {
             previewState = .idle
         }
+    }
+
+    // MARK: - SeedVR2 upscale
+
+    /// Opens the Upscale sheet for `path`, resolving the board from its gallery folder.
+    private func promptUpscale(path: String) {
+        upscaleTarget = UpscaleTarget(path: path, board: boardForPath(path))
+    }
+
+    /// Enqueues an upscale job and starts the runner (gate-serialized against the
+    /// generative families), flipping the preview to the active upscale when idle.
+    private func startUpscale(_ job: SeedVR2Job) {
+        let wasIdle = !isAnyStoreRunning
+        seedVR2Store.add(job)
+        if wasIdle {
+            // Free any warm generative model before the upscale spawns its own process
+            // (holding both risks OOM). When not idle, pumpQueues ejects at hand-off.
+            driverController.eject(reason: "model_switch")
+        }
+        seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
+        if wasIdle {
+            selectedGalleryItem = nil
+            previewState = .activeSeedVR2Job(job)
+        }
+    }
+
+    /// Derives the board (gallery subfolder) an image lives in from its path, so the
+    /// upscaled result lands next to its source. Matches `buildOutputPath`'s
+    /// `outputDir/board` layout; anything deeper or outside falls back to "Default".
+    private func boardForPath(_ path: String) -> String {
+        let outDir = URL(fileURLWithPath: settings.outputDir).standardizedFileURL.path
+        let parent = URL(fileURLWithPath: path).deletingLastPathComponent().standardizedFileURL
+        if parent.path == outDir { return "Default" }
+        if parent.deletingLastPathComponent().path == outDir { return parent.lastPathComponent }
+        return "Default"
     }
 
     private func navigateGallery(_ delta: Int) {
@@ -1081,6 +1157,9 @@ struct ContentView: View {
                 selectedGalleryItem = nil
                 previewState = .activeKrea2Job(firstJob)
             }
+
+        case .seedvr2:
+            break // upscaler — never the picker-selected family; started via startUpscale
         }
     }
 
@@ -1156,6 +1235,11 @@ struct ContentView: View {
         } else if !krea2Store.pendingJobs.isEmpty {
             driverController.eject(reason: "model_switch")
             krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
+        } else if !seedVR2Store.pendingJobs.isEmpty {
+            // Free any warm generative model before the upscale — SeedVR2 loads its own
+            // weights in a fresh CLI process, and holding both risks OOM.
+            driverController.eject(reason: "model_switch")
+            seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }
 }

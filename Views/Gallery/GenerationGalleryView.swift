@@ -16,6 +16,7 @@ struct GenerationGalleryView: View {
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
+    var onUpscale: ((String) -> Void)?
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
     var onCompare: ((GalleryItem, GalleryItem) -> Void)?
@@ -161,9 +162,6 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
-                    // ⌘⌫ deletes immediately — reaching for the shortcut implies intent,
-                    // so only the mouse-clicked trash button asks for confirmation.
-                    onDeleteRejects: { deleteAllRejects() },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
                     onCompareKey: { startCompare() },
@@ -175,6 +173,7 @@ struct GenerationGalleryView: View {
                     onRemixIdeogram: onRemixIdeogram,
                     onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
                     onUseInImg2Img: onUseInImg2Img,
+                    onUpscale: { onUpscale?($0) },
                     onMoveToBoard: { item, board in
                         if selection.contains(item.id) {
                             batchMove(to: board)
@@ -228,6 +227,7 @@ struct GenerationGalleryView: View {
             }
         }
         .overlay(alignment: .bottom) { statusToast }
+        .background(deleteRejectsShortcut)
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
             guard let id = newId else {
@@ -566,6 +566,20 @@ struct GenerationGalleryView: View {
                 .font(.callout).foregroundStyle(.secondary)
             Spacer()
         }
+    }
+
+    /// ⌘⌫ deletes all rejects from anywhere in the window — parity with ⌘↵ Generate,
+    /// which isn't gated on gallery focus. A hidden keyboard-shortcut button owns the
+    /// key equivalent (processed before the first responder's keyDown), so it fires even
+    /// when the params pane holds focus, not only when the gallery collection view does.
+    /// Disabled when there's nothing to delete so ⌘⌫ still reaches text fields as
+    /// delete-to-start-of-line whenever no rejects exist.
+    private var deleteRejectsShortcut: some View {
+        Button("") { deleteAllRejects() }
+            .keyboardShortcut(.delete, modifiers: .command)
+            .disabled(allRejects.isEmpty)
+            .hidden()
+            .accessibilityHidden(true)
     }
 
     // MARK: - Helpers

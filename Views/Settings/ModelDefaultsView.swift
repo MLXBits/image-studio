@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import SwiftUI
 
 /// Per-model settings form. Shows inside the Settings "Models" tab.
@@ -10,8 +11,23 @@ struct ModelDefaultsView: View {
         case idle, running, done, failed(String)
     }
 
+    /// Sidebar selection: a generative FLUX/Ideogram/Krea model, or the SeedVR2
+    /// upscaler (which isn't a ``FluxModelVariant`` and has no weight-cache rows).
+    enum Selection: Hashable {
+        case model(FluxModelVariant)
+        case seedVR2
+    }
+
     @Environment(AppSettings.self) var settings
-    @State private var selectedModel: FluxModelVariant = .builtIn[0]
+    @State private var selection: Selection = .model(.builtIn[0])
+
+    /// The selected FLUX model, or the first built-in as a placeholder while the
+    /// SeedVR2 row is selected (its form doesn't read this).
+    private var selectedModel: FluxModelVariant {
+        if case let .model(model) = selection { return model }
+        return .builtIn[0]
+    }
+
     @State private var cachePhase: CachePhase = .idle
     @State private var cacheLog: String = ""
     @State private var cacheProcess: Process?
@@ -30,7 +46,7 @@ struct ModelDefaultsView: View {
             modelForm
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .onChange(of: selectedModel) { _, _ in
+        .onChange(of: selection) { _, _ in
             cachePhase = .idle
             cacheLog = ""
             cacheProcess?.terminate()
@@ -61,7 +77,7 @@ struct ModelDefaultsView: View {
     // MARK: - Model list
 
     private var modelList: some View {
-        List(selection: $selectedModel) {
+        List(selection: $selection) {
             Section("FLUX.2") {
                 ForEach(FluxModelVariant.builtIn, id: \.self) { model in
                     VStack(alignment: .leading, spacing: 2) {
@@ -72,7 +88,7 @@ struct ModelDefaultsView: View {
                             .font(.caption2).foregroundStyle(.secondary)
                     }
                     .padding(.vertical, 2)
-                    .tag(model)
+                    .tag(Selection.model(model))
                 }
             }
             Section("Ideogram") {
@@ -82,7 +98,7 @@ struct ModelDefaultsView: View {
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 2)
-                .tag(FluxModelVariant.ideogram4)
+                .tag(Selection.model(.ideogram4))
             }
             Section("Krea") {
                 VStack(alignment: .leading, spacing: 2) {
@@ -91,7 +107,16 @@ struct ModelDefaultsView: View {
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 2)
-                .tag(FluxModelVariant.krea2)
+                .tag(Selection.model(.krea2))
+            }
+            Section("Upscale") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("SeedVR2").font(.callout)
+                    Text("Image action · 3B/7B · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.seedVR2)
             }
         }
         .listStyle(.sidebar)
@@ -99,17 +124,22 @@ struct ModelDefaultsView: View {
 
     // MARK: - Per-model form
 
+    @ViewBuilder
     private var modelForm: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                modelHeader
-                Divider()
-                if selectedModel.isIdeogram4 {
-                    ideogram4FormContent()
-                } else if selectedModel.isKrea2 {
-                    krea2FormContent()
-                } else {
-                    formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
+        if case .seedVR2 = selection {
+            ScrollView { seedVR2FormContent() }
+        } else {
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    modelHeader
+                    Divider()
+                    if selectedModel.isIdeogram4 {
+                        ideogram4FormContent()
+                    } else if selectedModel.isKrea2 {
+                        krea2FormContent()
+                    } else {
+                        formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
+                    }
                 }
             }
         }

@@ -54,6 +54,13 @@ nonisolated enum BinaryDetector {
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-krea2")
     }
 
+    /// Returns the full path to mflux-upscale-seedvr2 given a binary directory.
+    static func mfluxUpscaleSeedVR2(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-upscale-seedvr2") }
+        let path = "\(dir)/mflux-upscale-seedvr2"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-upscale-seedvr2")
+    }
+
     /// Returns the full path to the mlx_lm.generate binary for LLM caption generation.
     static func mlxLmGenerate(in dir: String) -> String {
         if dir.isEmpty { return detect("mlx_lm.generate") }

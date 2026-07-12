@@ -322,12 +322,12 @@ final class GalleryNSCollectionView: NSCollectionView {
             }
 
         case 51, 117: // Delete / Forward Delete
-            if event.modifierFlags.contains(.command) {
-                // ⌘⌫ — Lightroom's "Delete Rejected Photos"
-                eventDelegate?.deleteRejectsKeyPressed()
-            } else {
-                eventDelegate?.deleteKeyPressed(shift: event.modifierFlags.contains(.shift))
-            }
+            // ⌘⌫ (Lightroom's "Delete Rejected Photos") is owned by a window-scoped
+            // keyboard-shortcut button in GenerationGalleryView so it works regardless
+            // of focus; its key equivalent is consumed before this keyDown is reached.
+            // Here we only handle a bare Delete on the current selection.
+            guard !event.modifierFlags.contains(.command) else { return }
+            eventDelegate?.deleteKeyPressed(shift: event.modifierFlags.contains(.shift))
 
         case 53: // Escape
             eventDelegate?.escapeKeyPressed()
@@ -427,7 +427,6 @@ protocol GalleryCollectionViewEvents: AnyObject {
     func didNavigate(to path: IndexPath)
     func rightClick(at path: IndexPath, event: NSEvent)
     func deleteKeyPressed(shift: Bool)
-    func deleteRejectsKeyPressed()
     func escapeKeyPressed()
     func cullFlagKeyPressed(_ flag: PickFlag?)
     func cullRatingKeyPressed(_ rating: Int)
@@ -550,10 +549,6 @@ struct GalleryCollectionView: NSViewRepresentable {
         func deleteKeyPressed(shift: Bool) {
             guard !parent.multiSelectionIds.isEmpty else { return }
             if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
-        }
-
-        func deleteRejectsKeyPressed() {
-            parent.onDeleteRejects()
         }
 
         func escapeKeyPressed() {
@@ -809,6 +804,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(.separator())
             addCullMenuItems(to: menu, for: item)
             menu.addItem(menuItem("Compare") { [weak self] in self?.parent.onCompareItem(item) })
+            menu.addItem(menuItem("Upscale…") { [weak self] in self?.parent.onUpscale(item.path) })
 
             if let meta = item.metadata {
                 menu.addItem(.separator())
@@ -874,7 +870,6 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteImmediate: (GalleryItem) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void
-    var onDeleteRejects: () -> Void
     var onCullFlag: (PickFlag?) -> Void
     var onCullRating: (Int) -> Void
     var onCompareKey: () -> Void
@@ -886,6 +881,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onRemixIdeogram: (Ideogram4Metadata) -> Void
     var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
     var onUseInImg2Img: (String) -> Void
+    var onUpscale: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
     var onNewGroup: (GalleryItem) -> Void
     var onStripMetadata: (GalleryItem) -> Void

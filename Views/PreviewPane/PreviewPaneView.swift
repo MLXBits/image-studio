@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -6,6 +7,7 @@ enum PreviewState {
     case activeJob(FluxJob)
     case activeIdeogram4Job(Ideogram4Job)
     case activeKrea2Job(Krea2Job)
+    case activeSeedVR2Job(SeedVR2Job)
     case galleryItem(GalleryItem)
 }
 
@@ -27,6 +29,7 @@ struct PreviewPaneView: View {
     var onShowFullSize: ((NSImage) -> Void)?
     var onSetGalleryFlag: ((PickFlag?) -> Void)?
     var onSetGalleryRating: ((Int) -> Void)?
+    var onUpscale: ((String) -> Void)?
     var hasPrev: Bool = false
     var hasNext: Bool = false
     var onNavigatePrev: (() -> Void)?
@@ -61,7 +64,8 @@ struct PreviewPaneView: View {
                             onApplySettings: onApplySettings,
                             onRemix: onRemix,
                             onUseInImg2Img: onUseInImg2Img,
-                            onShowFullSize: onShowFullSize
+                            onShowFullSize: onShowFullSize,
+                            onUpscale: onUpscale
                         )
 
                     case let .failed(msg):
@@ -118,6 +122,24 @@ struct PreviewPaneView: View {
                         krea2PendingView(job: job)
                     }
 
+                case let .activeSeedVR2Job(job):
+                    switch job.status {
+                    case .running:
+                        SeedVR2StepwisePreviewView(job: job, onCancel: onCancel)
+
+                    case .completed:
+                        SeedVR2CompletedPreviewView(job: job)
+
+                    case let .failed(msg):
+                        seedVR2FailedView(message: msg, job: job)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        seedVR2PendingView(job: job)
+                    }
+
                 case let .galleryItem(item):
                     GalleryItemDetailView(
                         item: item,
@@ -131,7 +153,8 @@ struct PreviewPaneView: View {
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
                         onSetFlag: onSetGalleryFlag,
-                        onSetRating: onSetGalleryRating
+                        onSetRating: onSetGalleryRating,
+                        onUpscale: onUpscale
                     )
                 }
 
@@ -199,6 +222,10 @@ struct PreviewPaneView: View {
             return true
 
         case let .activeKrea2Job(job):
+            if case .running = job.status { return false }
+            return true
+
+        case let .activeSeedVR2Job(job):
             if case .running = job.status { return false }
             return true
 
@@ -401,6 +428,47 @@ struct PreviewPaneView: View {
     }
 
     private func krea2PendingView(job: Krea2Job) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "clock")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text("Waiting in queue")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text(job.displayName)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func seedVR2FailedView(message: String, job: SeedVR2Job) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text("Upscale failed")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(job.log.isEmpty ? message : job.log)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                    Color.clear.frame(height: 1).id("errEnd")
+                }
+                .onAppear { proxy.scrollTo("errEnd") }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func seedVR2PendingView(job: SeedVR2Job) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
                 .font(.system(size: 40))

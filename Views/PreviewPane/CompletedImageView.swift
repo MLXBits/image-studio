@@ -6,6 +6,7 @@ struct CompletedImageView: View {
     let onRemix: (GenerationMetadata) -> Void
     let onUseInImg2Img: (String) -> Void
     var onShowFullSize: ((NSImage) -> Void)?
+    var onUpscale: ((String) -> Void)?
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
@@ -43,6 +44,9 @@ struct CompletedImageView: View {
                 }
                 if let path = job.outputPath {
                     Button("Use as Img2Img Input") { onUseInImg2Img(path) }
+                    if let onUpscale {
+                        Button("Upscale…") { onUpscale(path) }
+                    }
                     Divider()
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -59,8 +63,10 @@ struct CompletedImageView: View {
                 onRevealInFinder: job.outputPath.map { path in {
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                 }
-                }
-            ) { showingLog = true }
+                },
+                onShowLog: { showingLog = true },
+                onUpscale: (onUpscale != nil ? job.outputPath : nil).map { path in { onUpscale?(path) } }
+            )
         }
         .onAppear { loadImage() }
         .onChange(of: job.outputPath) { _, _ in loadImage() }

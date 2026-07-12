@@ -127,6 +127,40 @@ nonisolated struct Krea2Metadata: Codable {
     var log: String?
 }
 
+// MARK: - SeedVR2 metadata
+
+nonisolated struct SeedVR2Metadata: Codable {
+    @MainActor static func from(job: SeedVR2Job) -> Self {
+        Self(
+            sourcePath: job.sourcePath,
+            model: job.is7B ? "seedvr2-7b" : "seedvr2-3b",
+            scale: job.scale,
+            softness: job.softness,
+            quantize: job.quantize,
+            seed: job.resolvedSeed ?? job.seed,
+            width: job.width,
+            height: job.height,
+            board: job.board.isEmpty ? nil : job.board,
+            generatedAt: job.completedAt ?? Date(),
+            startedAt: job.startedAt,
+            log: job.log.isEmpty ? nil : job.log
+        )
+    }
+
+    var sourcePath: String
+    var model: String
+    var scale: Int
+    var softness: Double
+    var quantize: Int
+    var seed: Int
+    var width: Int
+    var height: Int
+    var board: String?
+    var generatedAt: Date
+    var startedAt: Date?
+    var log: String?
+}
+
 enum MetadataSidecar {
     static func write(_ metadata: GenerationMetadata, for imagePath: String) {
         let url = sidecarURL(for: imagePath)
@@ -147,6 +181,15 @@ enum MetadataSidecar {
     }
 
     static func writeKrea2(_ metadata: Krea2Metadata, for imagePath: String) {
+        let url = sidecarURL(for: imagePath)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(metadata) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func writeSeedVR2(_ metadata: SeedVR2Metadata, for imagePath: String) {
         let url = sidecarURL(for: imagePath)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -177,6 +220,14 @@ enum MetadataSidecar {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(Krea2Metadata.self, from: data)
+    }
+
+    nonisolated static func readSeedVR2(for imagePath: String) -> SeedVR2Metadata? {
+        let url = sidecarURL(for: imagePath)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try? decoder.decode(SeedVR2Metadata.self, from: data)
     }
 
     nonisolated static func sidecarURL(for imagePath: String) -> URL {

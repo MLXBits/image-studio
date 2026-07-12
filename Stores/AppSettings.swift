@@ -87,6 +87,11 @@ class AppSettings {
         var ideogram4CfgEnd: Double?
         /// Krea 2 last-used form (remembered across launches)
         var lastKrea2: Krea2FormState?
+        /// SeedVR2 upscale defaults (remembered across launches)
+        var seedVR2Use7B: Bool?
+        var seedVR2Quantize: Int?
+        var seedVR2Scale: Int?
+        var seedVR2Softness: Double?
         /// Notepad
         var notepadText: String?
         /// Prompt history (recorded on job enqueue)
@@ -308,6 +313,28 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - SeedVR2 upscale defaults
+
+    /// Default SeedVR2 model size: false = 3B (fast), true = 7B (quality).
+    var seedVR2Use7B: Bool {
+        didSet { save() }
+    }
+
+    /// Default SeedVR2 quantize level (0 = none, 8, or 4).
+    var seedVR2Quantize: Int {
+        didSet { save() }
+    }
+
+    /// Default SeedVR2 scale factor (2, 3, or 4).
+    var seedVR2Scale: Int {
+        didSet { save() }
+    }
+
+    /// Default SeedVR2 softness (0.0–1.0).
+    var seedVR2Softness: Double {
+        didSet { save() }
+    }
+
     /// Stream Ideogram 4 transformer blocks from disk to reduce peak memory.
     var ideogram4LowRam: Bool {
         didSet { save() }
@@ -455,6 +482,10 @@ class AppSettings {
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
         lastIdeogramSeed = s.lastIdeogramSeed
         lastKrea2 = s.lastKrea2
+        seedVR2Use7B = s.seedVR2Use7B ?? false
+        seedVR2Quantize = s.seedVR2Quantize ?? 8
+        seedVR2Scale = s.seedVR2Scale ?? 2
+        seedVR2Softness = s.seedVR2Softness ?? 0.0
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
@@ -580,6 +611,10 @@ class AppSettings {
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
         s.lastKrea2 = lastKrea2
+        s.seedVR2Use7B = seedVR2Use7B
+        s.seedVR2Quantize = seedVR2Quantize
+        s.seedVR2Scale = seedVR2Scale
+        s.seedVR2Softness = seedVR2Softness
         s.notepadText = notepadText
         s.promptHistory = promptHistory
         s.keepModelWarm = keepModelWarm
@@ -620,6 +655,10 @@ class AppSettings {
 
     func mfluxKrea2BinaryPath() -> String {
         BinaryDetector.mfluxGenerateKrea2(in: mfluxBinaryDir)
+    }
+
+    func mfluxSeedVR2BinaryPath() -> String {
+        BinaryDetector.mfluxUpscaleSeedVR2(in: mfluxBinaryDir)
     }
 
     func mlxLmBinaryPath() -> String {

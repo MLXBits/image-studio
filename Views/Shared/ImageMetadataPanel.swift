@@ -145,6 +145,45 @@ struct ImageMetadataInfo {
         }
     }
 
+    init?(seedVR2Item: GalleryItem) {
+        guard let meta = seedVR2Item.seedVR2Metadata else { return nil }
+        prompt = "Upscale \(meta.scale)× · softness \(String(format: "%.2f", meta.softness))"
+        negativePrompt = ""
+        modelName = meta.model == "seedvr2-7b" ? "SeedVR2 7B" : "SeedVR2 3B"
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = 0
+        guidance = 1.0
+        loras = []
+        filePath = seedVR2Item.path
+        log = meta.log
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        } else {
+            generationTime = nil
+        }
+    }
+
+    init(seedVR2Job job: SeedVR2Job) {
+        prompt = "Upscale \(job.scale)× · softness \(String(format: "%.2f", job.softness))"
+        negativePrompt = ""
+        modelName = job.modelLabel
+        seed = job.resolvedSeed ?? job.seed
+        width = job.width
+        height = job.height
+        steps = 0
+        guidance = 1.0
+        loras = []
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
+        if let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init(path: String) {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []
@@ -160,6 +199,7 @@ struct ImageMetadataPanel: View {
     var onEditBoxes: (() -> Void)?
     let onRevealInFinder: (() -> Void)?
     let onShowLog: (() -> Void)?
+    var onUpscale: (() -> Void)?
 
     @State private var promptExpanded = false
     @State private var promptFullHeight: CGFloat = 0
@@ -301,6 +341,11 @@ struct ImageMetadataPanel: View {
                 } label: { Image(systemName: "doc.on.doc") }
                     .buttonStyle(.bordered).controlSize(.small)
                     .help("Copy image to clipboard")
+            }
+            if let fn = onUpscale {
+                Button { fn() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
+                    .buttonStyle(.bordered).controlSize(.small)
+                    .help("Upscale with SeedVR2")
             }
             if let fn = onRevealInFinder {
                 Button { fn() } label: { Image(systemName: "folder") }

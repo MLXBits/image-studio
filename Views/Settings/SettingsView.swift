@@ -212,7 +212,7 @@ struct SettingsView: View {
             .labelsHidden()
 
             Picker("", selection: $loraFamily) {
-                ForEach(ModelFamily.allCases, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(ModelFamily.generative, id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()

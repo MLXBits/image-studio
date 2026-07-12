@@ -14,6 +14,8 @@
 		02D8D41604DC3742D5AF6F3B /* BBoxKeyCatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF15C1E147BEBBF910FCDEB /* BBoxKeyCatcher.swift */; };
 		05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */; };
 		0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */; };
+		0703F36886C67EE775626A49 /* SeedVR2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */; };
+		096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
 		0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */; };
@@ -25,6 +27,7 @@
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */; };
 		1A5F45C560C1C0085844AF7B /* UpdateChecker.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */; };
+		1B4F4FBA717098E4C12A58A5 /* ModelDefaultsView+SeedVR2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */; };
 		1B8C89C99300F30608BBA29F /* GalleryRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC7445FBA2C696BE4141103 /* GalleryRating.swift */; };
 		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
@@ -59,6 +62,7 @@
 		62C2027429B9D3CD98665509 /* FullSizeImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B646F0AF9AC8FBF9494F772D /* FullSizeImageView.swift */; };
 		635C82517A4D9D8A01AC05AC /* ColorHexTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */; };
 		639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */; };
+		63A13D489F8F7A38FC29FFFE /* SeedVR2PreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */; };
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = FE1832089B5311712FEF1286 /* scenario_prompt.md */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
@@ -85,6 +89,7 @@
 		96FC70E999A49888475CAC44 /* BBoxGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */; };
 		98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */; };
 		99D652606CC5D99F504A7F79 /* Krea2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */; };
+		9A7F55F97428F4DE28CAA1AB /* SeedVR2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */; };
 		A5D3A2FB01447DB16652D5DA /* FolderComboBox.swift in Sources */ = {isa = PBXBuildFile; fileRef = 96B20E83673119F893B43BBB /* FolderComboBox.swift */; };
 		A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */; };
 		A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */; };
@@ -95,6 +100,7 @@
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
+		B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
@@ -135,6 +141,8 @@
 
 /* Begin PBXFileReference section */
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
+		041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2JobRunner.swift; sourceTree = "<group>"; };
+		05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2PreviewViews.swift; sourceTree = "<group>"; };
 		08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
 		0B8A946E00348D9BD857672E /* MfluxDriverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverController.swift; sourceTree = "<group>"; };
 		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
@@ -153,9 +161,12 @@
 		2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorTests.swift; sourceTree = "<group>"; };
 		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
 		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
+		2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2Job.swift; sourceTree = "<group>"; };
 		2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupportTests.swift; sourceTree = "<group>"; };
 		318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Forms.swift"; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+SeedVR2Form.swift"; sourceTree = "<group>"; };
+		377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2UpscaleSheet.swift; sourceTree = "<group>"; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplatePickerView.swift; sourceTree = "<group>"; };
 		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
@@ -226,6 +237,7 @@
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
 		C4443AEA2099305CADF36EE5 /* PromptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistory.swift; sourceTree = "<group>"; };
+		C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2JobStore.swift; sourceTree = "<group>"; };
 		C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
 		C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ideogram_caption_prompt.md; sourceTree = "<group>"; };
 		CB933A545C60752280A661AE /* Debouncer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Debouncer.swift; sourceTree = "<group>"; };
@@ -389,6 +401,7 @@
 				5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */,
 				0B8A946E00348D9BD857672E /* MfluxDriverController.swift */,
 				655AC8400B9B30688813DF1A /* RunnerSupport.swift */,
+				041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -424,6 +437,7 @@
 				4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */,
 				6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */,
 				72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */,
+				35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */,
 				141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */,
 				A31CFEFF049480510A99BB2F /* SettingsView.swift */,
 			);
@@ -438,6 +452,8 @@
 				B646F0AF9AC8FBF9494F772D /* FullSizeImageView.swift */,
 				0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */,
 				529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */,
+				05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */,
+				377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */,
 				DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */,
 			);
 			path = PreviewPane;
@@ -492,6 +508,7 @@
 				C4443AEA2099305CADF36EE5 /* PromptHistory.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
 				85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */,
+				2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */,
 			);
 			path = Models;
 			sourceTree = "<group>";
@@ -506,6 +523,7 @@
 				1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */,
 				75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */,
 				B9474B6243420062519AB6BA /* ParamsPanelState.swift */,
+				C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */,
 				0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */,
 			);
 			path = Stores;
@@ -723,6 +741,7 @@
 				EF113144EC0E822A2551EF74 /* ModelDefaultsView+Ideogram4Form.swift in Sources */,
 				B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */,
 				3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */,
+				1B4F4FBA717098E4C12A58A5 /* ModelDefaultsView+SeedVR2Form.swift in Sources */,
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
 				8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
@@ -743,6 +762,11 @@
 				8939CD33C69686E0A6C49587 /* ScenarioGeneratorView.swift in Sources */,
 				05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */,
 				98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */,
+				096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */,
+				9A7F55F97428F4DE28CAA1AB /* SeedVR2JobRunner.swift in Sources */,
+				0703F36886C67EE775626A49 /* SeedVR2JobStore.swift in Sources */,
+				63A13D489F8F7A38FC29FFFE /* SeedVR2PreviewViews.swift in Sources */,
+				B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */,
 				4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */,
 				8DAF2E907B2C91E89F817835 /* StepwisePreviewView.swift in Sources */,
 				4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */,

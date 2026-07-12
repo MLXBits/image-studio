@@ -56,6 +56,8 @@ struct ParamsPanelView: View {
                     Ideogram4ParamsPanelView(params: ideogramParams)
                 case .krea2:
                     Krea2ParamsPanelView(params: krea2Params)
+                case .seedvr2:
+                    EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }
             }
             .padding(.horizontal, 12)

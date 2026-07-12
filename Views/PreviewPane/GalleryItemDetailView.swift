@@ -14,6 +14,7 @@ struct GalleryItemDetailView: View {
     var onShowFullSize: ((NSImage) -> Void)?
     var onSetFlag: ((PickFlag?) -> Void)?
     var onSetRating: ((Int) -> Void)?
+    var onUpscale: ((String) -> Void)?
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
@@ -23,6 +24,8 @@ struct GalleryItemDetailView: View {
             ImageMetadataInfo(ideogram4Item: item)
         } else if item.krea2Metadata != nil {
             ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.seedVR2Metadata != nil {
+            ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else {
             ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
         }
@@ -70,6 +73,10 @@ struct GalleryItemDetailView: View {
                     Button("Apply Settings") { onApplyKrea2Settings?(correctedKrea2(meta)) }
                     Button("Remix (new seed)") { onRemixKrea2?(meta) }
                 }
+                if let onUpscale {
+                    Divider()
+                    Button("Upscale…") { onUpscale(item.path) }
+                }
                 if info.log != nil {
                     Divider()
                     Button("Show Log") { showingLog = true }
@@ -95,7 +102,8 @@ struct GalleryItemDetailView: View {
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
                 },
-                onShowLog: info.log != nil ? { showingLog = true } : nil
+                onShowLog: info.log != nil ? { showingLog = true } : nil,
+                onUpscale: onUpscale.map { fn in { fn(item.path) } }
             )
         }
         .onAppear { loadImage() }

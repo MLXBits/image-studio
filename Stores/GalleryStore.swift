@@ -17,6 +17,7 @@ struct GalleryItem: Identifiable, Equatable {
     var metadata: GenerationMetadata?
     var ideogram4Metadata: Ideogram4Metadata?
     var krea2Metadata: Krea2Metadata?
+    var seedVR2Metadata: SeedVR2Metadata?
     /// Lightroom-style cull verdict, persisted as an xattr on the file (see ``GalleryCulling``).
     var flag: PickFlag?
     /// 0–5 star rating, persisted as an xattr on the file.
@@ -32,11 +33,20 @@ struct GalleryItem: Identifiable, Equatable {
 
     /// Which model family produced this image, used to filter the gallery to the
     /// currently selected model. Ideogram outputs are named with an "ideogram"
-    /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux.
+    /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux. A SeedVR2
+    /// upscale (`seedvr2_…`) isn't a picker family, so it inherits its *source*
+    /// image's family (from the sidecar) — the upscale then sits in the same
+    /// filtered view and board as the image it was made from.
     var modelFamily: ModelFamily {
         let name = filename.lowercased()
         if name.hasPrefix("ideogram") { return .ideogram4 }
         if name.hasPrefix("krea2") { return .krea2 }
+        if name.hasPrefix("seedvr2") {
+            let src = ((seedVR2Metadata?.sourcePath ?? "") as NSString).lastPathComponent.lowercased()
+            if src.hasPrefix("ideogram") { return .ideogram4 }
+            if src.hasPrefix("krea2") { return .krea2 }
+            return .flux
+        }
         return .flux
     }
 }
@@ -301,21 +311,26 @@ nonisolated private func scanDirectory(
         let fluxMeta: GenerationMetadata?
         let ideogramMeta: Ideogram4Metadata?
         let krea2Meta: Krea2Metadata?
+        let seedVR2Meta: SeedVR2Metadata?
         let priorHasMetadata = prior?.metadata != nil
             || prior?.ideogram4Metadata != nil
             || prior?.krea2Metadata != nil
+            || prior?.seedVR2Metadata != nil
         if let prior, prior.modifiedAt == modDate, priorHasMetadata {
             // Unchanged file already carrying sidecar metadata: skip the JSON re-read.
             // Rescans fire after every completed image, so this is the hot path.
             fluxMeta = prior.metadata
             ideogramMeta = prior.ideogram4Metadata
             krea2Meta = prior.krea2Metadata
+            seedVR2Meta = prior.seedVR2Metadata
         } else {
             // New or changed file — or one whose sidecar hadn't landed yet when last
             // scanned (batch sidecars are written just after the PNG), so retry the read.
             fluxMeta = MetadataSidecar.read(for: url.path)
             ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
             krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
+            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil
+                ? MetadataSidecar.readSeedVR2(for: url.path) : nil
         }
         // Flags/ratings live in xattrs and never change the file's mtime, so the
         // mtime-based skip above can't be used for them — read them fresh each scan.
@@ -327,6 +342,7 @@ nonisolated private func scanDirectory(
             metadata: fluxMeta,
             ideogram4Metadata: ideogramMeta,
             krea2Metadata: krea2Meta,
+            seedVR2Metadata: seedVR2Meta,
             flag: GalleryCulling.readFlag(path: url.path),
             rating: GalleryCulling.readRating(path: url.path)
         ))
