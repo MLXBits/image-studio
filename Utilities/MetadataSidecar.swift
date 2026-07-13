@@ -129,9 +129,69 @@ nonisolated struct Krea2Metadata: Codable {
 
 // MARK: - SeedVR2 metadata
 
+/// The pre-upscale generation metadata resolved from a source image's sidecar.
+/// Exactly one family is non-nil (or all nil when the source carried no sidecar).
+nonisolated struct SeedVR2Source {
+    var flux: GenerationMetadata?
+    var ideogram4: Ideogram4Metadata?
+    var krea2: Krea2Metadata?
+}
+
+/// Source-forward display fields for a SeedVR2 upscale, derived from the source
+/// generation metadata folded into its sidecar. Failable: nil when the source
+/// carried no sidecar, so callers fall back to showing the upscale parameters.
+nonisolated struct SeedVR2DisplayFields {
+    var prompt: String
+    var negativePrompt: String
+    var sourceModel: String
+    var steps: Int
+    var guidance: Double
+    var loras: [LoraEntry]
+    var seed: Int
+    var width: Int
+    var height: Int
+
+    init?(source: SeedVR2Source) {
+        if let s = source.flux {
+            prompt = s.prompt
+            negativePrompt = s.negativePrompt
+            sourceModel = s.model == .custom ? "Custom" : s.model.displayName
+            steps = s.steps
+            guidance = s.guidance
+            loras = s.loras
+            seed = s.seed
+            width = s.width
+            height = s.height
+        } else if let s = source.ideogram4 {
+            prompt = s.usePlainPrompt ? s.plainPrompt : s.caption.highLevelDescription
+            negativePrompt = ""
+            sourceModel = "Ideogram 4"
+            steps = s.preset.stepCount
+            guidance = 1.0
+            loras = s.loras ?? []
+            seed = s.seed
+            width = s.width
+            height = s.height
+        } else if let s = source.krea2 {
+            prompt = s.prompt
+            negativePrompt = s.negativePrompt ?? ""
+            sourceModel = "Krea 2 Turbo"
+            steps = s.steps
+            guidance = s.guidance
+            loras = s.loras ?? []
+            seed = s.seed
+            width = s.width
+            height = s.height
+        } else {
+            return nil
+        }
+    }
+}
+
 nonisolated struct SeedVR2Metadata: Codable {
     @MainActor static func from(job: SeedVR2Job) -> Self {
-        Self(
+        let source = resolveSource(for: job.sourcePath)
+        return Self(
             sourcePath: job.sourcePath,
             model: job.is7B ? "seedvr2-7b" : "seedvr2-3b",
             scale: job.scale,
@@ -143,8 +203,36 @@ nonisolated struct SeedVR2Metadata: Codable {
             board: job.board.isEmpty ? nil : job.board,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
-            log: job.log.isEmpty ? nil : job.log
+            log: job.log.isEmpty ? nil : job.log,
+            sourceFlux: source.flux,
+            sourceIdeogram4: source.ideogram4,
+            sourceKrea2: source.krea2
         )
+    }
+
+    /// Reads the source image's sidecar so the upscale can stand on its own once the
+    /// original is deleted. At most one family is non-nil (the reads are mutually
+    /// exclusive — a sidecar decodes as exactly one family). If the source is itself
+    /// an upscale, its already-inherited source is carried forward so chained
+    /// upscales don't lose the original recipe (no recursion — one hop, flattened).
+    nonisolated static func resolveSource(for sourcePath: String) -> SeedVR2Source {
+        if let flux = MetadataSidecar.read(for: sourcePath) {
+            return SeedVR2Source(flux: flux)
+        }
+        if let ideogram4 = MetadataSidecar.readIdeogram4(for: sourcePath) {
+            return SeedVR2Source(ideogram4: ideogram4)
+        }
+        if let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
+            return SeedVR2Source(krea2: krea2)
+        }
+        if let priorUpscale = MetadataSidecar.readSeedVR2(for: sourcePath) {
+            return SeedVR2Source(
+                flux: priorUpscale.sourceFlux,
+                ideogram4: priorUpscale.sourceIdeogram4,
+                krea2: priorUpscale.sourceKrea2
+            )
+        }
+        return SeedVR2Source()
     }
 
     var sourcePath: String
@@ -159,6 +247,13 @@ nonisolated struct SeedVR2Metadata: Codable {
     var generatedAt: Date
     var startedAt: Date?
     var log: String?
+
+    // Source (pre-upscale) generation metadata, captured at write time. Exactly one
+    // is non-nil (or all nil for a source that carried no sidecar). Lets the upscale
+    // display the original prompt/loras and replay via Apply-Settings/Remix.
+    var sourceFlux: GenerationMetadata?
+    var sourceIdeogram4: Ideogram4Metadata?
+    var sourceKrea2: Krea2Metadata?
 }
 
 enum MetadataSidecar {

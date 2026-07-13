@@ -27,6 +27,15 @@ struct ImageMetadataInfo {
     var filePath: String?
     var log: String?
     var generationTime: String?
+    /// Optional qualifier appended to the resolution field, e.g. "from 1024×1024"
+    /// for a SeedVR2 upscale so the original (pre-upscale) size stays visible.
+    var resolutionNote: String?
+
+    /// Resolution string shown in the grid, with the optional source-size note.
+    var resolutionText: String {
+        if let note = resolutionNote { return "\(width)×\(height) (\(note))" }
+        return "\(width)×\(height)"
+    }
 
     init(job: FluxJob) {
         prompt = job.prompt
@@ -147,17 +156,37 @@ struct ImageMetadataInfo {
 
     init?(seedVR2Item: GalleryItem) {
         guard let meta = seedVR2Item.seedVR2Metadata else { return nil }
-        prompt = "Upscale \(meta.scale)× · softness \(String(format: "%.2f", meta.softness))"
-        negativePrompt = ""
-        modelName = meta.model == "seedvr2-7b" ? "SeedVR2 7B" : "SeedVR2 3B"
-        seed = meta.seed
+        let modelLabel = meta.model == "seedvr2-7b" ? "SeedVR2 7B" : "SeedVR2 3B"
+        let upscaleLabel = "\(modelLabel) · \(meta.scale)×"
         width = meta.width
         height = meta.height
-        steps = 0
-        guidance = 1.0
-        loras = []
         filePath = seedVR2Item.path
         log = meta.log
+        // Source-forward: surface the original prompt/loras/recipe (it's the same
+        // image, just larger) with the upscale noted in the model line.
+        let source = SeedVR2Source(
+            flux: meta.sourceFlux, ideogram4: meta.sourceIdeogram4, krea2: meta.sourceKrea2
+        )
+        if let src = SeedVR2DisplayFields(source: source) {
+            prompt = src.prompt
+            negativePrompt = src.negativePrompt
+            modelName = "\(upscaleLabel) ← \(src.sourceModel)"
+            seed = src.seed
+            steps = src.steps
+            guidance = src.guidance
+            loras = src.loras
+            resolutionNote = "from \(src.width)×\(src.height)"
+        } else {
+            // Pre-inheritance sidecar (or a source that carried none): show the
+            // upscale parameters directly, as before.
+            prompt = "Upscale \(meta.scale)× · softness \(String(format: "%.2f", meta.softness))"
+            negativePrompt = ""
+            modelName = modelLabel
+            seed = meta.seed
+            steps = 0
+            guidance = 1.0
+            loras = []
+        }
         if let started = meta.startedAt {
             let secs = Int(meta.generatedAt.timeIntervalSince(started))
             generationTime = "\(secs / 60)m \(secs % 60)s"
@@ -167,17 +196,30 @@ struct ImageMetadataInfo {
     }
 
     init(seedVR2Job job: SeedVR2Job) {
-        prompt = "Upscale \(job.scale)× · softness \(String(format: "%.2f", job.softness))"
-        negativePrompt = ""
-        modelName = job.modelLabel
-        seed = job.resolvedSeed ?? job.seed
+        let upscaleLabel = "\(job.modelLabel) · \(job.scale)×"
         width = job.width
         height = job.height
-        steps = 0
-        guidance = 1.0
-        loras = []
         filePath = job.outputPath
         log = job.log.isEmpty ? nil : job.log
+        let source = SeedVR2Metadata.resolveSource(for: job.sourcePath)
+        if let src = SeedVR2DisplayFields(source: source) {
+            prompt = src.prompt
+            negativePrompt = src.negativePrompt
+            modelName = "\(upscaleLabel) ← \(src.sourceModel)"
+            seed = src.seed
+            steps = src.steps
+            guidance = src.guidance
+            loras = src.loras
+            resolutionNote = "from \(src.width)×\(src.height)"
+        } else {
+            prompt = "Upscale \(job.scale)× · softness \(String(format: "%.2f", job.softness))"
+            negativePrompt = ""
+            modelName = job.modelLabel
+            seed = job.resolvedSeed ?? job.seed
+            steps = 0
+            guidance = 1.0
+            loras = []
+        }
         if let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
             generationTime = "\(secs / 60)m \(secs % 60)s"
@@ -280,7 +322,7 @@ struct ImageMetadataPanel: View {
         VStack(alignment: .leading, spacing: 5) {
             HStack(alignment: .firstTextBaseline, spacing: 32) {
                 metaField("Model", info.modelName)
-                metaField("Resolution", "\(info.width)×\(info.height)")
+                metaField("Resolution", info.resolutionText)
             }
             HStack(alignment: .center, spacing: 32) {
                 seedField

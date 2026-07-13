@@ -161,6 +161,23 @@ struct GalleryItemDetailView: View {
         if let meta = item.krea2Metadata, let fn = onApplyKrea2Settings {
             return { fn(correctedKrea2(meta)) }
         }
+        // SeedVR2 upscale: replay from the source generation metadata folded into the
+        // upscale's sidecar, so an upscale is as re-applicable as its original.
+        if let src = item.seedVR2Metadata {
+            if let meta = src.sourceFlux {
+                return {
+                    var corrected = meta
+                    corrected.board = item.board == "Default" ? nil : item.board
+                    onApplySettings(corrected)
+                }
+            }
+            if let meta = src.sourceIdeogram4 {
+                return { onApplyIdeogramSettings(correctedIdeogram(meta)) }
+            }
+            if let meta = src.sourceKrea2, let fn = onApplyKrea2Settings {
+                return { fn(correctedKrea2(meta)) }
+            }
+        }
         return nil
     }
 
@@ -168,6 +185,11 @@ struct GalleryItemDetailView: View {
         if let meta = item.metadata { return { onRemix(meta) } }
         if let meta = item.ideogram4Metadata { return { onRemixIdeogram(meta) } }
         if let meta = item.krea2Metadata, let fn = onRemixKrea2 { return { fn(meta) } }
+        if let src = item.seedVR2Metadata {
+            if let meta = src.sourceFlux { return { onRemix(meta) } }
+            if let meta = src.sourceIdeogram4 { return { onRemixIdeogram(meta) } }
+            if let meta = src.sourceKrea2, let fn = onRemixKrea2 { return { fn(meta) } }
+        }
         return nil
     }
 
