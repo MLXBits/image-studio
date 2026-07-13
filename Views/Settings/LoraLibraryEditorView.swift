@@ -62,7 +62,9 @@ struct LoraLibraryEditorView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Text(
-                    "Your catalog of \(family.rawValue) LoRAs. Toggle **Default** to auto-apply one to every new generation; add any to a job or Stack from the LoRA picker."
+                    "Your catalog of \(family.rawValue) LoRAs. Toggle **Default** to "
+                        + "auto-apply one to every new generation; add any to a job or "
+                        + "Stack from the LoRA picker."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -152,12 +154,6 @@ private struct LibraryLoraEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var tagsText: String
 
-    init(draft: LibraryLora, family: ModelFamily) {
-        _draft = State(initialValue: draft)
-        self.family = family
-        _tagsText = State(initialValue: draft.tags.joined(separator: ", "))
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(draft.name.isEmpty && draft.path.isEmpty ? "Add Library LoRA" : "Edit Library LoRA")
@@ -226,6 +222,12 @@ private struct LibraryLoraEditSheet: View {
         }
         .padding()
         .frame(width: 460)
+    }
+
+    init(draft: LibraryLora, family: ModelFamily) {
+        _draft = State(initialValue: draft)
+        self.family = family
+        _tagsText = State(initialValue: draft.tags.joined(separator: ", "))
     }
 
     private func field(_ label: String, @ViewBuilder _ content: () -> some View) -> some View {
@@ -358,12 +360,6 @@ private struct LoraStackEditSheet: View {
     @Environment(\.dismiss) private var dismiss
     @State private var tagsText: String
 
-    init(draft: LoraStack, family: ModelFamily) {
-        _draft = State(initialValue: draft)
-        self.family = family
-        _tagsText = State(initialValue: draft.tags.joined(separator: ", "))
-    }
-
     var body: some View {
         VStack(alignment: .leading, spacing: 14) {
             Text(draft.name.isEmpty ? "New Stack" : "Edit Stack")
@@ -418,6 +414,12 @@ private struct LoraStackEditSheet: View {
         }
         .padding()
         .frame(width: 480)
+    }
+
+    init(draft: LoraStack, family: ModelFamily) {
+        _draft = State(initialValue: draft)
+        self.family = family
+        _tagsText = State(initialValue: draft.tags.joined(separator: ", "))
     }
 
     private func save() {

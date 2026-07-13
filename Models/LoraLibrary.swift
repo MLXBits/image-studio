@@ -56,14 +56,6 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         !path.trimmingCharacters(in: .whitespaces).isEmpty
     }
 
-    /// A per-job entry seeded from this library LoRA's identity and default strength.
-    /// Reuses the library `id` so repeated derivations (e.g. the default-LoRA lists
-    /// computed from the library each render) compare equal; job lists dedupe by
-    /// `path`, so the shared id never collides within one list.
-    func toEntry() -> LoraEntry {
-        LoraEntry(id: id, path: path, strength: defaultStrength, notes: notes, modelFamily: modelFamily)
-    }
-
     init(
         id: UUID = UUID(),
         name: String = "",
@@ -103,6 +95,14 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         thumbnailPath = try c.decodeIfPresent(String.self, forKey: .thumbnailPath)
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+    }
+
+    /// A per-job entry seeded from this library LoRA's identity and default strength.
+    /// Reuses the library `id` so repeated derivations (e.g. the default-LoRA lists
+    /// computed from the library each render) compare equal; job lists dedupe by
+    /// `path`, so the shared id never collides within one list.
+    func toEntry() -> LoraEntry {
+        LoraEntry(id: id, path: path, strength: defaultStrength, notes: notes, modelFamily: modelFamily)
     }
 }
 

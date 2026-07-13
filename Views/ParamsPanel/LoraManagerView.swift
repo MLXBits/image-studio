@@ -160,14 +160,6 @@ struct LoraManagerView: View {
         .frame(width: 440)
     }
 
-    private func addLora() {
-        let trimmed = newPath.trimmingCharacters(in: .whitespaces)
-        guard !trimmed.isEmpty else { return }
-        loras.append(LoraEntry(path: trimmed, modelFamily: modelFamily))
-        newPath = ""
-        showingAdd = false
-    }
-
     // MARK: - Library & stacks picker
 
     @ViewBuilder
@@ -180,6 +172,14 @@ struct LoraManagerView: View {
                 onApplyStack: { applyStack($0) }
             )
         }
+    }
+
+    private func addLora() {
+        let trimmed = newPath.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return }
+        loras.append(LoraEntry(path: trimmed, modelFamily: modelFamily))
+        newPath = ""
+        showingAdd = false
     }
 
     /// Adds a library LoRA (deduped by path) and inserts its trigger words.

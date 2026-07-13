@@ -17,6 +17,14 @@ struct SettingsView: View {
         }
     }
 
+    private enum LoraTabMode: String, CaseIterable, Identifiable {
+        case library = "Library"
+        case stacks = "Stacks"
+        var id: String {
+            rawValue
+        }
+    }
+
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(MfluxDriverController.self) private var driverController
@@ -26,14 +34,6 @@ struct SettingsView: View {
     @State private var loraFamily: ModelFamily = .flux
     @State private var loraTabMode: LoraTabMode = .library
     @State private var hfTokenDraft: String = ""
-
-    private enum LoraTabMode: String, CaseIterable, Identifiable {
-        case library = "Library"
-        case stacks = "Stacks"
-        var id: String {
-            rawValue
-        }
-    }
 
     var body: some View {
         TabView(selection: $selectedTab) {
