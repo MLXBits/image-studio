@@ -28,6 +28,8 @@ struct ParamsPanelView: View {
     @State private var isImageDropTargeted: Bool = false
     @State private var isEditDropTargeted: Bool = false
     @State private var showingTemplatePicker: Bool = false
+    @StateObject private var clipboardMonitor =
+        ClipboardImageMonitor(imageExtensions: ["png", "jpg", "jpeg", "webp"])
 
     private var isDistilled: Bool {
         params.model.isDistilled
@@ -66,6 +68,8 @@ struct ParamsPanelView: View {
         }
         .scrollIndicators(.automatic)
         .contentMargins(.trailing, 5, for: .scrollContent)
+        .onAppear { clipboardMonitor.start() }
+        .onDisappear { clipboardMonitor.stop() }
     }
 
     // MARK: - Flux content
@@ -420,7 +424,7 @@ struct ParamsPanelView: View {
                     .accessibilityLabel("Choose reference image")
                     .accessibilityHint("Opens a file picker to select an image for img2img generation")
 
-                    if clipboardHasImage {
+                    if clipboardMonitor.hasImage {
                         Button { pasteImage() } label: {
                             Image(systemName: "doc.on.clipboard")
                                 .padding(.vertical, 6)
@@ -505,16 +509,6 @@ struct ParamsPanelView: View {
         }
     }
 
-    // MARK: - Helpers
-
-    private var clipboardHasImage: Bool {
-        let pb = NSPasteboard.general
-        return pb.canReadObject(forClasses: [NSImage.self], options: nil)
-            || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
-            .compactMap { $0 as? URL }
-            .first { Self.imageExtensions.contains($0.pathExtension.lowercased()) } != nil
-    }
-
     // MARK: - Mode picker (Generate vs Edit, Flux.2 only)
 
     private var modePickerRow: some View {
@@ -581,7 +575,7 @@ struct ParamsPanelView: View {
                 .controlSize(.small)
                 .accessibilityLabel("Add reference image")
 
-                if clipboardHasImage {
+                if clipboardMonitor.hasImage {
                     Button { pasteEditImage() } label: {
                         Image(systemName: "doc.on.clipboard")
                             .padding(.vertical, 6)

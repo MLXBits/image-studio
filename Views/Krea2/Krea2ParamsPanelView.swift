@@ -15,6 +15,8 @@ struct Krea2ParamsPanelView: View {
     @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var isImageDropTargeted: Bool = false
+    @StateObject private var clipboardMonitor =
+        ClipboardImageMonitor(imageExtensions: ["png", "jpg", "jpeg", "webp"])
 
     private var cfgOn: Bool {
         params.guidance != 1.0
@@ -70,6 +72,8 @@ struct Krea2ParamsPanelView: View {
         ) {
             img2ImgSection
         }
+        .onAppear { clipboardMonitor.start() }
+        .onDisappear { clipboardMonitor.stop() }
 
         Divider()
 
@@ -241,7 +245,7 @@ struct Krea2ParamsPanelView: View {
                     .accessibilityLabel("Choose reference image")
                     .accessibilityHint("Opens a file picker to select an image for img2img generation")
 
-                    if clipboardHasImage {
+                    if clipboardMonitor.hasImage {
                         Button { pasteImage() } label: {
                             Image(systemName: "doc.on.clipboard")
                                 .padding(.vertical, 6)
@@ -312,14 +316,6 @@ struct Krea2ParamsPanelView: View {
     }
 
     // MARK: - Img2img helpers
-
-    private var clipboardHasImage: Bool {
-        let pb = NSPasteboard.general
-        return pb.canReadObject(forClasses: [NSImage.self], options: nil)
-            || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
-            .compactMap { $0 as? URL }
-            .first { Self.imageExtensions.contains($0.pathExtension.lowercased()) } != nil
-    }
 
     private func pasteImage() {
         let pb = NSPasteboard.general
