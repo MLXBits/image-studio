@@ -293,7 +293,7 @@ struct ImageMetadataPanel: View {
                 }
             }
             if !enabledLoras.isEmpty {
-                metaField("LoRAs", enabledLoras.map(\.displayName).joined(separator: ", "))
+                loraField
             }
         }
         .padding(.horizontal, 16)
@@ -387,6 +387,21 @@ struct ImageMetadataPanel: View {
             } else {
                 Text("–").font(.caption).foregroundStyle(.tertiary)
             }
+        }
+    }
+
+    private var loraField: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 4) {
+            Text("LoRAs")
+                .font(.caption2)
+                .foregroundStyle(.tertiary)
+            Text(enabledLoras
+                .map { "\($0.displayName) (\(String(format: "%.2f", $0.strength)))" }
+                .joined(separator: ", "))
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+                .textSelection(.enabled)
         }
     }
 
