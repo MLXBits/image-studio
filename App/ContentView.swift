@@ -538,13 +538,41 @@ struct ContentView: View {
         }
     }
 
+    /// Whether the queue sheet should show the SeedVR2 upscale queue. True while an
+    /// upscale is running or when the preview is showing an upscale job — the two
+    /// moments a user opens the queue expecting to find their upscale. Since SeedVR2
+    /// is never the picker-selected `modelFamily`, this is the only way its jobs
+    /// surface in the drawer.
+    private var showSeedVR2Queue: Bool {
+        if seedVR2Store.isRunning { return true }
+        if case .activeSeedVR2Job = previewState { return true }
+        return false
+    }
+
     private var queueSheet: some View {
         NavigationStack {
             // Show the queue for the active model family. The two pipelines have
             // separate stores; previously this always showed the Flux queue, so
             // Ideogram jobs (single-shot and batch) never appeared.
             Group {
-                if params.modelFamily == .ideogram4 {
+                if showSeedVR2Queue {
+                    // SeedVR2 isn't a picker-selected family, so key off the running
+                    // upscale / previewed upscale instead of `params.modelFamily`;
+                    // otherwise upscale jobs never appear in the queue drawer.
+                    SeedVR2QueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeSeedVR2Job(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeSeedVR2Job(j) }
+                        }
+                    ))
+                    .environment(seedVR2Store)
+                    .environment(seedVR2Runner)
+                    .environment(settings)
+                    .environment(coordinator)
+                } else if params.modelFamily == .ideogram4 {
                     Ideogram4QueueDrawerView(selectedJob: Binding(
                         get: {
                             if case let .activeIdeogram4Job(j) = previewState { return j }
@@ -783,6 +811,16 @@ struct ContentView: View {
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
                     }
+                }
+            } else if seedVR2Store.isRunning {
+                // SeedVR2 is single-output (no batch), so just show the count of
+                // upscales still queued behind the running one.
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    let remaining = seedVR2Store.pendingJobs.count + 1
+                    Text("\(remaining) left")
+                        .monospacedDigit()
+                        .foregroundStyle(.secondary)
                 }
             } else {
                 Label("Queue", systemImage: "list.bullet")

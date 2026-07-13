@@ -499,9 +499,183 @@ private struct Krea2QueueJobRow: View {
     }
 }
 
+// MARK: - SeedVR2QueueDrawerView
+
+/// Queue drawer for the SeedVR2 upscaler. Mirrors ``Krea2QueueDrawerView`` but is
+/// backed by ``SeedVR2JobStore`` / ``SeedVR2JobRunner``. SeedVR2 is not a
+/// picker-selected family — upscales are an action applied to an existing image —
+/// so the queue sheet surfaces this drawer whenever an upscale is running or the
+/// preview is showing one, rather than keying on the active model family.
+struct SeedVR2QueueDrawerView: View {
+    @Environment(SeedVR2JobStore.self) private var store
+    @Environment(SeedVR2JobRunner.self) private var runner
+    @Environment(AppSettings.self) private var settings
+    @Environment(GenerationCoordinator.self) private var coordinator
+    @Environment(TimingStore.self) private var timing
+
+    @Binding var selectedJob: SeedVR2Job?
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            Divider()
+            if store.jobs.isEmpty {
+                emptyState
+            } else {
+                jobList
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack {
+            Text("Queue")
+                .font(.headline)
+            Spacer()
+            if store.jobs.contains(where: \.status.isTerminal) {
+                Button {
+                    store.purgeTerminal()
+                } label: {
+                    Image(systemName: "trash")
+                }
+                .buttonStyle(.borderless)
+                .controlSize(.small)
+                .foregroundStyle(.secondary)
+                .focusable(false)
+                .help("Remove all completed, failed, and cancelled jobs")
+            }
+            if store.isRunning {
+                Button("Stop") { runner.cancel() }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .foregroundStyle(.red)
+                    .focusable(false)
+                    .help("Stop the current job; remaining pending jobs continue")
+
+                Button("Stop All") {
+                    runner.cancel()
+                    store.cancelAllPending()
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .tint(.red)
+                .focusable(false)
+                .help("Stop the current job and cancel all pending jobs")
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+    }
+
+    private var jobList: some View {
+        List(selection: Binding(
+            get: { selectedJob?.id },
+            set: { id in selectedJob = store.jobs.first { $0.id == id } }
+        )) {
+            ForEach(store.jobs) { job in
+                SeedVR2QueueJobRow(
+                    job: job,
+                    onRestart: isRestartable(job) ? { restart(job) } : nil,
+                    onCancel: isCancellable(job) ? { cancelJob(job) } : nil
+                )
+                .tag(job.id)
+            }
+        }
+        .listStyle(.sidebar)
+    }
+
+    private var emptyState: some View {
+        VStack {
+            Spacer()
+            Text("No jobs")
+                .font(.callout)
+                .foregroundStyle(.tertiary)
+            Spacer()
+        }
+    }
+
+    private func isRestartable(_ job: SeedVR2Job) -> Bool {
+        switch job.status {
+        case .failed, .cancelled: true
+        default: false
+        }
+    }
+
+    private func isCancellable(_ job: SeedVR2Job) -> Bool {
+        switch job.status {
+        case .pending, .running: true
+        default: false
+        }
+    }
+
+    private func restart(_ job: SeedVR2Job) {
+        store.restart(job)
+        runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
+    }
+
+    private func cancelJob(_ job: SeedVR2Job) {
+        if case .running = job.status {
+            runner.cancel()
+        } else {
+            store.cancelJob(job)
+        }
+    }
+}
+
+// MARK: - SeedVR2QueueJobRow
+
+private struct SeedVR2QueueJobRow: View {
+    let job: SeedVR2Job
+    var onRestart: (() -> Void)?
+    var onCancel: (() -> Void)?
+
+    /// SeedVR2 jobs have no prompt — surface the source image's filename so the row
+    /// is identifiable, with the upscale settings on the secondary line.
+    private var sourceName: String {
+        let name = (job.sourcePath as NSString).lastPathComponent
+        return name.isEmpty ? "(upscale)" : name
+    }
+
+    var body: some View {
+        HStack(spacing: 8) {
+            JobStatusIcon(status: job.status)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(sourceName)
+                    .font(.caption)
+                    .lineLimit(2)
+                Text(job.displayName)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
+            Spacer()
+            if let onCancel {
+                Button(action: onCancel) {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.caption)
+                        .foregroundStyle(.red)
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .help("Cancel this job")
+            }
+            if let onRestart {
+                Button(action: onRestart) {
+                    Image(systemName: "arrow.counterclockwise")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .focusable(false)
+                .help("Re-queue this job")
+            }
+        }
+        .padding(.vertical, 2)
+    }
+}
+
 // MARK: - JobStatusIcon
 
-/// Shared status glyph for Flux, Ideogram, and Krea 2 queue rows.
+/// Shared status glyph for Flux, Ideogram, Krea 2, and SeedVR2 queue rows.
 private struct JobStatusIcon: View {
     let status: JobStatus
 
