@@ -261,6 +261,7 @@ struct Krea2ParamsPanelView: View {
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 48, height: 48)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .thumbnailHoverPreview(imagePath: params.imagePath)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text(URL(fileURLWithPath: params.imagePath).lastPathComponent)

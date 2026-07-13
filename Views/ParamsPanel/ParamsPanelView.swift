@@ -441,6 +441,7 @@ struct ParamsPanelView: View {
                             .aspectRatio(contentMode: .fill)
                             .frame(width: 48, height: 48)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
+                            .thumbnailHoverPreview(imagePath: params.imagePath)
                     }
                     VStack(alignment: .leading, spacing: 4) {
                         Text(URL(fileURLWithPath: params.imagePath).lastPathComponent)
@@ -774,5 +775,41 @@ extension View {
                     .allowsHitTesting(false)
             }
         }
+    }
+
+    /// Shows the full-size image at `imagePath` in a popover after a 250 ms hover
+    /// delay. No-ops when `imagePath` is empty or not a readable image. Shared by
+    /// the Flux and Krea 2 img2img reference thumbnails.
+    func thumbnailHoverPreview(imagePath: String) -> some View {
+        modifier(ThumbnailHoverPreview(imagePath: imagePath))
+    }
+}
+
+/// A hover-to-preview popover for a small reference thumbnail, mirroring the
+/// thumbnail hovers in Video Studio.
+private struct ThumbnailHoverPreview: ViewModifier {
+    let imagePath: String
+
+    @State private var isShowing = false
+    @State private var pendingShow: DispatchWorkItem?
+
+    func body(content: Content) -> some View {
+        content
+            .onHover { inside in
+                pendingShow?.cancel()
+                guard inside else { isShowing = false; return }
+                let task = DispatchWorkItem { isShowing = true }
+                pendingShow = task
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.25, execute: task)
+            }
+            .popover(isPresented: $isShowing, arrowEdge: .trailing) {
+                if let img = NSImage(contentsOfFile: imagePath), img.size.width > 0 {
+                    Image(nsImage: img)
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(maxWidth: 360, maxHeight: 360)
+                        .padding(8)
+                }
+            }
     }
 }
