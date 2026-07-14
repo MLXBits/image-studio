@@ -16,7 +16,7 @@ struct GenerationGalleryView: View {
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     let onUseInImg2Img: (String) -> Void
-    var onUpscale: ((String) -> Void)?
+    var onUpscale: (([String]) -> Void)?
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
     var onCompare: ((GalleryItem, GalleryItem) -> Void)?
@@ -173,7 +173,20 @@ struct GenerationGalleryView: View {
                     onRemixIdeogram: onRemixIdeogram,
                     onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
                     onUseInImg2Img: onUseInImg2Img,
-                    onUpscale: { onUpscale?($0) },
+                    onUpscale: { path in
+                        // Upscale the whole selection when the right-clicked item is
+                        // part of it; otherwise just the clicked image. Mirrors the
+                        // strip/move/delete context actions.
+                        let item = gallery.items.first { $0.path == path }
+                        let targets: [String] = if let item, selection.contains(item.id) {
+                            gallery.items
+                                .filter { selection.contains($0.id) }
+                                .map(\.path)
+                        } else {
+                            [path]
+                        }
+                        onUpscale?(targets)
+                    },
                     onMoveToBoard: { item, board in
                         if selection.contains(item.id) {
                             batchMove(to: board)
@@ -485,6 +498,16 @@ struct GenerationGalleryView: View {
                 Label("Compare", systemImage: "rectangle.split.2x1").font(.caption)
             }
             .buttonStyle(.borderless).help("Compare two images side by side (c)")
+
+            Button {
+                let paths = gallery.items
+                    .filter { selection.contains($0.id) }
+                    .map(\.path)
+                onUpscale?(paths)
+            } label: {
+                Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right").font(.caption)
+            }
+            .buttonStyle(.borderless).help("Upscale all selected images with SeedVR2")
 
             Menu {
                 ForEach(orderedBoards, id: \.self) { board in

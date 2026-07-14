@@ -15,11 +15,12 @@ struct ContentView: View {
         let height: Int
     }
 
-    /// A source image awaiting the SeedVR2 Upscale sheet (path + its gallery board).
+    /// One or more source images awaiting the SeedVR2 Upscale sheet. Holds more than
+    /// one when the user upscales a gallery multi-selection; the sheet's chosen
+    /// settings apply to every source.
     private struct UpscaleTarget: Identifiable {
         let id = UUID()
-        let path: String
-        let board: String
+        let sources: [SeedVR2UpscaleSheet.Source]
     }
 
     @Environment(AppSettings.self) private var settings
@@ -182,7 +183,7 @@ struct ContentView: View {
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
             onSetGalleryFlag: { flag in setPreviewFlag(flag) },
             onSetGalleryRating: { rating in setPreviewRating(rating) },
-            onUpscale: { path in promptUpscale(path: path) },
+            onUpscale: { path in promptUpscale(paths: [path]) },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -212,7 +213,7 @@ struct ContentView: View {
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onUpscale: { path in promptUpscale(path: path) },
+            onUpscale: { paths in promptUpscale(paths: paths) },
             onSelectBoard: { name in params.board = name },
             onClearPreview: clearPreview,
             onCompare: { select, candidate in
@@ -459,12 +460,11 @@ struct ContentView: View {
         }
         .sheet(item: $upscaleTarget) { target in
             SeedVR2UpscaleSheet(
-                sourcePath: target.path,
-                board: target.board,
+                sources: target.sources,
                 settings: settings,
-                onConfirm: { job in
+                onConfirm: { jobs in
                     upscaleTarget = nil
-                    startUpscale(job)
+                    startUpscale(jobs)
                 },
                 onCancel: { upscaleTarget = nil }
             )
@@ -995,16 +995,23 @@ struct ContentView: View {
 
     // MARK: - SeedVR2 upscale
 
-    /// Opens the Upscale sheet for `path`, resolving the board from its gallery folder.
-    private func promptUpscale(path: String) {
-        upscaleTarget = UpscaleTarget(path: path, board: boardForPath(path))
+    /// Opens the Upscale sheet for `paths`, resolving each image's board from its
+    /// gallery folder. Multiple paths (a gallery multi-selection) share one setup.
+    private func promptUpscale(paths: [String]) {
+        let sources = paths.map { SeedVR2UpscaleSheet.Source(path: $0, board: boardForPath($0)) }
+        guard !sources.isEmpty else { return }
+        upscaleTarget = UpscaleTarget(sources: sources)
     }
 
-    /// Enqueues an upscale job and starts the runner (gate-serialized against the
-    /// generative families), flipping the preview to the active upscale when idle.
-    private func startUpscale(_ job: SeedVR2Job) {
+    /// Enqueues one or more upscale jobs and starts the runner (gate-serialized against
+    /// the generative families), flipping the preview to the first active upscale when
+    /// idle. Batch jobs queue behind it and run one at a time.
+    private func startUpscale(_ jobs: [SeedVR2Job]) {
+        guard let first = jobs.first else { return }
         let wasIdle = !isAnyStoreRunning
-        seedVR2Store.add(job)
+        for job in jobs {
+            seedVR2Store.add(job)
+        }
         if wasIdle {
             // Free any warm generative model before the upscale spawns its own process
             // (holding both risks OOM). When not idle, pumpQueues ejects at hand-off.
@@ -1013,7 +1020,7 @@ struct ContentView: View {
         seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
         if wasIdle {
             selectedGalleryItem = nil
-            previewState = .activeSeedVR2Job(job)
+            previewState = .activeSeedVR2Job(first)
         }
     }
 

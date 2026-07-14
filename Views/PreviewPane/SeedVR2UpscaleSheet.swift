@@ -10,16 +10,24 @@ private func seedVR2PixelSize(ofImageAt path: String) -> CGSize? {
     return CGSize(width: w, height: h)
 }
 
-/// Sheet for configuring a SeedVR2 upscale of an existing image. SeedVR2 is
-/// prompt-free super-resolution, so the only inputs are scale factor, softness,
+/// Sheet for configuring a SeedVR2 upscale of one or more existing images. SeedVR2
+/// is prompt-free super-resolution, so the only inputs are scale factor, softness,
 /// model size (3B/7B), and quantize. Presented from the "Upscale…" action in the
-/// preview pane / gallery detail. On confirm it hands a fully-built ``SeedVR2Job``
-/// back to ``ContentView`` for enqueueing and remembers the choices as defaults.
+/// preview pane / gallery detail; a gallery multi-selection passes every selected
+/// image, and the chosen settings apply to all of them. On confirm it hands the
+/// fully-built ``SeedVR2Job``s back to ``ContentView`` for enqueueing and remembers
+/// the choices as defaults.
 struct SeedVR2UpscaleSheet: View {
-    let sourcePath: String
-    let board: String
+    /// One image to upscale, paired with the gallery board its result should land in.
+    struct Source: Identifiable {
+        let id = UUID()
+        let path: String
+        let board: String
+    }
+
+    let sources: [Source]
     let settings: AppSettings
-    let onConfirm: (SeedVR2Job) -> Void
+    let onConfirm: ([SeedVR2Job]) -> Void
     let onCancel: () -> Void
 
     @State private var scale: Int
@@ -39,7 +47,7 @@ struct SeedVR2UpscaleSheet: View {
                     .foregroundStyle(.tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Upscale with SeedVR2").font(.headline)
-                    Text((sourcePath as NSString).lastPathComponent)
+                    Text(subtitle)
                         .font(.caption).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.middle)
                 }
@@ -63,7 +71,7 @@ struct SeedVR2UpscaleSheet: View {
                 Spacer()
                 Button("Cancel", role: .cancel) { onCancel() }
                     .keyboardShortcut(.cancelAction)
-                Button("Upscale") { confirm() }
+                Button(isBatch ? "Upscale \(sources.count)" : "Upscale") { confirm() }
                     .keyboardShortcut(.defaultAction)
                     .buttonStyle(.borderedProminent)
             }
@@ -171,7 +179,20 @@ struct SeedVR2UpscaleSheet: View {
 
     // MARK: - Helpers
 
+    private var isBatch: Bool {
+        sources.count > 1
+    }
+
+    /// Header subtitle: the single filename, or a count for a multi-selection.
+    private var subtitle: String {
+        if isBatch { return "\(sources.count) images" }
+        return (sources.first?.path as NSString?)?.lastPathComponent ?? ""
+    }
+
     private var resultDimsLabel: String {
+        // Per-image dimensions vary across a batch, so only preview them for a
+        // single source; a batch just notes how many images will be upscaled.
+        if isBatch { return "\(sources.count) images" }
         guard let size = sourceSize else { return "" }
         let w = Int(size.width) * scale
         let h = Int(size.height) * scale
@@ -179,14 +200,12 @@ struct SeedVR2UpscaleSheet: View {
     }
 
     init(
-        sourcePath: String,
-        board: String,
+        sources: [Source],
         settings: AppSettings,
-        onConfirm: @escaping (SeedVR2Job) -> Void,
+        onConfirm: @escaping ([SeedVR2Job]) -> Void,
         onCancel: @escaping () -> Void
     ) {
-        self.sourcePath = sourcePath
-        self.board = board
+        self.sources = sources
         self.settings = settings
         self.onConfirm = onConfirm
         self.onCancel = onCancel
@@ -197,7 +216,8 @@ struct SeedVR2UpscaleSheet: View {
     }
 
     private func loadSourceSize() {
-        let path = sourcePath
+        // Only the single-image case shows source→result dimensions in the header.
+        guard !isBatch, let path = sources.first?.path else { return }
         Task.detached(priority: .userInitiated) {
             let size = seedVR2PixelSize(ofImageAt: path)
             await MainActor.run { sourceSize = size }
@@ -211,20 +231,24 @@ struct SeedVR2UpscaleSheet: View {
         settings.seedVR2Use7B = is7B
         settings.seedVR2Quantize = quantize
 
-        // seed of -1 = random; the runner resolves it to a fresh random seed.
-        let outW = sourceSize.map { Int($0.width) * scale } ?? 0
-        let outH = sourceSize.map { Int($0.height) * scale } ?? 0
-        let job = SeedVR2Job(
-            sourcePath: sourcePath,
-            scale: scale,
-            softness: softness,
-            is7B: is7B,
-            quantize: quantize,
-            seed: seed,
-            board: board,
-            width: outW,
-            height: outH
-        )
-        onConfirm(job)
+        // One job per source, all sharing the chosen settings. A fixed seed applies
+        // to every image; seed -1 lets the runner pick a fresh random seed per job.
+        let jobs = sources.map { source -> SeedVR2Job in
+            let size = seedVR2PixelSize(ofImageAt: source.path)
+            let outW = size.map { Int($0.width) * scale } ?? 0
+            let outH = size.map { Int($0.height) * scale } ?? 0
+            return SeedVR2Job(
+                sourcePath: source.path,
+                scale: scale,
+                softness: softness,
+                is7B: is7B,
+                quantize: quantize,
+                seed: seed,
+                board: source.board,
+                width: outW,
+                height: outH
+            )
+        }
+        onConfirm(jobs)
     }
 }
