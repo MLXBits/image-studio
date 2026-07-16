@@ -124,6 +124,10 @@ struct FullSizeImageView: View {
                 .padding(.bottom, 20)
             }
         }
+        // The viewer owns the whole screen, including the strip the toolbar and
+        // top control bar sit in — without this the overlay stops at the safe
+        // area and leaves that chrome showing above the image.
+        .ignoresSafeArea()
         .onContinuousHover { phase in
             if case .active = phase { showChrome() }
         }

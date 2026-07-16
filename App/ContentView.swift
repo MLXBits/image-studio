@@ -59,6 +59,9 @@ struct ContentView: View {
     /// `applyDefaults` just restored. Consumed exactly once.
     @State private var suppressModelResetOnRestore = false
     @State private var fullSizeImage: NSImage?
+    /// Takes the window into real full-screen while `fullSizeImage` is up, so the
+    /// viewer owns the whole screen and leaves no titlebar to drag.
+    @State private var viewerFullScreen = ViewerFullScreenController()
     @State private var comparePair: ComparePair?
     @State private var boxOverlay: BoxOverlayContext?
 
@@ -431,6 +434,13 @@ struct ContentView: View {
             }
         }
         .toolbar { mainToolbar }
+        // The viewer is the whole screen while it's up: no toolbar to slide down
+        // on a mouse-to-top, and no window chrome over the image.
+        .toolbar(fullSizeImage == nil ? .automatic : .hidden, for: .windowToolbar)
+        .background { WindowAccessor { viewerFullScreen.attach(to: $0) } }
+        .onChange(of: fullSizeImage != nil) { _, showing in
+            viewerFullScreen.setActive(showing)
+        }
         .sheet(isPresented: $showingQueue) {
             queueSheet
         }

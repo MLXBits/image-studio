@@ -116,6 +116,7 @@
 		DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */; };
 		DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */; };
 		DDADD3C50B04B2550F527A4C /* Ideogram4Preset.swift in Sources */ = {isa = PBXBuildFile; fileRef = 915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */; };
+		E00311006B99AF066C81DB4F /* ViewerFullScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04991A0086D680A3F52A907C /* ViewerFullScreen.swift */; };
 		E2E41732CD031DA45C3E19BA /* LoraLibraryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */; };
 		E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */; };
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
@@ -144,6 +145,7 @@
 /* Begin PBXFileReference section */
 		014853D76AFC31CB2CC63B45 /* MfluxInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxInstaller.swift; sourceTree = "<group>"; };
 		041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2JobRunner.swift; sourceTree = "<group>"; };
+		04991A0086D680A3F52A907C /* ViewerFullScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerFullScreen.swift; sourceTree = "<group>"; };
 		05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2PreviewViews.swift; sourceTree = "<group>"; };
 		08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
 		0B8A946E00348D9BD857672E /* MfluxDriverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverController.swift; sourceTree = "<group>"; };
@@ -460,6 +462,7 @@
 				05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */,
 				377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */,
 				DDF4EE70D84ED34589363FC7 /* StepwisePreviewView.swift */,
+				04991A0086D680A3F52A907C /* ViewerFullScreen.swift */,
 			);
 			path = PreviewPane;
 			sourceTree = "<group>";
@@ -781,6 +784,7 @@
 				19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */,
 				1A5F45C560C1C0085844AF7B /* UpdateChecker.swift in Sources */,
 				D0AAAABB26407B93F0126BDA /* UvInstaller.swift in Sources */,
+				E00311006B99AF066C81DB4F /* ViewerFullScreen.swift in Sources */,
 				16DC20A31C83D44C009AA770 /* WildcardExpander.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
