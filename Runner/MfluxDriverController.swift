@@ -60,6 +60,9 @@ final class MfluxDriverController {
     private(set) var loadedModelLabel: String?
     private(set) var loadedMemoryGB: Double?
     private(set) var isGenerating = false
+    /// True once a cooperative cancel has been asked for and the driver hasn't
+    /// settled the run yet. Drives the Stop → Force Stop button state.
+    private(set) var isStopping = false
 
     /// Receives driver stderr chunks (mflux prints, download bars) so the
     /// active job's log matches what the CLI path would show.
@@ -78,6 +81,17 @@ final class MfluxDriverController {
     /// interrupted run as cancelled rather than a crash and keeps the driver
     /// available for the next job.
     private var intentionalKill = false
+    /// True between the driver's `phase: denoise` and `phase: decode` events —
+    /// the only stretch where the driver polls the cancel flag.
+    private var inDenoise = false
+    /// `id` of the in-flight request, so a cancel names its job and a watchdog
+    /// can't fire onto a later one.
+    private var runID: String?
+    private var cancelWatchdog: Task<Void, Never>?
+    private var lastProgressAt: Date?
+    /// Most recent gap between `progress` events, used to size the watchdog
+    /// grace — a 4K Ideogram step dwarfs a 512px FLUX one.
+    private var lastStepInterval: TimeInterval?
     private var idleTask: Task<Void, Never>?
     private var switchEvictTask: Task<Void, Never>?
     /// Peak MLX memory (GB) reported by the last completed job; drives the
@@ -182,10 +196,22 @@ final class MfluxDriverController {
         cont.resume(returning: ok)
     }
 
+    /// Clears the per-run cancel bookkeeping. Called on both ends of a run and
+    /// when the process dies, so nothing leaks into the next job.
+    private func resetCancelState() {
+        cancelWatchdog?.cancel()
+        cancelWatchdog = nil
+        isStopping = false
+        inDenoise = false
+        lastProgressAt = nil
+        lastStepInterval = nil
+    }
+
     private func processDied() {
         let wasGenerating = finishRun != nil
         let cancelled = intentionalKill
         intentionalKill = false
+        resetCancelState()
         process = nil
         stdinHandle = nil
         loadedFingerprint = nil
@@ -213,12 +239,16 @@ final class MfluxDriverController {
     func run(request: DriverGenerateRequest, onEvent: @escaping (DriverEvent) -> Void) async -> DriverRunResult {
         guard stdinHandle != nil else { return .failed("Warm driver is not running") }
         isGenerating = true
+        runID = request.id
+        resetCancelState()
         idleTask?.cancel()
         switchEvictTask?.cancel()
         defer {
             isGenerating = false
             jobEventHandler = nil
             finishRun = nil
+            runID = nil
+            resetCancelState()
             scheduleIdleEviction()
         }
         return await withCheckedContinuation { (cont: CheckedContinuation<DriverRunResult, Never>) in
@@ -259,15 +289,48 @@ final class MfluxDriverController {
         }
     }
 
-    /// Hard-cancels the in-flight generate by terminating the driver process.
-    /// MLX compute can't be interrupted from another thread, so a cooperative
-    /// flag only takes effect between denoise steps — useless during model
-    /// load, prompt encode, or VAE decode. SIGTERM stops it immediately; the
-    /// warm model is lost and the driver restarts on the next job.
-    func cancel() {
-        guard isGenerating, let process, process.isRunning else { return }
+    /// Cancels the in-flight generate, preferring the cooperative path so the
+    /// warm model survives. Returns true when the driver was asked to abort
+    /// rather than killed outright.
+    ///
+    /// MLX compute can't be interrupted from another thread, so the driver can
+    /// only notice the cancel flag between denoise steps. Inside that window
+    /// (bracketed by the `phase` events) an abort is guaranteed within one step
+    /// and the model stays resident. Outside it — model load, prompt encode,
+    /// VAE decode — nothing would observe the flag, so SIGTERM is the only way
+    /// to stop, and a second Stop press means the user wants out now rather
+    /// than at the next step. Both lose the warm model, as before.
+    @discardableResult
+    func cancel() -> Bool {
+        guard isGenerating, let process, process.isRunning else { return false }
+        guard inDenoise, !isStopping, let runID else {
+            hardKill()
+            return false
+        }
+        isStopping = true
+        send(["cmd": "cancel", "id": runID])
+        armCancelWatchdog()
+        return true
+    }
+
+    private func hardKill() {
+        guard let process, process.isRunning else { return }
         intentionalKill = true
         process.terminate()
+    }
+
+    /// Backstop for a wedged driver, not for a slow step: the user's second
+    /// Stop press is the escape hatch when an abort is simply taking a while,
+    /// so this window can afford to be generous.
+    private func armCancelWatchdog() {
+        cancelWatchdog?.cancel()
+        let token = runID
+        let grace = max(10, (lastStepInterval ?? 1) * 3)
+        cancelWatchdog = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(grace))
+            guard !Task.isCancelled, let self, isGenerating, runID == token else { return }
+            hardKill()
+        }
     }
 
     // MARK: - Eviction policy
@@ -337,6 +400,14 @@ final class MfluxDriverController {
             resolveHandshake(true)
         case "fatal":
             resolveHandshake(false, reason: event.message ?? "Driver reported a fatal error")
+        case "phase":
+            // Controller-only: gates whether cancel can be cooperative.
+            inDenoise = event.phase == "denoise"
+        case "progress":
+            let now = Date()
+            if let last = lastProgressAt { lastStepInterval = now.timeIntervalSince(last) }
+            lastProgressAt = now
+            jobEventHandler?(event)
         case "unloaded":
             loadedFingerprint = nil
             loadedModelVariantRaw = nil

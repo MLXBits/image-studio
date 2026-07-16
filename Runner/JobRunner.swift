@@ -153,6 +153,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
     /// Warm-model driver for this family, or nil to always use the CLI
     /// subprocess. Set at app startup (Flux only for now).
     var driver: MfluxDriverController?
+    /// True while a cooperative cancel is pending, so Stop can offer to force
+    /// one through. The driver is shared across families, but only the running
+    /// one has `driverJobActive` set, so this stays scoped to this runner.
+    var isStopping: Bool {
+        driverJobActive && (driver?.isStopping ?? false)
+    }
+
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var driverJobActive = false
@@ -194,13 +201,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 
     func cancel() {
-        if driverJobActive {
-            // Hard kill: MLX compute isn't interruptible cooperatively, so the
-            // driver process is terminated outright. The warm model is lost and
-            // reloads on the next job.
-            driver?.cancel()
-        } else {
+        guard driverJobActive else {
             currentProcess?.terminate()
+            return
+        }
+        // Cooperative while the driver is mid-denoise: it aborts at the next
+        // step and the warm model survives. Everywhere else — and on a second
+        // press — it falls back to a hard kill (see MfluxDriverController).
+        if driver?.cancel() == true {
+            activeJob?.statusLine = "Stopping…"
         }
     }
 

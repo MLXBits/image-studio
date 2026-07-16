@@ -74,6 +74,9 @@ struct DriverGenerateRequest: Codable {
 struct DriverEvent: Codable {
     let event: String
     var component: String?
+    /// `phase` events only: "denoise" while the denoise loop runs, "decode"
+    /// once it ends. Marks the window where a cooperative cancel can land.
+    var phase: String?
     var seed: Int?
     var path: String?
     var step: Int?

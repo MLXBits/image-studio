@@ -31,6 +31,12 @@ _emit_lock = threading.Lock()
 _cancel = threading.Event()
 _requests: "queue.Queue[dict]" = queue.Queue()
 
+# Id of the in-flight generate, or None between jobs. A cancel is honoured only
+# when it names the running job, so one arriving just after its job finished
+# can't abort the next one off the queue.
+_state_lock = threading.Lock()
+_current_id = None
+
 EMBED_CACHE_LIMIT = 8
 
 
@@ -145,10 +151,22 @@ class WarmModel:
 
 class _ProgressEmitter:
     """Per-step progress events; also the cancellation point — raising from the
-    in-loop callback aborts the denoise without killing the warm process."""
+    in-loop callback aborts the denoise without killing the warm process.
+
+    The before/after-loop callbacks bracket the denoise loop, which is the only
+    stretch where the cancel flag can be observed. The app uses them to decide
+    whether Cancel can be cooperative (model survives) or has to be a SIGTERM:
+    prompt encode runs strictly before `before_loop` and VAE decode strictly
+    after `after_loop`, and neither can be interrupted."""
 
     def __init__(self, total_steps):
         self.total_steps = total_steps
+
+    def call_before_loop(self, **kwargs):
+        emit({"event": "phase", "phase": "denoise"})
+
+    def call_after_loop(self, **kwargs):
+        emit({"event": "phase", "phase": "decode"})
 
     def call_in_loop(self, t, seed, prompt, latents, config, time_steps):
         import mlx.core as mx
@@ -342,14 +360,33 @@ def _generate_once(req):
     emit({"event": "done", "id": req.get("id"), "peak_gb": peak_gb, "memory_gb": _memory_gb()})
 
 
+def _emit_cancelled(req):
+    """Settles an aborted run. The denoise loop's intermediates are dropped, but
+    the warm model itself stays resident — that's the whole point of taking the
+    cooperative path instead of letting the app kill the process."""
+    import mlx.core as mx
+
+    gc.collect()
+    mx.clear_cache()
+    emit({
+        "event": "done",
+        "id": req.get("id"),
+        "cancelled": True,
+        "memory_gb": _memory_gb() if _warm else 0,
+    })
+
+
 def _handle_generate(req):
+    global _current_id
     from mflux.utils.exceptions import StopImageGenerationException
 
-    _cancel.clear()
+    with _state_lock:
+        _current_id = req.get("id")
+        _cancel.clear()
     try:
         _generate_once(req)
     except StopImageGenerationException:
-        emit({"event": "done", "id": req.get("id"), "cancelled": True})
+        _emit_cancelled(req)
     except Exception as first_error:  # noqa: BLE001
         # A warm instance can be stale (e.g. text-encoder component reload
         # failed). Retry exactly once from a cold start before reporting.
@@ -361,9 +398,13 @@ def _handle_generate(req):
         try:
             _generate_once(req)
         except StopImageGenerationException:
-            emit({"event": "done", "id": req.get("id"), "cancelled": True})
+            _emit_cancelled(req)
         except Exception as retry_error:  # noqa: BLE001
             emit({"event": "error", "id": req.get("id"), "message": str(retry_error)})
+    finally:
+        with _state_lock:
+            _current_id = None
+            _cancel.clear()
 
 
 def _handle_hello():
@@ -396,7 +437,9 @@ def _reader():
             continue
         cmd = req.get("cmd")
         if cmd == "cancel":
-            _cancel.set()
+            with _state_lock:
+                if _current_id is not None and req.get("id") == _current_id:
+                    _cancel.set()
         elif cmd == "ping":
             emit({"event": "pong", "loaded": _warm is not None, "memory_gb": _memory_gb() if _warm else 0})
         else:

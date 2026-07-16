@@ -40,14 +40,16 @@ struct QueueDrawerView: View {
                 .help("Remove all completed, failed, and cancelled jobs")
             }
             if store.isRunning {
-                Button("Stop") { runner.cancel() }
+                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                     .focusable(false)
-                    .help("Stop the current job; remaining pending jobs continue")
+                    .help(runner.isStopping
+                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
+                        : "Stop the current job; remaining pending jobs continue")
 
-                Button("Stop All") {
+                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
                     runner.cancel()
                     store.cancelAllPending()
                 }
@@ -55,7 +57,9 @@ struct QueueDrawerView: View {
                 .controlSize(.small)
                 .tint(.red)
                 .focusable(false)
-                .help("Stop the current job and cancel all pending jobs")
+                .help(runner.isStopping
+                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
+                    : "Stop the current job and cancel all pending jobs")
             }
         }
         .padding(.horizontal, 12)
@@ -161,14 +165,16 @@ struct Ideogram4QueueDrawerView: View {
                 .help("Remove all completed, failed, and cancelled jobs")
             }
             if store.isRunning {
-                Button("Stop") { runner.cancel() }
+                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                     .focusable(false)
-                    .help("Stop the current job; remaining pending jobs continue")
+                    .help(runner.isStopping
+                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
+                        : "Stop the current job; remaining pending jobs continue")
 
-                Button("Stop All") {
+                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
                     runner.cancel()
                     store.cancelAllPending()
                 }
@@ -176,7 +182,9 @@ struct Ideogram4QueueDrawerView: View {
                 .controlSize(.small)
                 .tint(.red)
                 .focusable(false)
-                .help("Stop the current job and cancel all pending jobs")
+                .help(runner.isStopping
+                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
+                    : "Stop the current job and cancel all pending jobs")
             }
         }
         .padding(.horizontal, 12)
@@ -378,14 +386,16 @@ struct Krea2QueueDrawerView: View {
                 .help("Remove all completed, failed, and cancelled jobs")
             }
             if store.isRunning {
-                Button("Stop") { runner.cancel() }
+                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                     .focusable(false)
-                    .help("Stop the current job; remaining pending jobs continue")
+                    .help(runner.isStopping
+                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
+                        : "Stop the current job; remaining pending jobs continue")
 
-                Button("Stop All") {
+                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
                     runner.cancel()
                     store.cancelAllPending()
                 }
@@ -393,7 +403,9 @@ struct Krea2QueueDrawerView: View {
                 .controlSize(.small)
                 .tint(.red)
                 .focusable(false)
-                .help("Stop the current job and cancel all pending jobs")
+                .help(runner.isStopping
+                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
+                    : "Stop the current job and cancel all pending jobs")
             }
         }
         .padding(.horizontal, 12)
@@ -545,14 +557,16 @@ struct SeedVR2QueueDrawerView: View {
                 .help("Remove all completed, failed, and cancelled jobs")
             }
             if store.isRunning {
-                Button("Stop") { runner.cancel() }
+                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
                     .buttonStyle(.borderless)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                     .focusable(false)
-                    .help("Stop the current job; remaining pending jobs continue")
+                    .help(runner.isStopping
+                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
+                        : "Stop the current job; remaining pending jobs continue")
 
-                Button("Stop All") {
+                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
                     runner.cancel()
                     store.cancelAllPending()
                 }
@@ -560,7 +574,9 @@ struct SeedVR2QueueDrawerView: View {
                 .controlSize(.small)
                 .tint(.red)
                 .focusable(false)
-                .help("Stop the current job and cancel all pending jobs")
+                .help(runner.isStopping
+                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
+                    : "Stop the current job and cancel all pending jobs")
             }
         }
         .padding(.horizontal, 12)
