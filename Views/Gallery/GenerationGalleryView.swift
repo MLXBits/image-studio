@@ -490,56 +490,11 @@ struct GenerationGalleryView: View {
     // MARK: - Batch action bar (shown only when 2+ items selected)
 
     private var batchActionBar: some View {
-        HStack(spacing: 8) {
-            Text("\(selection.count) selected")
-                .font(.caption).foregroundStyle(.secondary)
-            Spacer()
-            Button { startCompare() } label: {
-                Label("Compare", systemImage: "rectangle.split.2x1").font(.caption)
-            }
-            .buttonStyle(.borderless).help("Compare two images side by side (c)")
-
-            Button {
-                let paths = gallery.items
-                    .filter { selection.contains($0.id) }
-                    .map(\.path)
-                onUpscale?(paths)
-            } label: {
-                Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right").font(.caption)
-            }
-            .buttonStyle(.borderless).help("Upscale all selected images with SeedVR2")
-
-            Menu {
-                ForEach(orderedBoards, id: \.self) { board in
-                    Button(board) { batchMove(to: board) }
-                }
-                Divider()
-                Button("New Group…") { showingNewGroup = true }
-            } label: {
-                Label("Move", systemImage: "folder").font(.caption)
-            }
-            .menuStyle(.borderlessButton).fixedSize()
-
-            Button {
-                stripMetadata(of: gallery.items.filter { selection.contains($0.id) })
-            } label: {
-                Image(systemName: "tag.slash").font(.caption)
-            }
-            .buttonStyle(.borderless).foregroundStyle(.secondary)
-            .help("Strip embedded metadata (prompt, parameters) from the selected images")
-
-            Button(role: .destructive) {
-                deleteTarget = nil
-                showingDeleteConfirm = true
-            } label: {
-                Image(systemName: "trash").font(.caption)
-            }
-            .buttonStyle(.borderless).foregroundStyle(.red)
-
-            Button { clearSelection(nextItem: nil) } label: {
-                Image(systemName: "xmark").font(.caption)
-            }
-            .buttonStyle(.borderless).foregroundStyle(.secondary)
+        // Prefer the labelled layout; fall back to icon-only when the pane is too
+        // narrow to fit the labels without wrapping.
+        ViewThatFits(in: .horizontal) {
+            batchActionBarContent(showLabels: true)
+            batchActionBarContent(showLabels: false)
         }
         .padding(.horizontal, 8)
         .padding(.vertical, 5)
@@ -614,6 +569,69 @@ struct GenerationGalleryView: View {
     }
 
     // MARK: - Helpers
+
+    private func batchActionBarContent(showLabels: Bool) -> some View {
+        let labelStyle = AdaptiveLabelStyle(showTitle: showLabels)
+
+        return HStack(spacing: 8) {
+            Text("\(selection.count) selected")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize()
+                .layoutPriority(showLabels ? 0 : 1)
+            Spacer(minLength: 8)
+            Button { startCompare() } label: {
+                Label("Compare", systemImage: "rectangle.split.2x1")
+                    .font(.caption).labelStyle(labelStyle)
+            }
+            .buttonStyle(.borderless).help("Compare two images side by side (c)")
+
+            Button {
+                let paths = gallery.items
+                    .filter { selection.contains($0.id) }
+                    .map(\.path)
+                onUpscale?(paths)
+            } label: {
+                Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right")
+                    .font(.caption).labelStyle(labelStyle)
+            }
+            .buttonStyle(.borderless).help("Upscale all selected images with SeedVR2")
+
+            Menu {
+                ForEach(orderedBoards, id: \.self) { board in
+                    Button(board) { batchMove(to: board) }
+                }
+                Divider()
+                Button("New Group…") { showingNewGroup = true }
+            } label: {
+                Label("Move", systemImage: "folder")
+                    .font(.caption).labelStyle(labelStyle)
+            }
+            .menuStyle(.borderlessButton).fixedSize()
+            .help("Move the selected images to a group")
+
+            Button {
+                stripMetadata(of: gallery.items.filter { selection.contains($0.id) })
+            } label: {
+                Image(systemName: "tag.slash").font(.caption)
+            }
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .help("Strip embedded metadata (prompt, parameters) from the selected images")
+
+            Button(role: .destructive) {
+                deleteTarget = nil
+                showingDeleteConfirm = true
+            } label: {
+                Image(systemName: "trash").font(.caption)
+            }
+            .buttonStyle(.borderless).foregroundStyle(.red)
+
+            Button { clearSelection(nextItem: nil) } label: {
+                Image(systemName: "xmark").font(.caption)
+            }
+            .buttonStyle(.borderless).foregroundStyle(.secondary)
+        }
+        .lineLimit(1)
+    }
 
     private func boardImageCount(_ board: String?) -> Int {
         guard let board else { return 0 }
@@ -850,5 +868,20 @@ struct GenerationGalleryView: View {
             clearSelection(nextItem: idx - 1 >= 0 ? boardItems[idx - 1] : nil)
         }
         // else: still visible and at the end — keep it selected.
+    }
+}
+
+/// Shows a label's icon always and its title only when there is room, so the
+/// batch action bar can drop to icon-only in a narrow gallery pane.
+private struct AdaptiveLabelStyle: LabelStyle {
+    let showTitle: Bool
+
+    func makeBody(configuration: Configuration) -> some View {
+        HStack(spacing: 4) {
+            configuration.icon
+            if showTitle {
+                configuration.title
+            }
+        }
     }
 }
