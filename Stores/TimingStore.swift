@@ -159,13 +159,22 @@ struct PerStepSample: Codable {
 
 /// Fits per-step time as a function of megapixels and predicts an unseen size.
 ///
-/// Tiered by how many distinct megapixel buckets have been observed:
+/// A requested size within one bucket of a stored sample short-circuits to that
+/// measured point (see ``predictSecPerStep(samples:mp:)``). Otherwise the size is
+/// predicted from a fit, tiered by how many distinct megapixel buckets exist:
 ///   - **1 bucket** → proportional through the origin from that point.
 ///   - **2 buckets** → linear least-squares `a + b·mp` (captures fixed overhead).
 ///   - **≥3 buckets** → quadratic least-squares `a + b·mp + c·mp²` (captures the
 ///     O(tokens²) attention blow-up, so extrapolation past the largest sample is
 ///     safe-ish). Falls back to linear if the quadratic predicts ≤ 0.
+///
+/// Both fits use relative-error weighting (`w = 1/y²`) so the large, slow high-res
+/// samples don't dominate the least-squares and over-predict small images.
 enum TimingModel {
+    /// Requested megapixels within this distance of a stored sample count as a
+    /// direct hit (one timing bucket wide; see ``TimingStore/bucketWidth``).
+    private static let directHitBucket = 0.05
+
     static func predictSecPerStep(
         samples: [PerStepSample], mp: Double
     ) -> (value: Double?, isApproximate: Bool) {
@@ -176,6 +185,16 @@ enum TimingModel {
         // Within the sampled span we are interpolating (or hitting a known size),
         // which is trustworthy even from a single point; outside it we extrapolate.
         let isApproximate = mp < minMP - 1e-9 || mp > maxMP + 1e-9
+
+        // Direct hit: when a measured sample sits within one bucket of the request,
+        // trust it over any global fit. A curve fitted across a wide MP span is
+        // dominated (in absolute least-squares) by the large, slow high-res samples,
+        // so it systematically over-predicts small images — even ones we have direct
+        // data for. Snapping to the nearest measured point avoids that bias entirely.
+        if let nearest = pts.min(by: { abs($0.0 - mp) < abs($1.0 - mp) }),
+           abs(nearest.0 - mp) <= directHitBucket {
+            return (max(nearest.1, 0.001), isApproximate)
+        }
 
         let distinct = Set(mps.map { ($0 / 0.05).rounded() }).count
         var value: Double
@@ -197,28 +216,34 @@ enum TimingModel {
     }
 
     private static func linear(_ pts: [(Double, Double)], at mp: Double) -> Double? {
-        let n = Double(pts.count)
-        let sx = pts.reduce(0) { $0 + $1.0 }
-        let sy = pts.reduce(0) { $0 + $1.1 }
-        let sxx = pts.reduce(0) { $0 + $1.0 * $1.0 }
-        let sxy = pts.reduce(0) { $0 + $1.0 * $1.1 }
-        let denom = n * sxx - sx * sx
+        // Relative-error weighting (w = 1/y²) stops the large, slow samples from
+        // dominating the fit and inflating predictions for small images. With only
+        // two points the line passes through both regardless of the weights.
+        var sw = 0.0, swx = 0.0, swy = 0.0, swxx = 0.0, swxy = 0.0
+        for (x, y) in pts {
+            let w = 1.0 / max(y * y, 1e-9)
+            sw += w; swx += w * x; swy += w * y
+            swxx += w * x * x; swxy += w * x * y
+        }
+        let denom = sw * swxx - swx * swx
         guard abs(denom) > 1e-12 else { return nil }
-        let b = (n * sxy - sx * sy) / denom
-        let a = (sy - b * sx) / n
+        let b = (sw * swxy - swx * swy) / denom
+        let a = (swy - b * swx) / sw
         return a + b * mp
     }
 
     private static func quadratic(_ pts: [(Double, Double)], at mp: Double) -> Double? {
-        // Normal equations for y = a + b·x + c·x² → 3×3 system in [a, b, c].
-        var s = [Double](repeating: 0, count: 5) // Σx^0 … Σx^4
-        var t = [Double](repeating: 0, count: 3) // Σy, Σxy, Σx²y
+        // Weighted normal equations for y = a + b·x + c·x², weights w = 1/y² (relative
+        // error) so the fit isn't dragged upward by the large-MP, high-cost samples.
+        var s = [Double](repeating: 0, count: 5) // Σw·x^0 … Σw·x^4
+        var t = [Double](repeating: 0, count: 3) // Σw·y, Σw·xy, Σw·x²y
         for (x, y) in pts {
-            var xp = 1.0
+            let w = 1.0 / max(y * y, 1e-9)
+            var xp = w
             for k in 0 ..< 5 {
                 s[k] += xp; xp *= x
             }
-            t[0] += y; t[1] += x * y; t[2] += x * x * y
+            t[0] += w * y; t[1] += w * x * y; t[2] += w * x * x * y
         }
         let m = [
             [s[0], s[1], s[2]],

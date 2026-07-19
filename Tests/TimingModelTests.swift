@@ -102,6 +102,28 @@ struct TimingModelTests {
         expectClose(out.value, f(8), tol: 1e-3)
     }
 
+    // MARK: - Direct hit (measured size beats the global fit)
+
+    /// A request within one bucket of a stored sample returns that measured point,
+    /// not a curve fitted across the whole span. Without this, the big high-MP
+    /// samples drag an absolute-least-squares fit upward and over-predict the small
+    /// size even though we have direct data for it.
+    @Test func nearBucketReturnsMeasuredSampleNotFit() {
+        // Small size (0.47) has a measured 4.7 s/step, but the curve through the
+        // slow high-res points alone would predict noticeably higher there.
+        let s = samples([(0.47, 4.7), (2.36, 31.0), (4.19, 62.7)])
+        let out = TimingModel.predictSecPerStep(samples: s, mp: 0.4733)
+        expectClose(out.value, 4.7)
+        #expect(!out.isApproximate)
+    }
+
+    /// Snaps to the closest sample when two sit within the bucket window.
+    @Test func directHitPicksNearestSample() {
+        let s = samples([(0.45, 4.0), (0.49, 6.0), (2.0, 30.0)])
+        expectClose(TimingModel.predictSecPerStep(samples: s, mp: 0.48).value, 6.0)
+        expectClose(TimingModel.predictSecPerStep(samples: s, mp: 0.46).value, 4.0)
+    }
+
     // MARK: - Clamping
 
     @Test func predictionNeverNonPositive() {
