@@ -88,37 +88,50 @@ final class IdeogramCaptionGenerator {
 
     func generate(from description: String, settings: AppSettings) async throws -> IdeogramCaption {
         let config = try IdeogramPromptConfig.load()
-        let modelPath = settings.gemmaModelPath.isEmpty
-            ? "mlx-community/gemma-3-12b-it-8bit"
-            : settings.gemmaModelPath
+        let examples = [
+            (config.exampleAInput, config.exampleAOutput),
+            (config.exampleBInput, config.exampleBOutput),
+        ]
+        let finalUser = "Description to convert: \"\(description)\""
 
-        let fullPrompt = GemmaChatRunner.chatPrompt(
-            system: config.system,
-            examples: [
-                (config.exampleAInput, config.exampleAOutput),
-                (config.exampleBInput, config.exampleBOutput),
-            ],
-            finalUser: "Description to convert: \"\(description)\""
-        )
-
+        // The raw model text comes from whichever backend is selected; the JSON
+        // extraction/decode below is shared (extractJSONString tolerates fenced
+        // or loose JSON, so it is the safety net regardless of response_format).
         let rawOutput: String
-        let exitCode: Int32
-        do {
-            (rawOutput, exitCode) = try await GemmaChatRunner.run(
-                modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.3,
-                environment: settings.buildEnvironment()
+        if settings.llmBackend == .remote {
+            rawOutput = try await OpenAIChatClient.chat(OpenAIChatCall(
+                system: config.system, examples: examples, finalUser: finalUser,
+                model: settings.openAIModel, maxTokens: 8192, temp: settings.openAITemperature,
+                topP: settings.openAITopP, topK: settings.openAITopK, jsonMode: true,
+                baseURL: settings.openAIBaseURL, apiKey: settings.openAIAPIKey
+            ))
+            lastLog = [
+                "=== MESSAGES ===", finalUser,
+                "=== MODEL OUTPUT (remote) ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
+            ].joined(separator: "\n\n")
+        } else {
+            let modelPath = settings.gemmaModelPath.isEmpty
+                ? "mlx-community/gemma-3-12b-it-8bit"
+                : settings.gemmaModelPath
+            let fullPrompt = GemmaChatRunner.chatPrompt(
+                system: config.system, examples: examples, finalUser: finalUser
             )
-        } catch GemmaChatRunnerError.uvNotFound {
-            throw IdeogramCaptionGeneratorError.uvNotFound
-        }
-
-        lastLog = [
-            "=== PROMPT ===", fullPrompt,
-            "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
-        ].joined(separator: "\n\n")
-
-        guard exitCode == 0 else {
-            throw IdeogramCaptionGeneratorError.subprocessFailed(exitCode, String(rawOutput.suffix(2000)))
+            let exitCode: Int32
+            do {
+                (rawOutput, exitCode) = try await GemmaChatRunner.run(
+                    modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.3,
+                    environment: settings.buildEnvironment()
+                )
+            } catch GemmaChatRunnerError.uvNotFound {
+                throw IdeogramCaptionGeneratorError.uvNotFound
+            }
+            lastLog = [
+                "=== PROMPT ===", fullPrompt,
+                "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
+            ].joined(separator: "\n\n")
+            guard exitCode == 0 else {
+                throw IdeogramCaptionGeneratorError.subprocessFailed(exitCode, String(rawOutput.suffix(2000)))
+            }
         }
 
         guard let extractedJSON = extractJSONString(from: rawOutput) else {

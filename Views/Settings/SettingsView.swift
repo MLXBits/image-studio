@@ -327,7 +327,7 @@ struct SettingsView: View {
                 .font(.caption).foregroundStyle(.tertiary)
             }
 
-            gemmaSection
+            PromptLLMSettingsView()
 
             Section {
                 Toggle("Keep model warm between generations", isOn: $s.keepModelWarm)
@@ -370,50 +370,6 @@ struct SettingsView: View {
             }
         }
         .formStyle(.grouped)
-    }
-
-    /// Local LLM used by both Gemma-powered features: Ideogram 4 caption
-    /// generation and the Scenario Generator (Flux/Krea 2 prompt panels).
-    /// Shared config, so it lives here rather than under one model's form.
-    private var gemmaSection: some View {
-        @Bindable var s = settings
-        let uvPath = NSHomeDirectory() + "/.local/bin/uv"
-        let uvFound = FileManager.default.fileExists(atPath: uvPath)
-        return Section {
-            VStack(alignment: .leading, spacing: 4) {
-                TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
-                    .textFieldStyle(.roundedBorder)
-                Text(
-                    "HF repo ID or local path for the Gemma model. "
-                        + "Requires mlx_lm — install with: uv tool install mlx-lm"
-                )
-                .font(.caption).foregroundStyle(.secondary)
-                .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.vertical, 2)
-
-            HStack(spacing: 6) {
-                Image(systemName: uvFound ? "checkmark.circle.fill" : "xmark.circle.fill")
-                    .foregroundStyle(uvFound ? Color.green : Color.red)
-                Text(
-                    uvFound
-                        ? "uv found — \(GemmaChatRunner.mlxLMRequirement) / \(GemmaChatRunner.mlxVLMRequirement) "
-                        + "managed automatically"
-                        : "uv not found at ~/.local/bin/uv"
-                )
-                .font(.caption).foregroundStyle(.secondary)
-                .lineLimit(1).truncationMode(.middle)
-            }
-            .padding(.vertical, 2)
-        } header: {
-            Text("Gemma (Local LLM)")
-        } footer: {
-            Text(
-                "Powers the Scenario Generator in the Flux and Krea 2 prompt panels, "
-                    + "and generates the structured captions Ideogram 4 expects."
-            )
-            .font(.caption).foregroundStyle(.tertiary)
-        }
     }
 
     /// Footer for the Keep Model Warm section, with a memory warning on

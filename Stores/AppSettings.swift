@@ -105,6 +105,14 @@ class AppSettings {
         var lastScenarioOutline: String?
         var scenarioCategories: [String]?
         var scenarioWildcardMode: Bool?
+        /// Prompt-writing LLM backend (local Gemma vs OpenAI-compatible endpoint).
+        /// The API key is Keychain-backed and never stored here.
+        var llmBackend: LLMBackendKind?
+        var openAIBaseURL: String?
+        var openAIModel: String?
+        var openAITemperature: Double?
+        var openAITopP: Double?
+        var openAITopK: Int?
 
         init() {}
         init(
@@ -401,6 +409,46 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - Prompt-writing LLM backend
+
+    /// Which engine serves the Scenario Generator and Ideogram 4 captions:
+    /// local Gemma via `uv`/`mlx_lm`, or a remote OpenAI-compatible endpoint.
+    var llmBackend: LLMBackendKind {
+        didSet { save() }
+    }
+
+    /// Base URL of the OpenAI-compatible endpoint, e.g. `http://localhost:1234/v1`.
+    var openAIBaseURL: String {
+        didSet { save() }
+    }
+
+    /// Model id sent to the endpoint (as shown by `GET /v1/models`).
+    var openAIModel: String {
+        didSet { save() }
+    }
+
+    /// Sampling temperature sent to the endpoint for both remote features.
+    /// Match the model's recommendation (e.g. Gemma 4 favors 1.0).
+    var openAITemperature: Double {
+        didSet { save() }
+    }
+
+    /// Nucleus-sampling cutoff (`top_p`) sent to the endpoint. Gemma favors 0.95.
+    var openAITopP: Double {
+        didSet { save() }
+    }
+
+    /// Top-k sampling sent to the endpoint. Gemma favors 64; 0 omits the field.
+    var openAITopK: Int {
+        didSet { save() }
+    }
+
+    /// Optional bearer token for the endpoint. Blank for LM Studio; required for
+    /// secured/hosted servers. Stored in the Keychain (mirrors ``hfToken``).
+    var openAIAPIKey: String {
+        didSet { KeychainHelper.set(openAIAPIKey, key: "openai_api_key") }
+    }
+
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
         didSet { save() }
@@ -499,6 +547,13 @@ class AppSettings {
             .map { Set($0.compactMap(ScenarioCategory.init)) }
             ?? Set(ScenarioCategory.allCases)
         scenarioWildcardMode = s.scenarioWildcardMode ?? false
+        llmBackend = s.llmBackend ?? .local
+        openAIBaseURL = s.openAIBaseURL ?? "http://localhost:1234/v1"
+        openAIModel = s.openAIModel ?? ""
+        openAITemperature = s.openAITemperature ?? 0.7
+        openAITopP = s.openAITopP ?? 0.95
+        openAITopK = s.openAITopK ?? 64
+        openAIAPIKey = KeychainHelper.get("openai_api_key")
         customTemplates = s.customTemplates ?? []
         // Migrate single-ID storage (written by earlier builds) to array.
         if let ids = s.activeTemplateIDs {
@@ -623,6 +678,12 @@ class AppSettings {
         s.lastScenarioOutline = lastScenarioOutline
         s.scenarioCategories = scenarioCategories.map(\.rawValue).sorted()
         s.scenarioWildcardMode = scenarioWildcardMode
+        s.llmBackend = llmBackend
+        s.openAIBaseURL = openAIBaseURL
+        s.openAIModel = openAIModel
+        s.openAITemperature = openAITemperature
+        s.openAITopP = openAITopP
+        s.openAITopK = openAITopK
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()

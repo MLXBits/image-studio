@@ -202,6 +202,18 @@ final class ScenarioGenerator {
         settings: AppSettings
     ) async throws -> String {
         let config = try ScenarioPromptConfig.load()
+        let examples = Self.fewShotExamples(config, wildcardMode: wildcardMode)
+        let finalUser = Self.buildUserTurn(outline: outline, categories: categories, wildcardMode: wildcardMode)
+
+        // Remote OpenAI-compatible endpoint: skip the uv/mlx_lm plumbing entirely
+        // and let the shared reply extractor clean the assistant text (it's a
+        // no-op on already-clean, separator-free output).
+        if settings.llmBackend == .remote {
+            return try await generateRemote(
+                system: config.system, examples: examples, finalUser: finalUser, settings: settings
+            )
+        }
+
         let rawModel = settings.gemmaModelPath.isEmpty
             ? "mlx-community/gemma-3-12b-it-8bit"
             : settings.gemmaModelPath
@@ -214,8 +226,8 @@ final class ScenarioGenerator {
 
         let fullPrompt = GemmaChatRunner.chatPrompt(
             system: config.system,
-            examples: Self.fewShotExamples(config, wildcardMode: wildcardMode),
-            finalUser: Self.buildUserTurn(outline: outline, categories: categories, wildcardMode: wildcardMode)
+            examples: examples,
+            finalUser: finalUser
         )
 
         if let text = try await generateWarm(prompt: fullPrompt, modelPath: modelPath, settings: settings) {
@@ -224,6 +236,29 @@ final class ScenarioGenerator {
             return reply
         }
         return try await generateOneShot(prompt: fullPrompt, modelPath: modelPath, settings: settings)
+    }
+
+    /// Runs the generation against the OpenAI-compatible endpoint configured in
+    /// settings. The assistant text is fed through the same ``extractReply``
+    /// used for local output.
+    private func generateRemote(
+        system: String,
+        examples: [(input: String, output: String)],
+        finalUser: String,
+        settings: AppSettings
+    ) async throws -> String {
+        let text = try await OpenAIChatClient.chat(OpenAIChatCall(
+            system: system, examples: examples, finalUser: finalUser,
+            model: settings.openAIModel, maxTokens: 8192, temp: settings.openAITemperature,
+            topP: settings.openAITopP, topK: settings.openAITopK, jsonMode: false,
+            baseURL: settings.openAIBaseURL, apiKey: settings.openAIAPIKey
+        ))
+        lastLog = ["=== MESSAGES ===", finalUser, "=== MODEL OUTPUT (remote) ===", text]
+            .joined(separator: "\n\n")
+        guard let reply = Self.extractReply(from: text) else {
+            throw ScenarioGeneratorError.emptyReply(text)
+        }
+        return reply
     }
 
     /// Terminates the warm driver, freeing the model. Called when the popover

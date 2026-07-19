@@ -63,6 +63,13 @@ targets:
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         NSSupportsAutomaticGraphicsSwitching: true
+        # Allow cleartext HTTP to local LLM endpoints (LM Studio over LAN). macOS
+        # auto-exempts localhost; NSAllowsLocalNetworking additionally exempts
+        # unqualified hostnames, `.local` names, and reserved-range IPs
+        # (192.168.x.x / 10.x.x.x). Note: `.lan` hostnames are NOT covered —
+        # use the IP, a bare hostname, or a `.local` name.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
     entitlements:
       path: Resources/MLXBits_Image_Studio.entitlements
       properties:
