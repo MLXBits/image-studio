@@ -58,7 +58,7 @@ struct Ideogram4ParamsPanelView: View {
                         .onChange(of: params.height) { _, h in
                             params.height = Ideogram4Preset.clampDimension(h)
                         }
-                    GenerationEstimateView(estimate: estimate)
+                    GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
                 }
             }
 

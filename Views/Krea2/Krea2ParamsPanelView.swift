@@ -96,7 +96,7 @@ struct Krea2ParamsPanelView: View {
         SectionContainerView(title: nil, info: nil) {
             VStack(alignment: .leading, spacing: 6) {
                 DimensionPickerView(width: $params.width, height: $params.height, constraints: .krea2)
-                GenerationEstimateView(estimate: estimate)
+                GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
             }
         }
 

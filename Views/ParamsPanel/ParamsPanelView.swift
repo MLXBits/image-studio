@@ -156,7 +156,7 @@ struct ParamsPanelView: View {
                     height: $params.height,
                     constraints: params.model.isFlux ? .flux2 : .legacy
                 )
-                GenerationEstimateView(estimate: fluxEstimate)
+                GenerationEstimateView(estimate: fluxEstimate, width: params.width, height: params.height)
             }
         }
 
