@@ -140,6 +140,43 @@ struct ImageMetadataInfo {
         }
     }
 
+    init(zimageJob job: ZImageJob) {
+        prompt = job.prompt
+        negativePrompt = job.isTurbo ? "" : job.negativePrompt
+        modelName = job.modelVariant.displayName
+        seed = job.resolvedSeed ?? job.seed
+        width = job.width
+        height = job.height
+        steps = job.steps
+        guidance = job.guidance
+        loras = job.loras
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
+        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
+    init?(zimageItem: GalleryItem) {
+        guard let meta = zimageItem.zimageMetadata else { return nil }
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt ?? ""
+        modelName = meta.resolvedVariant.displayName
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        loras = meta.loras ?? []
+        filePath = zimageItem.path
+        log = meta.log
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init?(seedVR2Item: GalleryItem) {
         guard let meta = seedVR2Item.seedVR2Metadata else { return nil }
         let modelLabel = meta.model == "seedvr2-7b" ? "SeedVR2 7B" : "SeedVR2 3B"

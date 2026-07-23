@@ -7,6 +7,7 @@ enum PreviewState {
     case activeJob(FluxJob)
     case activeIdeogram4Job(Ideogram4Job)
     case activeKrea2Job(Krea2Job)
+    case activeZImageJob(ZImageJob)
     case activeSeedVR2Job(SeedVR2Job)
     case galleryItem(GalleryItem)
 }
@@ -22,6 +23,8 @@ struct PreviewPaneView: View {
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     var onRemixKrea2: ((Krea2Metadata) -> Void)?
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
+    var onRemixZImage: ((ZImageMetadata) -> Void)?
+    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -122,6 +125,28 @@ struct PreviewPaneView: View {
                         krea2PendingView(job: job)
                     }
 
+                case let .activeZImageJob(job):
+                    switch job.status {
+                    case .running:
+                        ZImageStepwisePreviewView(job: job, onCancel: onCancel)
+
+                    case .completed:
+                        ZImageCompletedPreviewView(
+                            job: job,
+                            onRemix: onRemixZImage,
+                            onApplySettings: onApplyZImageSettings
+                        )
+
+                    case let .failed(msg):
+                        zimageFailedView(message: msg, job: job)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        zimagePendingView(job: job)
+                    }
+
                 case let .activeSeedVR2Job(job):
                     switch job.status {
                     case .running:
@@ -149,6 +174,8 @@ struct PreviewPaneView: View {
                         onApplyIdeogramSettings: onApplyIdeogramSettings,
                         onRemixKrea2: onRemixKrea2,
                         onApplyKrea2Settings: onApplyKrea2Settings,
+                        onRemixZImage: onRemixZImage,
+                        onApplyZImageSettings: onApplyZImageSettings,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
@@ -222,6 +249,10 @@ struct PreviewPaneView: View {
             return true
 
         case let .activeKrea2Job(job):
+            if case .running = job.status { return false }
+            return true
+
+        case let .activeZImageJob(job):
             if case .running = job.status { return false }
             return true
 
@@ -428,6 +459,58 @@ struct PreviewPaneView: View {
     }
 
     private func krea2PendingView(job: Krea2Job) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "clock")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text("Waiting in queue")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text(job.displayName)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func zimageFailedView(message: String, job: ZImageJob) -> some View {
+        let combined = message + "\n" + job.log
+        let isGatedRepo = combined.contains("private or gated repo")
+            || combined.contains("GatedRepoError")
+            || combined.contains("is restricted")
+            || combined.contains("403 Client Error")
+            || combined.contains("401 Client Error")
+
+        return VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text("Generation failed")
+                    .font(.headline)
+                Spacer()
+                if isGatedRepo, let url = job.modelVariant.hfRepoURL(quantize: job.quantize) {
+                    Link("Open on HuggingFace", destination: url)
+                        .font(.caption)
+                }
+            }
+            .padding()
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(job.log.isEmpty ? message : job.log)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                    Color.clear.frame(height: 1).id("errEnd")
+                }
+                .onAppear { proxy.scrollTo("errEnd") }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func zimagePendingView(job: ZImageJob) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
                 .font(.system(size: 40))

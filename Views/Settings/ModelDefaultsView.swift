@@ -109,6 +109,22 @@ struct ModelDefaultsView: View {
                 .padding(.vertical, 2)
                 .tag(Selection.model(.krea2))
             }
+            Section("Z-Image") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Z-Image Turbo").font(.callout)
+                    Text("Turbo · \(FluxModelVariant.zimageTurbo.defaultSteps) steps · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.zimageTurbo))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Z-Image").font(.callout)
+                    Text("Base · \(FluxModelVariant.zimage.defaultSteps) steps · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.zimage))
+            }
             Section("Upscale") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SeedVR2").font(.callout)
@@ -137,6 +153,8 @@ struct ModelDefaultsView: View {
                         ideogram4FormContent()
                     } else if selectedModel.isKrea2 {
                         krea2FormContent()
+                    } else if selectedModel.isZImage {
+                        zimageFormContent(model: selectedModel)
                     } else {
                         formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
                     }
@@ -244,9 +262,11 @@ struct ModelDefaultsView: View {
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 8) {
                     ProgressView().controlSize(.small)
-                    // Ideogram always downloads a pre-quantized repo; only Flux converts
-                    // from a local BF16 base.
-                    let verb = !model.isIdeogram4
+                    // A model with a pre-quantized repo (Ideogram, Z-Image Turbo Q4)
+                    // just downloads it; only an mflux-save pass from a local BF16 base
+                    // is a conversion.
+                    let usesPreQuant = model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil
+                    let verb = !usesPreQuant
                         && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
                         ? "Converting" : "Downloading"
                     // hf download emits noisy parallel progress bars that don't render
@@ -333,11 +353,12 @@ struct ModelDefaultsView: View {
         cacheLog = ""
         cacheStartedAt = Date()
         userCancelledCache = false
-        // Ideogram loads pre-quantized weights straight from the HF cache, so a plain
-        // `hf download` of the source repo is all that's needed — no mflux-save
-        // quantize pass (which would also leave a redundant ~27 GB copy on disk).
-        if model.isIdeogram4 {
-            Task { await runIdeogramDownload(model: model, quantize: quantize) }
+        // Models with a published pre-quantized repo (Ideogram, Z-Image Turbo Q4)
+        // load those weights straight from the HF cache, so a plain `hf download`
+        // of that repo is all that's needed — no mflux-save quantize pass (which
+        // would also leave a redundant full-precision copy on disk).
+        if model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil {
+            Task { await runPreQuantizedDownload(model: model, quantize: quantize) }
         } else {
             Task { await runMfluxSave(model: model, quantize: quantize) }
         }
@@ -346,7 +367,7 @@ struct ModelDefaultsView: View {
     /// " · 4.4 / 27 GB" while an Ideogram repo is downloading, polled from the blobs
     /// dir (includes in-flight `.incomplete` files). Empty for other models / no bytes yet.
     private func downloadedSuffix(model: FluxModelVariant, quantize: Int) -> String {
-        guard model.isIdeogram4 else { return "" }
+        guard model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil else { return "" }
         let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
         let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
         let blobs = settings.hfHubDir.appendingPathComponent(cacheName).appendingPathComponent("blobs")
@@ -362,7 +383,7 @@ struct ModelDefaultsView: View {
             : " · \(String(format: "%.1f", gb)) GB"
     }
 
-    private func runIdeogramDownload(model: FluxModelVariant, quantize: Int) async {
+    private func runPreQuantizedDownload(model: FluxModelVariant, quantize: Int) async {
         let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
         // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
         let hfBinary = BinaryDetector.detect("hf")

@@ -753,6 +753,11 @@ struct GenerationGalleryView: View {
             parts.append(String(meta.seed))
             parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
         }
+        if let meta = item.zimageMetadata {
+            parts.append(meta.prompt)
+            parts.append(String(meta.seed))
+            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
+        }
         return parts.joined(separator: " ").lowercased()
     }
 

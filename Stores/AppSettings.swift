@@ -87,6 +87,8 @@ class AppSettings {
         var ideogram4CfgEnd: Double?
         /// Krea 2 last-used form (remembered across launches)
         var lastKrea2: Krea2FormState?
+        /// Z-Image last-used form (remembered across launches)
+        var lastZImage: ZImageFormState?
         /// SeedVR2 upscale defaults (remembered across launches)
         var seedVR2Use7B: Bool?
         var seedVR2Quantize: Int?
@@ -321,6 +323,11 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Last-used Z-Image form, restored on next launch.
+    var lastZImage: ZImageFormState? {
+        didSet { save() }
+    }
+
     // MARK: - SeedVR2 upscale defaults
 
     /// Default SeedVR2 model size: false = 3B (fast), true = 7B (quality).
@@ -530,6 +537,7 @@ class AppSettings {
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
         lastIdeogramSeed = s.lastIdeogramSeed
         lastKrea2 = s.lastKrea2
+        lastZImage = s.lastZImage
         seedVR2Use7B = s.seedVR2Use7B ?? false
         seedVR2Quantize = s.seedVR2Quantize ?? 8
         seedVR2Scale = s.seedVR2Scale ?? 2
@@ -666,6 +674,7 @@ class AppSettings {
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
         s.lastKrea2 = lastKrea2
+        s.lastZImage = lastZImage
         s.seedVR2Use7B = seedVR2Use7B
         s.seedVR2Quantize = seedVR2Quantize
         s.seedVR2Scale = seedVR2Scale
@@ -716,6 +725,14 @@ class AppSettings {
 
     func mfluxKrea2BinaryPath() -> String {
         BinaryDetector.mfluxGenerateKrea2(in: mfluxBinaryDir)
+    }
+
+    /// Resolves the Z-Image CLI for the given variant: the Turbo shim for the
+    /// distilled variant, the base shim otherwise.
+    func mfluxZImageBinaryPath(turbo: Bool) -> String {
+        turbo
+            ? BinaryDetector.mfluxGenerateZImageTurbo(in: mfluxBinaryDir)
+            : BinaryDetector.mfluxGenerateZImage(in: mfluxBinaryDir)
     }
 
     func mfluxSeedVR2BinaryPath() -> String {

@@ -28,6 +28,7 @@ final class ParamsPanelState {
         switch model {
         case .ideogram4: .ideogram4
         case .krea2: .krea2
+        case .zimageTurbo, .zimage: .zimage
         default: .flux
         }
     }

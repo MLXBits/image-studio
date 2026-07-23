@@ -1,0 +1,195 @@
+import Foundation
+
+/// Persistable snapshot of the Z-Image form, remembered across app launches.
+/// Decoded defensively (every field `decodeIfPresent ?? default`) so adding a
+/// field never silently wipes a saved snapshot. Seed is intentionally not stored
+/// — generation defaults to a fresh random seed on launch, matching Flux.
+struct ZImageFormState: Codable {
+    var variant: FluxModelVariant = .zimageTurbo
+    var prompt: String = ""
+    var negativePrompt: String = ""
+    var width: Int = 1024
+    var height: Int = 1024
+    var steps: Int = 9
+    var guidance: Double = 3.5
+    var quantize: Int = 8
+    var loras: [LoraEntry] = []
+    var imagePath: String = ""
+    var imageStrength: Double = 0.75
+    var board: String = ""
+
+    init() {}
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        let decodedVariant = (try? c.decode(FluxModelVariant.self, forKey: .variant)) ?? .zimageTurbo
+        variant = decodedVariant.isZImage ? decodedVariant : .zimageTurbo
+        prompt = (try? c.decode(String.self, forKey: .prompt)) ?? ""
+        negativePrompt = (try? c.decode(String.self, forKey: .negativePrompt)) ?? ""
+        width = (try? c.decode(Int.self, forKey: .width)) ?? 1024
+        height = (try? c.decode(Int.self, forKey: .height)) ?? 1024
+        steps = (try? c.decode(Int.self, forKey: .steps)) ?? 9
+        guidance = (try? c.decode(Double.self, forKey: .guidance)) ?? 3.5
+        quantize = (try? c.decode(Int.self, forKey: .quantize)) ?? 8
+        loras = (try? c.decode([LoraEntry].self, forKey: .loras)) ?? []
+        imagePath = (try? c.decode(String.self, forKey: .imagePath)) ?? ""
+        imageStrength = (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75
+        board = (try? c.decode(String.self, forKey: .board)) ?? ""
+    }
+}
+
+/// Observable form state for the Z-Image params panel. Shared by both variants
+/// (Turbo + base); ``variant`` mirrors the top model picker and drives which
+/// controls (guidance / negative prompt) are shown.
+@Observable
+@MainActor
+final class ZImageParamsPanelState {
+    var variant: FluxModelVariant = .zimageTurbo
+    var prompt: String = ""
+    var negativePrompt: String = ""
+    var width: Int = 1024
+    var height: Int = 1024
+    var steps: Int = 9
+    var guidance: Double = 3.5
+    var seed: Int = -1
+    var batchSeeds: [Int] = []
+    var quantize: Int = 8
+    var loras: [LoraEntry] = []
+    var imagePath: String = ""
+    var imageStrength: Double = 0.75
+    var board: String = ""
+
+    /// True for the distilled, guidance-free Turbo variant.
+    var isTurbo: Bool {
+        variant.isZImageTurbo
+    }
+
+    var canGenerate: Bool {
+        !prompt.trimmingCharacters(in: .whitespaces).isEmpty
+    }
+
+    /// Aligns the form to a newly-picked variant: swaps step/guidance defaults
+    /// to the variant's reference values only when the field still holds the
+    /// *other* variant's default, so a hand-tuned value is preserved.
+    func adoptVariant(_ newVariant: FluxModelVariant, settings: AppSettings) {
+        guard newVariant.isZImage, newVariant != variant else { return }
+        let old = variant
+        variant = newVariant
+        if steps == old.defaultSteps { steps = settings.resolvedDefaults(for: newVariant).steps }
+        if guidance == old.defaultGuidance { guidance = settings.resolvedDefaults(for: newVariant).guidance }
+    }
+
+    func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
+        // Restore the last-used form across launches when present; otherwise fall
+        // back to the model defaults from Settings → Models.
+        if let s = settings.lastZImage {
+            variant = s.variant.isZImage ? s.variant : .zimageTurbo
+            prompt = s.prompt
+            negativePrompt = s.negativePrompt
+            width = s.width
+            height = s.height
+            steps = s.steps
+            guidance = s.guidance
+            quantize = s.quantize
+            imagePath = s.imagePath
+            imageStrength = s.imageStrength
+            board = s.board
+            loras = s.loras.isEmpty ? library.defaultLoras(for: .zimage) : s.loras
+            seed = -1
+            return
+        }
+        let d = settings.resolvedDefaults(for: variant)
+        steps = d.steps
+        guidance = d.guidance
+        quantize = d.quantize
+        width = d.width
+        height = d.height
+        board = settings.defaultBoard
+        seed = -1
+        loras = library.defaultLoras(for: .zimage)
+    }
+
+    /// Captures the current form for cross-launch persistence (seed excluded).
+    func snapshot() -> ZImageFormState {
+        var s = ZImageFormState()
+        s.variant = variant
+        s.prompt = prompt
+        s.negativePrompt = negativePrompt
+        s.width = width
+        s.height = height
+        s.steps = steps
+        s.guidance = guidance
+        s.quantize = quantize
+        s.loras = loras
+        s.imagePath = imagePath
+        s.imageStrength = imageStrength
+        s.board = board
+        return s
+    }
+
+    /// Adopts a generated candidate's resolved prompt when it becomes the
+    /// img2img reference and the prompt box still holds wildcards, so
+    /// refinement varies the exact base instead of re-sampling.
+    func adoptResolvedPromptForImg2Img(at path: String) {
+        guard WildcardExpander.containsWildcards(prompt),
+              let meta = MetadataSidecar.readZImage(for: path) else { return }
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt ?? ""
+    }
+
+    /// Replays a completed generation's settings back into the form.
+    /// `newSeed == true` (Remix) resets the seed to random; otherwise the original
+    /// seed is restored. LoRAs are restored when present in the sidecar.
+    func apply(metadata meta: ZImageMetadata, newSeed: Bool) {
+        variant = meta.resolvedVariant
+        prompt = meta.prompt
+        negativePrompt = meta.negativePrompt ?? ""
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        quantize = meta.quantize
+        if let savedLoras = meta.loras { loras = savedLoras }
+        imagePath = meta.imagePath ?? ""
+        imageStrength = meta.imageStrength ?? 0.75
+        board = meta.board ?? ""
+        batchSeeds = []
+        seed = newSeed ? -1 : meta.seed
+    }
+
+    /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text for
+    /// wildcard batches; when nil, any wildcards collapse to a single sample.
+    func makeJob(count: Int = 1, resolvedPrompt: (positive: String, negative: String)? = nil) -> ZImageJob {
+        let finalPrompt = resolvedPrompt?.positive
+            ?? WildcardExpander.expandVariants(prompt, count: 1).first ?? prompt
+        let finalNegative = resolvedPrompt?.negative
+            ?? WildcardExpander.expandVariants(negativePrompt, count: 1).first ?? negativePrompt
+        let job = ZImageJob(
+            modelVariant: variant,
+            prompt: finalPrompt,
+            negativePrompt: finalNegative,
+            width: width,
+            height: height,
+            seed: seed,
+            steps: steps,
+            guidance: guidance,
+            quantize: quantize,
+            loras: loras,
+            imagePath: imagePath,
+            imageStrength: imageStrength,
+            board: board
+        )
+        if count > 1 {
+            // Matches Flux.2's batch button: auto-generate N random seeds into one
+            // warm job (single mflux process, model loaded once).
+            job.seeds = (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+        } else if !batchSeeds.isEmpty {
+            job.seeds = batchSeeds
+        }
+        return job
+    }
+
+    func isReadyToGenerate(settings _: AppSettings) -> Bool {
+        canGenerate
+    }
+}

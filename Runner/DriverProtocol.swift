@@ -29,7 +29,8 @@ struct DriverOutput: Codable {
 struct DriverGenerateRequest: Codable {
     var cmd: String = "generate"
     var id: String
-    /// Model family adapter in the driver: "flux2", "krea2", or "ideogram4".
+    /// Model family adapter in the driver: "flux2", "krea2", "ideogram4", or
+    /// "z_image" (Turbo vs base resolved from `modelVariantRaw`).
     var family: String
     /// Warm-instance identity: family + resolved model + quantize + LoRA
     /// stack. A mismatch makes the driver unload before loading (never two

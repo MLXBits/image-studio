@@ -9,6 +9,8 @@ struct GalleryItemDetailView: View {
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
     var onRemixKrea2: ((Krea2Metadata) -> Void)?
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
+    var onRemixZImage: ((ZImageMetadata) -> Void)?
+    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
@@ -24,6 +26,8 @@ struct GalleryItemDetailView: View {
             ImageMetadataInfo(ideogram4Item: item)
         } else if item.krea2Metadata != nil {
             ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.zimageMetadata != nil {
+            ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
         } else if item.seedVR2Metadata != nil {
             ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else {
@@ -72,6 +76,10 @@ struct GalleryItemDetailView: View {
                     Divider()
                     Button("Apply Settings") { onApplyKrea2Settings?(correctedKrea2(meta)) }
                     Button("Remix (new seed)") { onRemixKrea2?(meta) }
+                } else if let meta = item.zimageMetadata {
+                    Divider()
+                    Button("Apply Settings") { onApplyZImageSettings?(correctedZImage(meta)) }
+                    Button("Remix (new seed)") { onRemixZImage?(meta) }
                 }
                 if let onUpscale {
                     Divider()
@@ -97,6 +105,7 @@ struct GalleryItemDetailView: View {
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
                 onUseInImg2Img: item.ideogram4Metadata == nil && item.krea2Metadata == nil
+                    && item.zimageMetadata == nil
                     ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
@@ -161,6 +170,9 @@ struct GalleryItemDetailView: View {
         if let meta = item.krea2Metadata, let fn = onApplyKrea2Settings {
             return { fn(correctedKrea2(meta)) }
         }
+        if let meta = item.zimageMetadata, let fn = onApplyZImageSettings {
+            return { fn(correctedZImage(meta)) }
+        }
         // SeedVR2 upscale: replay from the source generation metadata folded into the
         // upscale's sidecar, so an upscale is as re-applicable as its original.
         if let src = item.seedVR2Metadata {
@@ -177,6 +189,9 @@ struct GalleryItemDetailView: View {
             if let meta = src.sourceKrea2, let fn = onApplyKrea2Settings {
                 return { fn(correctedKrea2(meta)) }
             }
+            if let meta = src.sourceZImage, let fn = onApplyZImageSettings {
+                return { fn(correctedZImage(meta)) }
+            }
         }
         return nil
     }
@@ -185,10 +200,12 @@ struct GalleryItemDetailView: View {
         if let meta = item.metadata { return { onRemix(meta) } }
         if let meta = item.ideogram4Metadata { return { onRemixIdeogram(meta) } }
         if let meta = item.krea2Metadata, let fn = onRemixKrea2 { return { fn(meta) } }
+        if let meta = item.zimageMetadata, let fn = onRemixZImage { return { fn(meta) } }
         if let src = item.seedVR2Metadata {
             if let meta = src.sourceFlux { return { onRemix(meta) } }
             if let meta = src.sourceIdeogram4 { return { onRemixIdeogram(meta) } }
             if let meta = src.sourceKrea2, let fn = onRemixKrea2 { return { fn(meta) } }
+            if let meta = src.sourceZImage, let fn = onRemixZImage { return { fn(meta) } }
         }
         return nil
     }
@@ -209,6 +226,12 @@ struct GalleryItemDetailView: View {
     }
 
     private func correctedKrea2(_ meta: Krea2Metadata) -> Krea2Metadata {
+        var corrected = meta
+        corrected.board = item.board == "Default" ? nil : item.board
+        return corrected
+    }
+
+    private func correctedZImage(_ meta: ZImageMetadata) -> ZImageMetadata {
         var corrected = meta
         corrected.board = item.board == "Default" ? nil : item.board
         return corrected

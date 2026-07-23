@@ -16,6 +16,7 @@ struct GalleryItem: Identifiable, Equatable {
     var metadata: GenerationMetadata?
     var ideogram4Metadata: Ideogram4Metadata?
     var krea2Metadata: Krea2Metadata?
+    var zimageMetadata: ZImageMetadata?
     var seedVR2Metadata: SeedVR2Metadata?
     /// Lightroom-style cull verdict, persisted as an xattr on the file (see ``GalleryCulling``).
     var flag: PickFlag?
@@ -40,16 +41,19 @@ struct GalleryItem: Identifiable, Equatable {
         let name = filename.lowercased()
         if name.hasPrefix("ideogram") { return .ideogram4 }
         if name.hasPrefix("krea2") { return .krea2 }
+        if name.hasPrefix("zimage") { return .zimage }
         if name.hasPrefix("seedvr2") {
             // Prefer the embedded source metadata (definitive, and correct even for a
             // chained upscale whose source filename is itself "seedvr2_…").
             if seedVR2Metadata?.sourceIdeogram4 != nil { return .ideogram4 }
             if seedVR2Metadata?.sourceKrea2 != nil { return .krea2 }
+            if seedVR2Metadata?.sourceZImage != nil { return .zimage }
             if seedVR2Metadata?.sourceFlux != nil { return .flux }
             // Pre-inheritance sidecar: fall back to the source filename prefix.
             let src = ((seedVR2Metadata?.sourcePath ?? "") as NSString).lastPathComponent.lowercased()
             if src.hasPrefix("ideogram") { return .ideogram4 }
             if src.hasPrefix("krea2") { return .krea2 }
+            if src.hasPrefix("zimage") { return .zimage }
             return .flux
         }
         return .flux
@@ -381,10 +385,12 @@ nonisolated private func scanDirectory(
         let fluxMeta: GenerationMetadata?
         let ideogramMeta: Ideogram4Metadata?
         let krea2Meta: Krea2Metadata?
+        let zimageMeta: ZImageMetadata?
         let seedVR2Meta: SeedVR2Metadata?
         let priorHasMetadata = prior?.metadata != nil
             || prior?.ideogram4Metadata != nil
             || prior?.krea2Metadata != nil
+            || prior?.zimageMetadata != nil
             || prior?.seedVR2Metadata != nil
         if let prior, prior.modifiedAt == modDate, priorHasMetadata {
             // Unchanged file already carrying sidecar metadata: skip the JSON re-read.
@@ -392,14 +398,20 @@ nonisolated private func scanDirectory(
             fluxMeta = prior.metadata
             ideogramMeta = prior.ideogram4Metadata
             krea2Meta = prior.krea2Metadata
+            zimageMeta = prior.zimageMetadata
             seedVR2Meta = prior.seedVR2Metadata
         } else {
             // New or changed file — or one whose sidecar hadn't landed yet when last
             // scanned (batch sidecars are written just after the PNG), so retry the read.
-            fluxMeta = MetadataSidecar.read(for: url.path)
-            ideogramMeta = fluxMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
-            krea2Meta = fluxMeta == nil && ideogramMeta == nil ? MetadataSidecar.readKrea2(for: url.path) : nil
-            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil
+            // Z-Image is probed by filename prefix first — its sidecar shares the FLUX
+            // shape closely enough that a blind FLUX decode could mis-claim it.
+            let isZImageFile = url.lastPathComponent.lowercased().hasPrefix("zimage")
+            zimageMeta = isZImageFile ? MetadataSidecar.readZImage(for: url.path) : nil
+            fluxMeta = zimageMeta == nil ? MetadataSidecar.read(for: url.path) : nil
+            ideogramMeta = fluxMeta == nil && zimageMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
+            krea2Meta = fluxMeta == nil && ideogramMeta == nil && zimageMeta == nil
+                ? MetadataSidecar.readKrea2(for: url.path) : nil
+            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil && zimageMeta == nil
                 ? MetadataSidecar.readSeedVR2(for: url.path) : nil
         }
         // Flags/ratings live in xattrs and never change the file's mtime, so the
@@ -412,6 +424,7 @@ nonisolated private func scanDirectory(
             metadata: fluxMeta,
             ideogram4Metadata: ideogramMeta,
             krea2Metadata: krea2Meta,
+            zimageMetadata: zimageMeta,
             seedVR2Metadata: seedVR2Meta,
             flag: GalleryCulling.readFlag(path: url.path),
             rating: GalleryCulling.readRating(path: url.path)

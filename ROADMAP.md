@@ -13,22 +13,33 @@ merges. FLUX generation is unaffected.
 
 ## Planned
 
-### Additional mflux models (Z-Image-Turbo, ERNIE-Image-Turbo)
+### Additional mflux models (ERNIE-Image-Turbo)
 
 **Analysis:** [`.claude/plans/one-of-my-image-logical-zephyr.md`](.claude/plans/one-of-my-image-logical-zephyr.md)
 
-mflux supports several image models beyond the three we ship (Flux.2, Ideogram 4, Krea 2). After a value÷effort review, the approved next batch is three; Qwen-Image-Edit and FIBO are deferred, and FLUX.1-legacy is out of scope (deprecation risk upstream).
+mflux supports several image models beyond those we ship. After a value÷effort review, the approved batch was three; **Z-Image and Z-Image Turbo have now shipped** (see below), leaving ERNIE-Image-Turbo next. Qwen-Image-Edit and FIBO are deferred, and FLUX.1-legacy is out of scope (deprecation risk upstream).
 
 Structural note: none of these can use the cheap `FluxModelVariant`-case path — that only works for more **Flux.2** sizes. Every other mflux model uses a different architecture/CLI/encoder, so each is a full "new family" (new `JobRunnerSpec`, `mflux_driver.py` branch, params panel, settings form, `ContentView` wiring). Effort differences come down to how exotic each one's params/modes are.
 
-Build order (value ÷ effort):
+Next up:
 
-1. **Z-Image-Turbo** — mflux's fastest/smallest quality model (6B, 9-step). Cheapest new family: params clone the existing **Krea 2** panel (steps/seed/img2img-strength, guidance hidden). q4 community build exists (`filipstrand/Z-Image-Turbo-mflux-4bit`). CLI `mflux-generate-z-image-turbo`; ship `z-image` base as a precision peer.
-2. **ERNIE-Image-Turbo** — same Krea-2-shaped effort; **smallest footprint of all candidates (q4 ~6.2 GB, q8 ~12 GB)** — the "runs on any Mac" win. Do back-to-back with #1 to amortize the twin-panel plumbing. CLI `mflux-generate-ernie-image-turbo`.
+1. **ERNIE-Image-Turbo** — same Krea-2/Z-Image-shaped effort; **smallest footprint of all candidates (q4 ~6.2 GB, q8 ~12 GB)** — the "runs on any Mac" win. Reuses the twin-panel plumbing proven out by Z-Image. CLI `mflux-generate-ernie-image-turbo`.
 
 Deferred: **Qwen-Image-Edit** (~58 GB + net-new multi-image edit UI) and **FIBO** (JSON-native caption editor + ~8 GB companion VLM + multiple modes incl. RMBG background removal).
 
 ## Shipped
+
+### Z-Image & Z-Image Turbo
+
+Alibaba Tongyi's single-stream DiT text-to-image model, shipped as a new
+`.zimage` family with **both variants**: the distilled, guidance-free **Z-Image
+Turbo** (9-step) and the classifier-free-guidance **base Z-Image** (~50-step,
+negative prompt). Full Krea 2 parity — one-shot CLI + warm persistent driver,
+LoRA, img2img (image-strength), a BF16/Q8/Q4 precision selector, metadata
+sidecars with remix/apply, and a Settings → Models form per variant. Turbo Q4
+loads the pre-quantized `filipstrand/Z-Image-Turbo-mflux-4bit` repo directly;
+other precisions use the one-time `mflux-save` pass. Drives
+`mflux-generate-z-image-turbo` / `mflux-generate-z-image`.
 
 ### SeedVR2 upscaler
 

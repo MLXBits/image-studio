@@ -17,6 +17,11 @@ struct DimensionConstraints: Equatable {
     /// range for anyone who wants to push higher and accepts the trade-offs.
     static let krea2 = Self(range: 64 ... 4096, step: 16, maxArea: nil)
 
+    /// Z-Image: per-axis 256–2048, multiples of 16 (Flux VAE stride). The model is
+    /// tuned around ~1 MP; the picker allows up to 2048 per side for higher-res
+    /// renders while keeping the floor above the model's minimum.
+    static let zimage = Self(range: 256 ... 2048, step: 16, maxArea: nil)
+
     /// FLUX.2 (all variants — distilled *klein* and dev *klein-base*, 4B and 9B —
     /// share one architecture and the same ~4 MP ceiling). Multiples of 32 to match
     /// the FLUX.2 VAE stride. The per-axis ceiling is generous (4096) so wide aspect

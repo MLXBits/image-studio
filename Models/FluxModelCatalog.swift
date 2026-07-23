@@ -7,6 +7,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     case flux2KleinBase9B = "flux2-klein-base-9b"
     case ideogram4
     case krea2
+    case zimageTurbo = "z-image-turbo"
+    case zimage = "z-image"
     case custom
 
     /// Flux.2 variants only — used for base-model pickers and LoRA sections.
@@ -16,7 +18,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     /// All non-custom models shown in Settings → Models.
     static var allModels: [Self] {
-        builtIn + [.ideogram4, .krea2]
+        builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
     }
 
     /// Returns true if the HF hub model directory is fully downloaded: no in-flight
@@ -64,8 +66,19 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         self == .krea2
     }
 
+    /// Both Z-Image variants (base + distilled Turbo). They share the ``.zimage``
+    /// ``ModelFamily`` and one generation pipeline.
+    var isZImage: Bool {
+        self == .zimageTurbo || self == .zimage
+    }
+
+    /// The distilled/guidance-free Z-Image Turbo specifically.
+    var isZImageTurbo: Bool {
+        self == .zimageTurbo
+    }
+
     var isFlux: Bool {
-        !isIdeogram4 && !isKrea2 && self != .custom
+        !isIdeogram4 && !isKrea2 && !isZImage && self != .custom
     }
 
     var displayName: String {
@@ -76,18 +89,22 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase9B: "FLUX.2 Klein Base 9B"
         case .ideogram4: "Ideogram 4"
         case .krea2: "Krea 2 Turbo"
+        case .zimageTurbo: "Z-Image Turbo"
+        case .zimage: "Z-Image"
         case .custom: "Custom Model"
         }
     }
 
     var isDistilled: Bool {
-        self == .flux2Klein4B || self == .flux2Klein9B
+        self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo
     }
 
     var defaultSteps: Int {
         switch self {
         case .ideogram4: 20 // Normal preset (not directly used — preset drives step count)
         case .krea2: 8 // turbo reference default
+        case .zimageTurbo: 9 // mflux z-image-turbo default
+        case .zimage: 50 // mflux z-image default
         default: isDistilled ? 4 : 50
         }
     }
@@ -96,12 +113,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         switch self {
         case .ideogram4: 7.0 // not used by Ideogram4 runner
         case .krea2: 1.0 // turbo reference (CFG 1.0)
+        case .zimageTurbo: 1.0 // guidance-free turbo (model forces guidance 0)
+        case .zimage: 3.5 // base model classifier-free guidance
         default: isDistilled ? 1.0 : 3.5
         }
     }
 
     var supportsNegativePrompt: Bool {
-        self == .custom
+        self == .custom || self == .zimage
     }
 
     /// Soft cap (in estimated tokens) for the prompt field, or `nil` to hide the
@@ -112,6 +131,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     var promptTokenSoftCap: Int? {
         switch self {
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B, .krea2: 512
+        case .zimageTurbo, .zimage: 512 // Qwen3-4B encoder at max_sequence_length=512
         case .ideogram4, .custom: nil
         }
     }
@@ -122,6 +142,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2Klein9B, .flux2KleinBase9B: 35.0
         case .ideogram4: 28.0 // FP8 checkpoint
         case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
+        case .zimageTurbo, .zimage: 20.0 // 6.15B DiT + Qwen3-4B encoder + VAE, bf16
         case .custom: 0
         }
     }
@@ -133,6 +154,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     var mfluxModelID: String {
         switch self {
         case .krea2: "krea/Krea-2-Turbo" // official repo; rawValue "krea2" is reserved for local paths/keys
+        case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
+        case .zimage: "Tongyi-MAI/Z-Image"
         default: rawValue
         }
     }
@@ -151,6 +174,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase4B: "black-forest-labs/FLUX.2-klein-base-4B"
         case .ideogram4: nil // gated — user must accept terms manually
         case .krea2: "krea/Krea-2-Turbo"
+        case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
+        case .zimage: "Tongyi-MAI/Z-Image"
         case .custom: nil
         }
     }
@@ -164,6 +189,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2KleinBase4B: "flux.2-klein-base-4b"
         case .ideogram4: "ideogram-4-fp8"
         case .krea2: "krea-2-turbo"
+        case .zimageTurbo: "z-image-turbo"
+        case .zimage: "tongyi-mai--z-image"
         case .custom: ""
         }
     }
@@ -204,6 +231,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case (.flux2Klein4B, 8): "mlx-community/flux2-klein-4b-8bit"
         case (.ideogram4, 8): "MLXBits/ideogram-4-mlx-q8"
         case (.ideogram4, 4): "MLXBits/ideogram-4-mlx-q4"
+        case (.zimageTurbo, 4): "filipstrand/Z-Image-Turbo-mflux-4bit"
         default: nil
         }
     }
@@ -226,6 +254,15 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             case 4: return 12
             case 8: return 21
             default: return 27
+            }
+        }
+        // Z-Image quantizes the transformer; the Qwen3-4B encoder + VAE stay BF16,
+        // so the footprint sits above the generic BF16×factor estimate.
+        if isZImage {
+            switch quantize {
+            case 4: return 10
+            case 8: return 14
+            default: return 20
             }
         }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0

@@ -54,6 +54,20 @@ nonisolated enum BinaryDetector {
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-krea2")
     }
 
+    /// Returns the full path to mflux-generate-z-image-turbo given a binary directory.
+    static func mfluxGenerateZImageTurbo(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-generate-z-image-turbo") }
+        let path = "\(dir)/mflux-generate-z-image-turbo"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-z-image-turbo")
+    }
+
+    /// Returns the full path to mflux-generate-z-image (base) given a binary directory.
+    static func mfluxGenerateZImage(in dir: String) -> String {
+        if dir.isEmpty { return detect("mflux-generate-z-image") }
+        let path = "\(dir)/mflux-generate-z-image"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-z-image")
+    }
+
     /// Returns the full path to mflux-upscale-seedvr2 given a binary directory.
     static func mfluxUpscaleSeedVR2(in dir: String) -> String {
         if dir.isEmpty { return detect("mflux-upscale-seedvr2") }

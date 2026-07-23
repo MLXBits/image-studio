@@ -20,6 +20,7 @@ struct ParamsPanelView: View {
     @Bindable var params: ParamsPanelState
     @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Bindable var krea2Params: Krea2ParamsPanelState
+    @Bindable var zimageParams: ZImageParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
@@ -58,6 +59,8 @@ struct ParamsPanelView: View {
                     Ideogram4ParamsPanelView(params: ideogramParams)
                 case .krea2:
                     Krea2ParamsPanelView(params: krea2Params)
+                case .zimage:
+                    ZImageParamsPanelView(params: zimageParams)
                 case .seedvr2:
                     EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }

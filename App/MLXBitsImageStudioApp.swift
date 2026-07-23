@@ -11,6 +11,8 @@ struct MLXBitsImageStudioApp: App {
     @State private var ideogram4Runner = Ideogram4JobRunner()
     @State private var krea2Store = Krea2JobStore()
     @State private var krea2Runner = Krea2JobRunner()
+    @State private var zimageStore = ZImageJobStore()
+    @State private var zimageRunner = ZImageJobRunner()
     @State private var seedVR2Store = SeedVR2JobStore()
     @State private var seedVR2Runner = SeedVR2JobRunner()
     @State private var coordinator = GenerationCoordinator()
@@ -29,6 +31,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(ideogram4Runner)
                 .environment(krea2Store)
                 .environment(krea2Runner)
+                .environment(zimageStore)
+                .environment(zimageRunner)
                 .environment(seedVR2Store)
                 .environment(seedVR2Runner)
                 .environment(coordinator)
@@ -75,6 +79,7 @@ struct MLXBitsImageStudioApp: App {
         // so cross-family switches evict before loading (see coordinator gate).
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
+        zimageRunner.driver = driver
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }

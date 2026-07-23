@@ -31,6 +31,8 @@ struct ContentView: View {
     @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
     @Environment(Krea2JobStore.self) private var krea2Store
     @Environment(Krea2JobRunner.self) private var krea2Runner
+    @Environment(ZImageJobStore.self) private var zimageStore
+    @Environment(ZImageJobRunner.self) private var zimageRunner
     @Environment(SeedVR2JobStore.self) private var seedVR2Store
     @Environment(SeedVR2JobRunner.self) private var seedVR2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
@@ -52,6 +54,7 @@ struct ContentView: View {
     @State private var params = ParamsPanelState()
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
+    @State private var zimageParams = ZImageParamsPanelState()
     /// Armed in `onAppear` when restoring the last-used model will change
     /// `params.model` away from its initial default. Swallows the resulting
     /// `onChange(of: params.model)` so the interactive "switch model → reset to
@@ -77,7 +80,8 @@ struct ContentView: View {
     @State private var contentWidth: CGFloat = 0
 
     private var isAnyStoreRunning: Bool {
-        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning || seedVR2Store.isRunning
+        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
+            || zimageStore.isRunning || seedVR2Store.isRunning
     }
 
     /// Every image currently attached to an img2img / edit drop area, across the
@@ -88,13 +92,17 @@ struct ContentView: View {
         if !params.imagePath.isEmpty { paths.insert(params.imagePath) }
         paths.formUnion(params.editImagePaths)
         if !krea2Params.imagePath.isEmpty { paths.insert(krea2Params.imagePath) }
+        if !zimageParams.imagePath.isEmpty { paths.insert(zimageParams.imagePath) }
         return paths
     }
 
     private var paramsPane: some View {
-        ParamsPanelView(params: params, ideogramParams: ideogramParams, krea2Params: krea2Params)
-            .frame(width: 350)
-            .frame(maxHeight: .infinity)
+        ParamsPanelView(
+            params: params, ideogramParams: ideogramParams,
+            krea2Params: krea2Params, zimageParams: zimageParams
+        )
+        .frame(width: 350)
+        .frame(maxHeight: .infinity)
     }
 
     /// Routes the precision picker to the active family's quantize, persisting
@@ -104,6 +112,7 @@ struct ContentView: View {
             get: {
                 if params.model.isIdeogram4 { return ideogramParams.quantize }
                 if params.model.isKrea2 { return krea2Params.quantize }
+                if params.model.isZImage { return zimageParams.quantize }
                 return params.quantize
             },
             set: { v in
@@ -112,6 +121,8 @@ struct ContentView: View {
                     settings.lastIdeogramQuantize = v
                 } else if params.model.isKrea2 {
                     krea2Params.quantize = v
+                } else if params.model.isZImage {
+                    zimageParams.quantize = v
                 } else {
                     params.quantize = v
                 }
@@ -155,6 +166,17 @@ struct ContentView: View {
                     : saved
                 return
             }
+            if m.isZImage {
+                // Realign the shared Z-Image form to the picked variant (Turbo vs base)
+                // — swaps step/guidance defaults only when untouched — and restore the
+                // last-used LoRAs, falling back to defaults when none were saved.
+                zimageParams.adoptVariant(m, settings: settings)
+                let saved = settings.lastZImage?.loras ?? []
+                zimageParams.loras = saved.isEmpty
+                    ? loraLibrary.defaultLoras(for: .zimage)
+                    : saved
+                return
+            }
             guard m != .custom else { return }
             let d = settings.resolvedDefaults(for: m)
             params.steps = d.steps
@@ -179,8 +201,13 @@ struct ContentView: View {
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
             onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
+            onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
+            onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: { runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel(); seedVR2Runner.cancel() },
+            onCancel: {
+                runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
+                zimageRunner.cancel(); seedVR2Runner.cancel()
+            },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
@@ -247,7 +274,9 @@ struct ContentView: View {
         return min(preferred, maxGallery)
     }
 
-    var body: some View {
+    /// Split into two chains: SwiftUI's type-checker times out on a single modifier
+    /// chain this long, so the queue/runner observers live in a second property.
+    private var bodyBase: some View {
         mainContent
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
@@ -266,6 +295,7 @@ struct ContentView: View {
                 params.applyDefaults(from: settings, library: loraLibrary)
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
                 krea2Params.applyDefaults(settings: settings, library: loraLibrary)
+                zimageParams.applyDefaults(settings: settings, library: loraLibrary)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 if settings.outputDir.isEmpty {
@@ -297,12 +327,17 @@ struct ContentView: View {
                 }
                 ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
                 krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
+                zimageParams.loras = updated.filter { $0.modelFamily == .zimage }
             }
             .onChange(of: showingOutputDirPrompt) { _, showing in
                 if !showing, !settings.outputDir.isEmpty {
                     gallery.scan(outputDir: settings.outputDir)
                 }
             }
+    }
+
+    var body: some View {
+        bodyBase
             .onChange(of: runner.lastCompletedOutputPath) { _, path in
                 pendingSelectPath = path
                 gallery.scan(outputDir: settings.outputDir)
@@ -327,6 +362,14 @@ struct ContentView: View {
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
+            .onChange(of: zimageRunner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: zimageRunner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
             .onChange(of: seedVR2Runner.lastCompletedOutputPath) { _, path in
                 pendingSelectPath = path
                 gallery.scan(outputDir: settings.outputDir)
@@ -337,6 +380,7 @@ struct ContentView: View {
             .onChange(of: store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: ideogram4Store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: krea2Store.isRunning) { _, running in if !running { pumpQueues() } }
+            .onChange(of: zimageStore.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: seedVR2Store.isRunning) { _, running in if !running { pumpQueues() } }
             .onChange(of: gallery.items) { _, newItems in
                 guard let path = pendingSelectPath,
@@ -462,6 +506,11 @@ struct ContentView: View {
             guard let id, let job = krea2Store.jobs.first(where: { $0.id == id }) else { return }
             selectedGalleryItem = nil
             previewState = .activeKrea2Job(job)
+        }
+        .onChange(of: zimageRunner.activeJob?.id) { _, id in
+            guard let id, let job = zimageStore.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeZImageJob(job)
         }
         .onChange(of: seedVR2Runner.activeJob?.id) { _, id in
             guard let id, let job = seedVR2Store.jobs.first(where: { $0.id == id }) else { return }
@@ -610,6 +659,20 @@ struct ContentView: View {
                     .environment(krea2Runner)
                     .environment(settings)
                     .environment(coordinator)
+                } else if params.modelFamily == .zimage {
+                    ZImageQueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeZImageJob(j) = previewState { return j }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job { previewState = .activeZImageJob(j) }
+                        }
+                    ))
+                    .environment(zimageStore)
+                    .environment(zimageRunner)
+                    .environment(settings)
+                    .environment(coordinator)
                 } else {
                     QueueDrawerView(selectedJob: Binding(
                         get: {
@@ -652,6 +715,8 @@ struct ContentView: View {
                     ideogramParams.isReadyToGenerate(settings: settings)
                 case .krea2:
                     krea2Params.isReadyToGenerate(settings: settings)
+                case .zimage:
+                    zimageParams.isReadyToGenerate(settings: settings)
                 case .seedvr2:
                     false // upscaler — never the picker-selected family
                 }
@@ -671,6 +736,7 @@ struct ContentView: View {
                     case .flux: params.seed == -1
                     case .ideogram4: ideogramParams.seed == -1
                     case .krea2: krea2Params.seed == -1
+                    case .zimage: zimageParams.seed == -1
                     case .seedvr2: false
                     }
                     if seedIsRandom {
@@ -733,6 +799,7 @@ struct ContentView: View {
         case .flux: params.seed != -1
         case .ideogram4: ideogramParams.seed != -1
         case .krea2: krea2Params.seed != -1
+        case .zimage: zimageParams.seed != -1
         case .seedvr2: false
         }
     }
@@ -749,6 +816,7 @@ struct ContentView: View {
                     params.seed = -1
                     ideogramParams.seed = -1
                     krea2Params.seed = -1
+                    zimageParams.seed = -1
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
@@ -817,6 +885,22 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         let remaining = krea2Store.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if zimageStore.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = zimageRunner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = zimageStore.pendingJobs.count + 1
                         Text("\(remaining) left")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -946,6 +1030,13 @@ struct ContentView: View {
         krea2Params.apply(metadata: meta, newSeed: newSeed)
     }
 
+    /// Switches the params panel to the Z-Image family and replays a completed
+    /// generation's settings, including the variant (Turbo vs base) it used.
+    private func applyZImage(_ meta: ZImageMetadata, newSeed: Bool) {
+        params.model = meta.resolvedVariant
+        zimageParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
     /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
     /// form and opens the box-overlay editor over the image. Prompt fields, seed,
     /// and preset are left untouched so the user can adjust boxes in isolation.
@@ -996,6 +1087,8 @@ struct ContentView: View {
             previewState = .activeIdeogram4Job(j)
         } else if let j = krea2Runner.activeJob {
             previewState = .activeKrea2Job(j)
+        } else if let j = zimageRunner.activeJob {
+            previewState = .activeZImageJob(j)
         } else if let j = seedVR2Runner.activeJob {
             previewState = .activeSeedVR2Job(j)
         } else {
@@ -1228,8 +1321,42 @@ struct ContentView: View {
                 previewState = .activeKrea2Job(firstJob)
             }
 
+        case .zimage:
+            generateZImage(count: count)
+
         case .seedvr2:
             break // upscaler — never the picker-selected family; started via startUpscale
+        }
+    }
+
+    /// Enqueues Z-Image jobs for one Generate press. Wildcards fan out like the
+    /// Krea 2 path — one job per option of the largest {a|b} group (capped 10); a
+    /// batch count overrides — each with its own resolved prompt + sidecar.
+    private func generateZImage(count: Int) {
+        guard zimageParams.isReadyToGenerate(settings: settings) else { return }
+        settings.lastModel = zimageParams.variant // remember variant across sessions
+        settings.lastZImage = zimageParams.snapshot() // remember the form across launches
+        settings.recordPromptUse(zimageParams.prompt)
+        let wasIdle = !isAnyStoreRunning
+        let variants = min(WildcardExpander.variantCount(zimageParams.prompt), 10)
+        let jobs: [ZImageJob]
+        if variants > 1 {
+            let jobCount = count > 1 ? count : variants
+            let positives = WildcardExpander.expandVariants(zimageParams.prompt, count: jobCount)
+            let negatives = WildcardExpander.expandVariants(zimageParams.negativePrompt, count: jobCount)
+            jobs = (0 ..< jobCount).map {
+                zimageParams.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
+            }
+        } else {
+            jobs = [zimageParams.makeJob(count: count)]
+        }
+        for job in jobs {
+            zimageStore.add(job)
+        }
+        zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
+        if wasIdle, let firstJob = jobs.first {
+            selectedGalleryItem = nil
+            previewState = .activeZImageJob(firstJob)
         }
     }
 
@@ -1305,6 +1432,9 @@ struct ContentView: View {
         } else if !krea2Store.pendingJobs.isEmpty {
             driverController.eject(reason: "model_switch")
             krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
+        } else if !zimageStore.pendingJobs.isEmpty {
+            driverController.eject(reason: "model_switch")
+            zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
         } else if !seedVR2Store.pendingJobs.isEmpty {
             // Free any warm generative model before the upscale — SeedVR2 loads its own
             // weights in a fresh CLI process, and holding both risks OOM.

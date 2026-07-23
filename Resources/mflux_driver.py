@@ -3,7 +3,8 @@
 Runs inside the mflux tool venv (interpreter discovered from the
 mflux-generate-flux2 shim's shebang) and keeps one model resident between
 jobs so back-to-back generations skip the model load. Supports the flux2,
-krea2, and ideogram4 families (one warm model at a time, fingerprint-keyed).
+krea2, ideogram4, and z_image families (one warm model at a time,
+fingerprint-keyed).
 
 Protocol: newline-delimited JSON. Requests on stdin (hello, generate, cancel,
 unload, ping, quit); events on the *original* stdout (ready, loading, loaded,
@@ -140,8 +141,8 @@ class WarmModel:
     def evict_text_encoder(self):
         import mlx.core as mx
 
-        if self.family == "ideogram4":
-            return  # layout-dependent TE config; reload is unreliable — keep resident
+        if self.family in ("ideogram4", "z_image"):
+            return  # no encode wrapper / reload path wired — keep the TE resident
         if getattr(self.model, "text_encoder", None) is None:
             return
         self.model.text_encoder = None
@@ -236,6 +237,14 @@ def _construct_model(req):
         if Ideogram4WeightDefinition.is_builtin_name(req["model"]):
             return Ideogram4(model_config=ModelConfig.from_name(req["model"]), model_path=None, **kwargs)
         return Ideogram4(model_config=ModelConfig.ideogram4_fp8(), model_path=req["model"], **kwargs)
+    if family == "z_image":
+        from mflux.models.z_image.variants.z_image import ZImage
+
+        # Turbo vs base is selected from the app's model_variant_raw; the app always
+        # sends a repo ID or saved-weights path as the model.
+        variant = req.get("model_variant_raw", "z-image-turbo")
+        config = ModelConfig.z_image_turbo() if "turbo" in variant else ModelConfig.z_image()
+        return ZImage(model_config=config, model_path=req["model"], **kwargs)
     raise RuntimeError(f"unknown family: {family}")
 
 
@@ -248,6 +257,10 @@ def _latent_creator(family):
         from mflux.models.ideogram4.latent_creator import Ideogram4LatentCreator
 
         return Ideogram4LatentCreator
+    if family == "z_image":
+        from mflux.models.z_image.latent_creator import ZImageLatentCreator
+
+        return ZImageLatentCreator
     from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 
     return Flux2LatentCreator
@@ -305,6 +318,20 @@ def _generate_kwargs(req, seed, prompt):
             "height": req["height"],
             "width": req["width"],
             "guidance": req.get("guidance", 1.0),
+            "negative_prompt": req.get("negative_prompt"),
+            "image_path": req.get("image_path"),
+            "image_strength": req.get("image_strength"),
+        }
+    if family == "z_image":
+        # generate_image resolves guidance=None → 0 for the guidance-free Turbo
+        # variant and picks the scheduler per variant, so both are left implicit.
+        return {
+            "seed": seed,
+            "prompt": prompt,
+            "num_inference_steps": req["steps"],
+            "height": req["height"],
+            "width": req["width"],
+            "guidance": req.get("guidance"),
             "negative_prompt": req.get("negative_prompt"),
             "image_path": req.get("image_path"),
             "image_strength": req.get("image_strength"),
