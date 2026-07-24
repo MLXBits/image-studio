@@ -50,26 +50,31 @@ enum OpenAIChatClient {
             throw OpenAIChatClientError.invalidURL(call.baseURL)
         }
 
-        let body = OpenAIChatRequest(
-            model: call.model,
-            messages: call.messages,
-            maxTokens: call.maxTokens,
-            temperature: call.temp,
-            topP: call.topP,
-            topK: call.topK > 0 ? call.topK : nil,
-            stream: false,
-            responseFormat: call.jsonMode ? .jsonObject : nil
-        )
+        func body(responseFormat: OpenAIResponseFormat?) -> OpenAIChatRequest {
+            OpenAIChatRequest(
+                model: call.model,
+                messages: call.messages,
+                maxTokens: call.maxTokens,
+                temperature: call.temp,
+                topP: call.topP,
+                topK: call.topK > 0 ? call.topK : nil,
+                stream: false,
+                responseFormat: responseFormat
+            )
+        }
 
-        var request = URLRequest(url: url)
-        request.httpMethod = "POST"
-        request.timeoutInterval = requestTimeout
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        applyAuth(&request, apiKey: call.apiKey)
-        request.httpBody = try JSONEncoder().encode(body)
-
-        let (data, response) = try await URLSession.shared.data(for: request)
-        try checkStatus(response, data: data)
+        let data: Data
+        do {
+            let format: OpenAIResponseFormat? = call.jsonMode ? .jsonObject : nil
+            data = try await post(url, body: body(responseFormat: format), apiKey: call.apiKey)
+        } catch {
+            // Not every OpenAI-compatible server implements `json_object` — some
+            // (mlx-lm's, notably) accept only `json_schema` or `text`. Retry with
+            // the field dropped: the prompt already asks for JSON and the caller's
+            // extractor tolerates prose or fences around it.
+            guard call.jsonMode, rejectsJSONObject(error) else { throw error }
+            data = try await post(url, body: body(responseFormat: nil), apiKey: call.apiKey)
+        }
 
         let decoded: OpenAIChatResponse
         do {
@@ -105,6 +110,28 @@ enum OpenAIChatClient {
     }
 
     // MARK: - Helpers
+
+    /// POSTs one chat-completions request and returns the raw response body.
+    private static func post(_ url: URL, body: OpenAIChatRequest, apiKey: String) async throws -> Data {
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = requestTimeout
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(&request, apiKey: apiKey)
+        request.httpBody = try JSONEncoder().encode(body)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try checkStatus(response, data: data)
+        return data
+    }
+
+    /// True when a failure looks like the server rejecting the `response_format`
+    /// field itself rather than the prompt — the signal to retry without it.
+    /// Exposed (non-private) for unit testing.
+    static func rejectsJSONObject(_ error: Error) -> Bool {
+        guard case let OpenAIChatClientError.httpStatus(status, body) = error else { return false }
+        return (status == 400 || status == 422) && body.contains("response_format")
+    }
 
     private static func applyAuth(_ request: inout URLRequest, apiKey: String) {
         let key = apiKey.trimmingCharacters(in: .whitespacesAndNewlines)

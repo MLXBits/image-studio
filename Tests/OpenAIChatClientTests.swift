@@ -94,4 +94,19 @@ struct OpenAIChatClientTests {
         #expect(text.contains("\"response_format\""))
         #expect(text.contains("\"json_object\""))
     }
+
+    // MARK: - json_object fallback
+
+    @Test func detectsResponseFormatRejection() {
+        let body = #"{"error":"'response_format.type' must be 'json_schema' or 'text'"}"#
+        #expect(OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.httpStatus(400, body)))
+        #expect(OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.httpStatus(422, body)))
+    }
+
+    @Test func ignoresUnrelatedFailures() {
+        let notLoaded = OpenAIChatClientError.httpStatus(400, #"{"error":"model not loaded"}"#)
+        #expect(!OpenAIChatClient.rejectsJSONObject(notLoaded))
+        #expect(!OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.httpStatus(500, "response_format")))
+        #expect(!OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.emptyResponse))
+    }
 }
