@@ -3,9 +3,9 @@ import SwiftUI
 // MARK: - Krea 2 per-model form body
 //
 // Krea 2 Turbo is text-to-image with CFG. It exposes only the controls the dev
-// `mflux-generate-krea2` CLI backstops: steps, guidance, quantize, canvas, and
-// LoRAs. There is no low-RAM streaming and no model-source override wired into
-// the Krea 2 runner, so those rows are intentionally omitted.
+// `mflux-generate-krea2` CLI backstops: steps, guidance, quantize, canvas,
+// model source, and LoRAs. There is no low-RAM streaming, so that row is
+// intentionally omitted.
 
 extension ModelDefaultsView {
     func krea2FormContent() -> some View {
@@ -16,6 +16,7 @@ extension ModelDefaultsView {
                 stepsPicker(model: model, current: d.steps)
                 guidancePicker(model: model, current: d.guidance)
                 quantizePicker(model: model, current: d.quantize)
+                modelRepoField(model: model, current: d.modelRepoOverride)
             }
 
             Section {

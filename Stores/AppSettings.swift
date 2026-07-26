@@ -85,6 +85,9 @@ class AppSettings {
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
         var ideogram4CfgEnd: Double?
+        /// Custom model picker entry (remembered across launches)
+        var lastCustomModelRepo: String?
+        var lastCustomBaseModel: FluxModelVariant?
         /// Krea 2 last-used form (remembered across launches)
         var lastKrea2: Krea2FormState?
         /// Z-Image last-used form (remembered across launches)
@@ -172,8 +175,16 @@ class AppSettings {
 
     /// Global
     var mfluxBinaryDir: String {
-        didSet { save() }
+        didSet {
+            refreshAvailableModels()
+            save()
+        }
     }
+
+    /// Models the mflux install at ``mfluxBinaryDir`` ships a generation CLI for.
+    /// Cached rather than probed per view update — recomputed when the binary
+    /// directory changes and by ``refreshAvailableModels()`` after an install.
+    private(set) var availableModels: [FluxModelVariant] = []
 
     var outputDir: String {
         didSet { save() }
@@ -315,6 +326,18 @@ class AppSettings {
 
     /// Last Ideogram 4 seed (-1 = random), restored on next launch.
     var lastIdeogramSeed: Int? {
+        didSet { save() }
+    }
+
+    /// Repo ID or path last entered for the picker's `Custom…` entry. Persisted
+    /// because a custom checkpoint is now how a whole family gets run, not a
+    /// one-field detour off the built-in Flux variants.
+    var lastCustomModelRepo: String {
+        didSet { save() }
+    }
+
+    /// Which known model that custom checkpoint was last loaded as.
+    var lastCustomBaseModel: FluxModelVariant {
         didSet { save() }
     }
 
@@ -536,6 +559,8 @@ class AppSettings {
         lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
         lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
         lastIdeogramSeed = s.lastIdeogramSeed
+        lastCustomModelRepo = s.lastCustomModelRepo ?? ""
+        lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
         lastKrea2 = s.lastKrea2
         lastZImage = s.lastZImage
         seedVR2Use7B = s.seedVR2Use7B ?? false
@@ -571,6 +596,26 @@ class AppSettings {
         } else {
             activeTemplateIDs = []
         }
+        refreshAvailableModels()
+    }
+
+    // MARK: - Model availability
+
+    /// Re-probes which families the current mflux install can run. Call after an
+    /// install or update; the ``mfluxBinaryDir`` setter does it automatically.
+    func refreshAvailableModels() {
+        availableModels = FluxModelVariant.customTargets(binaryDir: mfluxBinaryDir)
+    }
+
+    /// Whether this mflux install ships `model`'s generation CLI. `custom` has no
+    /// CLI of its own — its target is what gets checked.
+    ///
+    /// An empty ``availableModels`` means nothing was detected at all (mflux not
+    /// installed yet, or installed somewhere unexpected). Gating on that would
+    /// leave the picker with nothing selectable, so nothing is gated until at
+    /// least one CLI is found.
+    func supportsModel(_ model: FluxModelVariant) -> Bool {
+        model == .custom || availableModels.isEmpty || availableModels.contains(model)
     }
 
     // MARK: - Legacy migration
@@ -673,6 +718,8 @@ class AppSettings {
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
+        s.lastCustomModelRepo = lastCustomModelRepo
+        s.lastCustomBaseModel = lastCustomBaseModel
         s.lastKrea2 = lastKrea2
         s.lastZImage = lastZImage
         s.seedVR2Use7B = seedVR2Use7B

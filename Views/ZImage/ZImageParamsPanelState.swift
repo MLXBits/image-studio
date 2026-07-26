@@ -159,13 +159,20 @@ final class ZImageParamsPanelState {
 
     /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text for
     /// wildcard batches; when nil, any wildcards collapse to a single sample.
-    func makeJob(count: Int = 1, resolvedPrompt: (positive: String, negative: String)? = nil) -> ZImageJob {
+    /// `customModelRepo` carries the picker's `Custom…` entry when a custom
+    /// checkpoint is being loaded through the Z-Image pipeline; empty otherwise.
+    func makeJob(
+        count: Int = 1,
+        customModelRepo: String = "",
+        resolvedPrompt: (positive: String, negative: String)? = nil
+    ) -> ZImageJob {
         let finalPrompt = resolvedPrompt?.positive
             ?? WildcardExpander.expandVariants(prompt, count: 1).first ?? prompt
         let finalNegative = resolvedPrompt?.negative
             ?? WildcardExpander.expandVariants(negativePrompt, count: 1).first ?? negativePrompt
         let job = ZImageJob(
             modelVariant: variant,
+            customModelRepo: customModelRepo,
             prompt: finalPrompt,
             negativePrompt: finalNegative,
             width: width,

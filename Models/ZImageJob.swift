@@ -17,6 +17,9 @@ final class ZImageJob: Identifiable {
     let id: UUID
     /// Which Z-Image variant this job runs: `.zimageTurbo` or `.zimage` (base).
     var modelVariant: FluxModelVariant
+    /// Repo ID or local path chosen via the picker's `Custom…` entry, loaded
+    /// through the Z-Image pipeline. Empty = the stock variant's model source.
+    var customModelRepo: String
     var prompt: String
     var negativePrompt: String
     var width: Int
@@ -69,12 +72,16 @@ final class ZImageJob: Identifiable {
     }
 
     var displayName: String {
-        "\(modelVariant.displayName) · \(width)×\(height) · \(steps) steps"
+        let name = customModelRepo.isEmpty
+            ? modelVariant.displayName
+            : customModelRepo.split(separator: "/").last.map(String.init) ?? "custom"
+        return "\(name) · \(width)×\(height) · \(steps) steps"
     }
 
     init(
         id: UUID = UUID(),
         modelVariant: FluxModelVariant = .zimageTurbo,
+        customModelRepo: String = "",
         prompt: String = "",
         negativePrompt: String = "",
         width: Int = 1024,
@@ -92,6 +99,7 @@ final class ZImageJob: Identifiable {
     ) {
         self.id = id
         self.modelVariant = modelVariant.isZImage ? modelVariant : .zimageTurbo
+        self.customModelRepo = customModelRepo
         self.prompt = prompt
         self.negativePrompt = negativePrompt
         self.width = width
@@ -115,7 +123,7 @@ final class ZImageJob: Identifiable {
 
 extension ZImageJob: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, modelVariant, prompt, negativePrompt
+        case id, modelVariant, customModelRepo, prompt, negativePrompt
         case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
@@ -126,6 +134,7 @@ extension ZImageJob: Codable {
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
             modelVariant: (try? c.decode(FluxModelVariant.self, forKey: .modelVariant)) ?? .zimageTurbo,
+            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             prompt: (try? c.decode(String.self, forKey: .prompt)) ?? "",
             negativePrompt: (try? c.decode(String.self, forKey: .negativePrompt)) ?? "",
             width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,
@@ -156,6 +165,7 @@ extension ZImageJob: Codable {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
         try c.encode(modelVariant, forKey: .modelVariant)
+        try c.encode(customModelRepo, forKey: .customModelRepo)
         try c.encode(prompt, forKey: .prompt)
         try c.encode(negativePrompt, forKey: .negativePrompt)
         try c.encode(width, forKey: .width)

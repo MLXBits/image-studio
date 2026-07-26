@@ -61,7 +61,7 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 | Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
 | Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Requires unreleased mflux support — see below |
-| Custom                      | any   | Any HuggingFace repo ID or local path (only Flux.2 compatible, for now) |
+| Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
 
 ---
 
@@ -88,10 +88,10 @@ box and color palette).
   directly; FP8 quantizes once via `mflux-save`.
 
 > **mflux support:** Ideogram 4 generation drives the `mflux-generate-ideogram4`
-> CLI. Until Ideogram 4 support lands in a published mflux release, the app shows
-> a "binary not found" error for Ideogram 4 jobs while the rest of the app
-> (FLUX) works normally. The model is gated on HuggingFace — accept the terms on
-> the model page before first download.
+> CLI. Any model whose CLI is missing from your mflux install is disabled in the
+> model picker with a note saying so, rather than failing when you hit Generate —
+> which family CLIs exist varies by mflux version. The model is gated on
+> HuggingFace — accept the terms on the model page before first download.
 
 ---
 

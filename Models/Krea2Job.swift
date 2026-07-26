@@ -9,11 +9,14 @@ import Foundation
 /// survive app restarts.
 ///
 /// Krea 2 is turbo text-to-image with an optional img2img path (no multi-image
-/// edit, no custom-repo support). `negativePrompt` is only meaningful when
-/// `guidance != 1` (CFG on). `imagePath` empty = pure text-to-image.
+/// edit). `negativePrompt` is only meaningful when `guidance != 1` (CFG on).
+/// `imagePath` empty = pure text-to-image.
 @Observable
 final class Krea2Job: Identifiable {
     let id: UUID
+    /// Repo ID or local path chosen via the picker's `Custom…` entry, loaded
+    /// through the Krea 2 pipeline. Empty = the stock Krea 2 model source.
+    var customModelRepo: String
     var prompt: String
     var negativePrompt: String
     var width: Int
@@ -61,11 +64,15 @@ final class Krea2Job: Identifiable {
     }
 
     var displayName: String {
-        "Krea 2 Turbo · \(width)×\(height) · \(steps) steps"
+        let name = customModelRepo.isEmpty
+            ? FluxModelVariant.krea2.displayName
+            : customModelRepo.split(separator: "/").last.map(String.init) ?? "custom"
+        return "\(name) · \(width)×\(height) · \(steps) steps"
     }
 
     init(
         id: UUID = UUID(),
+        customModelRepo: String = "",
         prompt: String = "",
         negativePrompt: String = "",
         width: Int = 1024,
@@ -82,6 +89,7 @@ final class Krea2Job: Identifiable {
         createdAt: Date = Date()
     ) {
         self.id = id
+        self.customModelRepo = customModelRepo
         self.prompt = prompt
         self.negativePrompt = negativePrompt
         self.width = width
@@ -105,7 +113,7 @@ final class Krea2Job: Identifiable {
 
 extension Krea2Job: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, prompt, negativePrompt
+        case id, customModelRepo, prompt, negativePrompt
         case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
@@ -115,6 +123,7 @@ extension Krea2Job: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
+            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             prompt: (try? c.decode(String.self, forKey: .prompt)) ?? "",
             negativePrompt: (try? c.decode(String.self, forKey: .negativePrompt)) ?? "",
             width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,
@@ -144,6 +153,7 @@ extension Krea2Job: Codable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
+        try c.encode(customModelRepo, forKey: .customModelRepo)
         try c.encode(prompt, forKey: .prompt)
         try c.encode(negativePrompt, forKey: .negativePrompt)
         try c.encode(width, forKey: .width)

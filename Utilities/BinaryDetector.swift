@@ -19,6 +19,31 @@ nonisolated enum BinaryDetector {
         return URL(fileURLWithPath: path).deletingLastPathComponent().path
     }
 
+    /// Resolves a console script to a full path, preferring `dir` and falling back
+    /// to the standard locations. Returns nil when the script exists nowhere —
+    /// unlike the `mfluxGenerate…` helpers below, which return `""` and leave the
+    /// caller to hand an empty executable path to `Process`.
+    static func resolve(_ name: String, in dir: String) -> String? {
+        if !dir.isEmpty {
+            let path = "\(dir)/\(name)"
+            if FileManager.default.fileExists(atPath: path) { return path }
+        }
+        let fallback = detect(name)
+        return fallback.isEmpty ? nil : fallback
+    }
+
+    /// Whether the mflux install rooted at `dir` ships the console script this
+    /// model variant generates with. Drives the model picker: a family whose CLI
+    /// is absent is not offered rather than failing at spawn time.
+    ///
+    /// mflux gains CLIs between releases (`mflux-generate-krea2` landed after
+    /// 0.18.0), and the app installs mflux unpinned, so this cannot be inferred
+    /// from a version number.
+    static func supports(_ variant: FluxModelVariant, in dir: String) -> Bool {
+        guard let name = variant.generateCLIName else { return true }
+        return resolve(name, in: dir) != nil
+    }
+
     /// Returns the full path to mflux-generate-flux2 given a binary directory.
     static func mfluxGenerateFlux2(in dir: String) -> String {
         if dir.isEmpty { return detect("mflux-generate-flux2") }

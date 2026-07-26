@@ -6,7 +6,10 @@ import Foundation
 @Observable
 final class ParamsPanelState {
     var model: FluxModelVariant = .flux2Klein9B
+    /// Repo ID or local path backing the `custom` picker entry.
     var customModelRepo: String = ""
+    /// Which known model a custom checkpoint loads as — it decides the pipeline,
+    /// params panel and runner, and for Flux targets also supplies `--base-model`.
     var customBaseModel: FluxModelVariant = .flux2Klein9B
     var prompt: String = ""
     var negativePrompt: String = ""
@@ -24,19 +27,25 @@ final class ParamsPanelState {
     var editImagePaths: [String] = []
     var board: String = ""
 
+    /// The pipeline this selection generates through. A custom checkpoint runs as
+    /// whatever family it is loaded as, so its target — not `custom` itself —
+    /// picks the runner, panel and queue.
     var modelFamily: ModelFamily {
-        switch model {
-        case .ideogram4: .ideogram4
-        case .krea2: .krea2
-        case .zimageTurbo, .zimage: .zimage
-        default: .flux
-        }
+        model == .custom ? customBaseModel.family : model.family
+    }
+
+    /// The custom repo/path, trimmed, or "" when this isn't a custom selection.
+    /// Jobs take it verbatim as their model source.
+    var effectiveCustomRepo: String {
+        model == .custom ? customModelRepo.trimmingCharacters(in: .whitespaces) : ""
     }
 
     func applyDefaults(from settings: AppSettings, library: LoraLibraryStore) {
         let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
         model = m
+        customModelRepo = settings.lastCustomModelRepo
+        customBaseModel = settings.lastCustomBaseModel
         quantize = settings.lastQuantize
         board = settings.defaultBoard
         width = settings.lastWidth

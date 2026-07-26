@@ -39,9 +39,10 @@ enum ZImageRunnerSpec: JobRunnerSpec {
     }
 
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir — unless a
-    /// pre-quantized repo exists (Turbo Q4), which loads directly.
+    /// pre-quantized repo exists (Turbo Q4) or the source is custom/overridden,
+    /// all of which load directly.
     static func quantSaveDestination(job: ZImageJob, settings: AppSettings) -> URL? {
-        guard job.quantize > 0 else { return nil }
+        guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
         if job.modelVariant.preQuantizedRepoID(quantize: job.quantize) != nil { return nil }
         return job.modelVariant.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
     }
@@ -61,7 +62,8 @@ enum ZImageRunnerSpec: JobRunnerSpec {
     }
 
     static func timingModelKey(job: ZImageJob) -> String {
-        job.modelVariant.rawValue // "z-image-turbo" or "z-image"
+        // "z-image-turbo" or "z-image", or that plus the custom repo.
+        TimingStore.modelKey(job.modelVariant.rawValue, customRepo: job.customModelRepo)
     }
 
     static func timingLowRam(job _: ZImageJob) -> Bool {
@@ -76,10 +78,25 @@ enum ZImageRunnerSpec: JobRunnerSpec {
         MetadataSidecar.writeZImage(meta, for: path)
     }
 
-    /// Resolves the `--model` argument (repo ID, pre-quantized repo, or local
-    /// mflux-saved dir), mirroring `buildArgs`, plus the in-memory quantize
-    /// fallback. Returns `(model, quantizeArg)`.
+    /// A repo ID or path that replaces the stock Z-Image model source: the picker's
+    /// `Custom…` entry first, then the Settings → Models override for this variant.
+    /// Both name a specific set of weights, so neither takes a `--quantize` pass.
+    private static func modelSourceOverride(job: ZImageJob, settings: AppSettings) -> String? {
+        let custom = job.customModelRepo.trimmingCharacters(in: .whitespaces)
+        if !custom.isEmpty { return custom }
+        let override = (settings.defaults(for: job.modelVariant).modelRepoOverride ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        return override.isEmpty ? nil : override
+    }
+
+    /// Resolves the `--model` argument (custom repo, Settings override, repo ID,
+    /// pre-quantized repo, or local mflux-saved dir), mirroring `buildArgs`, plus
+    /// the in-memory quantize fallback. Returns `(model, quantizeArg)`.
     private static func resolveModel(job: ZImageJob, settings: AppSettings) -> (model: String, quantize: Int?) {
+        if let source = modelSourceOverride(job: job, settings: settings) {
+            // Names specific weights — the repo/dir carries its own quantization.
+            return (source, nil)
+        }
         guard job.quantize > 0 else { return (job.modelVariant.mfluxModelID, nil) }
         if let preQuant = job.modelVariant.preQuantizedRepoID(quantize: job.quantize) {
             return (preQuant, nil)
@@ -127,7 +144,9 @@ enum ZImageRunnerSpec: JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: job.modelVariant.rawValue,
-            modelLabel: job.modelVariant.displayName
+            modelLabel: RunnerSupport.modelLabel(
+                custom: job.customModelRepo, fallback: job.modelVariant.displayName
+            )
         )
     }
 

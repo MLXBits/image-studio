@@ -4,9 +4,9 @@ import SwiftUI
 //
 // Z-Image is text-to-image (+ img2img). It exposes only the controls the
 // `mflux-generate-z-image[-turbo]` CLIs backstop: steps, guidance (base only),
-// quantize, and canvas. The distilled Turbo variant is guidance-free, so its
-// guidance row is omitted. There is no low-RAM streaming or model-source
-// override wired into the Z-Image runner, so those rows are intentionally absent.
+// quantize, model source, and canvas. The distilled Turbo variant is
+// guidance-free, so its guidance row is omitted. There is no low-RAM streaming,
+// so that row is intentionally absent.
 
 extension ModelDefaultsView {
     func zimageFormContent(model: FluxModelVariant) -> some View {
@@ -18,6 +18,7 @@ extension ModelDefaultsView {
                     guidancePicker(model: model, current: d.guidance)
                 }
                 quantizePicker(model: model, current: d.quantize)
+                modelRepoField(model: model, current: d.modelRepoOverride)
             }
 
             Section {

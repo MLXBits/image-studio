@@ -59,8 +59,11 @@ final class Ideogram4ParamsPanelState {
         seed = newSeed ? -1 : meta.seed
     }
 
-    func makeJob(count: Int = 1) -> Ideogram4Job {
+    /// `customModelRepo` carries the picker's `Custom…` entry when a custom
+    /// checkpoint is being loaded through the Ideogram 4 pipeline; empty otherwise.
+    func makeJob(count: Int = 1, customModelRepo: String = "") -> Ideogram4Job {
         let job = Ideogram4Job(
+            customModelRepo: customModelRepo,
             preset: preset,
             caption: caption,
             usePlainPrompt: usePlainPrompt,

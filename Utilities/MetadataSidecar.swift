@@ -5,6 +5,7 @@ import Foundation
 nonisolated struct Ideogram4Metadata: Codable {
     @MainActor static func from(job: Ideogram4Job) -> Self {
         Self(
+            customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
             caption: job.caption,
             usePlainPrompt: job.usePlainPrompt,
             plainPrompt: job.plainPrompt,
@@ -22,6 +23,9 @@ nonisolated struct Ideogram4Metadata: Codable {
         )
     }
 
+    /// Custom checkpoint this was generated from, when the picker's `Custom…`
+    /// entry was loaded as Ideogram 4. Optional so pre-field sidecars decode.
+    var customModelRepo: String?
     var caption: IdeogramCaption
     var usePlainPrompt: Bool
     var plainPrompt: String
@@ -92,6 +96,7 @@ nonisolated struct GenerationMetadata: Codable {
 nonisolated struct Krea2Metadata: Codable {
     @MainActor static func from(job: Krea2Job) -> Self {
         Self(
+            customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
             prompt: job.prompt,
             negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
             seed: job.resolvedSeed ?? job.seed,
@@ -110,6 +115,9 @@ nonisolated struct Krea2Metadata: Codable {
         )
     }
 
+    /// Custom checkpoint this was generated from, when the picker's `Custom…`
+    /// entry was loaded as Krea 2. Optional so pre-field sidecars decode.
+    var customModelRepo: String?
     var prompt: String
     var negativePrompt: String?
     var seed: Int
@@ -133,6 +141,7 @@ nonisolated struct ZImageMetadata: Codable {
     @MainActor static func from(job: ZImageJob) -> Self {
         Self(
             modelVariant: job.modelVariant,
+            customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
             prompt: job.prompt,
             negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
             seed: job.resolvedSeed ?? job.seed,
@@ -154,6 +163,9 @@ nonisolated struct ZImageMetadata: Codable {
     /// Which Z-Image variant produced the image (Turbo or base). Optional so
     /// sidecars written before the field decode; defaults to Turbo on read.
     var modelVariant: FluxModelVariant?
+    /// Custom checkpoint this was generated from, when the picker's `Custom…`
+    /// entry was loaded as Z-Image. Optional so pre-field sidecars decode.
+    var customModelRepo: String?
     var prompt: String
     var negativePrompt: String?
     var seed: Int

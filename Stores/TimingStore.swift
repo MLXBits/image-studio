@@ -58,6 +58,14 @@ final class TimingStore {
         model == .custom ? "custom:\(customRepo)" : model.rawValue
     }
 
+    /// Stable key for a non-Flux family. A custom checkpoint is keyed by its own
+    /// repo/path so its step times don't blend into the stock model's history —
+    /// they can differ by a lot at the same quantize level.
+    static func modelKey(_ stock: String, customRepo: String) -> String {
+        let trimmed = customRepo.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? stock : "\(stock):custom:\(trimmed)"
+    }
+
     private static func key(model: String, quantize: Int, lowRam: Bool) -> String {
         "\(model)|q\(quantize)|\(lowRam ? "lr" : "hr")"
     }

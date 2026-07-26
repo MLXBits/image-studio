@@ -130,7 +130,12 @@ enum FluxRunnerSpec: JobRunnerSpec {
         var args: [String] = []
 
         if job.model == .custom {
-            args += ["--model", job.customModelRepo, "--base-model", job.customBaseModel.mfluxModelID]
+            // `--base-model` names the Flux.2 architecture mflux loads the checkpoint
+            // as. Custom checkpoints targeting another family are run by that family's
+            // runner, so only a Flux.2 target should ever reach here; clamp anyway so a
+            // job persisted with a since-changed target can't emit a bogus base model.
+            let base = job.customBaseModel.family == .flux ? job.customBaseModel : .flux2Klein9B
+            args += ["--model", job.customModelRepo, "--base-model", base.mfluxModelID]
         } else if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
             // User-supplied override (HF repo ID or local path): use as-is.
             // No --quantize flag — the repo carries its own quantization metadata.

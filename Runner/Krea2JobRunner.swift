@@ -27,9 +27,11 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         settings.mfluxKrea2BinaryPath()
     }
 
-    /// Q8/Q4: one-time mflux-save quantization pass into the cache dir.
+    /// Q8/Q4: one-time mflux-save quantization pass into the cache dir. Skipped
+    /// for a custom or overridden model source — those name a specific repo/path
+    /// that carries its own quantization metadata.
     static func quantSaveDestination(job: Krea2Job, settings: AppSettings) -> URL? {
-        guard job.quantize > 0 else { return nil }
+        guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
         return FluxModelVariant.krea2.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
     }
 
@@ -49,8 +51,8 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         total <= job.steps
     }
 
-    static func timingModelKey(job _: Krea2Job) -> String {
-        "krea2"
+    static func timingModelKey(job: Krea2Job) -> String {
+        TimingStore.modelKey("krea2", customRepo: job.customModelRepo)
     }
 
     static func timingLowRam(job _: Krea2Job) -> Bool {
@@ -65,21 +67,40 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         MetadataSidecar.writeKrea2(meta, for: path)
     }
 
+    /// A repo ID or path that replaces the stock Krea 2 model source: the picker's
+    /// `Custom…` entry first, then the Settings → Models override. Both name a
+    /// specific set of weights, so neither takes a `--quantize` pass.
+    private static func modelSourceOverride(job: Krea2Job, settings: AppSettings) -> String? {
+        let custom = job.customModelRepo.trimmingCharacters(in: .whitespaces)
+        if !custom.isEmpty { return custom }
+        let override = (settings.defaults(for: .krea2).modelRepoOverride ?? "")
+            .trimmingCharacters(in: .whitespaces)
+        return override.isEmpty ? nil : override
+    }
+
+    /// Resolves the `--model` value and the `--quantize` level that goes with it.
+    /// Precedence: custom repo → Settings override → local mflux-saved weights →
+    /// the stock repo (quantized on the fly).
+    static func resolveModel(job: Krea2Job, settings: AppSettings) -> (model: String, quantize: Int?) {
+        if let source = modelSourceOverride(job: job, settings: settings) {
+            // Names specific weights — the repo/dir carries its own quantization.
+            return (source, nil)
+        }
+        guard job.quantize > 0 else { return (FluxModelVariant.krea2.mfluxModelID, nil) }
+        let savedPath = FluxModelVariant.krea2.savedModelPath(
+            quantize: job.quantize, in: settings.effectiveMfluxCacheDir
+        )
+        if FluxModelVariant.hasSavedWeights(at: savedPath) {
+            // Local mflux-saved weights: pass the dir directly, mflux detects stored_q.
+            return (savedPath.path, nil)
+        }
+        return (FluxModelVariant.krea2.mfluxModelID, job.quantize)
+    }
+
     /// Driver eligibility + request. Every Krea 2 job qualifies (no edit or
     /// low-RAM modes); model resolution mirrors buildArgs.
     static func driverRequest(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
-        var model = FluxModelVariant.krea2.mfluxModelID
-        var quantizeArg: Int?
-        if job.quantize > 0 {
-            let savedPath = FluxModelVariant.krea2.savedModelPath(
-                quantize: job.quantize, in: settings.effectiveMfluxCacheDir
-            )
-            if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                model = savedPath.path
-            } else {
-                quantizeArg = job.quantize
-            }
-        }
+        let (model, quantizeArg) = resolveModel(job: job, settings: settings)
 
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }
         let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
@@ -113,20 +134,17 @@ enum Krea2RunnerSpec: JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: FluxModelVariant.krea2.rawValue,
-            modelLabel: FluxModelVariant.krea2.displayName
+            modelLabel: RunnerSupport.modelLabel(
+                custom: job.customModelRepo, fallback: FluxModelVariant.krea2.displayName
+            )
         )
     }
 
     static func buildArgs(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
-        let savedPath = FluxModelVariant.krea2.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-        if job.quantize > 0, FluxModelVariant.hasSavedWeights(at: savedPath) {
-            // Local mflux-saved weights: pass the dir directly, mflux detects stored_q.
-            args += ["--model", savedPath.path]
-        } else {
-            args += ["--model", FluxModelVariant.krea2.mfluxModelID]
-        }
+        let (model, quantizeArg) = resolveModel(job: job, settings: settings)
+        args += ["--model", model]
 
         args += ["--prompt", job.prompt]
         // Negative prompt only takes effect with CFG on (guidance != 1).
@@ -145,8 +163,9 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         }
 
         // No saved weights yet (mflux-save unavailable/failed): quantize in memory.
-        if job.quantize > 0, !FluxModelVariant.hasSavedWeights(at: savedPath) {
-            args += ["--quantize", "\(job.quantize)"]
+        // Nil for a custom/overridden source, which carries its own quantization.
+        if let quantizeArg {
+            args += ["--quantize", "\(quantizeArg)"]
         }
 
         // img2img: an init image seeds the latents; empty path = pure text-to-image.

@@ -20,19 +20,24 @@ struct ModelPickerView: View {
     @Binding var quantize: Int
     @Environment(AppSettings.self) private var settings
 
-    /// Non-nil when an Ideogram 4 model-source override is set in Settings.
-    /// The override names a specific repo/path, so the precision selector is inert.
-    private var ideogramOverride: String? {
-        guard model.isIdeogram4 else { return nil }
-        let repo = (settings.ideogram4ModelRepoOverride ?? "").trimmingCharacters(in: .whitespaces)
-        return repo.isEmpty ? nil : repo
+    /// Non-nil when a model-source override is set in Settings for the selected
+    /// model. The override names a specific repo/path carrying its own
+    /// quantization, so the precision selector is inert. Ideogram keeps its own
+    /// dedicated setting; every other family uses the per-model default.
+    private var settingsOverride: String? {
+        guard model != .custom else { return nil }
+        let repo = model.isIdeogram4
+            ? (settings.ideogram4ModelRepoOverride ?? "")
+            : (settings.defaults(for: model).modelRepoOverride ?? "")
+        let trimmed = repo.trimmingCharacters(in: .whitespaces)
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     private var infoDescription: String {
-        if let repo = ideogramOverride {
-            return "Model source is overridden in Settings → Models → Ideogram (\(repo))."
+        if let repo = settingsOverride {
+            return "Model source is overridden in Settings → Models → \(model.displayName) (\(repo))."
                 + " That repo/path is used as-is, so the precision selector is disabled."
-                + " Clear the override in Settings to choose FP8 / Q8 / Q4 again."
+                + " Clear the override in Settings to choose precision again."
         }
         if model.isIdeogram4 {
             return "Ideogram 4 ships as FP8 (~28 GB)."
@@ -41,9 +46,10 @@ struct ModelPickerView: View {
                 + " All variants are gated — accept terms on the model card and set an HF token"
                 + " in Settings → Advanced."
         }
-        return "Choose your Flux.2 model variant and weight precision."
+        return "Choose your model and weight precision."
             + " Q8 recommended — cuts memory roughly in half with minimal quality loss."
-            + " Q4 fits smaller Macs but may reduce detail. BF16 is full precision."
+            + " Q4 fits smaller Macs but may reduce detail."
+            + " \(model.baseWeightLabel) is full precision."
     }
 
     var body: some View {
@@ -76,7 +82,7 @@ struct ModelPickerView: View {
                 .accessibilityLabel("Model")
                 .accessibilityHint("Selects the model for generation")
 
-                if ideogramOverride != nil {
+                if settingsOverride != nil {
                     Label("Override", systemImage: "gearshape")
                         .font(.caption)
                         .padding(.horizontal, 8).padding(.vertical, 3)
@@ -99,7 +105,7 @@ struct ModelPickerView: View {
                     .accessibilityHint("Controls weight precision. Q8 halves memory use, Q4 quarters it")
                 }
 
-                if ideogramOverride == nil, model != .custom,
+                if settingsOverride == nil, model != .custom,
                    model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
@@ -107,11 +113,21 @@ struct ModelPickerView: View {
                         .accessibilityLabel("Model weights cached on disk")
                 }
 
-                InfoButton(title: "Model & Precision", description: infoDescription)
+                // Custom has no precision selector and carries its own info button
+                // on the row below, so this one would only duplicate it.
+                if model != .custom {
+                    InfoButton(title: "Model & Precision", description: infoDescription)
+                }
 
                 if model == .custom {
-                    customModelFields
+                    customRepoField
                 }
+            }
+
+            // Second row: the repo field alone already fills the header, so the
+            // target picker sits under it rather than crowding Generate.
+            if model == .custom {
+                customTargetRow
             }
 
             if let estimate = vramEstimate {
@@ -143,39 +159,55 @@ struct ModelPickerView: View {
 
     // MARK: - Custom model fields (inline)
 
-    private var customModelFields: some View {
+    /// Models a custom checkpoint can be loaded as: those the installed mflux
+    /// ships a generation CLI for. Falls back to the full list while mflux is
+    /// still being installed (nothing detected yet) so the picker is never empty,
+    /// and always keeps the current selection so it can't render blank.
+    private var customTargets: [FluxModelVariant] {
+        let available = settings.availableModels
+        guard !available.isEmpty else { return FluxModelVariant.allModels }
+        return available.contains(customBaseModel) ? available : available + [customBaseModel]
+    }
+
+    private var customRepoField: some View {
+        TextField("org/repo or /path/to/model", text: $customModelRepo)
+            .textFieldStyle(.roundedBorder)
+            .font(.caption)
+            .frame(width: 220)
+            .accessibilityLabel("Custom model repo or path")
+    }
+
+    private var customTargetRow: some View {
         HStack(spacing: 6) {
-            TextField("org/repo or /path/to/model", text: $customModelRepo)
-                .textFieldStyle(.roundedBorder)
-                .font(.caption)
-                .frame(width: 220)
-                .accessibilityLabel("Custom model repo or path")
-            Text("Base:")
+            Text("Loads as:")
                 .font(.caption2)
                 .foregroundStyle(.secondary)
-            Picker("Base model", selection: $customBaseModel) {
-                ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+            Picker("Loads as", selection: $customBaseModel) {
+                ForEach(customTargets, id: \.self) { v in
                     Text(v.displayName).tag(v)
                 }
             }
             .labelsHidden()
             .fixedSize()
             .font(.caption)
-            .accessibilityLabel("Base model for custom repo")
-            .accessibilityHint("Tells mflux which Flux architecture to use when loading the model")
+            .accessibilityLabel("Model the custom checkpoint loads as")
+            .accessibilityHint("Selects the pipeline, params panel and mflux CLI used to run it")
             InfoButton(
                 title: "Custom Model",
                 description: "Enter a HuggingFace repo ID (e.g. org/my-fine-tune) or an"
                     + " absolute local path to a directory containing MLX-format weights."
-                    + " Must be compatible with Flux.2 Klein architecture."
-                    + " Base model is passed as --base-model (most fine-tunes use Klein 9B)."
+                    + " \"Loads as\" tells the app which pipeline to run it through, so the"
+                    + " checkpoint must match that model's architecture — a Krea 2 fine-tune"
+                    + " loads as Krea 2, a Flux.2 one as a Klein variant (passed as"
+                    + " --base-model; most fine-tunes use Klein 9B)."
+                    + " Only models the installed mflux ships a CLI for are listed."
             )
         }
     }
 
     private var vramEstimate: VRAMEstimate? {
         // A Settings override names an arbitrary repo/path of unknown size — no estimate.
-        guard model != .custom, ideogramOverride == nil else { return nil }
+        guard model != .custom, settingsOverride == nil else { return nil }
         let gb = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
@@ -217,16 +249,25 @@ struct ModelPickerView: View {
     }
 
     /// A menu row that selects `value` and shows a checkmark when active.
+    /// A model menu row. Rows whose generation CLI is missing from the selected
+    /// mflux install are disabled and say so, rather than being silently dropped
+    /// (reads as a bug) or left selectable (fails at spawn time). mflux adds CLIs
+    /// between releases and the app installs it unpinned, so this varies per
+    /// install — e.g. `mflux-generate-krea2` postdates the current PyPI release.
     private func modelMenuButton(_ title: String, value: FluxModelVariant) -> some View {
-        Button {
+        let available = settings.supportsModel(value)
+        return Button {
             model = value
         } label: {
             if model == value {
                 Label(title, systemImage: "checkmark")
-            } else {
+            } else if available {
                 Text(title)
+            } else {
+                Text("\(title) — not in this mflux install")
             }
         }
+        .disabled(!available && model != value)
     }
 
     /// A precision menu row that selects `value` and shows a checkmark when active.

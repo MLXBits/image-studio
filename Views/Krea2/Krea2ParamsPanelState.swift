@@ -134,12 +134,19 @@ final class Krea2ParamsPanelState {
 
     /// Builds a job. `resolvedPrompt` supplies fully-resolved prompt text for
     /// wildcard batches; when nil, any wildcards collapse to a single sample.
-    func makeJob(count: Int = 1, resolvedPrompt: (positive: String, negative: String)? = nil) -> Krea2Job {
+    /// `customModelRepo` carries the picker's `Custom…` entry when a custom
+    /// checkpoint is being loaded through the Krea 2 pipeline; empty otherwise.
+    func makeJob(
+        count: Int = 1,
+        customModelRepo: String = "",
+        resolvedPrompt: (positive: String, negative: String)? = nil
+    ) -> Krea2Job {
         let finalPrompt = resolvedPrompt?.positive
             ?? WildcardExpander.expandVariants(prompt, count: 1).first ?? prompt
         let finalNegative = resolvedPrompt?.negative
             ?? WildcardExpander.expandVariants(negativePrompt, count: 1).first ?? negativePrompt
         let job = Krea2Job(
+            customModelRepo: customModelRepo,
             prompt: finalPrompt,
             negativePrompt: finalNegative,
             width: width,

@@ -9,6 +9,9 @@ import Foundation
 @Observable
 final class Ideogram4Job: Identifiable {
     let id: UUID
+    /// Repo ID or local path chosen via the picker's `Custom…` entry, loaded
+    /// through the Ideogram 4 pipeline. Empty = the stock model source.
+    var customModelRepo: String
     var preset: Ideogram4Preset
     var caption: IdeogramCaption
     var usePlainPrompt: Bool
@@ -52,6 +55,7 @@ final class Ideogram4Job: Identifiable {
 
     init(
         id: UUID = UUID(),
+        customModelRepo: String = "",
         preset: Ideogram4Preset = .normal,
         caption: IdeogramCaption = .empty(),
         usePlainPrompt: Bool = false,
@@ -68,6 +72,7 @@ final class Ideogram4Job: Identifiable {
         createdAt: Date = Date()
     ) {
         self.id = id
+        self.customModelRepo = customModelRepo
         self.preset = preset
         self.caption = caption
         self.usePlainPrompt = usePlainPrompt
@@ -91,7 +96,7 @@ final class Ideogram4Job: Identifiable {
 
 extension Ideogram4Job: Codable {
     enum CodingKeys: String, CodingKey {
-        case id, preset, caption, usePlainPrompt, plainPrompt
+        case id, customModelRepo, preset, caption, usePlainPrompt, plainPrompt
         case width, height, seed, seeds, quantize, lowRam, strictValidation, loras, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
@@ -101,6 +106,7 @@ extension Ideogram4Job: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
+            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             preset: (try? c.decode(Ideogram4Preset.self, forKey: .preset)) ?? .normal,
             caption: (try? c.decode(IdeogramCaption.self, forKey: .caption)) ?? .empty(),
             usePlainPrompt: (try? c.decode(Bool.self, forKey: .usePlainPrompt)) ?? false,
@@ -130,6 +136,7 @@ extension Ideogram4Job: Codable {
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
         try c.encode(id, forKey: .id)
+        try c.encode(customModelRepo, forKey: .customModelRepo)
         try c.encode(preset, forKey: .preset)
         try c.encode(caption, forKey: .caption)
         try c.encode(usePlainPrompt, forKey: .usePlainPrompt)

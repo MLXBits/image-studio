@@ -21,6 +21,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
     }
 
+    /// Models the `custom` picker entry can load through — every variant the app
+    /// has a params panel for, minus any whose CLI is missing from the mflux
+    /// install at `binaryDir`. A custom checkpoint is run by its target family's
+    /// runner, so the target must be one the install can actually spawn.
+    static func customTargets(binaryDir: String) -> [Self] {
+        allModels.filter { BinaryDetector.supports($0, in: binaryDir) }
+    }
+
     /// Returns true if the HF hub model directory is fully downloaded: no in-flight
     /// `.incomplete` blobs, and a real multi-GB weight payload (not a metadata-only
     /// partial where only configs/tokenizer came down — e.g. a gated repo whose LFS
@@ -157,6 +165,35 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
         case .zimage: "Tongyi-MAI/Z-Image"
         default: rawValue
+        }
+    }
+
+    /// Which pipeline — runner, params panel, LoRA scope — this variant runs
+    /// through. `custom` has no family of its own; ask its target instead (see
+    /// ``ParamsPanelState/modelFamily``).
+    var family: ModelFamily {
+        switch self {
+        case .ideogram4: .ideogram4
+        case .krea2: .krea2
+        case .zimageTurbo, .zimage: .zimage
+        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B, .custom: .flux
+        }
+    }
+
+    /// The mflux console script this variant generates with, or nil when the
+    /// variant has no CLI of its own (`custom` inherits its target's).
+    ///
+    /// mflux ships new CLIs between releases and the app installs it unpinned, so
+    /// presence of the script — not a version number — is what says whether a
+    /// family can run here. See ``BinaryDetector/supports(_:in:)``.
+    var generateCLIName: String? {
+        switch self {
+        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: "mflux-generate-flux2"
+        case .ideogram4: "mflux-generate-ideogram4"
+        case .krea2: "mflux-generate-krea2"
+        case .zimageTurbo: "mflux-generate-z-image-turbo"
+        case .zimage: "mflux-generate-z-image"
+        case .custom: nil
         }
     }
 

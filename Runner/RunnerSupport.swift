@@ -118,6 +118,14 @@ enum RunnerSupport {
         stepFrames(in: dir).first?.path
     }
 
+    /// Human-readable name for the resident model chip: the last path component
+    /// of a custom repo/path when one is set, otherwise the stock model's name.
+    static func modelLabel(custom: String, fallback: String) -> String {
+        let trimmed = custom.trimmingCharacters(in: .whitespaces)
+        guard !trimmed.isEmpty else { return fallback }
+        return trimmed.split(separator: "/").last.map(String.init) ?? trimmed
+    }
+
     /// Expands a multi-seed output template into per-seed paths. mflux appends
     /// `_seed_{seed}` to the stem for each seed.
     static func expandedPaths(from template: String, seeds: [Int]) -> [(seed: Int, path: String)] {

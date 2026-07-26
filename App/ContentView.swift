@@ -141,8 +141,12 @@ struct ContentView: View {
         )
         .onChange(of: params.model) { _, m in
             // Pattern 5: a committed model switch proactively evicts a warm
-            // model of a different variant (debounced in the controller).
-            driverController.modelPickerChanged(to: m.rawValue)
+            // model of a different variant (debounced in the controller). A
+            // custom checkpoint reports the variant it loads as — the driver
+            // tracks the resident model by that, not by "custom".
+            driverController.modelPickerChanged(
+                to: m == .custom ? params.customBaseModel.rawValue : m.rawValue
+            )
             // The launch-time restore in `onAppear` seeds `params.model` from
             // `lastModel`, which fires this handler before any user interaction.
             // Skip the defaults reset that one time so it doesn't overwrite the
@@ -151,32 +155,7 @@ struct ContentView: View {
                 suppressModelResetOnRestore = false
                 return
             }
-            if m.isIdeogram4 {
-                ideogramParams.loras = loraLibrary.defaultLoras(for: .ideogram4)
-                return
-            }
-            if m.isKrea2 {
-                // Restore the last-used Krea 2 LoRAs (mirrors `applyDefaults`), falling
-                // back to defaults only when none were saved. Wiping straight to
-                // defaults here dropped the remembered stack the moment the user
-                // re-selected Krea 2 in the picker.
-                let saved = settings.lastKrea2?.loras ?? []
-                krea2Params.loras = saved.isEmpty
-                    ? loraLibrary.defaultLoras(for: .krea2)
-                    : saved
-                return
-            }
-            if m.isZImage {
-                // Realign the shared Z-Image form to the picked variant (Turbo vs base)
-                // — swaps step/guidance defaults only when untouched — and restore the
-                // last-used LoRAs, falling back to defaults when none were saved.
-                zimageParams.adoptVariant(m, settings: settings)
-                let saved = settings.lastZImage?.loras ?? []
-                zimageParams.loras = saved.isEmpty
-                    ? loraLibrary.defaultLoras(for: .zimage)
-                    : saved
-                return
-            }
+            if adoptFamilyForm(m) { return }
             guard m != .custom else { return }
             let d = settings.resolvedDefaults(for: m)
             params.steps = d.steps
@@ -189,6 +168,14 @@ struct ContentView: View {
             params.loras = loraLibrary.defaultLoras(for: .flux)
             params.isEditMode = false
             params.editImagePaths = []
+        }
+        // A custom checkpoint runs through whichever family it loads as, so
+        // changing that target has to realign the same per-family form state a
+        // direct model switch does.
+        .onChange(of: params.customBaseModel) { _, target in
+            guard params.model == .custom else { return }
+            driverController.modelPickerChanged(to: target.rawValue)
+            _ = adoptFamilyForm(target)
         }
     }
 
@@ -1018,22 +1005,68 @@ struct ContentView: View {
 
     /// Switches the params panel to the Ideogram 4 family and replays a completed
     /// generation's settings. Mirrors the Flux `params.apply(metadata:newSeed:)` path.
+    /// Aligns the non-Flux params form to `m` — Ideogram/Krea 2/Z-Image LoRAs and,
+    /// for Z-Image, the Turbo-vs-base variant. Returns true when `m` belongs to one
+    /// of those families and the caller should stop; false for Flux and `custom`.
+    private func adoptFamilyForm(_ m: FluxModelVariant) -> Bool {
+        if m.isIdeogram4 {
+            ideogramParams.loras = loraLibrary.defaultLoras(for: .ideogram4)
+            return true
+        }
+        if m.isKrea2 {
+            // Restore the last-used Krea 2 LoRAs (mirrors `applyDefaults`), falling
+            // back to defaults only when none were saved. Wiping straight to
+            // defaults here dropped the remembered stack the moment the user
+            // re-selected Krea 2 in the picker.
+            let saved = settings.lastKrea2?.loras ?? []
+            krea2Params.loras = saved.isEmpty
+                ? loraLibrary.defaultLoras(for: .krea2)
+                : saved
+            return true
+        }
+        if m.isZImage {
+            // Realign the shared Z-Image form to the picked variant (Turbo vs base)
+            // — swaps step/guidance defaults only when untouched — and restore the
+            // last-used LoRAs, falling back to defaults when none were saved.
+            zimageParams.adoptVariant(m, settings: settings)
+            let saved = settings.lastZImage?.loras ?? []
+            zimageParams.loras = saved.isEmpty
+                ? loraLibrary.defaultLoras(for: .zimage)
+                : saved
+            return true
+        }
+        return false
+    }
+
     private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {
-        params.model = .ideogram4
+        selectFamily(.ideogram4, customRepo: meta.customModelRepo)
         ideogramParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
+    /// Points the picker at `target`, or at `Custom…` loading as `target` when the
+    /// image came from a custom checkpoint — so replaying a custom run restores the
+    /// checkpoint, not the stock model of the same family.
+    private func selectFamily(_ target: FluxModelVariant, customRepo: String?) {
+        if let repo = customRepo, !repo.isEmpty {
+            params.customModelRepo = repo
+            params.customBaseModel = target
+            params.model = .custom
+        } else {
+            params.model = target
+        }
     }
 
     /// Switches the params panel to the Krea 2 family and replays a completed
     /// generation's settings. Mirrors the Flux/Ideogram replay paths.
     private func applyKrea2(_ meta: Krea2Metadata, newSeed: Bool) {
-        params.model = .krea2
+        selectFamily(.krea2, customRepo: meta.customModelRepo)
         krea2Params.apply(metadata: meta, newSeed: newSeed)
     }
 
     /// Switches the params panel to the Z-Image family and replays a completed
     /// generation's settings, including the variant (Turbo vs base) it used.
     private func applyZImage(_ meta: ZImageMetadata, newSeed: Bool) {
-        params.model = meta.resolvedVariant
+        selectFamily(meta.resolvedVariant, customRepo: meta.customModelRepo)
         zimageParams.apply(metadata: meta, newSeed: newSeed)
     }
 
@@ -1248,6 +1281,14 @@ struct ContentView: View {
     private func generate(count: Int = 1) {
         NSApp.keyWindow?.makeFirstResponder(nil)
 
+        // Remember the custom checkpoint and the family it loads as, so the
+        // selection is intact on relaunch. Each family branch below sets
+        // `lastModel`; these two are what make `.custom` mean something again.
+        if params.model == .custom {
+            settings.lastCustomModelRepo = params.customModelRepo
+            settings.lastCustomBaseModel = params.customBaseModel
+        }
+
         switch params.modelFamily {
         case .flux:
             guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
@@ -1272,7 +1313,9 @@ struct ContentView: View {
 
         case .ideogram4:
             guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
-            settings.lastModel = .ideogram4 // remember family across sessions
+            // Remember the picker selection across sessions — `custom` must survive
+            // as itself, not be flattened to the family it happens to load as.
+            settings.lastModel = params.model == .custom ? .custom : .ideogram4
             settings.lastIdeogramPreset = ideogramParams.preset
             settings.lastIdeogramWidth = ideogramParams.width
             settings.lastIdeogramHeight = ideogramParams.height
@@ -1285,7 +1328,7 @@ struct ContentView: View {
             // pull the current values so live edits apply to this run.
             ideogramParams.lowRam = settings.ideogram4LowRam
             ideogramParams.strictValidation = settings.ideogram4StrictValidation
-            let job = ideogramParams.makeJob(count: count)
+            let job = ideogramParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)
             let wasIdle = !isAnyStoreRunning
             ideogram4Store.add(job)
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
@@ -1295,31 +1338,7 @@ struct ContentView: View {
             }
 
         case .krea2:
-            guard krea2Params.isReadyToGenerate(settings: settings) else { return }
-            settings.lastModel = .krea2 // remember family across sessions
-            settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
-            settings.recordPromptUse(krea2Params.prompt)
-            let wasIdle = !isAnyStoreRunning
-            let krea2Variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
-            let krea2Jobs: [Krea2Job]
-            if krea2Variants > 1 {
-                let krea2JobCount = count > 1 ? count : krea2Variants
-                let positives = WildcardExpander.expandVariants(krea2Params.prompt, count: krea2JobCount)
-                let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: krea2JobCount)
-                krea2Jobs = (0 ..< krea2JobCount).map {
-                    krea2Params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
-                }
-            } else {
-                krea2Jobs = [krea2Params.makeJob(count: count)]
-            }
-            for job in krea2Jobs {
-                krea2Store.add(job)
-            }
-            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
-            if wasIdle, let firstJob = krea2Jobs.first {
-                selectedGalleryItem = nil
-                previewState = .activeKrea2Job(firstJob)
-            }
+            generateKrea2(count: count)
 
         case .zimage:
             generateZImage(count: count)
@@ -1329,12 +1348,51 @@ struct ContentView: View {
         }
     }
 
+    /// Enqueues Krea 2 jobs for one Generate press. Wildcards fan out — one job
+    /// per option of the largest {a|b} group (capped 10); a batch count overrides
+    /// — each with its own resolved prompt + sidecar.
+    private func generateKrea2(count: Int) {
+        guard krea2Params.isReadyToGenerate(settings: settings) else { return }
+        // Remember the picker selection across sessions — `custom` must survive as
+        // itself, not be flattened to the family it happens to load as.
+        settings.lastModel = params.model == .custom ? .custom : .krea2
+        settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
+        settings.recordPromptUse(krea2Params.prompt)
+        let wasIdle = !isAnyStoreRunning
+        let variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
+        let jobs: [Krea2Job]
+        if variants > 1 {
+            let jobCount = count > 1 ? count : variants
+            let positives = WildcardExpander.expandVariants(krea2Params.prompt, count: jobCount)
+            let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: jobCount)
+            jobs = (0 ..< jobCount).map {
+                krea2Params.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: (positives[$0], negatives[$0])
+                )
+            }
+        } else {
+            jobs = [krea2Params.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)]
+        }
+        for job in jobs {
+            krea2Store.add(job)
+        }
+        krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
+        if wasIdle, let firstJob = jobs.first {
+            selectedGalleryItem = nil
+            previewState = .activeKrea2Job(firstJob)
+        }
+    }
+
     /// Enqueues Z-Image jobs for one Generate press. Wildcards fan out like the
     /// Krea 2 path — one job per option of the largest {a|b} group (capped 10); a
     /// batch count overrides — each with its own resolved prompt + sidecar.
     private func generateZImage(count: Int) {
         guard zimageParams.isReadyToGenerate(settings: settings) else { return }
-        settings.lastModel = zimageParams.variant // remember variant across sessions
+        // Remember the picker selection across sessions — `custom` must survive as
+        // itself, not be flattened to the variant it happens to load as.
+        settings.lastModel = params.model == .custom ? .custom : zimageParams.variant
         settings.lastZImage = zimageParams.snapshot() // remember the form across launches
         settings.recordPromptUse(zimageParams.prompt)
         let wasIdle = !isAnyStoreRunning
@@ -1345,10 +1403,14 @@ struct ContentView: View {
             let positives = WildcardExpander.expandVariants(zimageParams.prompt, count: jobCount)
             let negatives = WildcardExpander.expandVariants(zimageParams.negativePrompt, count: jobCount)
             jobs = (0 ..< jobCount).map {
-                zimageParams.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
+                zimageParams.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: (positives[$0], negatives[$0])
+                )
             }
         } else {
-            jobs = [zimageParams.makeJob(count: count)]
+            jobs = [zimageParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)]
         }
         for job in jobs {
             zimageStore.add(job)
