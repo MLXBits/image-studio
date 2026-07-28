@@ -78,6 +78,14 @@ final class ParamsPanelState {
         prompt = settings.lastPrompt
     }
 
+    /// Re-reads Low RAM for the picked model. Called just before a job is built so a
+    /// Settings edit lands on this run rather than only on the next launch. It is read
+    /// at launch and on a model change, and nowhere else, so a mid-session toggle was
+    /// silently ignored for the rest of the session.
+    func applyMemoryDefaults(from settings: AppSettings) {
+        lowRam = settings.resolvedDefaults(for: model).lowRam
+    }
+
     /// When a generated candidate becomes the img2img reference while the
     /// prompt box still holds wildcards, adopt that candidate's resolved
     /// prompt so refinement varies the exact base (and collapses to one job)
