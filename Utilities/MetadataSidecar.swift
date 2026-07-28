@@ -72,6 +72,7 @@ nonisolated struct GenerationMetadata: Codable {
             lowRam: job.lowRam,
             imagePath: job.imagePath,
             imageStrength: job.imageStrength,
+            editImagePaths: job.editImagePaths.isEmpty ? nil : job.editImagePaths,
             loras: job.loras,
             board: job.board.isEmpty ? nil : job.board,
             pidDecode: job.pidDecode ? true : nil,
@@ -96,6 +97,9 @@ nonisolated struct GenerationMetadata: Codable {
     var lowRam: Bool
     var imagePath: String
     var imageStrength: Double
+    /// Reference images of a FLUX.2 Edit. Optional because no sidecar written
+    /// before this existed carries it, and `nil` reads back as "not an edit".
+    var editImagePaths: [String]?
     var loras: [LoraEntry]
     var board: String?
     /// Whether PiD decoding produced this image (so the file is 4x the recorded

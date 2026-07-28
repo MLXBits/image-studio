@@ -104,6 +104,11 @@ final class ParamsPanelState {
         lowRam = meta.lowRam
         imagePath = meta.imagePath
         imageStrength = meta.imageStrength
+        // An edit is only reproducible with its references, and its prompt is an
+        // instruction ("put her in a red coat") that txt2img has no way to honor,
+        // so the mode follows what the sidecar recorded.
+        editImagePaths = meta.editImagePaths ?? []
+        isEditMode = !editImagePaths.isEmpty
         loras = meta.loras
         board = meta.board ?? ""
         pidDecode = meta.pidDecode ?? false
