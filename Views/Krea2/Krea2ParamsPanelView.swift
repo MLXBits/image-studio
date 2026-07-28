@@ -300,26 +300,10 @@ struct Krea2ParamsPanelView: View {
                 }
             }
         }
-        .dropDestination(for: String.self, action: { paths, _ in
-            guard let path = paths.first else { return false }
-            let ext = (path as NSString).pathExtension.lowercased()
-            guard Self.imageExtensions.contains(ext) else { return false }
+        .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
+            guard let path = paths.first else { return }
             params.imagePath = path
             params.adoptResolvedPromptForImg2Img(at: path)
-            return true
-        }, isTargeted: { isImageDropTargeted = $0 })
-        .onDrop(of: [.fileURL], isTargeted: $isImageDropTargeted) { providers in
-            providers.first?.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
-                guard let data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                let ext = url.pathExtension.lowercased()
-                guard Self.imageExtensions.contains(ext) else { return }
-                DispatchQueue.main.async {
-                    self.params.imagePath = url.path
-                    self.params.adoptResolvedPromptForImg2Img(at: url.path)
-                }
-            }
-            return true
         }
         .dropHighlight(isImageDropTargeted)
     }

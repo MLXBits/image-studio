@@ -483,26 +483,10 @@ struct ParamsPanelView: View {
                 }
             }
         }
-        .dropDestination(for: String.self, action: { paths, _ in
-            guard let path = paths.first else { return false }
-            let ext = (path as NSString).pathExtension.lowercased()
-            guard Self.imageExtensions.contains(ext) else { return false }
+        .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
+            guard let path = paths.first else { return }
             params.imagePath = path
             params.adoptResolvedPromptForImg2Img(at: path)
-            return true
-        }, isTargeted: { isImageDropTargeted = $0 })
-        .onDrop(of: [.fileURL], isTargeted: $isImageDropTargeted) { providers in
-            providers.first?.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
-                guard let data,
-                      let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                let ext = url.pathExtension.lowercased()
-                guard Self.imageExtensions.contains(ext) else { return }
-                DispatchQueue.main.async {
-                    self.params.imagePath = url.path
-                    self.params.adoptResolvedPromptForImg2Img(at: url.path)
-                }
-            }
-            return true
         }
         .dropHighlight(isImageDropTargeted)
     }
@@ -601,27 +585,14 @@ struct ParamsPanelView: View {
                 }
             }
         }
-        .dropDestination(for: String.self, action: { paths, _ in
-            let valid = paths.filter { Self.imageExtensions.contains(($0 as NSString).pathExtension.lowercased()) }
-            guard !valid.isEmpty else { return false }
-            for path in valid where !params.editImagePaths.contains(path) {
+        .imageDropTarget(
+            extensions: Self.imageExtensions,
+            isTargeted: $isEditDropTargeted,
+            allowsMultiple: true
+        ) { paths in
+            for path in paths where !params.editImagePaths.contains(path) {
                 params.editImagePaths.append(path)
             }
-            return true
-        }, isTargeted: { isEditDropTargeted = $0 })
-        .onDrop(of: [.fileURL], isTargeted: $isEditDropTargeted) { providers in
-            for provider in providers {
-                provider.loadDataRepresentation(forTypeIdentifier: "public.file-url") { data, _ in
-                    guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
-                    guard Self.imageExtensions.contains(url.pathExtension.lowercased()) else { return }
-                    DispatchQueue.main.async {
-                        if !self.params.editImagePaths.contains(url.path) {
-                            self.params.editImagePaths.append(url.path)
-                        }
-                    }
-                }
-            }
-            return true
         }
         .dropHighlight(isEditDropTargeted)
     }
