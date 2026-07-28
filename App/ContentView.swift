@@ -1310,6 +1310,9 @@ struct ContentView: View {
             settings.lastLoras = params.loras
             settings.lastModel = params.model
             settings.lastQuantize = params.quantize
+            // Low RAM lives in Settings -> Models; read it now so a toggle applies to
+            // this run instead of only after a relaunch.
+            params.applyMemoryDefaults(from: settings)
             let wasIdle = !isAnyStoreRunning
             let jobs = fluxJobs(count: count, scenarioPrompts: scenarioPrompts)
             for job in jobs {
