@@ -71,6 +71,8 @@ final class JobStore {
                 lowRam: batchJob.lowRam,
                 imagePath: batchJob.imagePath,
                 imageStrength: batchJob.imageStrength,
+                isEditMode: batchJob.isEditMode,
+                editImagePaths: batchJob.editImagePaths,
                 board: batchJob.board,
                 createdAt: batchJob.createdAt
             )
