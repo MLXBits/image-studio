@@ -17,10 +17,21 @@ struct ImageMetadataInfo {
     /// for a SeedVR2 upscale so the original (pre-upscale) size stays visible.
     var resolutionNote: String?
 
+    /// Pixel count in megapixels, e.g. "1.3 MP". Sub-megapixel sizes get a second
+    /// decimal so 512×512 reads "0.26 MP" rather than rounding to "0.3 MP".
+    var megapixelText: String {
+        let mp = Double(width * height) / 1_000_000
+        return String(format: mp < 1 ? "%.2f MP" : "%.1f MP", mp)
+    }
+
     /// Resolution string shown in the grid, with the optional source-size note.
     var resolutionText: String {
-        if let note = resolutionNote { return "\(width)×\(height) (\(note))" }
-        return "\(width)×\(height)"
+        // `init(path:)` has no metadata to read, so leave the 0×0 placeholder bare.
+        let base = width > 0 && height > 0
+            ? "\(width)×\(height) · \(megapixelText)"
+            : "\(width)×\(height)"
+        if let note = resolutionNote { return "\(base) (\(note))" }
+        return base
     }
 
     init(job: FluxJob) {
