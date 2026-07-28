@@ -108,8 +108,15 @@ final class ParamsPanelState {
     /// Prompt + negative with the active templates chained on, before
     /// wildcard resolution. Wildcards resolve after templates so template
     /// text can carry {a|b} groups too.
-    func templatedPrompts(templates: [PromptTemplate]) -> (positive: String, negative: String) {
-        var finalPrompt = prompt
+    ///
+    /// `overriding` substitutes a prompt from elsewhere — a scenario-generator roll —
+    /// for the one in the field, so a queued batch is templated exactly like a typed
+    /// prompt would be.
+    func templatedPrompts(
+        templates: [PromptTemplate],
+        overriding overridePrompt: String? = nil
+    ) -> (positive: String, negative: String) {
+        var finalPrompt = overridePrompt ?? prompt
         var finalNegative = negativePrompt
         for template in templates {
             let applied = template.apply(

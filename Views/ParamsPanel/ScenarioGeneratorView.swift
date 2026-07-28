@@ -18,6 +18,19 @@ final class ScenarioSession {
     var hasSeeded: Bool = false
     var task: Task<Void, Never>?
     let generator = ScenarioGenerator()
+
+    // MARK: - Batch rolls
+
+    /// Prompts rolled so far by the current (or last cancelled) batch. A clean run
+    /// hands these to `onQueue` and clears them; a cancelled or failed run leaves
+    /// them here so the footer can offer to queue what did land.
+    var batchPrompts: [String] = []
+    /// How many prompts the running batch is aiming for — 0 when not batching.
+    var rollTarget: Int = 0
+
+    var isBatching: Bool {
+        rollTarget > 0
+    }
 }
 
 /// Popover that expands a rough outline into a full image prompt via local
@@ -27,11 +40,15 @@ final class ScenarioSession {
 struct ScenarioGeneratorView: View {
     @Bindable var session: ScenarioSession
     let onSelect: (String) -> Void
+    /// Hands a batch of independently rolled prompts to the caller, which turns them
+    /// into one image job apiece. The panel stays open so the next batch is one click.
+    var onQueue: ([String]) -> Void = { _ in }
     /// Closes the hosting floating panel (the window titlebar's close button and the
     /// "Use" action both route through here).
     var onClose: () -> Void = {}
 
-    @Environment(AppSettings.self) private var settings
+    /// Internal, not private: the batch-queue half lives in ScenarioBatchQueue.swift.
+    @Environment(AppSettings.self) var settings
 
     @State private var showGemmaLog: Bool = false
 
@@ -112,6 +129,7 @@ struct ScenarioGeneratorView: View {
             Spacer()
             Button("Generate") { startGenerate() }
                 .disabled(session.isGenerating || session.outline.trimmingCharacters(in: .whitespaces).isEmpty)
+            queueControl
             Button("Use") {
                 onSelect(session.result)
                 onClose()
@@ -168,11 +186,16 @@ struct ScenarioGeneratorView: View {
             Toggle("Emit {a|b|c} wildcard variations", isOn: $session.wildcardMode)
                 .toggleStyle(.checkbox)
                 .font(.caption)
+                // Queue rolls a fresh prompt per image, which is a competing way to get
+                // the same variety — letting both run would fan out twice over.
+                .disabled(session.isBatching)
+                .help(session.isBatching ? "Not used by Queue — each image gets its own roll" : "")
             InfoButton(
                 title: "Wildcard Variations",
                 description: "The generated prompt wraps diversifiable details in {a|b|c} groups. "
                     + "Generate then runs one job per option of the largest group (up to 10), "
-                    + "walking the options in order."
+                    + "walking the options in order.\n\n"
+                    + "Queue ignores this: it rolls a separate prompt for every image instead."
             )
         }
     }
@@ -184,8 +207,11 @@ struct ScenarioGeneratorView: View {
         if session.isGenerating {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Generating…")
+                Text(session.isBatching
+                    ? "Rolling prompt \(min(session.batchPrompts.count + 1, session.rollTarget))/\(session.rollTarget)…"
+                    : "Generating…")
                     .font(.caption).foregroundStyle(.secondary)
+                    .monospacedDigit()
                 Button("Cancel") { session.task?.cancel() }
                     .buttonStyle(.plain)
                     .font(.caption)
@@ -295,6 +321,9 @@ struct ScenarioGeneratorView: View {
 /// controller so a click toggles the floating panel.
 struct ScenarioGeneratorButton: View {
     let onSelect: (String) -> Void
+    /// Turns a batch of rolled prompts into one image job apiece. Defaults to a no-op
+    /// so panels that only want the single-prompt flow can omit it.
+    var onQueue: ([String]) -> Void = { _ in }
 
     @Environment(AppSettings.self) private var settings
     @State private var session = ScenarioSession()
@@ -302,7 +331,7 @@ struct ScenarioGeneratorButton: View {
 
     var body: some View {
         Button {
-            controller.toggle(session: session, settings: settings, onSelect: onSelect)
+            controller.toggle(session: session, settings: settings, onSelect: onSelect, onQueue: onQueue)
         } label: {
             Image(systemName: "wand.and.stars")
                 .font(.system(size: 10))
@@ -323,8 +352,20 @@ struct ScenarioGeneratorButton: View {
 final class ScenarioPanelController: NSObject, NSWindowDelegate {
     private var panel: NSPanel?
     private weak var session: ScenarioSession?
+    // The panel is built once and reused, so the hosted view can't capture the
+    // callbacks directly — it would pin the very first SwiftUI closure forever.
+    // They're stored here and refreshed on every toggle instead.
+    private var onSelect: (String) -> Void = { _ in }
+    private var onQueue: ([String]) -> Void = { _ in }
 
-    func toggle(session: ScenarioSession, settings: AppSettings, onSelect: @escaping (String) -> Void) {
+    func toggle(
+        session: ScenarioSession,
+        settings: AppSettings,
+        onSelect: @escaping (String) -> Void,
+        onQueue: @escaping ([String]) -> Void = { _ in }
+    ) {
+        self.onSelect = onSelect
+        self.onQueue = onQueue
         if let panel {
             if panel.isVisible { panel.close() } else { attachAndShow(panel) }
             return
@@ -333,9 +374,12 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
         let root = ScenarioGeneratorView(
             session: session,
             onSelect: { [weak self] text in
-                onSelect(text)
+                self?.onSelect(text)
                 self?.panel?.close()
             },
+            // Unlike "Use", queueing leaves the panel up: the whole point is that the
+            // next batch off the same outline is one more click.
+            onQueue: { [weak self] prompts in self?.onQueue(prompts) },
             onClose: { [weak self] in self?.panel?.close() }
         )
         .environment(settings)

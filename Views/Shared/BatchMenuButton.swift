@@ -16,7 +16,7 @@ struct BatchMenuButton: NSViewRepresentable {
             let menu = NSMenu()
             for count in parent.counts {
                 let item = NSMenuItem(
-                    title: "Generate \(count)",
+                    title: "\(parent.verb) \(count)",
                     action: #selector(selected(_:)),
                     keyEquivalent: count == parent.shortcutCount ? "\r" : ""
                 )
@@ -42,6 +42,8 @@ struct BatchMenuButton: NSViewRepresentable {
     let counts: [Int]
     let shortcutCount: Int
     let isDisabled: Bool
+    /// Leading word of each menu item — "Generate 5", "Queue 5".
+    var verb: String = "Generate"
     var onSelect: (Int) -> Void
 
     func makeNSView(context: Context) -> NSButton {

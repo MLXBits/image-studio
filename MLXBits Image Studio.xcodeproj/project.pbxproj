@@ -46,10 +46,12 @@
 		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		39FB05E51886E08ECB5A2CDA /* ZImageJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */; };
+		3AFED2C263CCBA74B59D34C4 /* ScenarioBatchQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */; };
 		3B99A4928633B8D1F563F68A /* ModelDefaultsView+ZImageForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F416C559B37939372672BB /* ModelDefaultsView+ZImageForm.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
 		3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */; };
 		3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */; };
+		45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */; };
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
 		4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 620B629F83341AF0145AA278 /* NotepadView.swift */; };
 		48494188DF57F0CB46800729 /* ZImageJobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA542CC2211E134C4BBE819D /* ZImageJobStore.swift */; };
@@ -170,6 +172,7 @@
 		11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelView.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Subviews.swift"; sourceTree = "<group>"; };
+		1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBatchQueueTests.swift; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
@@ -206,6 +209,7 @@
 		5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobRunner.swift; sourceTree = "<group>"; };
 		5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxSemantics.swift; sourceTree = "<group>"; };
 		5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ColorHexTests.swift; sourceTree = "<group>"; };
+		5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBatchQueue.swift; sourceTree = "<group>"; };
 		5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramElementCard.swift; sourceTree = "<group>"; };
 		607FDAD831E19BE75C734220 /* IdeogramCaption.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaption.swift; sourceTree = "<group>"; };
 		620B629F83341AF0145AA278 /* NotepadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotepadView.swift; sourceTree = "<group>"; };
@@ -370,6 +374,7 @@
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				C90C6D1E633010C5A77C0DBE /* OpenAIChatClientTests.swift */,
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
+				1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */,
 				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
 				2288F848C8AC536F933F7831 /* TimingModelTests.swift */,
 				F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */,
@@ -398,6 +403,7 @@
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
 				8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */,
 				3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */,
+				5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */,
 				D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */,
 				D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */,
 			);
@@ -818,6 +824,7 @@
 				0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */,
 				A8FE71ACDB9C1020D2FCD2AF /* QueueDrawerView.swift in Sources */,
 				8FB58B2482EBD66B089B3875 /* RunnerSupport.swift in Sources */,
+				3AFED2C263CCBA74B59D34C4 /* ScenarioBatchQueue.swift in Sources */,
 				F3821108E24EEEEA9C759A95 /* ScenarioGenerator.swift in Sources */,
 				8939CD33C69686E0A6C49587 /* ScenarioGeneratorView.swift in Sources */,
 				05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */,
@@ -854,6 +861,7 @@
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				5D1F115D51D6DA55F3B1EF10 /* OpenAIChatClientTests.swift in Sources */,
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,
+				45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */,
 				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
 				FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */,
 				3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */,

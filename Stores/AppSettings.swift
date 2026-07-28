@@ -110,12 +110,16 @@ class AppSettings {
         var lastScenarioOutline: String?
         var scenarioCategories: [String]?
         var scenarioWildcardMode: Bool?
+        var scenarioQueueCount: Int?
         /// Prompt-writing LLM backend (local Gemma vs OpenAI-compatible endpoint).
         /// The API key is Keychain-backed and never stored here.
         var llmBackend: LLMBackendKind?
         var openAIBaseURL: String?
         var openAIModel: String?
+        /// Legacy key: temperature was remote-only before it governed both backends.
+        /// Read as a fallback for ``llmTemperature``; no longer written.
         var openAITemperature: Double?
+        var llmTemperature: Double?
         var openAITopP: Double?
         var openAITopK: Int?
 
@@ -439,6 +443,12 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// How many prompts the scenario generator's "Queue" button rolls — one image
+    /// each. Remembers the last count picked from its menu.
+    var scenarioQueueCount: Int {
+        didSet { save() }
+    }
+
     // MARK: - Prompt-writing LLM backend
 
     /// Which engine serves the Scenario Generator and Ideogram 4 captions:
@@ -457,9 +467,11 @@ class AppSettings {
         didSet { save() }
     }
 
-    /// Sampling temperature sent to the endpoint for both remote features.
-    /// Match the model's recommendation (e.g. Gemma 4 favors 1.0).
-    var openAITemperature: Double {
+    /// Sampling temperature for the Scenario Generator, on **both** backends —
+    /// sent to the endpoint on the remote path and to `make_sampler` on the local
+    /// one. Match the model's recommendation (e.g. Gemma 4 favors 1.0); raise it
+    /// (~1.1) to make batch prompt rolls diverge.
+    var llmTemperature: Double {
         didSet { save() }
     }
 
@@ -580,10 +592,11 @@ class AppSettings {
             .map { Set($0.compactMap(ScenarioCategory.init)) }
             ?? Set(ScenarioCategory.allCases)
         scenarioWildcardMode = s.scenarioWildcardMode ?? false
+        scenarioQueueCount = s.scenarioQueueCount ?? 5
         llmBackend = s.llmBackend ?? .local
         openAIBaseURL = s.openAIBaseURL ?? "http://localhost:1234/v1"
         openAIModel = s.openAIModel ?? ""
-        openAITemperature = s.openAITemperature ?? 0.7
+        llmTemperature = s.llmTemperature ?? s.openAITemperature ?? 0.7
         openAITopP = s.openAITopP ?? 0.95
         openAITopK = s.openAITopK ?? 64
         openAIAPIKey = KeychainHelper.get("openai_api_key")
@@ -734,10 +747,11 @@ class AppSettings {
         s.lastScenarioOutline = lastScenarioOutline
         s.scenarioCategories = scenarioCategories.map(\.rawValue).sorted()
         s.scenarioWildcardMode = scenarioWildcardMode
+        s.scenarioQueueCount = scenarioQueueCount
         s.llmBackend = llmBackend
         s.openAIBaseURL = openAIBaseURL
         s.openAIModel = openAIModel
-        s.openAITemperature = openAITemperature
+        s.llmTemperature = llmTemperature
         s.openAITopP = openAITopP
         s.openAITopK = openAITopK
         do {

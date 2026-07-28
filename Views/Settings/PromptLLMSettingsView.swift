@@ -31,6 +31,10 @@ struct PromptLLMSettingsView: View {
             case .remote:
                 remoteFields
             }
+
+            // Temperature governs sampling on both backends, so it lives outside the
+            // switch — the endpoint-only Top P / Top K stay in `remoteFields`.
+            temperatureField(s)
         } header: {
             Text("Prompt LLM")
         } footer: {
@@ -93,16 +97,6 @@ struct PromptLLMSettingsView: View {
         modelField(s)
 
         VStack(alignment: .leading, spacing: 4) {
-            LabeledContent("Temperature") {
-                TextField("", value: $s.openAITemperature, format: .number)
-                    .labelsHidden()
-                    .textFieldStyle(.roundedBorder)
-                    .frame(width: 60)
-                    .multilineTextAlignment(.trailing)
-                    .onChange(of: s.openAITemperature) { _, v in
-                        s.openAITemperature = min(2, max(0, v))
-                    }
-            }
             LabeledContent("Top P") {
                 TextField("", value: $s.openAITopP, format: .number)
                     .labelsHidden()
@@ -123,8 +117,8 @@ struct PromptLLMSettingsView: View {
                         s.openAITopK = max(0, v)
                     }
             }
-            Text("Sampling parameters sent to the endpoint. Gemma recommends "
-                + "temperature 1.0, Top P 0.95, Top K 64. Top K 0 omits the field.")
+            Text("Endpoint-only sampling parameters. Gemma recommends "
+                + "Top P 0.95, Top K 64. Top K 0 omits the field.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -187,6 +181,31 @@ struct PromptLLMSettingsView: View {
     private var isTesting: Bool {
         if case .testing = connectionPhase { return true }
         return false
+    }
+
+    /// Sampling temperature, shown for both backends — it drives `make_sampler` on the
+    /// local path and the endpoint's `temperature` on the remote one. Raising it (~1.1)
+    /// is what makes the Scenario Generator's queued rolls diverge.
+    @ViewBuilder
+    private func temperatureField(_ s: AppSettings) -> some View {
+        @Bindable var s = s
+        VStack(alignment: .leading, spacing: 4) {
+            LabeledContent("Temperature") {
+                TextField("", value: $s.llmTemperature, format: .number)
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 60)
+                    .multilineTextAlignment(.trailing)
+                    .onChange(of: s.llmTemperature) { _, v in
+                        s.llmTemperature = min(2, max(0, v))
+                    }
+            }
+            Text("Sampling temperature for the Scenario Generator. Gemma recommends 1.0; "
+                + "raise it (~1.1) so queued prompt rolls vary.")
+                .font(.caption).foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.vertical, 2)
     }
 
     @ViewBuilder

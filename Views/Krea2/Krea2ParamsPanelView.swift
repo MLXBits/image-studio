@@ -9,6 +9,8 @@ struct Krea2ParamsPanelView: View {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
 
     @Bindable var params: Krea2ParamsPanelState
+    /// Forwarded from ContentView — turns scenario-generated prompts into one job each.
+    var onQueueScenarioBatch: ([String]) -> Void = { _ in }
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
@@ -57,7 +59,10 @@ struct Krea2ParamsPanelView: View {
             }
         } accessory: {
             HStack(spacing: 6) {
-                ScenarioGeneratorButton { params.prompt = $0 }
+                ScenarioGeneratorButton(
+                    onSelect: { params.prompt = $0 },
+                    onQueue: onQueueScenarioBatch
+                )
                 PromptHistoryButton { params.prompt = $0 }
             }
         }

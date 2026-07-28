@@ -249,7 +249,7 @@ final class ScenarioGenerator {
     ) async throws -> String {
         let text = try await OpenAIChatClient.chat(OpenAIChatCall(
             system: system, examples: examples, finalUser: finalUser,
-            model: settings.openAIModel, maxTokens: 8192, temp: settings.openAITemperature,
+            model: settings.openAIModel, maxTokens: 8192, temp: settings.llmTemperature,
             topP: settings.openAITopP, topK: settings.openAITopK, jsonMode: false,
             baseURL: settings.openAIBaseURL, apiKey: settings.openAIAPIKey
         ))
@@ -283,7 +283,7 @@ final class ScenarioGenerator {
         guard await ensureDriverRunning(settings: settings) else { return nil }
         let request: [String: Any] = [
             "cmd": "generate", "model": modelPath, "prompt": prompt,
-            "max_tokens": 8192, "temp": 0.7,
+            "max_tokens": 8192, "temp": settings.llmTemperature,
         ]
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (cont: CheckedContinuation<String, Error>) in
@@ -424,7 +424,7 @@ final class ScenarioGenerator {
         let exitCode: Int32
         do {
             (rawOutput, exitCode) = try await GemmaChatRunner.run(
-                modelPath: modelPath, prompt: prompt, maxTokens: 8192, temp: 0.7,
+                modelPath: modelPath, prompt: prompt, maxTokens: 8192, temp: settings.llmTemperature,
                 environment: settings.buildEnvironment()
             )
         } catch GemmaChatRunnerError.uvNotFound {

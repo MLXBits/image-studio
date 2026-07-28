@@ -101,7 +101,7 @@ final class IdeogramCaptionGenerator {
         if settings.llmBackend == .remote {
             rawOutput = try await OpenAIChatClient.chat(OpenAIChatCall(
                 system: config.system, examples: examples, finalUser: finalUser,
-                model: settings.openAIModel, maxTokens: 8192, temp: settings.openAITemperature,
+                model: settings.openAIModel, maxTokens: 8192, temp: settings.llmTemperature,
                 topP: settings.openAITopP, topK: settings.openAITopK, jsonMode: true,
                 baseURL: settings.openAIBaseURL, apiKey: settings.openAIAPIKey
             ))

@@ -99,7 +99,8 @@ struct ContentView: View {
     private var paramsPane: some View {
         ParamsPanelView(
             params: params, ideogramParams: ideogramParams,
-            krea2Params: krea2Params, zimageParams: zimageParams
+            krea2Params: krea2Params, zimageParams: zimageParams,
+            onQueueScenarioBatch: queueScenarioBatch
         )
         .frame(width: 350)
         .frame(maxHeight: .infinity)
@@ -1278,7 +1279,10 @@ struct ContentView: View {
 
     // MARK: - Generate
 
-    private func generate(count: Int = 1) {
+    /// One Generate press. `scenarioPrompts`, when supplied, is a batch of prompts
+    /// independently rolled by the scenario generator — each becomes its own job,
+    /// bypassing the prompt field and the wildcard expander.
+    private func generate(count: Int = 1, scenarioPrompts: [String]? = nil) {
         NSApp.keyWindow?.makeFirstResponder(nil)
 
         // Remember the custom checkpoint and the family it loads as, so the
@@ -1291,17 +1295,23 @@ struct ContentView: View {
 
         switch params.modelFamily {
         case .flux:
-            guard !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-                  !params.isEditMode || !params.editImagePaths.isEmpty else { return }
-            settings.lastPrompt = params.prompt
-            settings.recordPromptUse(params.prompt)
+            // A scenario batch brings its own prompts, so an empty prompt field is fine.
+            guard scenarioPrompts?.isEmpty == false
+                || !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
+                !params.isEditMode || !params.editImagePaths.isEmpty else { return }
+            if scenarioPrompts == nil {
+                // Skip for scenario batches: N rolled prompts would swamp the history,
+                // and each image's sidecar already records the prompt it used.
+                settings.lastPrompt = params.prompt
+                settings.recordPromptUse(params.prompt)
+            }
             settings.lastWidth = params.width
             settings.lastHeight = params.height
             settings.lastLoras = params.loras
             settings.lastModel = params.model
             settings.lastQuantize = params.quantize
             let wasIdle = !isAnyStoreRunning
-            let jobs = fluxJobs(count: count)
+            let jobs = fluxJobs(count: count, scenarioPrompts: scenarioPrompts)
             for job in jobs {
                 store.add(job)
             }
@@ -1338,10 +1348,10 @@ struct ContentView: View {
             }
 
         case .krea2:
-            generateKrea2(count: count)
+            generateKrea2(count: count, scenarioPrompts: scenarioPrompts)
 
         case .zimage:
-            generateZImage(count: count)
+            generateZImage(count: count, scenarioPrompts: scenarioPrompts)
 
         case .seedvr2:
             break // upscaler — never the picker-selected family; started via startUpscale
@@ -1351,17 +1361,25 @@ struct ContentView: View {
     /// Enqueues Krea 2 jobs for one Generate press. Wildcards fan out — one job
     /// per option of the largest {a|b} group (capped 10); a batch count overrides
     /// — each with its own resolved prompt + sidecar.
-    private func generateKrea2(count: Int) {
-        guard krea2Params.isReadyToGenerate(settings: settings) else { return }
+    private func generateKrea2(count: Int, scenarioPrompts: [String]? = nil) {
+        guard krea2Params.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the family it happens to load as.
         settings.lastModel = params.model == .custom ? .custom : .krea2
         settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
-        settings.recordPromptUse(krea2Params.prompt)
+        if scenarioPrompts == nil { settings.recordPromptUse(krea2Params.prompt) }
         let wasIdle = !isAnyStoreRunning
         let variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
         let jobs: [Krea2Job]
-        if variants > 1 {
+        if let scenarioPrompts, !scenarioPrompts.isEmpty {
+            jobs = scenarioPrompts.map {
+                krea2Params.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: collapseWildcards(($0, krea2Params.negativePrompt))
+                )
+            }
+        } else if variants > 1 {
             let jobCount = count > 1 ? count : variants
             let positives = WildcardExpander.expandVariants(krea2Params.prompt, count: jobCount)
             let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: jobCount)
@@ -1388,17 +1406,25 @@ struct ContentView: View {
     /// Enqueues Z-Image jobs for one Generate press. Wildcards fan out like the
     /// Krea 2 path — one job per option of the largest {a|b} group (capped 10); a
     /// batch count overrides — each with its own resolved prompt + sidecar.
-    private func generateZImage(count: Int) {
-        guard zimageParams.isReadyToGenerate(settings: settings) else { return }
+    private func generateZImage(count: Int, scenarioPrompts: [String]? = nil) {
+        guard zimageParams.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the variant it happens to load as.
         settings.lastModel = params.model == .custom ? .custom : zimageParams.variant
         settings.lastZImage = zimageParams.snapshot() // remember the form across launches
-        settings.recordPromptUse(zimageParams.prompt)
+        if scenarioPrompts == nil { settings.recordPromptUse(zimageParams.prompt) }
         let wasIdle = !isAnyStoreRunning
         let variants = min(WildcardExpander.variantCount(zimageParams.prompt), 10)
         let jobs: [ZImageJob]
-        if variants > 1 {
+        if let scenarioPrompts, !scenarioPrompts.isEmpty {
+            jobs = scenarioPrompts.map {
+                zimageParams.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: collapseWildcards(($0, zimageParams.negativePrompt))
+                )
+            }
+        } else if variants > 1 {
             let jobCount = count > 1 ? count : variants
             let positives = WildcardExpander.expandVariants(zimageParams.prompt, count: jobCount)
             let negatives = WildcardExpander.expandVariants(zimageParams.negativePrompt, count: jobCount)
@@ -1467,7 +1493,20 @@ struct ContentView: View {
     /// once), other groups vary per job, and full combinations are de-duped.
     /// Plain Generate runs one job per option of the largest group (capped 10);
     /// a batch count overrides. Each job gets its own resolved prompt + sidecar.
-    private func fluxJobs(count: Int) -> [FluxJob] {
+    ///
+    /// A scenario batch takes the same one-job-per-prompt shape, but the prompts
+    /// come from the LLM instead of the wildcard expander.
+    private func fluxJobs(count: Int, scenarioPrompts: [String]? = nil) -> [FluxJob] {
+        if let scenarioPrompts, !scenarioPrompts.isEmpty {
+            return scenarioPrompts.map {
+                params.makeJob(
+                    count: 1,
+                    resolvedPrompt: collapseWildcards(
+                        params.templatedPrompts(templates: settings.activeTemplates, overriding: $0)
+                    )
+                )
+            }
+        }
         let templated = params.templatedPrompts(templates: settings.activeTemplates)
         let variants = min(WildcardExpander.variantCount(templated.positive), 10)
         guard variants > 1 else {
@@ -1479,6 +1518,25 @@ struct ContentView: View {
         return (0 ..< jobCount).map {
             params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]))
         }
+    }
+
+    /// Hands a batch of scenario-generated prompts to the active family — one image
+    /// job per prompt. Passed to ``ParamsPanelView`` as a function reference so each
+    /// press reads the live family and params.
+    private func queueScenarioBatch(_ prompts: [String]) {
+        generate(count: prompts.count, scenarioPrompts: prompts)
+    }
+
+    /// Collapses any {a|b} groups a scenario prompt happens to contain down to one
+    /// sample. A queued batch gets its variety from re-rolling the LLM, so a group the
+    /// model emitted anyway must not fan the job out a second time.
+    private func collapseWildcards(
+        _ pair: (positive: String, negative: String)
+    ) -> (positive: String, negative: String) {
+        (
+            WildcardExpander.expandVariants(pair.positive, count: 1).first ?? pair.positive,
+            WildcardExpander.expandVariants(pair.negative, count: 1).first ?? pair.negative
+        )
     }
 
     /// Starts the next pending job across all families, but only when the gate is free.

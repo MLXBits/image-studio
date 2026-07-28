@@ -21,6 +21,10 @@ struct ParamsPanelView: View {
     @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Bindable var krea2Params: Krea2ParamsPanelState
     @Bindable var zimageParams: ZImageParamsPanelState
+    /// Turns a batch of scenario-generated prompts into one image job apiece.
+    /// Owned by ContentView (which holds the stores and runners) and forwarded to
+    /// whichever family's panel is showing.
+    var onQueueScenarioBatch: ([String]) -> Void = { _ in }
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
@@ -58,9 +62,9 @@ struct ParamsPanelView: View {
                 case .ideogram4:
                     Ideogram4ParamsPanelView(params: ideogramParams)
                 case .krea2:
-                    Krea2ParamsPanelView(params: krea2Params)
+                    Krea2ParamsPanelView(params: krea2Params, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .zimage:
-                    ZImageParamsPanelView(params: zimageParams)
+                    ZImageParamsPanelView(params: zimageParams, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .seedvr2:
                     EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }
@@ -113,7 +117,10 @@ struct ParamsPanelView: View {
             // Explicit HStack: the accessory slot right-aligns its content as
             // a whole; a bare two-view tuple would spread across the row.
             HStack(spacing: 6) {
-                ScenarioGeneratorButton { params.prompt = $0 }
+                ScenarioGeneratorButton(
+                    onSelect: { params.prompt = $0 },
+                    onQueue: onQueueScenarioBatch
+                )
                 PromptHistoryButton { params.prompt = $0 }
             }
         }
