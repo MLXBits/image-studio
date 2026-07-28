@@ -77,6 +77,7 @@
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = FE1832089B5311712FEF1286 /* scenario_prompt.md */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
+		49BF0B410A6E1BD8CC6F2566 /* ImageDropTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */; };
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
@@ -253,6 +254,7 @@
 		A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IdeogramCaptionEditorView+Actions.swift"; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
+		138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDropTarget.swift; sourceTree = "<group>"; };
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
@@ -338,6 +340,7 @@
 				654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */,
 				B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */,
 				86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */,
+				138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */,
 				8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */,
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
@@ -774,6 +777,7 @@
 				517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */,
 				F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */,
 				F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */,
+				49BF0B410A6E1BD8CC6F2566 /* ImageDropTarget.swift in Sources */,
 				FA4F045A3562D02ADD46F383 /* ImageMetadataInfo.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
