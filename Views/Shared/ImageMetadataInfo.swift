@@ -45,6 +45,7 @@ struct ImageMetadataInfo {
         guidance = job.guidance
         loras = job.loras
         filePath = job.outputPath
+        applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
         if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
@@ -64,6 +65,7 @@ struct ImageMetadataInfo {
         guidance = meta.guidance
         loras = meta.loras
         filePath = item.path
+        applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
         if let started = meta.startedAt {
             let secs = Int(meta.generatedAt.timeIntervalSince(started))
@@ -82,6 +84,7 @@ struct ImageMetadataInfo {
         guidance = 1.0
         loras = job.loras
         filePath = job.outputPath
+        applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
         if let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
@@ -105,6 +108,7 @@ struct ImageMetadataInfo {
         guidance = 1.0
         loras = meta?.loras ?? []
         filePath = ideogram4Item.path
+        applyPidUpscale(meta?.pidDecode ?? false, degradeSigma: meta?.pidDegradeSigma)
         log = meta?.log
         if let started = meta?.startedAt, let generatedAt = meta?.generatedAt {
             let secs = Int(generatedAt.timeIntervalSince(started))
@@ -125,6 +129,7 @@ struct ImageMetadataInfo {
         guidance = job.guidance
         loras = job.loras
         filePath = job.outputPath
+        applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
         if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
@@ -144,6 +149,7 @@ struct ImageMetadataInfo {
         guidance = meta.guidance
         loras = meta.loras ?? []
         filePath = krea2Item.path
+        applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
         if let started = meta.startedAt {
             let secs = Int(meta.generatedAt.timeIntervalSince(started))
@@ -162,6 +168,7 @@ struct ImageMetadataInfo {
         guidance = job.guidance
         loras = job.loras
         filePath = job.outputPath
+        applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
         if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
             let secs = Int(ended.timeIntervalSince(started))
@@ -181,6 +188,7 @@ struct ImageMetadataInfo {
         guidance = meta.guidance
         loras = meta.loras ?? []
         filePath = zimageItem.path
+        applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
         if let started = meta.startedAt {
             let secs = Int(meta.generatedAt.timeIntervalSince(started))
@@ -264,5 +272,21 @@ struct ImageMetadataInfo {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []
         filePath = path; log = nil; generationTime = nil
+    }
+
+    /// Re-points the resolution fields at the file actually on disk when PiD
+    /// decoded it. The recorded width/height are the *generation* size — PiD emits
+    /// 4x that — so show the real dimensions with the source size noted, which is
+    /// how a SeedVR2 upscale already reads.
+    private mutating func applyPidUpscale(_ pidDecode: Bool, degradeSigma: Double? = nil) {
+        guard pidDecode, width > 0, height > 0 else { return }
+        var note = "PiD \(PidDecode.scaleFactor)× from \(width)×\(height)"
+        // Only when it applied: a run at 0 is the default and adds nothing to read.
+        if let degradeSigma, degradeSigma > 0 {
+            note += String(format: ", degrade σ %.2f", degradeSigma)
+        }
+        resolutionNote = note
+        width *= PidDecode.scaleFactor
+        height *= PidDecode.scaleFactor
     }
 }
