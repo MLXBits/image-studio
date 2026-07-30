@@ -25,12 +25,24 @@ struct PidDecodeToggleView: View {
     How much noise to add to the latent before PiD conditions on it, matching the \
     degradation PiD's conditioning was trained against (0.0–0.8).
 
-    0.00 hands PiD the clean latent — maximum detail, but it can read latent noise as \
-    texture and produce crusty skin. Raising it makes PiD lean on its own prior instead. \
-    Try 0.20 first when skin over-textures.
+    0.00 hands PiD the clean latent and is the recommended default.
+
+    Raising it is NOT a fix for over-textured skin — measured on Krea 2, 0.20 roughly \
+    doubles invented facial detail, darkens the image, and drifts further from the plain \
+    VAE result. It reaches conditioning the decoder is otherwise never given, so it is \
+    worth having, but treat it as "a different, darker sample" rather than a repair.
 
     Costs nothing extra to run.
     """
+
+    private static func snap(_ value: Double) -> Double {
+        let clamped = min(max(value, PidDecode.degradeSigmaRange.lowerBound), PidDecode.degradeSigmaRange.upperBound)
+        return (clamped / PidDecode.degradeSigmaStep).rounded() * PidDecode.degradeSigmaStep
+    }
+
+    private static func format(_ value: Double) -> String {
+        String(format: "%.2f", value)
+    }
 
     @Binding var pidDecode: Bool
     @Binding var pidDegradeSigma: Double
@@ -38,6 +50,11 @@ struct PidDecodeToggleView: View {
     let height: Int
 
     @Environment(AppSettings.self) private var settings
+
+    // Typing is buffered so intermediate keystrokes never reach the binding (mirrors
+    // DimensionSliderRow); committed on Return or focus-out.
+    @State private var sigmaText: String = ""
+    @FocusState private var sigmaFocused: Bool
 
     private var isSupported: Bool {
         BinaryDetector.supportsPidDecode(in: settings.mfluxBinaryDir)
@@ -49,10 +66,7 @@ struct PidDecodeToggleView: View {
 
     /// Rounds each write to the step grid, so the stored value is exactly the number shown.
     private var snappedSigma: Binding<Double> {
-        Binding(
-            get: { pidDegradeSigma },
-            set: { pidDegradeSigma = (($0 / PidDecode.degradeSigmaStep).rounded() * PidDecode.degradeSigmaStep) }
-        )
+        Binding(get: { pidDegradeSigma }, set: { pidDegradeSigma = Self.snap($0) })
     }
 
     var body: some View {
@@ -102,22 +116,46 @@ struct PidDecodeToggleView: View {
                 .font(.system(size: 11))
                 .foregroundStyle(.secondary)
 
-            // Snapped, not bound directly: repeated 0.05 increments accumulate binary
+            // The arrows drive a snapped binding: repeated 0.05 increments accumulate binary
             // floating-point error, so stepping back down to "0.00" was leaving ~1.4e-17
             // behind. Harmless numerically, but it lands in the sidecar as a nonsense value
             // and makes the runners' `> 0` check pass a flag the user believes is off.
+            //
+            // The field is a TextField, not a Text, matching DimensionSliderRow: typing is
+            // buffered so intermediate keystrokes never reach the binding, and commits on
+            // Return or focus-out. Tabbing out of a display-only Text saved nothing.
             Stepper(value: snappedSigma, in: PidDecode.degradeSigmaRange, step: PidDecode.degradeSigmaStep) {
-                Text(String(format: "%.2f", pidDegradeSigma))
+                TextField("", text: $sigmaText)
+                    .textFieldStyle(.roundedBorder)
                     .font(.system(size: 11, design: .monospaced))
-                    .frame(width: 34, alignment: .trailing)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 48)
+                    .focused($sigmaFocused)
+                    .onSubmit(commitSigmaText)
+                    .onChange(of: sigmaFocused) { _, isFocused in
+                        if !isFocused { commitSigmaText() }
+                    }
             }
             .accessibilityLabel("PiD degrade sigma")
             .accessibilityValue(String(format: "%.2f", pidDegradeSigma))
+            // Keep the buffer in step with changes made by the arrows, a metadata replay,
+            // or the last-used form restore — but never while the user is mid-edit.
+            .onAppear { sigmaText = Self.format(pidDegradeSigma) }
+            .onChange(of: pidDegradeSigma) { _, new in
+                if !sigmaFocused { sigmaText = Self.format(new) }
+            }
 
             Spacer(minLength: 4)
 
             InfoButton(title: "Degrade sigma", description: Self.degradeInfoText)
         }
         .padding(.leading, 18)
+    }
+
+    /// Parses the buffer, clamping and snapping; unparseable input reverts to the live value
+    /// rather than silently becoming 0.0.
+    private func commitSigmaText() {
+        pidDegradeSigma = Self.snap(Double(sigmaText.replacingOccurrences(of: ",", with: ".")) ?? pidDegradeSigma)
+        sigmaText = Self.format(pidDegradeSigma)
     }
 }
