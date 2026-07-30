@@ -16,6 +16,10 @@ struct Krea2FormState: Codable {
     var imagePath: String = ""
     var imageStrength: Double = 0.75
     var board: String = ""
+    /// Decode with PiD instead of the VAE (output is 4x these dimensions).
+    var pidDecode: Bool = false
+    /// Latent degradation for PiD (0.0-0.8); ignored unless `pidDecode`.
+    var pidDegradeSigma: Double = 0.0
 
     init() {}
 
@@ -32,6 +36,8 @@ struct Krea2FormState: Codable {
         imagePath = (try? c.decode(String.self, forKey: .imagePath)) ?? ""
         imageStrength = (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75
         board = (try? c.decode(String.self, forKey: .board)) ?? ""
+        pidDecode = (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false
+        pidDegradeSigma = (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0
     }
 }
 
@@ -52,6 +58,10 @@ final class Krea2ParamsPanelState {
     var imagePath: String = ""
     var imageStrength: Double = 0.75
     var board: String = ""
+    /// Decode with PiD instead of the VAE (output is 4x these dimensions).
+    var pidDecode: Bool = false
+    /// Latent degradation for PiD (0.0-0.8); ignored unless `pidDecode`.
+    var pidDegradeSigma: Double = 0.0
 
     var canGenerate: Bool {
         !prompt.trimmingCharacters(in: .whitespaces).isEmpty
@@ -71,6 +81,8 @@ final class Krea2ParamsPanelState {
             imagePath = s.imagePath
             imageStrength = s.imageStrength
             board = s.board
+            pidDecode = s.pidDecode
+            pidDegradeSigma = s.pidDegradeSigma
             loras = s.loras.isEmpty ? library.defaultLoras(for: .krea2) : s.loras
             seed = -1
             return
@@ -100,6 +112,8 @@ final class Krea2ParamsPanelState {
         s.imagePath = imagePath
         s.imageStrength = imageStrength
         s.board = board
+        s.pidDecode = pidDecode
+        s.pidDegradeSigma = pidDegradeSigma
         return s
     }
 
@@ -128,6 +142,8 @@ final class Krea2ParamsPanelState {
         imagePath = meta.imagePath ?? ""
         imageStrength = meta.imageStrength ?? 0.75
         board = meta.board ?? ""
+        pidDecode = meta.pidDecode ?? false
+        pidDegradeSigma = meta.pidDegradeSigma ?? 0.0
         batchSeeds = []
         seed = newSeed ? -1 : meta.seed
     }
@@ -158,7 +174,9 @@ final class Krea2ParamsPanelState {
             loras: loras,
             imagePath: imagePath,
             imageStrength: imageStrength,
-            board: board
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma
         )
         if count > 1 {
             // Matches Flux.2's batch button: auto-generate N random seeds into one

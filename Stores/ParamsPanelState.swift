@@ -26,6 +26,10 @@ final class ParamsPanelState {
     var isEditMode: Bool = false
     var editImagePaths: [String] = []
     var board: String = ""
+    /// Decode with PiD instead of the VAE (output is 4x these dimensions).
+    var pidDecode: Bool = false
+    /// Latent degradation for PiD (0.0-0.8); ignored unless `pidDecode`.
+    var pidDegradeSigma: Double = 0.0
 
     /// The pipeline this selection generates through. A custom checkpoint runs as
     /// whatever family it is loaded as, so its target — not `custom` itself —
@@ -102,6 +106,8 @@ final class ParamsPanelState {
         imageStrength = meta.imageStrength
         loras = meta.loras
         board = meta.board ?? ""
+        pidDecode = meta.pidDecode ?? false
+        pidDegradeSigma = meta.pidDegradeSigma ?? 0.0
         seed = newSeed ? -1 : meta.seed
     }
 
@@ -170,7 +176,9 @@ final class ParamsPanelState {
             imageStrength: imageStrength,
             isEditMode: isEditMode,
             editImagePaths: editImagePaths,
-            board: board
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma
         )
     }
 }

@@ -298,6 +298,15 @@ def _load_model(req):
 def _generate_kwargs(req, seed, prompt):
     """Per-family generate_image kwargs, mirroring each family's CLI call."""
     family = req.get("family", "flux2")
+    # PiD decoding, when the resident mflux supports it. Passed only when enabled so
+    # this driver keeps working against an mflux whose generate_image has no such
+    # parameter -- the app hides the toggle there, but a stale request must not
+    # become a TypeError.
+    pid = {"pid_decode": True} if req.get("pid_decode") else {}
+    # Only send a non-zero degradation, so this keeps working against an mflux that has
+    # --pid-decode but not yet the degrade_sigma parameter.
+    if pid and req.get("pid_degrade_sigma"):
+        pid["pid_degrade_sigma"] = float(req["pid_degrade_sigma"])
     if family == "flux2":
         return {
             "seed": seed,
@@ -309,6 +318,7 @@ def _generate_kwargs(req, seed, prompt):
             "image_path": req.get("image_path"),
             "image_strength": req.get("image_strength"),
             "scheduler": "flow_match_euler_discrete",
+            **pid,
         }
     if family == "krea2":
         return {
@@ -321,6 +331,7 @@ def _generate_kwargs(req, seed, prompt):
             "negative_prompt": req.get("negative_prompt"),
             "image_path": req.get("image_path"),
             "image_strength": req.get("image_strength"),
+            **pid,
         }
     if family == "z_image":
         # generate_image resolves guidance=None → 0 for the guidance-free Turbo
@@ -335,6 +346,7 @@ def _generate_kwargs(req, seed, prompt):
             "negative_prompt": req.get("negative_prompt"),
             "image_path": req.get("image_path"),
             "image_strength": req.get("image_strength"),
+            **pid,
         }
     # ideogram4: the preset defines steps and guidance schedule; prompt is the
     # caption JSON string (or a plain description).
@@ -346,6 +358,7 @@ def _generate_kwargs(req, seed, prompt):
         "preset": req.get("preset"),
         "strict_caption_validation": bool(req.get("strict_caption_validation")),
         "cfg_end": req.get("cfg_end"),
+        **pid,
     }
 
 

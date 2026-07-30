@@ -146,6 +146,8 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
             preset: job.preset.rawValue,
             strictCaptionValidation: job.strictValidation,
             cfgEnd: cfgEnd,
+            pidDecode: job.pidDecode,
+            pidDegradeSigma: job.pidDegradeSigma,
             outputs: outputs,
             stepwiseDir: ctx.stepwiseDir.path,
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // driver forces keep for ideogram4
@@ -201,6 +203,16 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
         }
 
         args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
+
+        // PiD decodes at 4x instead of the VAE. The flag only exists on an mflux that
+        // has the decoder, and the toggle is hidden otherwise, so a stale install
+        // cannot smuggle an unrecognised flag into the command line.
+        if job.pidDecode {
+            args += ["--pid-decode"]
+            if job.pidDegradeSigma > 0 {
+                args += ["--pid-degrade-sigma", String(format: "%.2f", job.pidDegradeSigma)]
+            }
+        }
 
         return args
     }

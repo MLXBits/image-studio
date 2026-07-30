@@ -117,6 +117,8 @@ enum FluxRunnerSpec: JobRunnerSpec {
             preset: nil,
             strictCaptionValidation: nil,
             cfgEnd: nil,
+            pidDecode: job.pidDecode,
+            pidDegradeSigma: job.pidDegradeSigma,
             outputs: outputs,
             stepwiseDir: ctx.stepwiseDir.path,
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
@@ -124,6 +126,16 @@ enum FluxRunnerSpec: JobRunnerSpec {
             modelVariantRaw: job.model.rawValue,
             modelLabel: job.model.displayName
         )
+    }
+
+    /// `--pid-decode` when enabled. Split out of `buildArgs` purely to keep that
+    /// function under the cyclomatic-complexity limit; the flag only exists on an
+    /// mflux that has the decoder, and the toggle is hidden otherwise, so a stale
+    /// install cannot smuggle an unrecognised flag into the command line.
+    static func pidArgs(pidDecode: Bool, degradeSigma: Double) -> [String] {
+        guard pidDecode else { return [] }
+        guard degradeSigma > 0 else { return ["--pid-decode"] }
+        return ["--pid-decode", "--pid-degrade-sigma", String(format: "%.2f", degradeSigma)]
     }
 
     static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
@@ -213,6 +225,8 @@ enum FluxRunnerSpec: JobRunnerSpec {
         }
 
         args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
+
+        args += pidArgs(pidDecode: job.pidDecode, degradeSigma: job.pidDegradeSigma)
 
         return args
     }

@@ -59,6 +59,11 @@ struct Ideogram4ParamsPanelView: View {
                             params.height = Ideogram4Preset.clampDimension(h)
                         }
                     GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
+                    PidDecodeToggleView(
+                        pidDecode: $params.pidDecode,
+                        pidDegradeSigma: $params.pidDegradeSigma,
+                        width: params.width, height: params.height
+                    )
                 }
             }
 

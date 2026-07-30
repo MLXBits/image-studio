@@ -31,6 +31,7 @@
 		1B4F4FBA717098E4C12A58A5 /* ModelDefaultsView+SeedVR2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */; };
 		1B8C89C99300F30608BBA29F /* GalleryRating.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4FC7445FBA2C696BE4141103 /* GalleryRating.swift */; };
 		1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */; };
+		1C3461DA31C785854CF04C3E /* PidDecode.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5A2E7EBC193994B449F4A0 /* PidDecode.swift */; };
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
@@ -110,6 +111,7 @@
 		ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8A946E00348D9BD857672E /* MfluxDriverController.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
+		B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
@@ -181,6 +183,7 @@
 		2288F848C8AC536F933F7831 /* TimingModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingModelTests.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
 		2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorTests.swift; sourceTree = "<group>"; };
+		2C5A2E7EBC193994B449F4A0 /* PidDecode.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidDecode.swift; sourceTree = "<group>"; };
 		2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelFamily.swift; sourceTree = "<group>"; };
 		2E769B611A03FA4372F553CA /* Ideogram4Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Job.swift; sourceTree = "<group>"; };
 		2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2Job.swift; sourceTree = "<group>"; };
@@ -239,6 +242,7 @@
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
 		8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistoryPickerView.swift; sourceTree = "<group>"; };
 		8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataInfo.swift; sourceTree = "<group>"; };
+		8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidDecodeToggleView.swift; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
@@ -401,6 +405,7 @@
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
+				8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */,
 				8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */,
 				3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */,
 				5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */,
@@ -561,6 +566,7 @@
 				F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */,
 				2CDEE5ACF45EAB01F0E6CEF8 /* ModelFamily.swift */,
 				20929E59AB251C273A8C9999 /* OpenAIChat.swift */,
+				2C5A2E7EBC193994B449F4A0 /* PidDecode.swift */,
 				C4443AEA2099305CADF36EE5 /* PromptHistory.swift */,
 				B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */,
 				85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */,
@@ -815,6 +821,8 @@
 				CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */,
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,
 				C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */,
+				1C3461DA31C785854CF04C3E /* PidDecode.swift in Sources */,
+				B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */,
 				2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */,
 				333970340121D49FD8E0298C /* PromptHistory.swift in Sources */,
 				C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */,

@@ -2,6 +2,70 @@ import Foundation
 
 // Nonisolated: pure filesystem probes, callable from the installers' background work.
 nonisolated enum BinaryDetector {
+    /// Memoises a probe per interpreter path. The probe spawns a process, so it
+    /// must not run on every view body evaluation; keying on the path means a
+    /// changed mflux directory in Settings re-probes rather than going stale.
+    private final class ProbeCache: @unchecked Sendable {
+        private let lock = NSLock()
+        private var results: [String: Bool] = [:]
+
+        func value(for key: String, compute: () -> Bool) -> Bool {
+            lock.lock()
+            if let hit = results[key] {
+                lock.unlock()
+                return hit
+            }
+            lock.unlock()
+            let computed = compute()
+            lock.lock()
+            results[key] = computed
+            lock.unlock()
+            return computed
+        }
+    }
+
+    private static let pidDecodeProbeCache = ProbeCache()
+
+    /// Whether the mflux install rooted at `dir` has the PiD pixel-diffusion
+    /// decoder (`--pid-decode`). Gates the toggle in the Dimensions section so it
+    /// only appears against an mflux that can honour it.
+    ///
+    /// PiD is unmerged upstream (filipstrand/mflux#490), so this cannot be
+    /// inferred from a version number. Probes for the module rather than a console
+    /// script: the flag is added to seven existing scripts, so no new script
+    /// appears, and asking the interpreter resolves editable installs (whose
+    /// `mflux` lives outside site-packages behind a `.pth`) correctly.
+    ///
+    /// Remove this gate and its call sites once PiD lands in a released mflux.
+    static func supportsPidDecode(in dir: String) -> Bool {
+        let shim = mfluxGenerateFlux2(in: dir)
+        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return false }
+        return pidDecodeProbeCache.value(for: python) {
+            let probe = """
+            import importlib.util as u, pathlib, sys
+            s = u.find_spec("mflux")
+            loc = (s.submodule_search_locations or [None])[0] if s else None
+            ok = loc is not None and (pathlib.Path(loc) / "models/common/pid_decoder").is_dir()
+            sys.stdout.write("1" if ok else "0")
+            """
+            let proc = Process()
+            proc.executableURL = URL(fileURLWithPath: python)
+            proc.arguments = ["-c", probe]
+            let pipe = Pipe()
+            proc.standardOutput = pipe
+            proc.standardError = FileHandle.nullDevice
+            do {
+                try proc.run()
+            } catch {
+                return false
+            }
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            proc.waitUntilExit()
+            let out = String(bytes: data, encoding: .utf8) ?? ""
+            return out.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+        }
+    }
+
     static func detect(_ name: String) -> String {
         let home = NSHomeDirectory()
         let candidates = [

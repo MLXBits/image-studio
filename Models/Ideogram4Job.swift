@@ -25,6 +25,14 @@ final class Ideogram4Job: Identifiable {
     var strictValidation: Bool
     var loras: [LoraEntry]
     var board: String
+    /// Decode with PiD's pixel-diffusion decoder instead of the VAE, emitting an
+    /// image 4x the generation size. Only offered when the installed mflux has it
+    /// (see ``BinaryDetector/supportsPidDecode(in:)``).
+    var pidDecode: Bool
+    /// Noise added to the latent before PiD conditions on it (0.0-0.8). Higher values
+    /// make PiD lean less on the latent's high-frequency content and more on its own
+    /// prior — the knob for when PiD over-textures. Ignored unless `pidDecode`.
+    var pidDegradeSigma: Double
 
     var status: JobStatus
     var log: String
@@ -69,6 +77,8 @@ final class Ideogram4Job: Identifiable {
         strictValidation: Bool = false,
         loras: [LoraEntry] = [],
         board: String = "Default",
+        pidDecode: Bool = false,
+        pidDegradeSigma: Double = 0.0,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -86,6 +96,8 @@ final class Ideogram4Job: Identifiable {
         self.strictValidation = strictValidation
         self.loras = loras
         self.board = board
+        self.pidDecode = pidDecode
+        self.pidDegradeSigma = pidDegradeSigma
         self.status = .pending
         self.log = ""
         self.currentStep = 0
@@ -99,6 +111,7 @@ extension Ideogram4Job: Codable {
         case id, customModelRepo, preset, caption, usePlainPrompt, plainPrompt
         case width, height, seed, seeds, quantize, lowRam, strictValidation, loras, board
         case status, log, outputPath, resolvedSeed, thumbnailData
+        case pidDecode, pidDegradeSigma
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
 
@@ -120,6 +133,8 @@ extension Ideogram4Job: Codable {
             strictValidation: (try? c.decode(Bool.self, forKey: .strictValidation)) ?? false,
             loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
             board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
+            pidDecode: (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false,
+            pidDegradeSigma: (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0,
             createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
         status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
@@ -150,6 +165,8 @@ extension Ideogram4Job: Codable {
         try c.encode(strictValidation, forKey: .strictValidation)
         try c.encode(loras, forKey: .loras)
         try c.encode(board, forKey: .board)
+        try c.encode(pidDecode, forKey: .pidDecode)
+        try c.encode(pidDegradeSigma, forKey: .pidDegradeSigma)
         try c.encode(status, forKey: .status)
         try c.encode(log, forKey: .log)
         try c.encode(currentStep, forKey: .currentStep)

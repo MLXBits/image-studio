@@ -57,6 +57,11 @@ struct DriverGenerateRequest: Codable {
     var preset: String?
     var strictCaptionValidation: Bool?
     var cfgEnd: Double?
+    /// Decode with PiD's pixel-diffusion decoder instead of the VAE; the saved
+    /// image is 4x `width`x`height`. Encoded as `pid_decode`.
+    var pidDecode: Bool
+    /// Latent degradation for PiD (0.0-0.8). Encoded as `pid_degrade_sigma`.
+    var pidDegradeSigma: Double
     /// Explicit per-seed output paths — the driver saves exactly here and
     /// emits an `image` event per path, so no filesystem reconciliation.
     var outputs: [DriverOutput]

@@ -102,6 +102,10 @@ struct Krea2ParamsPanelView: View {
             VStack(alignment: .leading, spacing: 6) {
                 DimensionPickerView(width: $params.width, height: $params.height, constraints: .krea2)
                 GenerationEstimateView(estimate: estimate, width: params.width, height: params.height)
+                PidDecodeToggleView(
+                    pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
+                    width: params.width, height: params.height
+                )
             }
         }
 

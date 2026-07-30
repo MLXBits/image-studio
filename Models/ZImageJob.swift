@@ -38,6 +38,14 @@ final class ZImageJob: Identifiable {
     var imageStrength: Double
     /// Output subfolder within the global output directory. Empty string = root.
     var board: String
+    /// Decode with PiD's pixel-diffusion decoder instead of the VAE, emitting an
+    /// image 4x the generation size. Only offered when the installed mflux has it
+    /// (see ``BinaryDetector/supportsPidDecode(in:)``).
+    var pidDecode: Bool
+    /// Noise added to the latent before PiD conditions on it (0.0-0.8). Higher values
+    /// make PiD lean less on the latent's high-frequency content and more on its own
+    /// prior — the knob for when PiD over-textures. Ignored unless `pidDecode`.
+    var pidDegradeSigma: Double
 
     var status: JobStatus
     /// Raw stdout/stderr from the generation process. Appended in real time during a run.
@@ -95,6 +103,8 @@ final class ZImageJob: Identifiable {
         imagePath: String = "",
         imageStrength: Double = 0.75,
         board: String = "Default",
+        pidDecode: Bool = false,
+        pidDegradeSigma: Double = 0.0,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -113,6 +123,8 @@ final class ZImageJob: Identifiable {
         self.imagePath = imagePath
         self.imageStrength = imageStrength
         self.board = board
+        self.pidDecode = pidDecode
+        self.pidDegradeSigma = pidDegradeSigma
         status = .pending
         log = ""
         currentStep = 0
@@ -126,6 +138,7 @@ extension ZImageJob: Codable {
         case id, modelVariant, customModelRepo, prompt, negativePrompt
         case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
+        case pidDecode, pidDegradeSigma
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
 
@@ -148,6 +161,8 @@ extension ZImageJob: Codable {
             imagePath: (try? c.decode(String.self, forKey: .imagePath)) ?? "",
             imageStrength: (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75,
             board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
+            pidDecode: (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false,
+            pidDegradeSigma: (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0,
             createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
         status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
@@ -179,6 +194,8 @@ extension ZImageJob: Codable {
         try c.encode(imagePath, forKey: .imagePath)
         try c.encode(imageStrength, forKey: .imageStrength)
         try c.encode(board, forKey: .board)
+        try c.encode(pidDecode, forKey: .pidDecode)
+        try c.encode(pidDegradeSigma, forKey: .pidDegradeSigma)
         try c.encode(status, forKey: .status)
         try c.encode(log, forKey: .log)
         try c.encode(currentStep, forKey: .currentStep)

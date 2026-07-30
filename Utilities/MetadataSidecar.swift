@@ -17,6 +17,8 @@ nonisolated struct Ideogram4Metadata: Codable {
             lowRam: job.lowRam,
             loras: job.loras.isEmpty ? nil : job.loras,
             board: job.board.isEmpty ? nil : job.board,
+            pidDecode: job.pidDecode ? true : nil,
+            pidDegradeSigma: job.pidDegradeSigma > 0 ? job.pidDegradeSigma : nil,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
@@ -38,6 +40,14 @@ nonisolated struct Ideogram4Metadata: Codable {
     // Optional so existing sidecars (written before LoRA support) still decode.
     var loras: [LoraEntry]?
     var board: String?
+    /// Whether PiD decoding produced this image (so the file is 4x the recorded
+    /// width/height). Optional and written only when true, so sidecars from
+    /// before the field — and every non-PiD generation — stay unchanged.
+    var pidDecode: Bool?
+    /// Latent degradation for PiD, when non-zero. Recorded even if `pidDecode` was
+    /// off for this run, so replaying the image does not silently zero a value the
+    /// form was carrying. Omitted at 0 so default runs' sidecars stay unchanged.
+    var pidDegradeSigma: Double?
     var generatedAt: Date
     var startedAt: Date?
     var log: String?
@@ -64,6 +74,8 @@ nonisolated struct GenerationMetadata: Codable {
             imageStrength: job.imageStrength,
             loras: job.loras,
             board: job.board.isEmpty ? nil : job.board,
+            pidDecode: job.pidDecode ? true : nil,
+            pidDegradeSigma: job.pidDegradeSigma > 0 ? job.pidDegradeSigma : nil,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
@@ -86,6 +98,14 @@ nonisolated struct GenerationMetadata: Codable {
     var imageStrength: Double
     var loras: [LoraEntry]
     var board: String?
+    /// Whether PiD decoding produced this image (so the file is 4x the recorded
+    /// width/height). Optional and written only when true, so sidecars from
+    /// before the field — and every non-PiD generation — stay unchanged.
+    var pidDecode: Bool?
+    /// Latent degradation for PiD, when non-zero. Recorded even if `pidDecode` was
+    /// off for this run, so replaying the image does not silently zero a value the
+    /// form was carrying. Omitted at 0 so default runs' sidecars stay unchanged.
+    var pidDegradeSigma: Double?
     var generatedAt: Date
     var startedAt: Date?
     var log: String?
@@ -109,6 +129,8 @@ nonisolated struct Krea2Metadata: Codable {
             imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
             imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
             board: job.board.isEmpty ? nil : job.board,
+            pidDecode: job.pidDecode ? true : nil,
+            pidDegradeSigma: job.pidDegradeSigma > 0 ? job.pidDegradeSigma : nil,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
@@ -130,6 +152,14 @@ nonisolated struct Krea2Metadata: Codable {
     var imagePath: String?
     var imageStrength: Double?
     var board: String?
+    /// Whether PiD decoding produced this image (so the file is 4x the recorded
+    /// width/height). Optional and written only when true, so sidecars from
+    /// before the field — and every non-PiD generation — stay unchanged.
+    var pidDecode: Bool?
+    /// Latent degradation for PiD, when non-zero. Recorded even if `pidDecode` was
+    /// off for this run, so replaying the image does not silently zero a value the
+    /// form was carrying. Omitted at 0 so default runs' sidecars stay unchanged.
+    var pidDegradeSigma: Double?
     var generatedAt: Date
     var startedAt: Date?
     var log: String?
@@ -154,6 +184,8 @@ nonisolated struct ZImageMetadata: Codable {
             imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
             imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
             board: job.board.isEmpty ? nil : job.board,
+            pidDecode: job.pidDecode ? true : nil,
+            pidDegradeSigma: job.pidDegradeSigma > 0 ? job.pidDegradeSigma : nil,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
@@ -178,6 +210,14 @@ nonisolated struct ZImageMetadata: Codable {
     var imagePath: String?
     var imageStrength: Double?
     var board: String?
+    /// Whether PiD decoding produced this image (so the file is 4x the recorded
+    /// width/height). Optional and written only when true, so sidecars from
+    /// before the field — and every non-PiD generation — stay unchanged.
+    var pidDecode: Bool?
+    /// Latent degradation for PiD, when non-zero. Recorded even if `pidDecode` was
+    /// off for this run, so replaying the image does not silently zero a value the
+    /// form was carrying. Omitted at 0 so default runs' sidecars stay unchanged.
+    var pidDegradeSigma: Double?
     var generatedAt: Date
     var startedAt: Date?
     var log: String?

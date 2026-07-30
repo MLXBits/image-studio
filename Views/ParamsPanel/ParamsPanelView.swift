@@ -167,6 +167,10 @@ struct ParamsPanelView: View {
                     constraints: params.model.isFlux ? .flux2 : .legacy
                 )
                 GenerationEstimateView(estimate: fluxEstimate, width: params.width, height: params.height)
+                PidDecodeToggleView(
+                    pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
+                    width: params.width, height: params.height
+                )
             }
         }
 

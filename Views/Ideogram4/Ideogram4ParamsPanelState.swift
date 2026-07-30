@@ -17,6 +17,10 @@ final class Ideogram4ParamsPanelState {
     var strictValidation: Bool = false
     var loras: [LoraEntry] = []
     var board: String = ""
+    /// Decode with PiD instead of the VAE (output is 4x these dimensions).
+    var pidDecode: Bool = false
+    /// Latent degradation for PiD (0.0-0.8); ignored unless `pidDecode`.
+    var pidDegradeSigma: Double = 0.0
 
     var canGenerate: Bool {
         if usePlainPrompt {
@@ -55,6 +59,8 @@ final class Ideogram4ParamsPanelState {
         lowRam = meta.lowRam
         if let savedLoras = meta.loras { loras = savedLoras }
         board = meta.board ?? ""
+        pidDecode = meta.pidDecode ?? false
+        pidDegradeSigma = meta.pidDegradeSigma ?? 0.0
         batchSeeds = []
         seed = newSeed ? -1 : meta.seed
     }
@@ -75,7 +81,9 @@ final class Ideogram4ParamsPanelState {
             lowRam: lowRam,
             strictValidation: strictValidation,
             loras: loras,
-            board: board
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma
         )
         if count > 1 {
             // Matches Flux.2's batch button: auto-generate N random seeds into one

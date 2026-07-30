@@ -87,6 +87,14 @@ final class FluxJob: Identifiable {
     var editImagePaths: [String]
     /// Output subfolder within the global output directory. Empty string = root.
     var board: String
+    /// Decode with PiD's pixel-diffusion decoder instead of the VAE, emitting an
+    /// image 4x the generation size. Only offered when the installed mflux has it
+    /// (see ``BinaryDetector/supportsPidDecode(in:)``).
+    var pidDecode: Bool
+    /// Noise added to the latent before PiD conditions on it (0.0-0.8). Higher values
+    /// make PiD lean less on the latent's high-frequency content and more on its own
+    /// prior — the knob for when PiD over-textures. Ignored unless `pidDecode`.
+    var pidDegradeSigma: Double
     /// Multiple seeds for batch generation. Empty array = single-seed run.
     var seeds: [Int]
 
@@ -144,6 +152,8 @@ final class FluxJob: Identifiable {
         isEditMode: Bool = false,
         editImagePaths: [String] = [],
         board: String = "Default",
+        pidDecode: Bool = false,
+        pidDegradeSigma: Double = 0.0,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -166,6 +176,8 @@ final class FluxJob: Identifiable {
         self.isEditMode = isEditMode
         self.editImagePaths = editImagePaths
         self.board = board
+        self.pidDecode = pidDecode
+        self.pidDegradeSigma = pidDegradeSigma
         self.status = .pending
         self.log = ""
         self.currentStep = 0
@@ -180,6 +192,7 @@ extension FluxJob: Codable {
         case width, height, seed, seeds, steps, guidance, loras, quantize, lowRam
         case imagePath, imageStrength, isEditMode, editImagePaths, board
         case status, log, outputPath, resolvedSeed, thumbnailData
+        case pidDecode, pidDegradeSigma
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
 
@@ -206,6 +219,8 @@ extension FluxJob: Codable {
             isEditMode: (try? c.decode(Bool.self, forKey: .isEditMode)) ?? false,
             editImagePaths: (try? c.decode([String].self, forKey: .editImagePaths)) ?? [],
             board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
+            pidDecode: (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false,
+            pidDegradeSigma: (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0,
             createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
         )
         status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
@@ -242,6 +257,8 @@ extension FluxJob: Codable {
         try c.encode(isEditMode, forKey: .isEditMode)
         try c.encode(editImagePaths, forKey: .editImagePaths)
         try c.encode(board, forKey: .board)
+        try c.encode(pidDecode, forKey: .pidDecode)
+        try c.encode(pidDegradeSigma, forKey: .pidDegradeSigma)
         try c.encode(status, forKey: .status)
         try c.encode(log, forKey: .log)
         try c.encode(currentStep, forKey: .currentStep)
