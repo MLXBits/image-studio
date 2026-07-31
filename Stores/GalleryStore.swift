@@ -27,8 +27,11 @@ struct GalleryItem: Identifiable, Equatable {
         URL(fileURLWithPath: path)
     }
 
+    /// Deliberately not `url.lastPathComponent`: `url` is computed, so that built a
+    /// fresh `URL` per access. `modelFamily` calls this for every gallery item on
+    /// every layout pass, which made URL parsing the hottest frame in a window resize.
     var filename: String {
-        url.lastPathComponent
+        (path as NSString).lastPathComponent
     }
 
     /// Which model family produced this image, used to filter the gallery to the
@@ -352,7 +355,17 @@ final class GalleryStore {
     /// Every reject-flagged image in the given model family, across all boards —
     /// the target set for "delete all rejects in one pass".
     func rejectedItems(modelFamily: ModelFamily) -> [GalleryItem] {
-        items.filter { $0.modelFamily == modelFamily && $0.flag == .reject }
+        // Flag first: it's a stored enum, while `modelFamily` parses the filename.
+        items.filter { $0.flag == .reject && $0.modelFamily == modelFamily }
+    }
+
+    /// Count only, for the affordances that just need "how many" — the views read this
+    /// several times per `body`, and building the array each time showed up in resize
+    /// profiles.
+    func rejectedCount(modelFamily: ModelFamily) -> Int {
+        items.reduce(into: 0) { total, item in
+            if item.flag == .reject, item.modelFamily == modelFamily { total += 1 }
+        }
     }
 }
 

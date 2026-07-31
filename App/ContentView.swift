@@ -23,6 +23,11 @@ struct ContentView: View {
         let sources: [SeedVR2UpscaleSheet.Source]
     }
 
+    /// Floor for the gallery pane once the window is too narrow to honour the user's width.
+    private static let minGalleryWidth: CGFloat = 160
+    /// Granularity of that clamp — see ``clampedGalleryWidth``.
+    private static let galleryWidthStep: CGFloat = 16
+
     @Environment(AppSettings.self) private var settings
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
@@ -258,8 +263,16 @@ struct ContentView: View {
         guard contentWidth > 0 else { return preferred }
         let paramsSpace: CGFloat = showingParams ? 351 : 0 // params pane + its divider
         let reserved = paramsSpace + 320 + 8 // + preview minimum + gallery divider
-        let maxGallery = max(160, contentWidth - reserved)
-        return min(preferred, maxGallery)
+        // Quantized while the clamp binds. Wide windows return `preferred`, a constant, so
+        // dragging doesn't touch the gallery's width at all. Once the window is narrow
+        // enough for this to bind, an unstepped value changes that width on every pixel of
+        // the drag — and each change costs a full SwiftUI re-layout plus an NSCollectionView
+        // grid reflow, which is what made the last stretch of a resize sluggish. Stepping
+        // cuts those relayouts by the step size; the preview pane is flexible and absorbs
+        // the remainder, so nothing is left blank.
+        let available = max(Self.minGalleryWidth, contentWidth - reserved)
+        let stepped = (available / Self.galleryWidthStep).rounded(.down) * Self.galleryWidthStep
+        return min(preferred, max(Self.minGalleryWidth, stepped))
     }
 
     /// Split into two chains: SwiftUI's type-checker times out on a single modifier

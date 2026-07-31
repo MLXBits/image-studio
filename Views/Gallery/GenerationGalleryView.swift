@@ -77,19 +77,35 @@ struct GenerationGalleryView: View {
         gallery.rejectedItems(modelFamily: modelFilter)
     }
 
+    /// The same set as `allRejects`, counted without building the array — `body` asks
+    /// "how many" in several places and only the delete action needs the items.
+    private var rejectCount: Int {
+        gallery.rejectedCount(modelFamily: modelFilter)
+    }
+
     private var orderedBoards: [String] {
-        let hasDefault = modelItems.contains { $0.board == "Default" }
-        let others = gallery.boards.filter { $0 != "Default" }.sorted()
-        return (hasDefault ? ["Default"] : []) + others
+        orderedBoards(for: modelItems)
     }
 
     private var gallerySections: [GallerySection] {
         // Named folders are shown even when empty (their header acts as the drop
         // target and delete affordance); the implicit "Default" board only appears
         // when it actually holds loose images at the output root.
-        orderedBoards.map { board in
-            let items = modelItems.filter { $0.board == board }
-            return GallerySection(board: board, items: items, isExpanded: !collapsedBoards.contains(board))
+        //
+        // `body` reads this on every layout pass, so a live window resize re-runs it
+        // continuously. Evaluate the filtered set once and group it, rather than
+        // filtering per board — that walked the whole gallery `boards + 1` times per
+        // frame, and blocked the SwiftUI update lock long enough to beachball.
+        // `Dictionary(grouping:)` keeps each group in encounter order, matching the
+        // previous per-board `filter`.
+        let items = modelItems
+        let byBoard = Dictionary(grouping: items, by: \.board)
+        return orderedBoards(for: items).map { board in
+            GallerySection(
+                board: board,
+                items: byBoard[board] ?? [],
+                isExpanded: !collapsedBoards.contains(board)
+            )
         }
     }
 
@@ -356,7 +372,7 @@ struct GenerationGalleryView: View {
             }
         }
         .confirmationDialog(
-            "Delete \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s")?",
+            "Delete \(rejectCount) rejected image\(rejectCount == 1 ? "" : "s")?",
             isPresented: $showingDeleteRejectsConfirm,
             titleVisibility: .visible
         ) {
@@ -413,11 +429,11 @@ struct GenerationGalleryView: View {
                 .buttonStyle(.iconButtonCompact).foregroundStyle(.secondary)
                 .help("Clear filters")
             }
-            if !allRejects.isEmpty {
+            if rejectCount > 0 {
                 Button(role: .destructive) { showingDeleteRejectsConfirm = true } label: {
                     HStack(spacing: 3) {
                         Image(systemName: "trash")
-                        Text("\(allRejects.count)")
+                        Text("\(rejectCount)")
                     }
                     .font(.caption)
                     .frame(height: IconButtonMetrics.compact)
@@ -426,7 +442,7 @@ struct GenerationGalleryView: View {
                     .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                 }
                 .buttonStyle(.plain).foregroundStyle(.red)
-                .help("Delete all \(allRejects.count) rejected image\(allRejects.count == 1 ? "" : "s") (⌘⌫)")
+                .help("Delete all \(rejectCount) rejected image\(rejectCount == 1 ? "" : "s") (⌘⌫)")
             }
         }
         .padding(.horizontal, 8)
@@ -559,7 +575,7 @@ struct GenerationGalleryView: View {
     private var deleteRejectsShortcut: some View {
         Button("") { deleteAllRejects() }
             .keyboardShortcut(.delete, modifiers: .command)
-            .disabled(allRejects.isEmpty)
+            .disabled(rejectCount == 0)
             .hidden()
             .accessibilityHidden(true)
     }
@@ -740,6 +756,14 @@ struct GenerationGalleryView: View {
 
     /// Lower-cased blob of the sidecar fields the search box matches against:
     /// prompt text, seed, model, and LoRA names.
+    /// Board order for an already-filtered item set, so callers that have one in hand
+    /// don't trigger another full `modelItems` pass.
+    private func orderedBoards(for items: [GalleryItem]) -> [String] {
+        let hasDefault = items.contains { $0.board == "Default" }
+        let others = gallery.boards.filter { $0 != "Default" }.sorted()
+        return (hasDefault ? ["Default"] : []) + others
+    }
+
     private func searchHaystack(for item: GalleryItem) -> String {
         var parts: [String] = [item.filename]
         if let meta = item.metadata {

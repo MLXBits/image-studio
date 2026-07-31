@@ -936,11 +936,10 @@ struct GalleryCollectionView: NSViewRepresentable {
         guard let cv = scrollView.documentView as? GalleryNSCollectionView else { return }
         coord.parent = self
 
-        let oldSectionIds = coord.sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
-        let newSectionIds = sections.map { ($0.board, $0.items.map(\.id), $0.isExpanded) }
-        let structureChanged = !zip(oldSectionIds, newSectionIds).allSatisfy {
-            $0.0 == $1.0 && $0.1 == $1.1 && $0.2 == $1.2
-        } || oldSectionIds.count != newSectionIds.count
+        // Compared in place, with early exit. Mapping both sides into arrays of id
+        // arrays allocated twice per update — and near the window's minimum width the
+        // gallery pane's width tracks the drag, so this runs every resize frame.
+        let structureChanged = galleryStructureChanged(from: coord.sections, to: sections)
 
         coord.sections = sections
 
@@ -999,6 +998,23 @@ struct GalleryCollectionView: NSViewRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(self)
     }
+}
+
+/// Whether the section/item structure differs enough to need a full `reloadData`.
+/// Walks both sides in place and bails on the first mismatch — no intermediate arrays,
+/// because this runs on every `updateNSView`, and near the window's minimum width the
+/// gallery pane's width tracks the drag, so that is every resize frame.
+private func galleryStructureChanged(from old: [GallerySection], to new: [GallerySection]) -> Bool {
+    guard old.count == new.count else { return true }
+    for (lhs, rhs) in zip(old, new) {
+        guard lhs.board == rhs.board,
+              lhs.isExpanded == rhs.isExpanded,
+              lhs.items.count == rhs.items.count else { return true }
+        for (a, b) in zip(lhs.items, rhs.items) where a.id != b.id {
+            return true
+        }
+    }
+    return false
 }
 
 // MARK: - Focus helper
