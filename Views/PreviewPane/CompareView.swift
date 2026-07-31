@@ -92,30 +92,34 @@ struct CompareView: View {
                     .font(.title3).symbolRenderingMode(.hierarchical)
                     .foregroundStyle(.white.opacity(0.85))
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButton)
 
             Text("Compare").font(.headline).foregroundStyle(.white)
 
             Spacer()
 
             Button { onSwap() } label: {
+                // Pill chrome belongs inside the label: applied after .buttonStyle it
+                // would draw a large capsule whose only clickable part is the text.
                 Label("Make Select", systemImage: "arrow.left.arrow.right")
                     .font(.callout)
+                    .padding(.horizontal, 10)
+                    .frame(minHeight: IconButtonMetrics.size)
+                    .background(.white.opacity(0.14), in: Capsule())
+                    .contentShape(Capsule())
             }
             .buttonStyle(.plain)
             .foregroundStyle(.white)
-            .padding(.horizontal, 10).padding(.vertical, 5)
-            .background(.white.opacity(0.14), in: Capsule())
             .help("Promote the candidate to the select (⏎)")
 
             if canCycle {
                 HStack(spacing: 8) {
                     Button { cycle(-1) } label: { Image(systemName: "chevron.left") }
-                        .buttonStyle(.plain).foregroundStyle(.white)
+                        .buttonStyle(.iconButton).foregroundStyle(.white)
                     Text("\(candidatePosition) / \(candidateCount)")
                         .font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.8))
                     Button { cycle(1) } label: { Image(systemName: "chevron.right") }
-                        .buttonStyle(.plain).foregroundStyle(.white)
+                        .buttonStyle(.iconButton).foregroundStyle(.white)
                 }
             }
 
@@ -123,6 +127,8 @@ struct CompareView: View {
                 Button { resetZoom() } label: {
                     Label("Fit", systemImage: "arrow.down.right.and.arrow.up.left")
                         .font(.callout)
+                        .frame(minHeight: IconButtonMetrics.size)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain).foregroundStyle(.white.opacity(0.85))
             }

@@ -758,7 +758,11 @@ struct ContentView: View {
                     .accessibilityHidden(true)
 
                 Button { showingQueue.toggle() } label: {
+                    // Width is content-driven (icon, or a progress + count readout), so
+                    // only the height is pinned to the standard target.
                     queueStatusLabel
+                        .frame(minWidth: IconButtonMetrics.size, minHeight: IconButtonMetrics.size)
+                        .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
@@ -808,7 +812,8 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
-                .buttonStyle(.plain)
+                // Compact so the target stays inside the pill.
+                .buttonStyle(.iconButtonCompact)
                 .focusEffectDisabled()
                 .help("Clear the fixed seed (return to random)")
             }
@@ -1474,10 +1479,9 @@ struct ContentView: View {
                 } label: {
                     Image(systemName: "eject.fill")
                         .font(.caption2)
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                // Compact so the target stays inside the warm-model chip.
+                .buttonStyle(.iconButtonCompact)
                 .foregroundStyle(.secondary)
                 .disabled(driverController.isGenerating)
                 .help(driverController.isGenerating ? "Generating — cannot eject" : "Eject warm model")

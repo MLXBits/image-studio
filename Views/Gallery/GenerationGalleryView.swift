@@ -378,7 +378,7 @@ struct GenerationGalleryView: View {
             Button { showingNewGroup = true } label: {
                 Image(systemName: "plus").font(.caption)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .help("New group")
             .popover(isPresented: $showingNewGroup) { newGroupPopover }
         }
@@ -397,10 +397,8 @@ struct GenerationGalleryView: View {
                 Button { searchText = "" } label: {
                     Image(systemName: "xmark.circle.fill")
                         .font(.caption2)
-                        .frame(width: 20, height: 22)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).foregroundStyle(.tertiary)
+                .buttonStyle(.iconButtonCompact).foregroundStyle(.tertiary)
             }
 
             Divider().frame(height: 14)
@@ -411,10 +409,8 @@ struct GenerationGalleryView: View {
                 Button { clearFilters() } label: {
                     Image(systemName: "line.3.horizontal.decrease.circle.fill")
                         .font(.caption)
-                        .frame(width: 26, height: 22)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain).foregroundStyle(.secondary)
+                .buttonStyle(.iconButtonCompact).foregroundStyle(.secondary)
                 .help("Clear filters")
             }
             if !allRejects.isEmpty {
@@ -424,7 +420,7 @@ struct GenerationGalleryView: View {
                         Text("\(allRejects.count)")
                     }
                     .font(.caption)
-                    .frame(height: 22)
+                    .frame(height: IconButtonMetrics.compact)
                     .padding(.horizontal, 7)
                     .contentShape(Rectangle())
                     .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
@@ -453,9 +449,7 @@ struct GenerationGalleryView: View {
             Image(systemName: flagFilter.systemImage)
                 .font(.caption)
                 .foregroundStyle(flagFilter == .all ? Color.secondary : Color.accentColor)
-                .frame(height: 22)
-                .padding(.horizontal, 3)
-                .contentShape(Rectangle())
+                .iconMenuLabel(IconButtonMetrics.compact)
         }
         .menuStyle(.borderlessButton).fixedSize()
         .help("Filter by pick/reject flag")
@@ -479,7 +473,9 @@ struct GenerationGalleryView: View {
                 }
             }
             .foregroundStyle(minRating > 0 ? Color.accentColor : Color.secondary)
-            .frame(height: 22)
+            // Width is content-driven (icon, or icon + "3+"), so only the height is
+            // pinned to the compact metric.
+            .frame(minWidth: IconButtonMetrics.compact, minHeight: IconButtonMetrics.compact)
             .padding(.horizontal, 3)
             .contentShape(Rectangle())
         }
@@ -573,6 +569,10 @@ struct GenerationGalleryView: View {
     private func batchActionBarContent(showLabels: Bool) -> some View {
         let labelStyle = AdaptiveLabelStyle(showTitle: showLabels)
 
+        // AdaptiveLabelStyle drops the titles when the bar is narrow, turning these into
+        // icon-only buttons — so the label needs a real target in both states.
+        let minWidth: CGFloat? = showLabels ? nil : IconButtonMetrics.size
+
         return HStack(spacing: 8) {
             Text("\(selection.count) selected")
                 .font(.caption).foregroundStyle(.secondary)
@@ -582,6 +582,8 @@ struct GenerationGalleryView: View {
             Button { startCompare() } label: {
                 Label("Compare", systemImage: "rectangle.split.2x1")
                     .font(.caption).labelStyle(labelStyle)
+                    .frame(minWidth: minWidth, minHeight: IconButtonMetrics.size)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless).help("Compare two images side by side (c)")
 
@@ -593,6 +595,8 @@ struct GenerationGalleryView: View {
             } label: {
                 Label("Upscale", systemImage: "arrow.up.left.and.arrow.down.right")
                     .font(.caption).labelStyle(labelStyle)
+                    .frame(minWidth: minWidth, minHeight: IconButtonMetrics.size)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.borderless).help("Upscale all selected images with SeedVR2")
 
@@ -605,6 +609,8 @@ struct GenerationGalleryView: View {
             } label: {
                 Label("Move", systemImage: "folder")
                     .font(.caption).labelStyle(labelStyle)
+                    .frame(minWidth: minWidth, minHeight: IconButtonMetrics.size)
+                    .contentShape(Rectangle())
             }
             .menuStyle(.borderlessButton).fixedSize()
             .help("Move the selected images to a group")
@@ -614,7 +620,7 @@ struct GenerationGalleryView: View {
             } label: {
                 Image(systemName: "tag.slash").font(.caption)
             }
-            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .buttonStyle(.iconButton).foregroundStyle(.secondary)
             .help("Strip embedded metadata (prompt, parameters) from the selected images")
 
             Button(role: .destructive) {
@@ -623,12 +629,12 @@ struct GenerationGalleryView: View {
             } label: {
                 Image(systemName: "trash").font(.caption)
             }
-            .buttonStyle(.borderless).foregroundStyle(.red)
+            .buttonStyle(.iconButton).foregroundStyle(.red)
 
             Button { clearSelection(nextItem: nil) } label: {
                 Image(systemName: "xmark").font(.caption)
             }
-            .buttonStyle(.borderless).foregroundStyle(.secondary)
+            .buttonStyle(.iconButton).foregroundStyle(.secondary)
         }
         .lineLimit(1)
     }

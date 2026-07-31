@@ -30,6 +30,7 @@ struct ColorPaletteEditor: View {
                 Label("Add color", systemImage: "plus.circle.fill")
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                    .frame(minHeight: IconButtonMetrics.compact)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -48,7 +49,9 @@ struct ColorPaletteEditor: View {
                     .overlay(Circle().strokeBorder(Color.primary.opacity(0.15), lineWidth: 1))
                     .frame(width: 20, height: 20)
             }
-            .buttonStyle(.plain)
+            // A bare Circle hit-tests only its filled path; the style's Rectangle
+            // contentShape makes the whole slot clickable.
+            .buttonStyle(.iconButtonCompact)
             .help("Edit color")
             HexInputField(hex: hex) { newHex in
                 guard colors.indices.contains(idx) else { return }
@@ -61,10 +64,8 @@ struct ColorPaletteEditor: View {
                 Image(systemName: "xmark.circle.fill")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .help("Remove color")
         }
         .padding(.leading, 4)

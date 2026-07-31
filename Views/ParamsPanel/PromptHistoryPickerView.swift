@@ -135,10 +135,8 @@ struct PromptHistoryPickerView: View {
             } label: {
                 Image(systemName: entry.pinned ? "pin.fill" : "pin")
                     .font(.caption)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .foregroundStyle(entry.pinned ? Color.accentColor : .secondary)
             .help(entry.pinned ? "Unpin" : "Pin — pinned prompts are never evicted")
 
@@ -147,10 +145,8 @@ struct PromptHistoryPickerView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.caption)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .foregroundStyle(.red.opacity(0.7))
             .help("Remove from history")
         }
@@ -180,10 +176,9 @@ struct PromptHistoryButton: View {
         Button { showingHistory = true } label: {
             Image(systemName: "clock.arrow.circlepath")
                 .font(.system(size: 10))
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // Compact: sits inline in the Prompt section header beside .caption2 labels.
+        .buttonStyle(.iconButtonCompact)
         .foregroundStyle(.secondary)
         .help("Prompt history")
         .popover(isPresented: $showingHistory) {

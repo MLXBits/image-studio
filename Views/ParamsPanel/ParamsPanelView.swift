@@ -227,7 +227,7 @@ struct ParamsPanelView: View {
                     Spacer(minLength: 4)
                     Image(systemName: "plus")
                         .font(.system(size: 9))
-                        .frame(width: 18, height: 18)
+                        .iconHitTarget(IconButtonMetrics.compact)
                         .foregroundStyle(.secondary)
                 }
                 .frame(maxWidth: .infinity)
@@ -249,10 +249,8 @@ struct ParamsPanelView: View {
                 Button { showingTemplatePicker = true } label: {
                     Image(systemName: "pencil")
                         .font(.system(size: 9))
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .foregroundStyle(.secondary)
                 .help("Edit style selection")
             }
@@ -373,14 +371,14 @@ struct ParamsPanelView: View {
                     } label: {
                         Image(systemName: "dice").font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButton)
                     .accessibilityLabel("Pick random seed")
                     Button {
                         params.seed = -1
                     } label: {
                         Image(systemName: "arrow.counterclockwise").font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButton)
                     .accessibilityLabel("Reset to random (-1)")
                 }
             }
@@ -418,7 +416,7 @@ struct ParamsPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButton)
                     .accessibilityLabel("Remove reference image")
                 }
             }
@@ -560,7 +558,7 @@ struct ParamsPanelView: View {
                             .font(.caption)
                             .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButton)
                     .accessibilityLabel("Remove all images")
                 }
             }
@@ -637,14 +635,10 @@ struct ParamsPanelView: View {
                 } label: {
                     Image(systemName: "xmark")
                         .font(.system(size: 8, weight: .semibold))
-                        // The glyph is tiny; give it a frame + Rectangle hit area
-                        // so the whole right end of the chip removes it. Sized to
-                        // the chip height (~20pt) rather than the 24pt icon-button
-                        // standard so it doesn't overflow into neighbouring chips.
-                        .frame(width: 20, height: 20)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                // Compact so the target stays inside the chip instead of overflowing
+                // into its neighbours.
+                .buttonStyle(.iconButtonCompact)
                 .foregroundStyle(.secondary)
             }
         }
@@ -743,7 +737,7 @@ struct ParamsPanelView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButton)
             .accessibilityLabel("Remove image")
         }
         .padding(.horizontal, 6)

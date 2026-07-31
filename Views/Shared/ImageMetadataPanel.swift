@@ -142,7 +142,7 @@ struct ImageMetadataPanel: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.iconButtonCompact)
         .help("Copy these settings (everything but the prompt) to the clipboard")
     }
 
@@ -178,24 +178,24 @@ struct ImageMetadataPanel: View {
             Spacer()
             if let fn = onApplySettings {
                 Button("Apply Settings") { fn() }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Load all generation settings (including seed) without changing the prompt")
             }
 
             if let fn = onRemix {
                 Button("Remix") { fn() }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Re-generate this image with a new, random seed.")
             }
 
             if let fn = onUseInImg2Img {
                 Button { fn() } label: { Image(systemName: "photo.on.rectangle.angled") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Use as img2img input")
             }
             if let fn = onEditBoxes {
                 Button { fn() } label: { Image(systemName: "square.dashed") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Adjust the bounding boxes over this image. Loads the boxes into "
                         + "the form; fix the seed (or Apply Settings) to re-render this same image.")
             }
@@ -205,25 +205,28 @@ struct ImageMetadataPanel: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.writeObjects([img])
                 } label: { Image(systemName: "doc.on.doc") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Copy image to clipboard")
             }
             if let fn = onUpscale {
                 Button { fn() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Upscale with SeedVR2")
             }
             if let fn = onRevealInFinder {
                 Button { fn() } label: { Image(systemName: "folder") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Reveal in Finder")
             }
             if let fn = onShowLog {
                 Button { fn() } label: { Image(systemName: "text.alignleft") }
-                    .buttonStyle(.bordered).controlSize(.small)
+                    .buttonStyle(.bordered)
                     .help("Show generation log")
             }
         }
+        // Regular rather than .small: six of these are icon-only, and .small drew them
+        // at ~20pt — below the standard target.
+        .controlSize(.regular)
         .padding(.horizontal, 16)
         .padding(.vertical, 8)
     }
@@ -253,6 +256,8 @@ struct ImageMetadataPanel: View {
                         Text("\(seed)").font(.caption)
                     }
                     .foregroundStyle(.secondary)
+                    .frame(minHeight: IconButtonMetrics.compact)
+                    .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
                 .help("Click to copy seed")

@@ -301,7 +301,6 @@ struct IdeogramCaptionEditorView: View {
                         Image(systemName: "text.alignleft")
                     }
                     .buttonStyle(.bordered)
-                    .controlSize(.small)
                     .help("Show Gemma generation log")
                 }
                 Spacer()

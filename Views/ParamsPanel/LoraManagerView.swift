@@ -64,20 +64,16 @@ struct LoraManagerView: View {
                 Button { showingPicker = true } label: {
                     Image(systemName: "books.vertical")
                         .font(.caption)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
                 .help("Add from library or apply a stack")
             }
             if showAdd {
                 Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
                     Image(systemName: "plus")
                         .font(.caption)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
             }
         }
     }
@@ -261,14 +257,14 @@ private struct LoraRowView: View {
                     Button { onMoveUp() } label: {
                         Image(systemName: "chevron.up").font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButtonCompact)
                     .foregroundStyle(.secondary)
                     .disabled(!canMoveUp)
                     .help("Move up")
                     Button { onMoveDown() } label: {
                         Image(systemName: "chevron.down").font(.caption)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButtonCompact)
                     .foregroundStyle(.secondary)
                     .disabled(!canMoveDown)
                     .help("Move down")
@@ -276,7 +272,7 @@ private struct LoraRowView: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.red)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButtonCompact)
                 }
             }
             HStack(spacing: 6) {

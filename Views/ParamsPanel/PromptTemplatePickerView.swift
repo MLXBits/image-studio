@@ -47,10 +47,8 @@ struct PromptTemplatePickerView: View {
             }
             Button { showingAddSheet = true } label: {
                 Image(systemName: "plus")
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButton)
             .focusEffectDisabled()
             .help("Add custom template")
         }
@@ -194,10 +192,8 @@ struct PromptTemplatePickerView: View {
             } label: {
                 Image(systemName: "pencil")
                     .font(.caption)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .foregroundStyle(.secondary)
             .help("Edit template")
 
@@ -206,10 +202,8 @@ struct PromptTemplatePickerView: View {
             } label: {
                 Image(systemName: "trash")
                     .font(.caption)
-                    .frame(width: 22, height: 22)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
             .foregroundStyle(.red.opacity(0.7))
             .help("Delete template")
         }
@@ -383,7 +377,7 @@ struct TemplateEditSheet: View {
                         Image(systemName: "xmark.circle.fill")
                             .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.iconButton)
                     .help("Remove example image")
                 }
                 Button("Choose Image…") { browseExampleImage() }

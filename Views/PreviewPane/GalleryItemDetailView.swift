@@ -124,34 +124,36 @@ struct GalleryItemDetailView: View {
     /// keyboard shortcuts for mouse users. Clicking the current top star clears down
     /// one; clicking an active flag clears it.
     private var cullControlRow: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 8) {
             Button { onSetFlag?(item.flag == .pick ? nil : .pick) } label: {
                 Image(systemName: item.flag == .pick ? "flag.fill" : "flag")
                     .foregroundStyle(item.flag == .pick ? .green : .secondary)
             }
-            .buttonStyle(.plain).help("Pick (P)")
+            .buttonStyle(.iconButton).help("Pick (P)")
 
             Button { onSetFlag?(item.flag == .reject ? nil : .reject) } label: {
                 Image(systemName: "xmark")
                     .foregroundStyle(item.flag == .reject ? .red : .secondary)
             }
-            .buttonStyle(.plain).help("Reject (X)")
+            .buttonStyle(.iconButton).help("Reject (X)")
 
             Divider().frame(height: 14)
 
-            HStack(spacing: 3) {
+            // Compact and abutting: five 22pt frames give a wider pitch than the old
+            // ~13pt glyphs at spacing 3, without stretching the row to 5 × 28pt.
+            HStack(spacing: 0) {
                 ForEach(1 ... 5, id: \.self) { star in
                     Button { onSetRating?(item.rating == star ? star - 1 : star) } label: {
                         Image(systemName: star <= item.rating ? "star.fill" : "star")
                             .foregroundStyle(star <= item.rating ? .yellow : .secondary)
                     }
-                    .buttonStyle(.plain).help("Rate \(star)")
+                    .buttonStyle(.iconButtonCompact).help("Rate \(star)")
                 }
             }
             Spacer()
         }
         .font(.callout)
-        .padding(.horizontal, 12).padding(.vertical, 6)
+        .padding(.horizontal, 12).padding(.vertical, 2)
     }
 
     /// Apply-Settings closure for the metadata panel footer, selecting the Flux or

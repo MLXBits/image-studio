@@ -288,12 +288,12 @@ extension BBoxEditorView {
         Button(action: action) {
             Image(systemName: icon)
                 .font(.caption)
-                .frame(width: 26, height: 22)
+                .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.compact)
                 .background(active ? Color.accentColor : Color.secondary.opacity(0.15))
                 .foregroundStyle(active ? .white : .primary)
-                .clipShape(RoundedRectangle(cornerRadius: 5))
+                .clipShape(RoundedRectangle(cornerRadius: IconButtonMetrics.cornerRadius))
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.iconButton)
         .help(label)
     }
 
@@ -301,9 +301,10 @@ extension BBoxEditorView {
     func toolbarMenuLabel(_ icon: String) -> some View {
         Image(systemName: icon)
             .font(.caption)
-            .frame(width: 26, height: 22)
+            .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.compact)
             .background(Color.secondary.opacity(0.15))
             .foregroundStyle(.primary)
-            .clipShape(RoundedRectangle(cornerRadius: 5))
+            .clipShape(RoundedRectangle(cornerRadius: IconButtonMetrics.cornerRadius))
+            .iconMenuLabel()
     }
 }

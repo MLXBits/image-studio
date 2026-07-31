@@ -161,18 +161,16 @@ struct DimensionPickerView: View {
                         Button { aspectLocked.toggle() } label: {
                             Image(systemName: aspectLocked ? "lock.fill" : "lock.open")
                                 .font(.caption)
-                                .iconButtonHitTarget()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButton)
                         .foregroundStyle(aspectLocked ? Color.orange : Color.secondary)
                         .help(aspectLocked ? "Unlock aspect ratio" : "Lock aspect ratio")
 
                         Button(action: swapDimensions) {
                             Image(systemName: "arrow.up.arrow.down")
                                 .font(.caption)
-                                .iconButtonHitTarget()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButton)
                         .help("Swap width and height")
                     }
 
@@ -180,9 +178,8 @@ struct DimensionPickerView: View {
                         Button(action: toggleHalfRes) {
                             Image(systemName: "bolt.fill")
                                 .font(.caption)
-                                .iconButtonHitTarget()
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButton)
                         .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
                         .disabled(!aspectLocked)
                         .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
@@ -356,18 +353,6 @@ struct DimensionPickerView: View {
         }
         width = fitted.width
         height = fitted.height
-    }
-}
-
-// MARK: - Icon button hit target
-
-extension View {
-    /// Expands a small icon-button glyph to a comfortable, uniform square click
-    /// target so toolbar icons (lock / swap / rapid-mode bolt) are easy to hit
-    /// instead of requiring a pixel-perfect press on the glyph itself.
-    func iconButtonHitTarget(_ side: CGFloat = 16) -> some View {
-        frame(width: side, height: side)
-            .contentShape(Rectangle())
     }
 }
 

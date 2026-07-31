@@ -138,7 +138,7 @@ struct SettingsView: View {
                                 .font(.caption)
                                 .foregroundStyle(.secondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButtonCompact)
                         .help("Avoid ~/Pictures and ~/Documents if you don't want iCloud to sync generated images")
                     }
                     if s.outputDir.isEmpty {

@@ -104,10 +104,8 @@ struct ScenarioGeneratorView: View {
                 showGemmaLog = true
             } label: {
                 Image(systemName: "text.alignleft")
-                    .frame(width: 24, height: 24)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButton)
             .focusEffectDisabled()
             .foregroundStyle(.secondary)
             .help("Show Gemma generation log")
@@ -335,10 +333,9 @@ struct ScenarioGeneratorButton: View {
         } label: {
             Image(systemName: "wand.and.stars")
                 .font(.system(size: 10))
-                .frame(width: 18, height: 18)
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        // Compact: sits inline in the Prompt section header beside .caption2 labels.
+        .buttonStyle(.iconButtonCompact)
         .foregroundStyle(.secondary)
         .help("Scenario generator")
     }

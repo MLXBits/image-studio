@@ -140,7 +140,7 @@ struct LoraLibraryEditorView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
         }
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
@@ -346,7 +346,7 @@ struct LoraStacksEditorView: View {
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButtonCompact)
         }
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))

@@ -32,9 +32,9 @@ struct QueueDrawerView: View {
                     store.purgeTerminal()
                 } label: {
                     Image(systemName: "trash")
+                        .font(.caption)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.iconButton)
                 .foregroundStyle(.secondary)
                 .focusable(false)
                 .help("Remove all completed, failed, and cancelled jobs")
@@ -157,9 +157,9 @@ struct Ideogram4QueueDrawerView: View {
                     store.purgeTerminal()
                 } label: {
                     Image(systemName: "trash")
+                        .font(.caption)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.iconButton)
                 .foregroundStyle(.secondary)
                 .focusable(false)
                 .help("Remove all completed, failed, and cancelled jobs")
@@ -271,7 +271,8 @@ private struct QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
+                // Compact: queue rows are dense and cancel/restart sit side by side.
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
             }
@@ -281,7 +282,7 @@ private struct QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
             }
@@ -326,7 +327,8 @@ private struct Ideogram4QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
+                // Compact: queue rows are dense and cancel/restart sit side by side.
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
             }
@@ -336,7 +338,7 @@ private struct Ideogram4QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
             }
@@ -378,9 +380,9 @@ struct Krea2QueueDrawerView: View {
                     store.purgeTerminal()
                 } label: {
                     Image(systemName: "trash")
+                        .font(.caption)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.iconButton)
                 .foregroundStyle(.secondary)
                 .focusable(false)
                 .help("Remove all completed, failed, and cancelled jobs")
@@ -492,7 +494,8 @@ private struct Krea2QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
+                // Compact: queue rows are dense and cancel/restart sit side by side.
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
             }
@@ -502,7 +505,7 @@ private struct Krea2QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
             }
@@ -544,9 +547,9 @@ struct ZImageQueueDrawerView: View {
                     store.purgeTerminal()
                 } label: {
                     Image(systemName: "trash")
+                        .font(.caption)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.iconButton)
                 .foregroundStyle(.secondary)
                 .focusable(false)
                 .help("Remove all completed, failed, and cancelled jobs")
@@ -658,7 +661,8 @@ private struct ZImageQueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
+                // Compact: queue rows are dense and cancel/restart sit side by side.
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
             }
@@ -668,7 +672,7 @@ private struct ZImageQueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
             }
@@ -715,9 +719,9 @@ struct SeedVR2QueueDrawerView: View {
                     store.purgeTerminal()
                 } label: {
                     Image(systemName: "trash")
+                        .font(.caption)
                 }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
+                .buttonStyle(.iconButton)
                 .foregroundStyle(.secondary)
                 .focusable(false)
                 .help("Remove all completed, failed, and cancelled jobs")
@@ -836,7 +840,8 @@ private struct SeedVR2QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.red)
                 }
-                .buttonStyle(.plain)
+                // Compact: queue rows are dense and cancel/restart sit side by side.
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
             }
@@ -846,7 +851,7 @@ private struct SeedVR2QueueJobRow: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
             }

@@ -163,14 +163,14 @@ struct SeedVR2UpscaleSheet: View {
                 } label: {
                     Image(systemName: "dice").font(.caption)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
                 .accessibilityLabel("Pick random seed")
                 Button {
                     seed = -1
                 } label: {
                     Image(systemName: "arrow.counterclockwise").font(.caption)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
                 .accessibilityLabel("Reset to random (-1)")
                 Spacer()
             }

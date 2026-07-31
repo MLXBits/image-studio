@@ -316,9 +316,11 @@ struct ModelDefaultsView: View {
                             pendingDeleteVariant = (model, qLevel)
                         } label: {
                             Image(systemName: "xmark")
-                                .font(.system(size: 7, weight: .bold))
+                                .font(.system(size: 8, weight: .bold))
                         }
-                        .buttonStyle(.plain)
+                        // Compact so the target stays inside the capsule chip. This
+                        // deletes cached weights — it was a 7pt glyph before.
+                        .buttonStyle(.iconButtonCompact)
                     }
                     .padding(.horizontal, 6).padding(.vertical, 2)
                     .background(.green.opacity(0.15), in: Capsule())

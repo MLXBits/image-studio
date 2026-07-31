@@ -17,7 +17,9 @@ struct InfoButton: View {
                 .font(.caption)
                 .foregroundStyle(.secondary.opacity(0.7))
         }
-        .buttonStyle(.plain)
+        // Compact: ⓘ sits inline beside .caption2 field labels throughout the params
+        // panels, where a 28pt frame would stretch the label rows.
+        .buttonStyle(.iconButtonCompact)
         .accessibilityLabel("About \(title)")
         .accessibilityHint("Tap to learn more")
         .popover(isPresented: $showing, arrowEdge: .trailing) {

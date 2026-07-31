@@ -6,6 +6,11 @@ struct FullSizeImageView: View {
     private static let minScale: CGFloat = 1
     private static let maxScale: CGFloat = 12
     private static let imagePadding: CGFloat = 20
+    /// Fullscreen media chrome, deliberately larger than `IconButtonMetrics.size`: the
+    /// arrows float over the image with nothing adjacent to crowd them, and this is the
+    /// one control in the app that was already above the standard. The standard is a
+    /// floor, not a cap — do not copy this value into panel or row buttons.
+    private static let navButtonSize: CGFloat = 44
 
     let image: NSImage
     let onDismiss: () -> Void
@@ -63,8 +68,10 @@ struct FullSizeImageView: View {
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(.white.opacity(0.8))
                     }
-                    .buttonStyle(.plain)
-                    .padding(12)
+                    .buttonStyle(.iconButton)
+                    // Insets the button from the corner — the hit area is the style's
+                    // 28pt frame, not this padding.
+                    .padding(8)
                 }
                 Spacer()
             }
@@ -83,10 +90,10 @@ struct FullSizeImageView: View {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
+                                .frame(width: Self.navButtonSize, height: Self.navButtonSize)
                                 .background(.white.opacity(0.18), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
                         .padding(.leading, 20)
                     }
                     Spacer()
@@ -99,10 +106,10 @@ struct FullSizeImageView: View {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 20, weight: .medium))
                                 .foregroundStyle(.white)
-                                .frame(width: 44, height: 44)
+                                .frame(width: Self.navButtonSize, height: Self.navButtonSize)
                                 .background(.white.opacity(0.18), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
                         .padding(.trailing, 20)
                     }
                 }

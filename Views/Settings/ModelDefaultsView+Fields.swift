@@ -214,7 +214,7 @@ extension ModelDefaultsView {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.iconButtonCompact)
         .help("Reset to built-in default")
         .accessibilityLabel("Reset to built-in default")
     }

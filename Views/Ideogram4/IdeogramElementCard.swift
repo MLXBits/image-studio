@@ -92,17 +92,15 @@ struct IdeogramElementCard: View {
                 onFocus: onTextFocus
             )
 
-            // Fixed spacing + a uniform 24pt slot per row so the action buttons,
-            // the type chip, and the bbox icon are evenly distributed.
-            VStack(spacing: 6) {
+            // Fixed spacing + a uniform `IconButtonMetrics.size` slot per row so the
+            // action buttons, the type chip, and the bbox icon are evenly distributed.
+            VStack(spacing: 4) {
                 Button(action: onRemove) {
                     Image(systemName: "xmark.circle.fill")
                         .font(.body)
                         .foregroundStyle(.secondary)
-                        .frame(width: 24, height: 24)
-                        .contentShape(Rectangle())
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
                 .help("Remove element")
 
                 if onMoveForward != nil || onMoveBackward != nil {
@@ -117,7 +115,7 @@ struct IdeogramElementCard: View {
                     .frame(width: 18, height: 18)
                     .background(tagColor.opacity(0.12))
                     .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .frame(width: 24, height: 24)
+                    .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.size)
                     .help(el.type == .text ? "Text" : "Object")
 
                 if el.bbox.count == 4 {
@@ -126,7 +124,7 @@ struct IdeogramElementCard: View {
                     Image(systemName: "viewfinder")
                         .font(.caption2)
                         .foregroundStyle(.tertiary)
-                        .frame(width: 24, height: 24)
+                        .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.size)
                         .help("Bounding box (0–1000): "
                             + "x \(el.bbox[1])–\(el.bbox[3]), y \(el.bbox[0])–\(el.bbox[2])")
                 }
@@ -148,45 +146,37 @@ struct IdeogramElementCard: View {
                 .font(.body)
                 .foregroundStyle(.secondary)
                 .opacity(hasColors || showPalette ? 1 : 0.35)
-                .frame(width: 24, height: 24)
+                .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.size)
                 .background(
-                    RoundedRectangle(cornerRadius: 5)
+                    RoundedRectangle(cornerRadius: IconButtonMetrics.cornerRadius)
                         .fill(showPalette ? Color.secondary.opacity(0.18) : .clear)
                 )
-                .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.iconButton)
         .help(hasColors
             ? "Edit element colors (\(paletteColors.count))"
             : "Add element colors")
     }
 
-    /// Bring-forward / send-backward controls stacked in one 24pt slot.
+    /// Bring-forward / send-backward, as a menu in one standard slot. Side by side these
+    /// were two 11pt-wide targets — the narrowest controls in the app — and there is no
+    /// room in this rail to give each a full-width one.
     private var zOrderButtons: some View {
-        HStack(spacing: 1) {
-            Button { onMoveBackward?() } label: {
-                Image(systemName: "chevron.backward")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 11, height: 18)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(onMoveBackward == nil)
-            .help("Send backward")
-
-            Button { onMoveForward?() } label: {
-                Image(systemName: "chevron.forward")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.secondary)
-                    .frame(width: 11, height: 18)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .disabled(onMoveForward == nil)
-            .help("Bring forward")
+        Menu {
+            Button("Bring Forward") { onMoveForward?() }
+                .disabled(onMoveForward == nil)
+            Button("Send Backward") { onMoveBackward?() }
+                .disabled(onMoveBackward == nil)
+        } label: {
+            Image(systemName: "square.3.layers.3d")
+                .font(.caption)
+                .foregroundStyle(.secondary)
+                .iconMenuLabel()
         }
-        .frame(width: 24, height: 24)
+        .menuStyle(.borderlessButton)
+        .menuIndicator(.hidden)
+        .fixedSize()
+        .help("Reorder this element")
     }
 
     private var elementPaletteSection: some View {

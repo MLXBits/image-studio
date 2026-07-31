@@ -192,8 +192,10 @@ struct PreviewPaneView: View {
                             .symbolRenderingMode(.hierarchical)
                             .foregroundStyle(.secondary)
                     }
-                    .buttonStyle(.plain)
-                    .padding(10)
+                    .buttonStyle(.iconButton)
+                    // Insets the button from the corner — the hit area is the style's
+                    // 28pt frame, not this padding.
+                    .padding(6)
                 }
             }
 
@@ -205,10 +207,10 @@ struct PreviewPaneView: View {
                             Image(systemName: "chevron.left")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(.secondary)
-                                .frame(width: 30, height: 30)
+                                .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.size)
                                 .background(.secondary.opacity(0.1), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButton)
                         .padding(.leading, 14)
                     }
                     Spacer()
@@ -217,10 +219,10 @@ struct PreviewPaneView: View {
                             Image(systemName: "chevron.right")
                                 .font(.system(size: 15, weight: .semibold))
                                 .foregroundStyle(.secondary)
-                                .frame(width: 30, height: 30)
+                                .frame(width: IconButtonMetrics.size, height: IconButtonMetrics.size)
                                 .background(.secondary.opacity(0.1), in: Circle())
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.iconButton)
                         .padding(.trailing, 14)
                     }
                 }

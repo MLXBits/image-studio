@@ -61,7 +61,7 @@ struct FolderComboBox: View {
                     Image(systemName: "xmark.circle.fill")
                         .foregroundStyle(.secondary)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.iconButton)
                 .help("Clear group")
             }
 
@@ -71,10 +71,8 @@ struct FolderComboBox: View {
                 Image(systemName: "chevron.down")
                     .font(.caption2)
                     .foregroundStyle(.secondary)
-                    .frame(width: 28, height: 28)
-                    .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.iconButton)
             .disabled(options.isEmpty)
             .help("Show existing groups")
         }

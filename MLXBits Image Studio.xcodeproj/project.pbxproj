@@ -44,6 +44,7 @@
 		32CD239EE81E711BFC106E6F /* BBoxEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7487A27C328B569EF618E3BC /* BBoxEditorView.swift */; };
 		33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 174F374D4B5F7A05666D31B3 /* Assets.xcassets */; };
 		333970340121D49FD8E0298C /* PromptHistory.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4443AEA2099305CADF36EE5 /* PromptHistory.swift */; };
+		3461F0A77AE564C88AA9B423 /* IconButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F160B133D562A1B4415BEF /* IconButtonStyle.swift */; };
 		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		39FB05E51886E08ECB5A2CDA /* ZImageJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */; };
@@ -206,6 +207,7 @@
 		502FC77E6C94D5C5CAA181B2 /* BBoxTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxTemplates.swift; sourceTree = "<group>"; };
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
+		53F160B133D562A1B4415BEF /* IconButtonStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IconButtonStyle.swift; sourceTree = "<group>"; };
 		5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionTests.swift; sourceTree = "<group>"; };
 		562FDB8B64EB1EEFFA0FFC6D /* UvInstaller.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UvInstaller.swift; sourceTree = "<group>"; };
 		57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelState.swift; sourceTree = "<group>"; };
@@ -342,6 +344,7 @@
 				654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */,
 				B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */,
 				86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */,
+				53F160B133D562A1B4415BEF /* IconButtonStyle.swift */,
 				8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */,
 				D776D62562D137DBCD692E19 /* ImageMetadataPanel.swift */,
 				A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */,
@@ -769,6 +772,7 @@
 				76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */,
 				A6E084DCFD1C9C68B12F9AFD /* GenerationEstimateView.swift in Sources */,
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
+				3461F0A77AE564C88AA9B423 /* IconButtonStyle.swift in Sources */,
 				65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */,
 				1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */,
 				FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */,
