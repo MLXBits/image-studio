@@ -138,6 +138,45 @@ Adding Z-Image touched 24 files. In dependency order:
 
 Grepping for `ZImage` is the fastest way to find any touchpoint this list misses.
 
+## Icon buttons and hit targets
+
+Every icon-only control goes through `Views/Shared/IconButtonStyle.swift`. There
+are exactly **two** sizes and no third — do not invent one, and do not hand-roll
+`.frame(width:height:) + .contentShape(Rectangle())` on a new button.
+
+```swift
+Button { … } label: { Image(systemName: "dice").font(.caption) }
+    .buttonStyle(.iconButton)         // 28pt — the default, use this
+    .buttonStyle(.iconButtonCompact)  // 22pt — dense rows only
+```
+
+- **28pt (`IconButtonMetrics.size`)** is the default for anything icon-only.
+- **22pt (`IconButtonMetrics.compact`)** is only for a row already built around a
+  ~22pt line height: capsule chips, list-row accessories, the gallery filter bar,
+  inline affordances beside `.caption2` labels. If a 28 fits, use 28.
+- The style owns the frame, the hover fill, `contentShape`, and the pressed and
+  disabled states. It deliberately does **not** set a font — glyph size stays with
+  the caller.
+- `Menu` ignores `ButtonStyle`. Use `.iconMenuLabel()` on the label content, with
+  `.menuStyle(.borderlessButton)`. For bare shapes and `.onTapGesture` targets use
+  `.iconHitTarget()`; a `Circle()` alone hit-tests only its filled path.
+- For a label of content-driven width (icon + count, a progress readout), pin only
+  the height: `.frame(minWidth:minHeight:) + .contentShape(Rectangle())`.
+
+Two traps that produced most of the original ~45 undersized targets:
+
+- **`.padding()` after `.buttonStyle(...)` is not hit area.** It offsets layout, so
+  the control *looks* large and behaves glyph-sized. Chrome that should be
+  clickable — padding, a capsule or circle background — belongs **inside** the
+  label, before the style is applied.
+- **`.bordered` + `.controlSize(.small)`** draws an icon-only button at ~20pt.
+  Use `.controlSize(.regular)`, or give the label its own internal padding.
+
+Exempt: window `.toolbar` items (AppKit sizes those), non-interactive badges and
+status glyphs, whole-row `contentShape(Rectangle())` headers, and the full-size
+viewer's 44pt nav arrows (fullscreen media chrome; the standard is a floor, not a
+cap — see the comment in `FullSizeImageView.swift`).
+
 ## Conventions and gotchas
 
 - Swift 5.9 with `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor` — types are
