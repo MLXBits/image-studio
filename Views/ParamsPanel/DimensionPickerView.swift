@@ -138,6 +138,13 @@ struct DimensionPickerView: View {
 
     // MARK: - Header row
 
+    /// The widest row in every params panel, and the one that sets the whole panel's
+    /// minimum width — so it has a hard budget: **305pt**. That is the 350pt pane less
+    /// the panel's 12pt side padding, the scroll view's 5pt trailing content margin and
+    /// the section container's 8pt side padding. Overflow here is not clipped locally:
+    /// the panel's content column grows past the pane, the fixed-width frame centres it,
+    /// and *every* label in the panel loses its leading edge. Measure before adding to
+    /// this row (currently 295pt).
     private var headerRow: some View {
         HStack(alignment: .center, spacing: 5) {
             presetPill(dimSoloPreset)
@@ -155,7 +162,10 @@ struct DimensionPickerView: View {
             Spacer(minLength: 4)
 
             HStack(alignment: .center, spacing: 6) {
-                // Utility toggles stacked in two rows to save horizontal width.
+                // Utility controls in a 2×2 block to save horizontal width: at the 28pt
+                // icon-button standard a single row of four would cost 124pt, and even
+                // the info button hanging off the end of this HStack put the row 18pt
+                // over budget.
                 VStack(alignment: .leading, spacing: 3) {
                     HStack(spacing: 4) {
                         Button { aspectLocked.toggle() } label: {
@@ -183,15 +193,15 @@ struct DimensionPickerView: View {
                         .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
                         .disabled(!aspectLocked)
                         .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
+
+                        InfoButton(
+                            title: "Dimensions",
+                            description: dimensionsInfoText
+                        )
                     }
                 }
 
                 canvasPreview
-
-                InfoButton(
-                    title: "Dimensions",
-                    description: dimensionsInfoText
-                )
             }
         }
     }

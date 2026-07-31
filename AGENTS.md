@@ -177,6 +177,23 @@ status glyphs, whole-row `contentShape(Rectangle())` headers, and the full-size
 viewer's 44pt nav arrows (fullscreen media chrome; the standard is a floor, not a
 cap — see the comment in `FullSizeImageView.swift`).
 
+## Params panel width budget
+
+The params pane is a fixed 350pt (`ContentView.paramsPane`), and a row that needs
+more does **not** clip locally: the panel's content column reports the oversize
+width, the fixed frame centres it, and every label in the panel loses its leading
+edge — section titles first, because they sit outermost. It looks like the window
+is cutting off the sidebar; it is one row inside it.
+
+Budget for a row inside a `SectionContainerView`: **305pt** — 350 less the panel's
+12pt side padding, the scroll view's 5pt trailing content margin, and the
+container's 8pt side padding. Outside a section container it is 321pt.
+
+Widest rows today: the dimension picker header (295) and steps + seed (301). Both
+are near the line, so measure rather than eyeball when adding to either — a
+`NSHostingController(rootView:).sizeThatFits(in:)` probe on the row is enough.
+This is what four 28pt icon buttons in the dimension row cost the first time.
+
 ## Conventions and gotchas
 
 - Swift 5.9 with `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor` — types are
