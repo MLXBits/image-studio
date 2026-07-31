@@ -35,6 +35,10 @@ Carthage/Build/
 .claude/
 .continue/
 .cursor/
+# AGENTS.md is the tracked, canonical agent guidance. CLAUDE.md is a local
+# symlink to it so Claude Code picks it up automatically — create it with
+# `ln -s AGENTS.md CLAUDE.md` (see README).
+/CLAUDE.md
 
 # Local secrets (Team ID, credentials) — never commit
 .env

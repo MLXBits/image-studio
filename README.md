@@ -169,13 +169,28 @@ The tag is the sole source of truth for the version. (Optionally bump `MARKETING
 
 ```
 App/           App entry point and root layout
-Models/        Data models (FluxJob, Krea2Job, Ideogram4Job, IdeogramCaption, LoraEntry, catalog)
-Runner/        Generic JobRunner engine + per-family runners (Flux/Krea2/Ideogram4),
-               warm-driver controller, and shared subprocess/stepwise plumbing (RunnerSupport)
-Stores/        AppSettings, JobStore, Krea2JobStore, Ideogram4JobStore, GalleryStore, TimingStore (Observable state)
-Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4)
-Utilities/     KeychainHelper, MetadataSidecar, IdeogramCaptionGenerator, progress parser
-Tests/         Swift Testing unit tests (RunnerSupport, BBoxGeometry, caption JSON, hex color)
-Resources/     Info.plist, entitlements
+Models/        Job models, model catalog, LoRA entries, prompt history/templates
+Runner/        Generic JobRunner<Spec> engine, per-family runner specs, warm-driver controller
+Stores/        @Observable state — AppSettings, per-family job stores, GalleryStore, TimingStore
+Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4, Krea2, ZImage)
+Utilities/     KeychainHelper, MetadataSidecar, progress parser, caption/scenario LLMs, installers
+Tests/         Swift Testing unit tests
+Resources/     Info.plist, entitlements, bundled Python drivers
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
 ```
+
+For naming conventions, the per-family file layout, and a step-by-step recipe
+for adding a model family, see [AGENTS.md](AGENTS.md).
+
+### Working with an AI coding agent
+
+[AGENTS.md](AGENTS.md) is the canonical orientation file, read by Cursor,
+Codex, and others. Claude Code looks for `CLAUDE.md`, so after cloning, create
+a local symlink:
+
+```bash
+ln -s AGENTS.md CLAUDE.md
+```
+
+The symlink is gitignored on purpose — one tracked file, no duplicated
+guidance to keep in sync, and no tool-specific artifact in the repo.
