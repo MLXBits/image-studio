@@ -92,6 +92,7 @@ struct LoraManagerView: View {
                 let index = loras.firstIndex { $0.id == lora.id } ?? 0
                 LoraRowView(
                     lora: $lora,
+                    name: name(for: lora),
                     showNotes: showNotes,
                     showDelete: rowsEditable,
                     canMoveUp: index > 0,
@@ -170,6 +171,12 @@ struct LoraManagerView: View {
         }
     }
 
+    /// Card title: the curated library name when the LoRA is cataloged,
+    /// otherwise the entry's own filename/repo fallback.
+    private func name(for lora: LoraEntry) -> String {
+        library?.libraryEntry(path: lora.path)?.displayName ?? lora.displayName
+    }
+
     private func addLora() {
         let trimmed = newPath.trimmingCharacters(in: .whitespaces)
         guard !trimmed.isEmpty else { return }
@@ -231,6 +238,7 @@ struct LoraManagerView: View {
 
 private struct LoraRowView: View {
     @Binding var lora: LoraEntry
+    let name: String
     var showNotes: Bool = false
     var showDelete: Bool = true
     var canMoveUp: Bool = false
@@ -247,10 +255,11 @@ private struct LoraRowView: View {
                     .labelsHidden()
                     .scaleEffect(0.7)
                     .frame(width: 32, height: 20)
-                Text(lora.displayName)
+                Text(name)
                     .font(.caption)
                     .lineLimit(1)
                     .truncationMode(.middle)
+                    .help(lora.path)
                     .padding(.leading, 8)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 if showDelete {
