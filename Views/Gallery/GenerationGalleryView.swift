@@ -282,7 +282,7 @@ struct GenerationGalleryView: View {
         } message: {
             Text(gallery.deleteError ?? "")
         }
-        .alert("Image in use", isPresented: Binding(
+        .alert("Image protected", isPresented: Binding(
             get: { gallery.lockError != nil },
             set: { if !$0 { gallery.lockError = nil } }
         )) {

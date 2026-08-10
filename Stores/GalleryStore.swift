@@ -90,9 +90,10 @@ final class GalleryStore {
     /// operations are refused and surface ``lockError``. Kept in sync by
     /// ``ContentView`` from the live params-panel state.
     var lockedPaths: Set<String> = []
-    /// Set when an operation is refused because it targets an image attached to an
-    /// img2img / edit drop area (see ``lockedPaths``). Distinct from ``deleteError``:
-    /// this is an intentional block, not a failure. Observed by ``GenerationGalleryView``.
+    /// Set when an operation is refused because it targets a protected image —
+    /// one attached to an img2img / edit drop area (see ``lockedPaths``), or one
+    /// flagged as a pick (deletion only). Distinct from ``deleteError``: this is an
+    /// intentional block, not a failure. Observed by ``GenerationGalleryView``.
     var lockError: String?
 
     var displayedItems: [GalleryItem] {
@@ -154,7 +155,7 @@ final class GalleryStore {
         }
     }
 
-    // MARK: - img2img lock helpers
+    // MARK: - deletion guards (img2img lock + approved picks)
 
     /// Standard "this image is attached to a drop area" message for a single file.
     private func lockMessage(_ name: String) -> String {
@@ -173,6 +174,23 @@ final class GalleryStore {
         let prefix = dir.path.hasSuffix("/") ? dir.path : dir.path + "/"
         return lockedPaths.first { $0.hasPrefix(prefix) }
             .map { URL(fileURLWithPath: $0).lastPathComponent }
+    }
+
+    /// Whether an image is approved (P) and so protected from deletion. The in-memory
+    /// flag only refreshes on scan, so the xattr counts too — either one means approved.
+    private func isPick(_ item: GalleryItem) -> Bool {
+        item.flag == .pick || GalleryCulling.readFlag(path: item.path) == .pick
+    }
+
+    /// Standard "this image is approved" message for a single file.
+    private func pickMessage(_ name: String) -> String {
+        "\(name) is flagged as a pick. Clear the flag (press P again) before deleting it."
+    }
+
+    /// Standard message when a batch deletion skips some approved images.
+    private func pickMessage(skipped: [GalleryItem]) -> String {
+        "Skipped \(skipped.count) image\(skipped.count == 1 ? "" : "s") flagged "
+            + "as a pick: \(skipped.map(\.filename).joined(separator: ", "))"
     }
 
     func moveItem(_ item: GalleryItem, toBoard board: String, outputDir: String) {
@@ -202,6 +220,11 @@ final class GalleryStore {
             lockError = lockMessage(item.filename)
             return
         }
+        // A pick is a keep decision: deleting it takes an explicit un-flag first.
+        if isPick(item) {
+            lockError = pickMessage(item.filename)
+            return
+        }
         do {
             try FileManager.default.removeItem(atPath: item.path)
         } catch {
@@ -222,6 +245,13 @@ final class GalleryStore {
         if let name = lockedName(under: dir) {
             lockError = "\"\(board)\" contains \(name), which is in use as an "
                 + "img2img source. Clear it from the drop area first."
+            return
+        }
+        // Same for an approved pick inside it: the folder delete would take it
+        // along, so block until the flag is cleared.
+        if let pick = items.first(where: { $0.board == board && isPick($0) }) {
+            lockError = "\"\(board)\" contains \(pick.filename), which is flagged as a "
+                + "pick. Clear the flag (press P again) before deleting the folder."
             return
         }
         // Purge cache entries for every image we know lives under this board
@@ -284,9 +314,13 @@ final class GalleryStore {
 
     func deleteItems(_ items: [GalleryItem], outputDir: String) {
         // Skip images attached to an img2img/edit drop area — deleting them would
-        // rug-pull a queued or future generation. The rest are deleted normally.
+        // rug-pull a queued or future generation — and images flagged as a pick,
+        // which are approved keeps. The rest are deleted normally.
         let locked = items.filter { lockedPaths.contains($0.path) }
-        let deletable = items.filter { !lockedPaths.contains($0.path) }
+        let unlocked = items.filter { !lockedPaths.contains($0.path) }
+        let picked = unlocked.filter { isPick($0) }
+        let pickedIds = Set(picked.map(\.id))
+        let deletable = unlocked.filter { !pickedIds.contains($0.id) }
         var failures: [String] = []
         for item in deletable {
             do {
@@ -300,8 +334,11 @@ final class GalleryStore {
         if !failures.isEmpty {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }
-        if !locked.isEmpty {
-            lockError = lockMessage(skipped: locked)
+        var blocked: [String] = []
+        if !locked.isEmpty { blocked.append(lockMessage(skipped: locked)) }
+        if !picked.isEmpty { blocked.append(pickMessage(skipped: picked)) }
+        if !blocked.isEmpty {
+            lockError = blocked.joined(separator: "\n\n")
         }
         scan(outputDir: outputDir)
     }
