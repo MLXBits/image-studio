@@ -2,14 +2,16 @@
 
 ## In progress
 
-### Ideogram 4 — awaiting upstream mflux merge
+### Ideogram 4 — prototype, pending end-to-end validation
 
 The Ideogram 4 UI is complete and shipping: structured-caption editor,
 Gemma-assisted caption generation, regional bounding-box layout editor, color
 palettes with hex entry, and an FP8/Q8/Q4 precision selector. Generation drives
-the `mflux-generate-ideogram4` CLI, which is **not yet in a published mflux
-release** — Ideogram 4 jobs show a "binary not found" error until that support
-merges. FLUX generation is unaffected.
+the `mflux-generate-ideogram4` CLI, which **now ships in released mflux** —
+0.18.0 added the CLI, 0.18.1 its stepwise progress — so the upstream blocker is
+cleared and jobs no longer fail with "binary not found". What remains before the
+prototype label comes off is an end-to-end pass over generation, quantization,
+and progress reporting.
 
 ## Planned
 

@@ -60,17 +60,18 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 | Krea 2 Turbo                | ~few  | Fast photographic model; text-to-image and img2img                      |
 | Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
-| Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Requires unreleased mflux support — see below |
+| Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Needs mflux 0.18.1+ — see below |
 | Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
 
 ---
 
 ## Ideogram 4 *(prototype)*
 
-> **Prototype:** Ideogram 4 support is fully built out in the app, but generation
-> depends on mflux CLI support that has not landed in a published mflux release
-> yet (see the note below). Until then, treat it as a preview of the editor and
-> workflow rather than a working generation path.
+> **Prototype:** Ideogram 4 support is fully built out in the app. The
+> `mflux-generate-ideogram4` CLI it drives now ships in released mflux — 0.18.0
+> added the CLI, 0.18.1 its step-by-step progress — so generation is no longer
+> blocked on upstream. It has not had the same end-to-end shakedown as the FLUX,
+> Krea 2, and Z-Image families, so it keeps the prototype label for now.
 
 Ideogram 4 is a structured-caption model: instead of a single prompt string it
 takes a JSON caption describing a high-level scene, an optional style block, and
@@ -88,10 +89,11 @@ box and color palette).
   directly; FP8 quantizes once via `mflux-save`.
 
 > **mflux support:** Ideogram 4 generation drives the `mflux-generate-ideogram4`
-> CLI. Any model whose CLI is missing from your mflux install is disabled in the
-> model picker with a note saying so, rather than failing when you hit Generate —
-> which family CLIs exist varies by mflux version. The model is gated on
-> HuggingFace — accept the terms on the model page before first download.
+> CLI, present from mflux 0.18.0 (0.18.1 adds stepwise progress). Any model whose
+> CLI is missing from your mflux install is disabled in the model picker with a
+> note saying so, rather than failing when you hit Generate — which family CLIs
+> exist varies by mflux version. The model is gated on HuggingFace — accept the
+> terms on the model page before first download.
 
 ---
 
