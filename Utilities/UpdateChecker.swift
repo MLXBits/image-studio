@@ -15,7 +15,10 @@ final class UpdateChecker {
     /// Numeric, component-wise comparison of dot-separated versions, ignoring a
     /// leading "v" and any non-numeric suffix on each component (e.g. "1.2.0-rc").
     /// Returns true when `lhs` is a strictly newer release than `rhs`.
-    static func compare(_ lhs: String, isNewerThan rhs: String) -> Bool {
+    ///
+    /// Nonisolated: a pure comparison, also used off the main actor by
+    /// ``MfluxInstaller/satisfiesMinimum(_:)`` to gate the mflux version floor.
+    nonisolated static func compare(_ lhs: String, isNewerThan rhs: String) -> Bool {
         let a = components(lhs)
         let b = components(rhs)
         for i in 0 ..< max(a.count, b.count) {
@@ -26,7 +29,7 @@ final class UpdateChecker {
         return false
     }
 
-    private static func components(_ version: String) -> [Int] {
+    nonisolated private static func components(_ version: String) -> [Int] {
         version
             .trimmingCharacters(in: CharacterSet(charactersIn: "vV "))
             .split(separator: ".")

@@ -5,7 +5,15 @@ import SwiftUI
 // MARK: - ContentView
 
 struct ContentView: View {
-    private enum MfluxAutoInstall { case idle, installing, done, failed(String) }
+    private enum MfluxAutoInstall {
+        case idle, installing, upgrading, done, failed(String), outdated(String)
+
+        /// Distinguishes the two spinner cases, which share a banner.
+        var isUpgrade: Bool {
+            if case .upgrading = self { return true }
+            return false
+        }
+    }
 
     /// Identifies a pending box-overlay editor session (image + its generation dims).
     private struct BoxOverlayContext: Identifiable {
@@ -964,16 +972,39 @@ struct ContentView: View {
         switch mfluxAutoInstall {
         case .idle:
             EmptyView()
-        case .installing:
+        case .installing, .upgrading:
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text("Installing mflux…")
+                Text(mfluxAutoInstall.isUpgrade ? "Updating mflux…" : "Installing mflux…")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 16)
             .padding(.vertical, 6)
             .frame(maxWidth: .infinity, alignment: .leading)
+            .background(.bar)
+            .overlay(alignment: .bottom) { Divider() }
+        case let .outdated(version):
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.orange)
+                    .font(.caption)
+                Text("mflux \(version) is older than \(MfluxInstaller.minimumVersion) — some models are unavailable")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+                    .help(
+                        "The mflux directory set in Settings → Advanced is not managed by this app,"
+                            + " so it was left untouched. Update it yourself to enable every model."
+                    )
+                Spacer()
+                Button("Dismiss") { mfluxAutoInstall = .idle }
+                    .buttonStyle(.bordered)
+                    .controlSize(.mini)
+            }
+            .padding(.horizontal, 16)
+            .padding(.vertical, 6)
+            .frame(maxWidth: .infinity)
             .background(.bar)
             .overlay(alignment: .bottom) { Divider() }
         case .done:
@@ -1282,11 +1313,43 @@ struct ContentView: View {
     }
 
     private func checkAndAutoInstallMflux() async {
-        guard BinaryDetector.mfluxGenerateFlux2(in: settings.mfluxBinaryDir).isEmpty else { return }
+        guard BinaryDetector.mfluxGenerateFlux2(in: settings.mfluxBinaryDir).isEmpty else {
+            await enforceMfluxVersionFloor()
+            return
+        }
         mfluxAutoInstall = .installing
+        await runMfluxInstall()
+    }
+
+    /// An mflux below ``MfluxInstaller/minimumVersion`` is missing model CLIs the app
+    /// advertises — Krea 2 landed in 0.18.1 — and those families just vanish from the
+    /// picker with nothing said. The install path alone cannot fix that: it only runs
+    /// when mflux is absent entirely, so anyone already on an older one would never be
+    /// lifted. Check the version too, and upgrade our own uv-managed install in place.
+    private func enforceMfluxVersionFloor() async {
+        let dir = settings.mfluxBinaryDir
+        guard let version = await Task.detached(priority: .utility, operation: {
+            BinaryDetector.mfluxVersion(in: dir)
+        }).value, !MfluxInstaller.satisfiesMinimum(version) else { return }
+
+        // A dev checkout or hand-picked directory is the user's to manage; say it is
+        // too old rather than reinstalling over it.
+        guard await Task.detached(priority: .utility, operation: {
+            MfluxInstaller.isUVManaged(binaryDir: dir)
+        }).value else {
+            mfluxAutoInstall = .outdated(version)
+            return
+        }
+        mfluxAutoInstall = .upgrading
+        await runMfluxInstall()
+    }
+
+    private func runMfluxInstall() async {
         do {
             let binDir = try await MfluxInstaller.install()
+            BinaryDetector.invalidateProbes()
             settings.mfluxBinaryDir = binDir
+            settings.refreshAvailableModels()
             mfluxAutoInstall = .done
             try? await Task.sleep(for: .seconds(3))
             mfluxAutoInstall = .idle

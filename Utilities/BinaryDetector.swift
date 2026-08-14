@@ -5,11 +5,11 @@ nonisolated enum BinaryDetector {
     /// Memoises a probe per interpreter path. The probe spawns a process, so it
     /// must not run on every view body evaluation; keying on the path means a
     /// changed mflux directory in Settings re-probes rather than going stale.
-    private final class ProbeCache: @unchecked Sendable {
+    private final class ProbeCache<Value: Sendable>: @unchecked Sendable {
         private let lock = NSLock()
-        private var results: [String: Bool] = [:]
+        private var results: [String: Value] = [:]
 
-        func value(for key: String, compute: () -> Bool) -> Bool {
+        func value(for key: String, compute: () -> Value) -> Value {
             lock.lock()
             if let hit = results[key] {
                 lock.unlock()
@@ -22,9 +22,62 @@ nonisolated enum BinaryDetector {
             lock.unlock()
             return computed
         }
+
+        func reset() {
+            lock.lock()
+            results.removeAll()
+            lock.unlock()
+        }
     }
 
-    private static let pidDecodeProbeCache = ProbeCache()
+    private static let pidDecodeProbeCache = ProbeCache<Bool>()
+    private static let mfluxVersionProbeCache = ProbeCache<String?>()
+
+    /// Drops the memoised probes. Call after installing or upgrading mflux: the
+    /// interpreter path is unchanged by an upgrade, so the cache key alone cannot
+    /// tell that what it points at is now a different version.
+    static func invalidateProbes() {
+        pidDecodeProbeCache.reset()
+        mfluxVersionProbeCache.reset()
+    }
+
+    /// The version of the `mflux` package importable by the install rooted at `dir`,
+    /// or nil when it cannot be determined. Asks the interpreter rather than reading
+    /// a `dist-info` directory name so editable installs resolve correctly.
+    static func mfluxVersion(in dir: String) -> String? {
+        let shim = mfluxGenerateFlux2(in: dir)
+        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return nil }
+        return mfluxVersionProbeCache.value(for: python) {
+            runProbe(python: python, code: """
+            import importlib.metadata as m, sys
+            try:
+                sys.stdout.write(m.version("mflux"))
+            except Exception:
+                pass
+            """)
+        }
+    }
+
+    /// Runs `python -c code` and returns its trimmed stdout, or nil when the process
+    /// cannot start or writes nothing.
+    private static func runProbe(python: String, code: String) -> String? {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: python)
+        proc.arguments = ["-c", code]
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = FileHandle.nullDevice
+        do {
+            try proc.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        proc.waitUntilExit()
+        let out = (String(data: data, encoding: .utf8) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return out.isEmpty ? nil : out
+    }
 
     /// Whether the mflux install rooted at `dir` has the PiD pixel-diffusion
     /// decoder (`--pid-decode`). Gates the toggle in the Dimensions section so it
@@ -41,28 +94,13 @@ nonisolated enum BinaryDetector {
         let shim = mfluxGenerateFlux2(in: dir)
         guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return false }
         return pidDecodeProbeCache.value(for: python) {
-            let probe = """
+            runProbe(python: python, code: """
             import importlib.util as u, pathlib, sys
             s = u.find_spec("mflux")
             loc = (s.submodule_search_locations or [None])[0] if s else None
             ok = loc is not None and (pathlib.Path(loc) / "models/common/pid_decoder").is_dir()
             sys.stdout.write("1" if ok else "0")
-            """
-            let proc = Process()
-            proc.executableURL = URL(fileURLWithPath: python)
-            proc.arguments = ["-c", probe]
-            let pipe = Pipe()
-            proc.standardOutput = pipe
-            proc.standardError = FileHandle.nullDevice
-            do {
-                try proc.run()
-            } catch {
-                return false
-            }
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            proc.waitUntilExit()
-            let out = String(bytes: data, encoding: .utf8) ?? ""
-            return out.trimmingCharacters(in: .whitespacesAndNewlines) == "1"
+            """) == "1"
         }
     }
 
@@ -100,9 +138,10 @@ nonisolated enum BinaryDetector {
     /// model variant generates with. Drives the model picker: a family whose CLI
     /// is absent is not offered rather than failing at spawn time.
     ///
-    /// mflux gains CLIs between releases (`mflux-generate-krea2` landed after
-    /// 0.18.0), and the app installs mflux unpinned, so this cannot be inferred
-    /// from a version number.
+    /// Still a filesystem probe rather than a version comparison even though
+    /// ``MfluxInstaller/minimumVersion`` now sets a floor: the floor is only a
+    /// lower bound, mflux keeps adding CLIs above it, and the directory may point
+    /// at a checkout whose version says nothing about which families it carries.
     static func supports(_ variant: FluxModelVariant, in dir: String) -> Bool {
         guard let name = variant.generateCLIName else { return true }
         return resolve(name, in: dir) != nil

@@ -395,7 +395,10 @@ struct SettingsView: View {
     private func installMflux() async {
         mfluxSetupPhase = .installing
         do {
-            settings.mfluxBinaryDir = try await MfluxInstaller.install()
+            let binDir = try await MfluxInstaller.install()
+            BinaryDetector.invalidateProbes()
+            settings.mfluxBinaryDir = binDir
+            settings.refreshAvailableModels()
             mfluxSetupPhase = .idle
         } catch {
             mfluxSetupPhase = .failed(error.localizedDescription)
