@@ -71,6 +71,9 @@ class AppSettings {
         var activeTemplateIDs: [UUID]?
         var batchShortcutPreset: Int?
         var batchShortcutCustomCount: Int?
+        /// Aspect-preset area targets, in megapixels: normal quality and rapid iteration.
+        var targetMegapixels: Double?
+        var rapidTargetMegapixels: Double?
         // Ideogram 4
         var gemmaModelPath: String?
         var ideogram4ModelRepoOverride: String?
@@ -286,6 +289,18 @@ class AppSettings {
     /// The effective count triggered by ⌘⌥↵.
     var batchShortcutCount: Int {
         batchShortcutPreset == 0 ? batchShortcutCustomCount : batchShortcutPreset
+    }
+
+    /// Total area the aspect-ratio preset buttons aim for, in megapixels.
+    /// Clamped to ``DimensionConstraints/megapixelTargetRange``.
+    var targetMegapixels: Double {
+        didSet { save() }
+    }
+
+    /// Area the preset buttons aim for while rapid iteration (⚡) is on — draft sizes
+    /// meant to be upscaled later in img-2-img.
+    var rapidTargetMegapixels: Double {
+        didSet { save() }
     }
 
     // MARK: - Ideogram 4
@@ -561,6 +576,8 @@ class AppSettings {
             ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
         batchShortcutPreset = s.batchShortcutPreset ?? 3
         batchShortcutCustomCount = s.batchShortcutCustomCount ?? 25
+        targetMegapixels = DimensionConstraints.clampMegapixels(s.targetMegapixels ?? 1.0)
+        rapidTargetMegapixels = DimensionConstraints.clampMegapixels(s.rapidTargetMegapixels ?? 0.25)
         gemmaModelPath = s.gemmaModelPath ?? "mlx-community/gemma-3-12b-it-4bit"
         ideogram4ModelRepoOverride = s.ideogram4ModelRepoOverride
         lastIdeogramPreset = s.lastIdeogramPreset
@@ -724,6 +741,8 @@ class AppSettings {
             lastIdeogramHeight: lastIdeogramHeight,
             lastIdeogramQuantize: lastIdeogramQuantize
         )
+        s.targetMegapixels = targetMegapixels
+        s.rapidTargetMegapixels = rapidTargetMegapixels
         s.lastIdeogramCaption = lastIdeogramCaption
         s.lastIdeogramPlainPrompt = lastIdeogramPlainPrompt
         s.lastIdeogramUsePlainPrompt = lastIdeogramUsePlainPrompt

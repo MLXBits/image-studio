@@ -44,22 +44,6 @@ enum AspectPreset: String, CaseIterable, Identifiable {
         }
     }
 
-    /// Fixed ~1MP canonical dimensions so pressing a preset is always deterministic.
-    var targetDimensions: (width: Int, height: Int)? {
-        switch self {
-        case .free: nil
-        case .sq1h1: (1024, 1024) // 1.05 MP
-        case .w16h9: (1360, 768) // 1.04 MP
-        case .w9h16: (768, 1360)
-        case .w3h2: (1248, 832) // 1.04 MP
-        case .w2h3: (832, 1248)
-        case .w4h3: (1152, 864) // 0.99 MP
-        case .w3h4: (864, 1152)
-        case .w21h9: (1568, 672) // 1.05 MP
-        case .w9h21: (672, 1568)
-        }
-    }
-
     var swapped: Self {
         switch self {
         case .free: .free
@@ -73,6 +57,14 @@ enum AspectPreset: String, CaseIterable, Identifiable {
         case .w9h16: .w16h9
         case .w9h21: .w21h9
         }
+    }
+
+    /// Canonical dimensions for this ratio at a target total area, so pressing a preset
+    /// is always deterministic. The target comes from settings (normal vs rapid
+    /// iteration); the constraints supply the step, per-axis range, and area cap.
+    func dimensions(megapixels: Double, constraints: DimensionConstraints) -> (width: Int, height: Int)? {
+        guard let ratio else { return nil }
+        return constraints.dimensions(ratio: ratio, megapixels: megapixels)
     }
 }
 
@@ -95,6 +87,8 @@ struct DimensionPickerView: View {
 
     let constraints: DimensionConstraints
 
+    @Environment(AppSettings.self) private var settings
+
     @State private var selectedAspect: AspectPreset
     @State private var aspectLocked: Bool
     @State private var hoveredPreset: AspectPreset?
@@ -105,8 +99,9 @@ struct DimensionPickerView: View {
         return selectedAspect.ratio
     }
 
-    private var halfResDimensions: (width: Int, height: Int)? {
-        halfResDimensions(for: selectedAspect)
+    /// The area the preset buttons currently aim for, in megapixels.
+    private var targetMegapixels: Double {
+        halfRes ? settings.rapidTargetMegapixels : settings.targetMegapixels
     }
 
     private var previewRatio: Double {
@@ -115,7 +110,10 @@ struct DimensionPickerView: View {
     }
 
     private var dimensionsInfoText: String {
-        var text = "Output image size. Preset buttons set common aspect ratios."
+        var text = "Output image size. Preset buttons set common aspect ratios at"
+            + " \(mpText(settings.targetMegapixels)) MP —"
+            + " \(mpText(settings.rapidTargetMegapixels)) MP with rapid iteration (⚡) on,"
+            + " both configurable in Settings › Generation."
             + " Width and height snap to multiples of \(constraints.step)."
         if let maxArea = constraints.maxArea {
             text += " Total size is capped at ~\(maxArea / 1_000_000) MP across any aspect ratio."
@@ -192,7 +190,11 @@ struct DimensionPickerView: View {
                         .buttonStyle(.iconButton)
                         .foregroundStyle(halfRes ? Color.yellow : Color.secondary)
                         .disabled(!aspectLocked)
-                        .help("Rapid iteration: generate images quickly, and upscale them later with img-2-img mode.")
+                        .help(
+                            "Rapid iteration: generate at \(mpText(settings.rapidTargetMegapixels)) MP"
+                                + " instead of \(mpText(settings.targetMegapixels)) MP,"
+                                + " and upscale later with img-2-img mode."
+                        )
 
                         InfoButton(
                             title: "Dimensions",
@@ -266,9 +268,8 @@ struct DimensionPickerView: View {
 
     // MARK: - Actions
 
-    private func halfResDimensions(for preset: AspectPreset) -> (width: Int, height: Int)? {
-        guard let (w, h) = preset.targetDimensions else { return nil }
-        return constraints.fit(width: w / 2, height: h / 2, preserveRatio: true)
+    private func presetDimensions(for preset: AspectPreset) -> (width: Int, height: Int)? {
+        preset.dimensions(megapixels: targetMegapixels, constraints: constraints)
     }
 
     private func resyncAspect(w: Int, h: Int) {
@@ -292,8 +293,7 @@ struct DimensionPickerView: View {
         Button {
             selectedAspect = preset
             aspectLocked = true
-            let dims = halfRes ? halfResDimensions(for: preset) : preset.targetDimensions
-            if let (w, h) = dims {
+            if let (w, h) = presetDimensions(for: preset) {
                 applyDimensions(width: w, height: h, preserveRatio: true)
             }
         } label: {
@@ -334,18 +334,17 @@ struct DimensionPickerView: View {
 
     private func toggleHalfRes() {
         halfRes.toggle()
-        if halfRes {
-            if let (w, h) = halfResDimensions {
-                applyDimensions(width: w, height: h, preserveRatio: true)
-            }
-        } else {
-            if let (w, h) = selectedAspect.targetDimensions {
-                applyDimensions(width: w, height: h, preserveRatio: true)
-            }
+        if let (w, h) = presetDimensions(for: selectedAspect) {
+            applyDimensions(width: w, height: h, preserveRatio: true)
         }
     }
 
     // MARK: - Math helpers
+
+    /// Trims a megapixel target for display: 1 rather than 1.00, 0.25 rather than 0.3.
+    private func mpText(_ value: Double) -> String {
+        value.formatted(.number.precision(.fractionLength(0 ... 2)))
+    }
 
     /// Snaps + area-fits a (width, height) pair via the active constraints, then
     /// commits both bindings. For the unlocked single-axis case, `reduceHeight`

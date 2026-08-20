@@ -100,6 +100,27 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    LabeledContent("Default quality") {
+                        megapixelField(value: $s.targetMegapixels)
+                    }
+                    LabeledContent("Rapid iteration") {
+                        megapixelField(value: $s.rapidTargetMegapixels)
+                    }
+                    Text(presetSizeExample(for: s))
+                        .font(.caption).foregroundStyle(.secondary)
+                } header: {
+                    Text("Canvas Presets")
+                } footer: {
+                    Text(
+                        "The aspect-ratio buttons in the params panel size the canvas to this total "
+                            + "area, keeping the ratio. ⚡ switches them to the rapid-iteration target — "
+                            + "draft fast, then upscale with img-2-img. Each model's step size and "
+                            + "megapixel ceiling still apply on top."
+                    )
+                    .font(.caption).foregroundStyle(.tertiary)
+                }
+
+                Section {
                     LabeledContent("Batch Size Shortcut") {
                         HStack(spacing: 8) {
                             Picker("", selection: $s.batchShortcutPreset) {
@@ -390,6 +411,34 @@ struct SettingsView: View {
     }
 
     // MARK: - Helpers
+
+    private func megapixelField(value: Binding<Double>) -> some View {
+        HStack(spacing: 4) {
+            // The title of a `value:format:` field is a *label*, not placeholder text —
+            // left visible it renders beside the box and wraps ("0.2 5").
+            TextField("", value: value, format: .number.precision(.fractionLength(0 ... 2)))
+                .labelsHidden()
+                .textFieldStyle(.roundedBorder)
+                .frame(width: 60)
+                .multilineTextAlignment(.trailing)
+                .onChange(of: value.wrappedValue) { _, v in
+                    let clamped = DimensionConstraints.clampMegapixels(v)
+                    if clamped != v { value.wrappedValue = clamped }
+                }
+            Text("MP")
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    /// Grounds the two targets in real numbers, using the default model's constraints —
+    /// the step size differs per family, so 1 MP is not one size everywhere.
+    private func presetSizeExample(for s: AppSettings) -> String {
+        let constraints: DimensionConstraints = s.defaultModel.isFlux ? .flux2 : .legacy
+        let full = constraints.dimensions(ratio: 1, megapixels: s.targetMegapixels)
+        let rapid = constraints.dimensions(ratio: 1, megapixels: s.rapidTargetMegapixels)
+        return "\(s.defaultModel.displayName) at 1:1 → \(full.width)×\(full.height),"
+            + " \(rapid.width)×\(rapid.height) rapid."
+    }
 
     @MainActor
     private func installMflux() async {
