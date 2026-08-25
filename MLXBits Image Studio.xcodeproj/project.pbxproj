@@ -147,6 +147,7 @@
 		F746EF59CF755C513993BBC9 /* ClipboardImageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FBF47724D9699F42B96FD1 /* ClipboardImageMonitor.swift */; };
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
 		FA4F045A3562D02ADD46F383 /* ImageMetadataInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */; };
+		FA8C9AA718CA49C3BBB57095 /* krea2_scenario_prompt_example.md in Resources */ = {isa = PBXBuildFile; fileRef = 6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */; };
 		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
 		FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2288F848C8AC536F933F7831 /* TimingModelTests.swift */; };
 /* End PBXBuildFile section */
@@ -230,6 +231,7 @@
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Gestures.swift"; sourceTree = "<group>"; };
+		6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = krea2_scenario_prompt_example.md; sourceTree = "<group>"; };
 		6F07AFF0DD77A3B5CD7EFFDF /* ZImageParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageParamsPanelView.swift; sourceTree = "<group>"; };
 		7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Fields.swift"; sourceTree = "<group>"; };
 		729F046BC0201746ADC15A2C /* mflux_driver.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = mflux_driver.py; sourceTree = "<group>"; };
@@ -465,6 +467,7 @@
 			isa = PBXGroup;
 			children = (
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
+				6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */,
 				729F046BC0201746ADC15A2C /* mflux_driver.py */,
 				79628AB5261A09BED858E668 /* scenario_llm_driver.py */,
 				FE1832089B5311712FEF1286 /* scenario_prompt.md */,
@@ -688,6 +691,7 @@
 			files = (
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
+				FA8C9AA718CA49C3BBB57095 /* krea2_scenario_prompt_example.md in Resources */,
 				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
 				AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */,
 				6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */,

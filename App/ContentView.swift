@@ -10,7 +10,9 @@ struct ContentView: View {
 
         /// Distinguishes the two spinner cases, which share a banner.
         var isUpgrade: Bool {
-            if case .upgrading = self { return true }
+            if case .upgrading = self {
+                return true
+            }
             return false
         }
     }
@@ -102,10 +104,16 @@ struct ContentView: View {
     /// refuses to delete a source out from under a queued or future generation.
     private var img2imgLockedPaths: Set<String> {
         var paths: Set<String> = []
-        if !params.imagePath.isEmpty { paths.insert(params.imagePath) }
+        if !params.imagePath.isEmpty {
+            paths.insert(params.imagePath)
+        }
         paths.formUnion(params.editImagePaths)
-        if !krea2Params.imagePath.isEmpty { paths.insert(krea2Params.imagePath) }
-        if !zimageParams.imagePath.isEmpty { paths.insert(zimageParams.imagePath) }
+        if !krea2Params.imagePath.isEmpty {
+            paths.insert(krea2Params.imagePath)
+        }
+        if !zimageParams.imagePath.isEmpty {
+            paths.insert(zimageParams.imagePath)
+        }
         return paths
     }
 
@@ -124,9 +132,15 @@ struct ContentView: View {
     private var unifiedQuantize: Binding<Int> {
         Binding(
             get: {
-                if params.model.isIdeogram4 { return ideogramParams.quantize }
-                if params.model.isKrea2 { return krea2Params.quantize }
-                if params.model.isZImage { return zimageParams.quantize }
+                if params.model.isIdeogram4 {
+                    return ideogramParams.quantize
+                }
+                if params.model.isKrea2 {
+                    return krea2Params.quantize
+                }
+                if params.model.isZImage {
+                    return zimageParams.quantize
+                }
                 return params.quantize
             },
             set: { v in
@@ -169,7 +183,9 @@ struct ContentView: View {
                 suppressModelResetOnRestore = false
                 return
             }
-            if adoptFamilyForm(m) { return }
+            if adoptFamilyForm(m) {
+                return
+            }
             guard m != .custom else { return }
             let d = settings.resolvedDefaults(for: m)
             params.steps = d.steps
@@ -307,6 +323,7 @@ struct ContentView: View {
                 zimageParams.applyDefaults(settings: settings, library: loraLibrary)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
+                try? ScenarioExamplePrompts.seedIfNeeded()
                 if settings.outputDir.isEmpty {
                     showingOutputDirPrompt = true
                 } else {
@@ -386,11 +403,31 @@ struct ContentView: View {
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
             // (the GenerationCoordinator gate), so this is what keeps queued work draining.
-            .onChange(of: store.isRunning) { _, running in if !running { pumpQueues() } }
-            .onChange(of: ideogram4Store.isRunning) { _, running in if !running { pumpQueues() } }
-            .onChange(of: krea2Store.isRunning) { _, running in if !running { pumpQueues() } }
-            .onChange(of: zimageStore.isRunning) { _, running in if !running { pumpQueues() } }
-            .onChange(of: seedVR2Store.isRunning) { _, running in if !running { pumpQueues() } }
+            .onChange(of: store.isRunning) {
+                _, running in if !running {
+                    pumpQueues()
+                }
+            }
+            .onChange(of: ideogram4Store.isRunning) {
+                _, running in if !running {
+                    pumpQueues()
+                }
+            }
+            .onChange(of: krea2Store.isRunning) {
+                _, running in if !running {
+                    pumpQueues()
+                }
+            }
+            .onChange(of: zimageStore.isRunning) {
+                _, running in if !running {
+                    pumpQueues()
+                }
+            }
+            .onChange(of: seedVR2Store.isRunning) {
+                _, running in if !running {
+                    pumpQueues()
+                }
+            }
             .onChange(of: gallery.items) { _, newItems in
                 guard let path = pendingSelectPath,
                       let item = newItems.first(where: { $0.path == path }) else { return }
@@ -426,7 +463,9 @@ struct ContentView: View {
                                 DragGesture(minimumDistance: 0, coordinateSpace: .global)
                                     .onChanged { value in
                                         let base: Double
-                                        if let b = galleryDragBase { base = b } else {
+                                        if let b = galleryDragBase {
+                                            base = b
+                                        } else {
                                             galleryDragBase = galleryWidth; base = galleryWidth
                                         }
                                         galleryWidth = max(160, min(500, base - value.translation.width))
@@ -437,7 +476,11 @@ struct ContentView: View {
                                     }
                             )
                             .onHover { hovering in
-                                if hovering { NSCursor.resizeLeftRight.push() } else { NSCursor.pop() }
+                                if hovering {
+                                    NSCursor.resizeLeftRight.push()
+                                } else {
+                                    NSCursor.pop()
+                                }
                             }
                     }
 
@@ -539,7 +582,9 @@ struct ContentView: View {
         }
         .onChange(of: selectedGalleryItem?.id) { _, id in
             guard let id, let item = gallery.items.first(where: { $0.id == id }) else {
-                if selectedGalleryItem == nil { restoreActiveJobPreview() }
+                if selectedGalleryItem == nil {
+                    restoreActiveJobPreview()
+                }
                 return
             }
             previewState = .galleryItem(item)
@@ -547,7 +592,11 @@ struct ContentView: View {
                 let url = item.url
                 Task.detached(priority: .userInitiated) {
                     let img = NSImage(contentsOf: url)
-                    await MainActor.run { if let img { self.fullSizeImage = img } }
+                    await MainActor.run {
+                        if let img {
+                            self.fullSizeImage = img
+                        }
+                    }
                 }
             }
         }
@@ -582,7 +631,9 @@ struct ContentView: View {
             if updates.isUpdateAvailable {
                 ToolbarItem(placement: .primaryAction) {
                     Button {
-                        if let url = updates.releaseURL { openURL(url) }
+                        if let url = updates.releaseURL {
+                            openURL(url)
+                        }
                     } label: {
                         Label("Update available", systemImage: "arrow.down.circle.fill")
                             .foregroundStyle(Color.accentColor)
@@ -612,8 +663,12 @@ struct ContentView: View {
     /// is never the picker-selected `modelFamily`, this is the only way its jobs
     /// surface in the drawer.
     private var showSeedVR2Queue: Bool {
-        if seedVR2Store.isRunning { return true }
-        if case .activeSeedVR2Job = previewState { return true }
+        if seedVR2Store.isRunning {
+            return true
+        }
+        if case .activeSeedVR2Job = previewState {
+            return true
+        }
         return false
     }
 
@@ -629,11 +684,15 @@ struct ContentView: View {
                     // otherwise upscale jobs never appear in the queue drawer.
                     SeedVR2QueueDrawerView(selectedJob: Binding(
                         get: {
-                            if case let .activeSeedVR2Job(j) = previewState { return j }
+                            if case let .activeSeedVR2Job(j) = previewState {
+                                return j
+                            }
                             return nil
                         },
                         set: { job in
-                            if let j = job { previewState = .activeSeedVR2Job(j) }
+                            if let j = job {
+                                previewState = .activeSeedVR2Job(j)
+                            }
                         }
                     ))
                     .environment(seedVR2Store)
@@ -643,11 +702,15 @@ struct ContentView: View {
                 } else if params.modelFamily == .ideogram4 {
                     Ideogram4QueueDrawerView(selectedJob: Binding(
                         get: {
-                            if case let .activeIdeogram4Job(j) = previewState { return j }
+                            if case let .activeIdeogram4Job(j) = previewState {
+                                return j
+                            }
                             return nil
                         },
                         set: { job in
-                            if let j = job { previewState = .activeIdeogram4Job(j) }
+                            if let j = job {
+                                previewState = .activeIdeogram4Job(j)
+                            }
                         }
                     ))
                     .environment(ideogram4Store)
@@ -657,11 +720,15 @@ struct ContentView: View {
                 } else if params.modelFamily == .krea2 {
                     Krea2QueueDrawerView(selectedJob: Binding(
                         get: {
-                            if case let .activeKrea2Job(j) = previewState { return j }
+                            if case let .activeKrea2Job(j) = previewState {
+                                return j
+                            }
                             return nil
                         },
                         set: { job in
-                            if let j = job { previewState = .activeKrea2Job(j) }
+                            if let j = job {
+                                previewState = .activeKrea2Job(j)
+                            }
                         }
                     ))
                     .environment(krea2Store)
@@ -671,11 +738,15 @@ struct ContentView: View {
                 } else if params.modelFamily == .zimage {
                     ZImageQueueDrawerView(selectedJob: Binding(
                         get: {
-                            if case let .activeZImageJob(j) = previewState { return j }
+                            if case let .activeZImageJob(j) = previewState {
+                                return j
+                            }
                             return nil
                         },
                         set: { job in
-                            if let j = job { previewState = .activeZImageJob(j) }
+                            if let j = job {
+                                previewState = .activeZImageJob(j)
+                            }
                         }
                     ))
                     .environment(zimageStore)
@@ -685,11 +756,15 @@ struct ContentView: View {
                 } else {
                     QueueDrawerView(selectedJob: Binding(
                         get: {
-                            if case let .activeJob(j) = previewState { return j }
+                            if case let .activeJob(j) = previewState {
+                                return j
+                            }
                             return nil
                         },
                         set: { job in
-                            if let j = job { previewState = .activeJob(j) }
+                            if let j = job {
+                                previewState = .activeJob(j)
+                            }
                         }
                     ))
                     .environment(store)
@@ -1046,7 +1121,9 @@ struct ContentView: View {
 
     private func useInImg2Img(_ path: String) {
         if params.isEditMode {
-            if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+            if !params.editImagePaths.contains(path) {
+                params.editImagePaths.append(path)
+            }
         } else {
             params.imagePath = path
             params.adoptResolvedPromptForImg2Img(at: path)
@@ -1216,8 +1293,12 @@ struct ContentView: View {
     private func boardForPath(_ path: String) -> String {
         let outDir = URL(fileURLWithPath: settings.outputDir).standardizedFileURL.path
         let parent = URL(fileURLWithPath: path).deletingLastPathComponent().standardizedFileURL
-        if parent.path == outDir { return "Default" }
-        if parent.deletingLastPathComponent().path == outDir { return parent.lastPathComponent }
+        if parent.path == outDir {
+            return "Default"
+        }
+        if parent.deletingLastPathComponent().path == outDir {
+            return parent.lastPathComponent
+        }
         return "Default"
     }
 
@@ -1228,7 +1309,9 @@ struct ContentView: View {
         guard !items.isEmpty else { return }
         if let idx = items.firstIndex(where: { $0.id == current.id }) {
             let next = max(0, min(items.count - 1, idx + delta))
-            if next != idx { selectedGalleryItem = items[next] }
+            if next != idx {
+                selectedGalleryItem = items[next]
+            }
         }
     }
 
@@ -1448,7 +1531,9 @@ struct ContentView: View {
         // itself, not be flattened to the family it happens to load as.
         settings.lastModel = params.model == .custom ? .custom : .krea2
         settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
-        if scenarioPrompts == nil { settings.recordPromptUse(krea2Params.prompt) }
+        if scenarioPrompts == nil {
+            settings.recordPromptUse(krea2Params.prompt)
+        }
         let wasIdle = !isAnyStoreRunning
         let variants = min(WildcardExpander.variantCount(krea2Params.prompt), 10)
         let jobs: [Krea2Job]
@@ -1493,7 +1578,9 @@ struct ContentView: View {
         // itself, not be flattened to the variant it happens to load as.
         settings.lastModel = params.model == .custom ? .custom : zimageParams.variant
         settings.lastZImage = zimageParams.snapshot() // remember the form across launches
-        if scenarioPrompts == nil { settings.recordPromptUse(zimageParams.prompt) }
+        if scenarioPrompts == nil {
+            settings.recordPromptUse(zimageParams.prompt)
+        }
         let wasIdle = !isAnyStoreRunning
         let variants = min(WildcardExpander.variantCount(zimageParams.prompt), 10)
         let jobs: [ZImageJob]

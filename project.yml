@@ -45,6 +45,8 @@ targets:
           - ".swiftlint.yml"
       - path: Resources/ideogram_caption_prompt.md
         buildPhase: resources
+      - path: Resources/krea2_scenario_prompt_example.md
+        buildPhase: resources
       - path: Resources/mflux_driver.py
         buildPhase: resources
       - path: Resources/scenario_prompt.md
