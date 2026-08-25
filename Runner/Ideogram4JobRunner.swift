@@ -81,7 +81,9 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
     /// UI shows "Override" and disables the precision selector.
     private static func modelSourceOverride(job: Ideogram4Job, settings: AppSettings) -> String? {
         let custom = job.customModelRepo.trimmingCharacters(in: .whitespaces)
-        if !custom.isEmpty { return custom }
+        if !custom.isEmpty {
+            return custom
+        }
         let override = (settings.ideogram4ModelRepoOverride ?? "").trimmingCharacters(in: .whitespaces)
         return override.isEmpty ? nil : override
     }
@@ -193,11 +195,15 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
             args += ["--lora-scales"] + enabledLoras.map { String(format: "%.2f", $0.strength) }
         }
 
-        if job.lowRam { args.append("--low-ram") }
+        if job.lowRam {
+            args.append("--low-ram")
+        }
         if settings.mlxCacheLimitGB > 0 {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }
-        if job.strictValidation { args.append("--strict-caption-validation") }
+        if job.strictValidation {
+            args.append("--strict-caption-validation")
+        }
         if let cfgEnd = settings.ideogram4CfgEnd, cfgEnd < 1.0 {
             args += ["--cfg-end", String(format: "%.2f", cfgEnd)]
         }

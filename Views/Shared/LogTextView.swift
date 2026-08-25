@@ -56,7 +56,9 @@ struct LogTextView: NSViewRepresentable {
 
         let current = storage.string as NSString
         let next = text as NSString
-        if current.isEqual(to: text) { return }
+        if current.isEqual(to: text) {
+            return
+        }
 
         let stickToBottom = isNearBottom(scrollView)
 
@@ -76,7 +78,9 @@ struct LogTextView: NSViewRepresentable {
         let replaceRange = NSRange(location: i, length: current.length - i)
         storage.replaceCharacters(in: replaceRange, with: attributed(next.substring(from: i), font: font))
 
-        if stickToBottom { textView.scrollToEndOfDocument(nil) }
+        if stickToBottom {
+            textView.scrollToEndOfDocument(nil)
+        }
     }
 
     private func attributed(_ string: String, font: NSFont? = nil) -> NSAttributedString {

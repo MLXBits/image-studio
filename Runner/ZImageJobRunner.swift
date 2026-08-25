@@ -43,7 +43,9 @@ enum ZImageRunnerSpec: JobRunnerSpec {
     /// all of which load directly.
     static func quantSaveDestination(job: ZImageJob, settings: AppSettings) -> URL? {
         guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
-        if job.modelVariant.preQuantizedRepoID(quantize: job.quantize) != nil { return nil }
+        if job.modelVariant.preQuantizedRepoID(quantize: job.quantize) != nil {
+            return nil
+        }
         return job.modelVariant.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
     }
 
@@ -83,7 +85,9 @@ enum ZImageRunnerSpec: JobRunnerSpec {
     /// Both name a specific set of weights, so neither takes a `--quantize` pass.
     private static func modelSourceOverride(job: ZImageJob, settings: AppSettings) -> String? {
         let custom = job.customModelRepo.trimmingCharacters(in: .whitespaces)
-        if !custom.isEmpty { return custom }
+        if !custom.isEmpty {
+            return custom
+        }
         let override = (settings.defaults(for: job.modelVariant).modelRepoOverride ?? "")
             .trimmingCharacters(in: .whitespaces)
         return override.isEmpty ? nil : override

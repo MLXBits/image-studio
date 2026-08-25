@@ -196,14 +196,20 @@ final class IdeogramCaptionGenerator {
             if escaped {
                 escaped = false
             } else if inString {
-                if ch == "\\" { escaped = true } else if ch == "\"" { inString = false }
+                if ch == "\\" {
+                    escaped = true
+                } else if ch == "\"" {
+                    inString = false
+                }
             } else {
                 switch ch {
                 case "\"": inString = true
                 case "{": depth += 1
                 case "}":
                     depth -= 1
-                    if depth == 0 { end = current }
+                    if depth == 0 {
+                        end = current
+                    }
                 default: break
                 }
             }

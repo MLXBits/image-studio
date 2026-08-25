@@ -17,7 +17,9 @@ struct PromptHistoryPickerView: View {
             ? settings.promptHistory
             : settings.promptHistory.filter { $0.prompt.localizedCaseInsensitiveContains(query) }
         return entries.sorted {
-            if $0.pinned != $1.pinned { return $0.pinned }
+            if $0.pinned != $1.pinned {
+                return $0.pinned
+            }
             return $0.lastUsedAt > $1.lastUsedAt
         }
     }

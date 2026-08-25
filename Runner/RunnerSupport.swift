@@ -137,7 +137,9 @@ enum RunnerSupport {
     }
 
     static func formatDuration(_ seconds: TimeInterval) -> String {
-        if seconds < 60 { return String(format: "%.1fs", seconds) }
+        if seconds < 60 {
+            return String(format: "%.1fs", seconds)
+        }
         return "\(Int(seconds) / 60)m \(Int(seconds) % 60)s"
     }
 
@@ -183,7 +185,9 @@ enum RunnerSupport {
             let prev = log.index(before: idx)
             if log[prev] == "\n" {
                 newlines += 1
-                if newlines >= maxLines { return String(log[idx...]) }
+                if newlines >= maxLines {
+                    return String(log[idx...])
+                }
             }
             idx = prev
         }
@@ -248,7 +252,9 @@ final class StepwiseWatcher {
 
     private func watchFrameInProgress(in dir: URL) {
         guard let newest = RunnerSupport.newestPNG(in: dir), newest != watchedFile else { return }
-        if RunnerSupport.isPNGComplete(at: newest) { return } // already finished; nothing to wait on
+        if RunnerSupport.isPNGComplete(at: newest) {
+            return
+        } // already finished; nothing to wait on
         stopFileWatch()
         let fd = open(newest, O_EVTONLY)
         guard fd >= 0 else { return }

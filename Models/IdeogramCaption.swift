@@ -75,10 +75,16 @@ extension IdeogramCaptionElement: Codable {
         // Schema key order — obj: type, bbox, desc, color_palette
         //                  — text: type, bbox, text, desc, color_palette
         try c.encode(type, forKey: .type)
-        if isBBoxValid { try c.encode(bbox, forKey: .bbox) }
-        if type == .text, let text, !text.isEmpty { try c.encode(text, forKey: .text) }
+        if isBBoxValid {
+            try c.encode(bbox, forKey: .bbox)
+        }
+        if type == .text, let text, !text.isEmpty {
+            try c.encode(text, forKey: .text)
+        }
         try c.encode(desc, forKey: .desc)
-        if let colorPalette, !colorPalette.isEmpty { try c.encode(colorPalette, forKey: .colorPalette) }
+        if let colorPalette, !colorPalette.isEmpty {
+            try c.encode(colorPalette, forKey: .colorPalette)
+        }
     }
 }
 
@@ -127,18 +133,32 @@ extension IdeogramCaptionStyle: Codable {
 
     func encode(to encoder: Encoder) throws {
         var c = encoder.container(keyedBy: CodingKeys.self)
-        if let aesthetics, !aesthetics.isEmpty { try c.encode(aesthetics, forKey: .aesthetics) }
-        if let lighting, !lighting.isEmpty { try c.encode(lighting, forKey: .lighting) }
+        if let aesthetics, !aesthetics.isEmpty {
+            try c.encode(aesthetics, forKey: .aesthetics)
+        }
+        if let lighting, !lighting.isEmpty {
+            try c.encode(lighting, forKey: .lighting)
+        }
         if isPhotoMode {
             // photo key order: aesthetics → lighting → photo → medium → color_palette
-            if let photo, !photo.isEmpty { try c.encode(photo, forKey: .photo) }
-            if let medium, !medium.isEmpty { try c.encode(medium, forKey: .medium) }
+            if let photo, !photo.isEmpty {
+                try c.encode(photo, forKey: .photo)
+            }
+            if let medium, !medium.isEmpty {
+                try c.encode(medium, forKey: .medium)
+            }
         } else {
             // art key order: aesthetics → lighting → medium → art_style → color_palette
-            if let medium, !medium.isEmpty { try c.encode(medium, forKey: .medium) }
-            if let artStyle, !artStyle.isEmpty { try c.encode(artStyle, forKey: .artStyle) }
+            if let medium, !medium.isEmpty {
+                try c.encode(medium, forKey: .medium)
+            }
+            if let artStyle, !artStyle.isEmpty {
+                try c.encode(artStyle, forKey: .artStyle)
+            }
         }
-        if let colorPalette, !colorPalette.isEmpty { try c.encode(colorPalette, forKey: .colorPalette) }
+        if let colorPalette, !colorPalette.isEmpty {
+            try c.encode(colorPalette, forKey: .colorPalette)
+        }
     }
 }
 
@@ -203,8 +223,12 @@ struct IdeogramCaption: Codable, Equatable {
         func encodeElement(_ el: IdeogramCaptionElement) -> String {
             var p: [String] = []
             p.append("\"type\":\(esc(el.type.rawValue))")
-            if el.isBBoxValid { p.append("\"bbox\":[\(el.bbox.map(String.init).joined(separator: ","))]") }
-            if el.type == .text, let t = el.text, !t.isEmpty { p.append("\"text\":\(esc(t))") }
+            if el.isBBoxValid {
+                p.append("\"bbox\":[\(el.bbox.map(String.init).joined(separator: ","))]")
+            }
+            if el.type == .text, let t = el.text, !t.isEmpty {
+                p.append("\"text\":\(esc(t))")
+            }
             p.append("\"desc\":\(esc(el.desc))")
             if let cp = el.colorPalette, !cp.isEmpty {
                 p.append("\"color_palette\":[\(cp.map(esc).joined(separator: ","))]")
@@ -214,14 +238,26 @@ struct IdeogramCaption: Codable, Equatable {
 
         func encodeStyle(_ s: IdeogramCaptionStyle) -> String? {
             var p: [String] = []
-            if let a = s.aesthetics, !a.isEmpty { p.append("\"aesthetics\":\(esc(a))") }
-            if let l = s.lighting, !l.isEmpty { p.append("\"lighting\":\(esc(l))") }
+            if let a = s.aesthetics, !a.isEmpty {
+                p.append("\"aesthetics\":\(esc(a))")
+            }
+            if let l = s.lighting, !l.isEmpty {
+                p.append("\"lighting\":\(esc(l))")
+            }
             if s.isPhotoMode {
-                if let ph = s.photo, !ph.isEmpty { p.append("\"photo\":\(esc(ph))") }
-                if let m = s.medium, !m.isEmpty { p.append("\"medium\":\(esc(m))") }
+                if let ph = s.photo, !ph.isEmpty {
+                    p.append("\"photo\":\(esc(ph))")
+                }
+                if let m = s.medium, !m.isEmpty {
+                    p.append("\"medium\":\(esc(m))")
+                }
             } else {
-                if let m = s.medium, !m.isEmpty { p.append("\"medium\":\(esc(m))") }
-                if let a = s.artStyle, !a.isEmpty { p.append("\"art_style\":\(esc(a))") }
+                if let m = s.medium, !m.isEmpty {
+                    p.append("\"medium\":\(esc(m))")
+                }
+                if let a = s.artStyle, !a.isEmpty {
+                    p.append("\"art_style\":\(esc(a))")
+                }
             }
             if let cp = s.colorPalette, !cp.isEmpty {
                 p.append("\"color_palette\":[\(cp.map(esc).joined(separator: ","))]")
@@ -264,7 +300,13 @@ struct IdeogramCaption: Codable, Equatable {
             let c = chars[i]
             if inString {
                 out.append(c)
-                if escaped { escaped = false } else if c == "\\" { escaped = true } else if c == "\"" { inString = false }
+                if escaped {
+                    escaped = false
+                } else if c == "\\" {
+                    escaped = true
+                } else if c == "\"" {
+                    inString = false
+                }
                 i += 1
                 continue
             }

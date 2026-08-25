@@ -14,7 +14,9 @@ struct InsetTextEditor: NSViewRepresentable {
 
         override func becomeFirstResponder() -> Bool {
             let ok = super.becomeFirstResponder()
-            if ok { onFocus?() }
+            if ok {
+                onFocus?()
+            }
             return ok
         }
 
@@ -72,10 +74,14 @@ struct InsetTextEditor: NSViewRepresentable {
             let userLen = parent.text.utf16.count
 
             // Edit is entirely within user range: allow normally.
-            if affectedCharRange.upperBound <= userLen { return true }
+            if affectedCharRange.upperBound <= userLen {
+                return true
+            }
 
             // Edit is entirely within ghost range: block.
-            if affectedCharRange.location >= userLen { return false }
+            if affectedCharRange.location >= userLen {
+                return false
+            }
 
             // Edit straddles the boundary (e.g. Cmd+A then type): clamp to user range
             // and perform the edit manually so the ghost text is preserved.
@@ -355,7 +361,9 @@ struct SpellCheckingTextField: NSViewRepresentable {
 
     func updateNSView(_ field: NSTextField, context: Context) {
         context.coordinator.parent = self
-        if field.stringValue != text { field.stringValue = text }
+        if field.stringValue != text {
+            field.stringValue = text
+        }
         field.placeholderString = placeholder
     }
 

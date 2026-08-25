@@ -336,7 +336,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 if !seenLastStep, progress.current == progress.total {
                     seenLastStep = true
                     denoiseEndTime = Date()
-                    if !job.log.hasSuffix("\n") { job.log += "\n" }
+                    if !job.log.hasSuffix("\n") {
+                        job.log += "\n"
+                    }
                     job.log += "▸ Decoding image...\n"
                 }
                 job.isDenoising = true
@@ -387,8 +389,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 job.completedSeedsInBatch = verified.count
                 batchImageLanded = verified.count
 
-                if verified.count == 1 { lastCompletedOutputPath = paths.first }
-                if verified.count == batchPaths.count { lastCompletedOutputPath = paths.last }
+                if verified.count == 1 {
+                    lastCompletedOutputPath = paths.first
+                }
+                if verified.count == batchPaths.count {
+                    lastCompletedOutputPath = paths.last
+                }
 
                 job.log += "▸ Saved \(verified.count) images  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
             } else {
@@ -480,7 +486,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             // The visible step/ETA come from tqdm in the log (see onLog); this structured
             // event only marks the denoise end for the learned-timing model.
             guard let step = event.step, let total = event.total else { return }
-            if step == total { progress.denoiseEnd = Date() }
+            if step == total {
+                progress.denoiseEnd = Date()
+            }
         case "image":
             guard let seed = event.seed, let path = event.path else { return }
             let generatedAt = Date()
@@ -492,7 +500,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             progress.lastImageAt = generatedAt
             progress.landed.append((seed: seed, path: path))
             job.completedSeedsInBatch = progress.landed.count
-            if progress.landed.count == 1 { lastCompletedOutputPath = path }
+            if progress.landed.count == 1 {
+                lastCompletedOutputPath = path
+            }
             batchImageLanded += 1
         default:
             break
@@ -616,7 +626,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
                     )
                     perImageStartTime = imageGeneratedAt
                     job.completedSeedsInBatch = found.count
-                    if found.count == 1 { lastCompletedOutputPath = item.path }
+                    if found.count == 1 {
+                        lastCompletedOutputPath = item.path
+                    }
                     batchImageLanded += 1
                 }
                 if found.count < paths.count {

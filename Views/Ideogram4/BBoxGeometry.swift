@@ -130,10 +130,18 @@ enum BBoxGeometry {
         let topHandles: Set<BBoxResizeHandle> = [.topLeft, .topMid, .topRight]
         let leftHandles: Set<BBoxResizeHandle> = [.topLeft, .leftMid, .bottomLeft]
         if y2 - y1 < minBox {
-            if topHandles.contains(handle) { y1 = y2 - minBox } else { y2 = y1 + minBox }
+            if topHandles.contains(handle) {
+                y1 = y2 - minBox
+            } else {
+                y2 = y1 + minBox
+            }
         }
         if x2 - x1 < minBox {
-            if leftHandles.contains(handle) { x1 = x2 - minBox } else { x2 = x1 + minBox }
+            if leftHandles.contains(handle) {
+                x1 = x2 - minBox
+            } else {
+                x2 = x1 + minBox
+            }
         }
         return [y1, x1, y2, x2]
     }
@@ -158,7 +166,9 @@ enum BBoxGeometry {
     static func frameZone(forNorm pt: CGPoint) -> String {
         let row = pt.y < 333 ? "top" : (pt.y < 667 ? "center" : "bottom")
         let col = pt.x < 333 ? "left" : (pt.x < 667 ? "center" : "right")
-        if row == "center" && col == "center" { return "center of frame" }
+        if row == "center" && col == "center" {
+            return "center of frame"
+        }
         return "\(row) \(col) of frame"
     }
 

@@ -42,21 +42,41 @@ struct GalleryItem: Identifiable, Equatable {
     /// filtered view and board as the image it was made from.
     var modelFamily: ModelFamily {
         let name = filename.lowercased()
-        if name.hasPrefix("ideogram") { return .ideogram4 }
-        if name.hasPrefix("krea2") { return .krea2 }
-        if name.hasPrefix("zimage") { return .zimage }
+        if name.hasPrefix("ideogram") {
+            return .ideogram4
+        }
+        if name.hasPrefix("krea2") {
+            return .krea2
+        }
+        if name.hasPrefix("zimage") {
+            return .zimage
+        }
         if name.hasPrefix("seedvr2") {
             // Prefer the embedded source metadata (definitive, and correct even for a
             // chained upscale whose source filename is itself "seedvr2_…").
-            if seedVR2Metadata?.sourceIdeogram4 != nil { return .ideogram4 }
-            if seedVR2Metadata?.sourceKrea2 != nil { return .krea2 }
-            if seedVR2Metadata?.sourceZImage != nil { return .zimage }
-            if seedVR2Metadata?.sourceFlux != nil { return .flux }
+            if seedVR2Metadata?.sourceIdeogram4 != nil {
+                return .ideogram4
+            }
+            if seedVR2Metadata?.sourceKrea2 != nil {
+                return .krea2
+            }
+            if seedVR2Metadata?.sourceZImage != nil {
+                return .zimage
+            }
+            if seedVR2Metadata?.sourceFlux != nil {
+                return .flux
+            }
             // Pre-inheritance sidecar: fall back to the source filename prefix.
             let src = ((seedVR2Metadata?.sourcePath ?? "") as NSString).lastPathComponent.lowercased()
-            if src.hasPrefix("ideogram") { return .ideogram4 }
-            if src.hasPrefix("krea2") { return .krea2 }
-            if src.hasPrefix("zimage") { return .zimage }
+            if src.hasPrefix("ideogram") {
+                return .ideogram4
+            }
+            if src.hasPrefix("krea2") {
+                return .krea2
+            }
+            if src.hasPrefix("zimage") {
+                return .zimage
+            }
             return .flux
         }
         return .flux
@@ -97,7 +117,9 @@ final class GalleryStore {
     var lockError: String?
 
     var displayedItems: [GalleryItem] {
-        if selectedBoard == "All" { return items }
+        if selectedBoard == "All" {
+            return items
+        }
         return items.filter { $0.board == selectedBoard }
     }
 
@@ -308,7 +330,9 @@ final class GalleryStore {
             purgedPaths.append(item.path)
         }
         ThumbnailCache.purge(paths: purgedPaths)
-        if !locked.isEmpty { lockError = lockMessage(skipped: locked) }
+        if !locked.isEmpty {
+            lockError = lockMessage(skipped: locked)
+        }
         scan(outputDir: outputDir)
     }
 
@@ -335,8 +359,12 @@ final class GalleryStore {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }
         var blocked: [String] = []
-        if !locked.isEmpty { blocked.append(lockMessage(skipped: locked)) }
-        if !picked.isEmpty { blocked.append(pickMessage(skipped: picked)) }
+        if !locked.isEmpty {
+            blocked.append(lockMessage(skipped: locked))
+        }
+        if !picked.isEmpty {
+            blocked.append(pickMessage(skipped: picked))
+        }
         if !blocked.isEmpty {
             lockError = blocked.joined(separator: "\n\n")
         }
@@ -401,7 +429,9 @@ final class GalleryStore {
     /// profiles.
     func rejectedCount(modelFamily: ModelFamily) -> Int {
         items.reduce(into: 0) { total, item in
-            if item.flag == .reject, item.modelFamily == modelFamily { total += 1 }
+            if item.flag == .reject, item.modelFamily == modelFamily {
+                total += 1
+            }
         }
     }
 }

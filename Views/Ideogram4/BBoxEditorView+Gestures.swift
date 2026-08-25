@@ -163,7 +163,11 @@ extension BBoxEditorView {
             copy.id = UUID()
             return copy
         }
-        if replace { elements = fresh } else { elements += fresh }
+        if replace {
+            elements = fresh
+        } else {
+            elements += fresh
+        }
         selectedID = nil
         mode = .select
         pendingTemplate = nil
@@ -240,7 +244,11 @@ extension BBoxEditorView {
         DragGesture(minimumDistance: 0, coordinateSpace: .named(BBoxEditorView.canvasSpace))
             .onChanged { value in
                 let norm = anchorNorm(value.location, canvasSize)
-                if isA { anchorA = norm } else { anchorB = norm }
+                if isA {
+                    anchorA = norm
+                } else {
+                    anchorB = norm
+                }
             }
             .onEnded { _ in writeOrientation() }
     }

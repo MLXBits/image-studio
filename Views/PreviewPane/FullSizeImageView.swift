@@ -136,7 +136,9 @@ struct FullSizeImageView: View {
         // area and leaves that chrome showing above the image.
         .ignoresSafeArea()
         .onContinuousHover { phase in
-            if case .active = phase { showChrome() }
+            if case .active = phase {
+                showChrome()
+            }
         }
         .onAppear {
             installKeyMonitor()
@@ -181,7 +183,9 @@ struct FullSizeImageView: View {
     private var panGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if panBase == nil { panBase = offset }
+                if panBase == nil {
+                    panBase = offset
+                }
                 let base = panBase ?? .zero
                 offset = clampedOffset(CGSize(
                     width: base.width + value.translation.width,
@@ -317,7 +321,11 @@ struct FullSizeImageView: View {
         // unconditional call is safe. (The on-screen arrow buttons still use live values.)
         showChrome()
         resetZoom()
-        if prev { onNavigatePrev?() } else { onNavigateNext?() }
+        if prev {
+            onNavigatePrev?()
+        } else {
+            onNavigateNext?()
+        }
     }
 
     /// Auto-advance after a pick/reject, matching Lightroom's cull rhythm.

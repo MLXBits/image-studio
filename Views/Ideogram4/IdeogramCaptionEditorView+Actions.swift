@@ -9,14 +9,22 @@ extension IdeogramCaptionEditorView {
     // MARK: - Style mutation
 
     func enterPhotoMode() {
-        if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
+        if caption.styleDescription == nil {
+            caption.styleDescription = IdeogramCaptionStyle()
+        }
         caption.styleDescription?.artStyle = nil
-        if caption.styleDescription?.photo == nil { caption.styleDescription?.photo = "" }
-        if (caption.styleDescription?.medium ?? "").isEmpty { caption.styleDescription?.medium = "photograph" }
+        if caption.styleDescription?.photo == nil {
+            caption.styleDescription?.photo = ""
+        }
+        if (caption.styleDescription?.medium ?? "").isEmpty {
+            caption.styleDescription?.medium = "photograph"
+        }
     }
 
     func enterArtStyleMode() {
-        if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
+        if caption.styleDescription == nil {
+            caption.styleDescription = IdeogramCaptionStyle()
+        }
         caption.styleDescription?.photo = nil
     }
 

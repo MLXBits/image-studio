@@ -23,7 +23,9 @@ struct FolderComboBox: View {
                 .onChange(of: text) { _, _ in
                     // Only filter while the user is actively typing; don't auto-open on focus
                     // (auto-open steals keyboard focus on macOS when field has a pre-filled value)
-                    if fieldFocused { showSuggestions = !suggestions.isEmpty }
+                    if fieldFocused {
+                        showSuggestions = !suggestions.isEmpty
+                    }
                 }
                 .popover(isPresented: $showSuggestions, arrowEdge: .bottom) {
                     ScrollView {

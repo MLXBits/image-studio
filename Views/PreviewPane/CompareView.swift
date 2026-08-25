@@ -143,7 +143,9 @@ struct CompareView: View {
     private var panGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if panBase == nil { panBase = offset }
+                if panBase == nil {
+                    panBase = offset
+                }
                 let base = panBase ?? .zero
                 offset = clampedOffset(CGSize(
                     width: base.width + value.translation.width,
@@ -180,9 +182,15 @@ struct CompareView: View {
                         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
                 }
-                .onAppear { if !isCandidate { selectFrame = geo.frame(in: .global) } }
+                .onAppear {
+                    if !isCandidate {
+                        selectFrame = geo.frame(in: .global)
+                    }
+                }
                 .onChange(of: geo.frame(in: .global)) { _, new in
-                    if !isCandidate { selectFrame = new }
+                    if !isCandidate {
+                        selectFrame = new
+                    }
                 }
             }
             .gesture(scale > Self.minScale ? panGesture : nil)
@@ -233,7 +241,11 @@ struct CompareView: View {
     }
 
     private func toggleZoom() {
-        if scale > Self.minScale { resetZoom() } else { scale = 2 }
+        if scale > Self.minScale {
+            resetZoom()
+        } else {
+            scale = 2
+        }
     }
 
     private func resetZoom() {
@@ -305,8 +317,12 @@ struct CompareView: View {
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         switch event.keyCode {
         case 53: onDismiss(); return nil // Escape
-        case 123: if canCycle { cycle(-1) }; return nil // Left
-        case 124: if canCycle { cycle(1) }; return nil // Right
+        case 123: if canCycle {
+                cycle(-1)
+            }; return nil // Left
+        case 124: if canCycle {
+                cycle(1)
+            }; return nil // Right
         case 36, 76, 126: onSwap(); return nil // Return / Enter / Up → make select
         default: break
         }

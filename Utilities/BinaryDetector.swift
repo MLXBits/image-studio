@@ -128,7 +128,9 @@ nonisolated enum BinaryDetector {
     static func resolve(_ name: String, in dir: String) -> String? {
         if !dir.isEmpty {
             let path = "\(dir)/\(name)"
-            if FileManager.default.fileExists(atPath: path) { return path }
+            if FileManager.default.fileExists(atPath: path) {
+                return path
+            }
         }
         let fallback = detect(name)
         return fallback.isEmpty ? nil : fallback
@@ -149,63 +151,81 @@ nonisolated enum BinaryDetector {
 
     /// Returns the full path to mflux-generate-flux2 given a binary directory.
     static func mfluxGenerateFlux2(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-flux2") }
+        if dir.isEmpty {
+            return detect("mflux-generate-flux2")
+        }
         let path = "\(dir)/mflux-generate-flux2"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-flux2")
     }
 
     /// Returns the full path to mflux-generate-flux2-edit given a binary directory.
     static func mfluxGenerateFlux2Edit(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-flux2-edit") }
+        if dir.isEmpty {
+            return detect("mflux-generate-flux2-edit")
+        }
         let path = "\(dir)/mflux-generate-flux2-edit"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-flux2-edit")
     }
 
     /// Returns the full path to mflux-save given a binary directory.
     static func mfluxSave(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-save") }
+        if dir.isEmpty {
+            return detect("mflux-save")
+        }
         let path = "\(dir)/mflux-save"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-save")
     }
 
     /// Returns the full path to mflux-generate-ideogram4 given a binary directory.
     static func mfluxGenerateIdeogram4(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-ideogram4") }
+        if dir.isEmpty {
+            return detect("mflux-generate-ideogram4")
+        }
         let path = "\(dir)/mflux-generate-ideogram4"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-ideogram4")
     }
 
     /// Returns the full path to mflux-generate-krea2 given a binary directory.
     static func mfluxGenerateKrea2(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-krea2") }
+        if dir.isEmpty {
+            return detect("mflux-generate-krea2")
+        }
         let path = "\(dir)/mflux-generate-krea2"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-krea2")
     }
 
     /// Returns the full path to mflux-generate-z-image-turbo given a binary directory.
     static func mfluxGenerateZImageTurbo(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-z-image-turbo") }
+        if dir.isEmpty {
+            return detect("mflux-generate-z-image-turbo")
+        }
         let path = "\(dir)/mflux-generate-z-image-turbo"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-z-image-turbo")
     }
 
     /// Returns the full path to mflux-generate-z-image (base) given a binary directory.
     static func mfluxGenerateZImage(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-generate-z-image") }
+        if dir.isEmpty {
+            return detect("mflux-generate-z-image")
+        }
         let path = "\(dir)/mflux-generate-z-image"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-z-image")
     }
 
     /// Returns the full path to mflux-upscale-seedvr2 given a binary directory.
     static func mfluxUpscaleSeedVR2(in dir: String) -> String {
-        if dir.isEmpty { return detect("mflux-upscale-seedvr2") }
+        if dir.isEmpty {
+            return detect("mflux-upscale-seedvr2")
+        }
         let path = "\(dir)/mflux-upscale-seedvr2"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-upscale-seedvr2")
     }
 
     /// Returns the full path to the mlx_lm.generate binary for LLM caption generation.
     static func mlxLmGenerate(in dir: String) -> String {
-        if dir.isEmpty { return detect("mlx_lm.generate") }
+        if dir.isEmpty {
+            return detect("mlx_lm.generate")
+        }
         let path = "\(dir)/mlx_lm.generate"
         return FileManager.default.fileExists(atPath: path) ? path : detect("mlx_lm.generate")
     }

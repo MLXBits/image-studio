@@ -19,7 +19,9 @@ enum PhotoTokens {
     /// (unless nil/empty), preserving every other token in place.
     static func apply(_ clause: String?, vocabulary: Set<String>, to photo: String?) -> String {
         var tokens = split(photo).filter { !vocabulary.contains($0) }
-        if let clause, !clause.isEmpty { tokens.append(clause) }
+        if let clause, !clause.isEmpty {
+            tokens.append(clause)
+        }
         return tokens.joined(separator: ", ")
     }
 
@@ -69,8 +71,12 @@ enum CameraPOV: String, CaseIterable, Identifiable, PhotoDimension {
 
     /// POV implied by a horizon-line position (0–1000 y).
     static func forHorizon(_ y: Int) -> Self {
-        if y < 333 { return .high }
-        if y < 667 { return .eye }
+        if y < 333 {
+            return .high
+        }
+        if y < 667 {
+            return .eye
+        }
         return .low
     }
 

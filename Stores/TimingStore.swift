@@ -105,7 +105,9 @@ final class TimingStore {
             profile.samples[idx].mp = run.megapixels
         } else {
             profile.samples.append(PerStepSample(mp: run.megapixels, secPerStep: secPerStep))
-            if profile.samples.count > 32 { profile.samples.removeFirst() }
+            if profile.samples.count > 32 {
+                profile.samples.removeFirst()
+            }
         }
 
         profiles[key] = profile
@@ -208,7 +210,9 @@ enum TimingModel {
         var value: Double
         if distinct >= 3 {
             value = quadratic(pts, at: mp) ?? linear(pts, at: mp) ?? proportional(pts, at: mp)
-            if value <= 0 { value = linear(pts, at: mp) ?? proportional(pts, at: mp) }
+            if value <= 0 {
+                value = linear(pts, at: mp) ?? proportional(pts, at: mp)
+            }
         } else if distinct == 2 {
             value = linear(pts, at: mp) ?? proportional(pts, at: mp)
         } else {

@@ -33,7 +33,9 @@ extension BBoxEditorView {
                     active: orientationMode
                 ) {
                     orientationMode.toggle()
-                    if orientationMode { mode = .select }
+                    if orientationMode {
+                        mode = .select
+                    }
                 }
                 if cameraAvailable {
                     cameraMenu
@@ -136,8 +138,16 @@ extension BBoxEditorView {
             Spacer()
         }
         .padding(.top, 5)
-        .onChange(of: anchorLabelA) { _, _ in if anchorA != nil || anchorB != nil { writeOrientation() } }
-        .onChange(of: anchorLabelB) { _, _ in if anchorA != nil || anchorB != nil { writeOrientation() } }
+        .onChange(of: anchorLabelA) {
+            _, _ in if anchorA != nil || anchorB != nil {
+                writeOrientation()
+            }
+        }
+        .onChange(of: anchorLabelB) {
+            _, _ in if anchorA != nil || anchorB != nil {
+                writeOrientation()
+            }
+        }
     }
 
     var expandedSheet: some View {
@@ -206,7 +216,9 @@ extension BBoxEditorView {
                                     selectedID = el.id
                                 },
                                 onRemove: {
-                                    if selectedID == el.id { selectedID = nil }
+                                    if selectedID == el.id {
+                                        selectedID = nil
+                                    }
                                     elements.removeAll { $0.id == el.id }
                                 },
                                 onMoveForward: elements.count > 1 ? { moveForward(id: el.id) } : nil,

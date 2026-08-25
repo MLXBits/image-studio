@@ -38,9 +38,15 @@ final class Ideogram4ParamsPanelState {
         lowRam = settings.ideogram4LowRam
         strictValidation = settings.ideogram4StrictValidation
         board = settings.defaultBoard
-        if let cap = settings.lastIdeogramCaption { caption = cap }
-        if let prompt = settings.lastIdeogramPlainPrompt { plainPrompt = prompt }
-        if let usePlain = settings.lastIdeogramUsePlainPrompt { usePlainPrompt = usePlain }
+        if let cap = settings.lastIdeogramCaption {
+            caption = cap
+        }
+        if let prompt = settings.lastIdeogramPlainPrompt {
+            plainPrompt = prompt
+        }
+        if let usePlain = settings.lastIdeogramUsePlainPrompt {
+            usePlainPrompt = usePlain
+        }
         loras = library.defaultLoras(for: .ideogram4)
     }
 
@@ -57,7 +63,9 @@ final class Ideogram4ParamsPanelState {
         height = meta.height
         quantize = meta.quantize
         lowRam = meta.lowRam
-        if let savedLoras = meta.loras { loras = savedLoras }
+        if let savedLoras = meta.loras {
+            loras = savedLoras
+        }
         board = meta.board ?? ""
         pidDecode = meta.pidDecode ?? false
         pidDegradeSigma = meta.pidDegradeSigma ?? 0.0

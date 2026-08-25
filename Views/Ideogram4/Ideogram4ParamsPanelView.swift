@@ -207,7 +207,9 @@ struct Ideogram4ParamsPanelView: View {
                     .toggleStyle(.button)
                     .controlSize(.small)
                     .onChange(of: showBatchSeeds) { _, on in
-                        if !on { params.batchSeeds = [] }
+                        if !on {
+                            params.batchSeeds = []
+                        }
                     }
             }
 

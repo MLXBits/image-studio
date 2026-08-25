@@ -24,7 +24,9 @@ final class UpdateChecker {
         for i in 0 ..< max(a.count, b.count) {
             let x = i < a.count ? a[i] : 0
             let y = i < b.count ? b[i] : 0
-            if x != y { return x > y }
+            if x != y {
+                return x > y
+            }
         }
         return false
     }

@@ -30,7 +30,9 @@ struct ImageMetadataInfo {
         let base = width > 0 && height > 0
             ? "\(width)×\(height) · \(megapixelText)"
             : "\(width)×\(height)"
-        if let note = resolutionNote { return "\(base) (\(note))" }
+        if let note = resolutionNote {
+            return "\(base) (\(note))"
+        }
         return base
     }
 

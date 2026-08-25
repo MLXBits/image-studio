@@ -24,7 +24,9 @@ struct ModelDefaultsView: View {
     /// The selected FLUX model, or the first built-in as a placeholder while the
     /// SeedVR2 row is selected (its form doesn't read this).
     private var selectedModel: FluxModelVariant {
-        if case let .model(model) = selection { return model }
+        if case let .model(model) = selection {
+            return model
+        }
         return .builtIn[0]
     }
 
@@ -54,7 +56,11 @@ struct ModelDefaultsView: View {
         }
         .alert("Delete cached weights?", isPresented: Binding(
             get: { pendingDeleteVariant != nil },
-            set: { if !$0 { pendingDeleteVariant = nil } }
+            set: {
+                if !$0 {
+                    pendingDeleteVariant = nil
+                }
+            }
         )) {
             Button("Delete", role: .destructive) {
                 if let pending = pendingDeleteVariant {

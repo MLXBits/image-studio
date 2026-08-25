@@ -179,7 +179,9 @@ struct PromptLLMSettingsView: View {
     }
 
     private var isTesting: Bool {
-        if case .testing = connectionPhase { return true }
+        if case .testing = connectionPhase {
+            return true
+        }
         return false
     }
 

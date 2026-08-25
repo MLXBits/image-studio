@@ -231,10 +231,18 @@ struct PreviewPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
-        .onAppear { if escapeActive { installEscapeMonitor() } }
+        .onAppear {
+            if escapeActive {
+                installEscapeMonitor()
+            }
+        }
         .onDisappear { removeEscapeMonitor() }
         .onChange(of: escapeActive) { _, active in
-            if active { installEscapeMonitor() } else { removeEscapeMonitor() }
+            if active {
+                installEscapeMonitor()
+            } else {
+                removeEscapeMonitor()
+            }
         }
     }
 
@@ -243,23 +251,33 @@ struct PreviewPaneView: View {
         case .idle: return false
 
         case let .activeJob(job):
-            if case .running = job.status { return false }
+            if case .running = job.status {
+                return false
+            }
             return true
 
         case let .activeIdeogram4Job(job):
-            if case .running = job.status { return false }
+            if case .running = job.status {
+                return false
+            }
             return true
 
         case let .activeKrea2Job(job):
-            if case .running = job.status { return false }
+            if case .running = job.status {
+                return false
+            }
             return true
 
         case let .activeZImageJob(job):
-            if case .running = job.status { return false }
+            if case .running = job.status {
+                return false
+            }
             return true
 
         case let .activeSeedVR2Job(job):
-            if case .running = job.status { return false }
+            if case .running = job.status {
+                return false
+            }
             return true
 
         case .galleryItem: return true
@@ -578,7 +596,9 @@ struct PreviewPaneView: View {
         guard escapeMonitor == nil else { return }
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             guard event.keyCode == 53 else { return event } // Escape
-            if NSApp.keyWindow is NSPanel { return event }
+            if NSApp.keyWindow is NSPanel {
+                return event
+            }
             if let responder = NSApp.keyWindow?.firstResponder, responder is NSText {
                 return event // mid-edit — let the field cancel instead
             }

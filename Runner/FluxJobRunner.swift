@@ -202,7 +202,9 @@ enum FluxRunnerSpec: JobRunnerSpec {
                 args += ["--quantize", "\(job.quantize)"]
             }
         }
-        if job.lowRam { args.append("--low-ram") }
+        if job.lowRam {
+            args.append("--low-ram")
+        }
         if settings.mlxCacheLimitGB > 0 {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }

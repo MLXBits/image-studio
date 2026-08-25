@@ -38,7 +38,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         guard let blobs = try? FileManager.default.contentsOfDirectory(
             at: blobsURL, includingPropertiesForKeys: [.fileSizeKey]
         ), !blobs.isEmpty else { return false }
-        if blobs.contains(where: { $0.lastPathComponent.hasSuffix(".incomplete") }) { return false }
+        if blobs.contains(where: { $0.lastPathComponent.hasSuffix(".incomplete") }) {
+            return false
+        }
         let totalBytes = blobs.reduce(0) { sum, url in
             sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         }
@@ -55,7 +57,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         ) else { return false }
         for entry in entries {
             let ext = entry.pathExtension.lowercased()
-            if ext == "safetensors" { return true }
+            if ext == "safetensors" {
+                return true
+            }
             let isDir = (try? entry.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true
             if isDir,
                let sub = try? FileManager.default.contentsOfDirectory(at: entry, includingPropertiesForKeys: nil),
@@ -254,7 +258,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// Returns the HuggingFace repo URL for this model + quantize combination, if known.
     /// Used to link users directly to the gated repo so they can accept terms.
     func hfRepoURL(quantize: Int) -> URL? {
-        if self == .ideogram4 { return URL(string: "https://huggingface.co/ideogram-ai/ideogram-4-fp8") }
+        if self == .ideogram4 {
+            return URL(string: "https://huggingface.co/ideogram-ai/ideogram-4-fp8")
+        }
         let repoID = preQuantizedRepoID(quantize: quantize) ?? bf16HFRepoID
         return repoID.flatMap { URL(string: "https://huggingface.co/\($0)") }
     }
@@ -316,7 +322,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             return isOnDisk(quantize: quantize)
         }
         let savePath = savedModelPath(quantize: quantize, in: cacheDir)
-        if Self.hasSavedWeights(at: savePath) { return true }
+        if Self.hasSavedWeights(at: savePath) {
+            return true
+        }
         return isOnDisk(quantize: quantize)
     }
 

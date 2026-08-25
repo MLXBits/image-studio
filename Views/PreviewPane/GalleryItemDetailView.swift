@@ -48,7 +48,9 @@ struct GalleryItemDetailView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
             .onTapGesture(count: 2) {
-                if let img = image { onShowFullSize?(img) }
+                if let img = image {
+                    onShowFullSize?(img)
+                }
             }
             .contextMenu {
                 Button("Copy Image") {
@@ -199,15 +201,31 @@ struct GalleryItemDetailView: View {
     }
 
     private var remixAction: (() -> Void)? {
-        if let meta = item.metadata { return { onRemix(meta) } }
-        if let meta = item.ideogram4Metadata { return { onRemixIdeogram(meta) } }
-        if let meta = item.krea2Metadata, let fn = onRemixKrea2 { return { fn(meta) } }
-        if let meta = item.zimageMetadata, let fn = onRemixZImage { return { fn(meta) } }
+        if let meta = item.metadata {
+            return { onRemix(meta) }
+        }
+        if let meta = item.ideogram4Metadata {
+            return { onRemixIdeogram(meta) }
+        }
+        if let meta = item.krea2Metadata, let fn = onRemixKrea2 {
+            return { fn(meta) }
+        }
+        if let meta = item.zimageMetadata, let fn = onRemixZImage {
+            return { fn(meta) }
+        }
         if let src = item.seedVR2Metadata {
-            if let meta = src.sourceFlux { return { onRemix(meta) } }
-            if let meta = src.sourceIdeogram4 { return { onRemixIdeogram(meta) } }
-            if let meta = src.sourceKrea2, let fn = onRemixKrea2 { return { fn(meta) } }
-            if let meta = src.sourceZImage, let fn = onRemixZImage { return { fn(meta) } }
+            if let meta = src.sourceFlux {
+                return { onRemix(meta) }
+            }
+            if let meta = src.sourceIdeogram4 {
+                return { onRemixIdeogram(meta) }
+            }
+            if let meta = src.sourceKrea2, let fn = onRemixKrea2 {
+                return { fn(meta) }
+            }
+            if let meta = src.sourceZImage, let fn = onRemixZImage {
+                return { fn(meta) }
+            }
         }
         return nil
     }

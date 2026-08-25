@@ -62,7 +62,9 @@ enum WildcardExpander {
             // previous pick, stopping early once it clears the target spread.
             for _ in 0 ..< 24 {
                 let candidate = groups.indices.map { group in
-                    if group == largest, i < coverage.count { return coverage[i] }
+                    if group == largest, i < coverage.count {
+                        return coverage[i]
+                    }
                     return Int.random(in: 0 ..< groups[group].count, using: &rng)
                 }
                 let score = chosen.map { distance($0, candidate) }.min() ?? Int.max
@@ -70,7 +72,9 @@ enum WildcardExpander {
                     bestScore = score
                     best = candidate
                 }
-                if score >= target { break }
+                if score >= target {
+                    break
+                }
             }
             chosen.append(best)
         }

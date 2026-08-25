@@ -38,7 +38,9 @@ enum OpenAIChatClient {
         while base.hasSuffix("/") {
             base.removeLast()
         }
-        if !base.hasSuffix("/v1") { base += "/v1" }
+        if !base.hasSuffix("/v1") {
+            base += "/v1"
+        }
         return base
     }
 

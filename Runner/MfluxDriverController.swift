@@ -112,8 +112,12 @@ final class MfluxDriverController {
     /// handshake. Returns false — without throwing — when the driver can't be
     /// used, so callers fall back to the CLI subprocess.
     func ensureRunning() async -> Bool {
-        if case .unavailable = availability { return false }
-        if process?.isRunning == true { return true }
+        if case .unavailable = availability {
+            return false
+        }
+        if process?.isRunning == true {
+            return true
+        }
         return await start()
     }
 
@@ -182,7 +186,9 @@ final class MfluxDriverController {
                 self?.resolveHandshake(false, reason: "Driver handshake timed out")
             }
         }
-        if ready { availability = .available }
+        if ready {
+            availability = .available
+        }
         return ready
     }
 
@@ -269,8 +275,12 @@ final class MfluxDriverController {
                     self?.loadedMemoryGB = event.memoryGb
                     onEvent(event)
                 case "done":
-                    if let peak = event.peakGb { self?.lastPeakGB = peak }
-                    if let memory = event.memoryGb { self?.loadedMemoryGB = memory }
+                    if let peak = event.peakGb {
+                        self?.lastPeakGB = peak
+                    }
+                    if let memory = event.memoryGb {
+                        self?.loadedMemoryGB = memory
+                    }
                     // A warm run emits no `loaded` event — the state fields
                     // still describe this request's model.
                     self?.loadedFingerprint = request.fingerprint
@@ -350,7 +360,9 @@ final class MfluxDriverController {
         switchEvictTask = Task { [weak self] in
             try? await Task.sleep(for: .seconds(3))
             guard !Task.isCancelled, let self, !isGenerating else { return }
-            if loadedModelVariantRaw != variantRaw { eject(reason: "model_switch") }
+            if loadedModelVariantRaw != variantRaw {
+                eject(reason: "model_switch")
+            }
         }
     }
 
@@ -405,7 +417,9 @@ final class MfluxDriverController {
             inDenoise = event.phase == "denoise"
         case "progress":
             let now = Date()
-            if let last = lastProgressAt { lastStepInterval = now.timeIntervalSince(last) }
+            if let last = lastProgressAt {
+                lastStepInterval = now.timeIntervalSince(last)
+            }
             lastProgressAt = now
             jobEventHandler?(event)
         case "unloaded":
@@ -417,7 +431,9 @@ final class MfluxDriverController {
         // Mid-job refingerprint unloads are internal; the following
         // loading/loaded events repopulate the state.
         case "pong":
-            if let memory = event.memoryGb { loadedMemoryGB = memory }
+            if let memory = event.memoryGb {
+                loadedMemoryGB = memory
+            }
         default:
             jobEventHandler?(event)
         }

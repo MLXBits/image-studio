@@ -63,7 +63,9 @@ struct AboutView: View {
                     .font(.callout)
                     .foregroundStyle(Color.accentColor)
                 Button {
-                    if let url = updates.releaseURL { openURL(url) }
+                    if let url = updates.releaseURL {
+                        openURL(url)
+                    }
                 } label: {
                     Text("View Release")
                         .frame(maxWidth: .infinity)

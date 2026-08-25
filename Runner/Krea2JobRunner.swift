@@ -72,7 +72,9 @@ enum Krea2RunnerSpec: JobRunnerSpec {
     /// specific set of weights, so neither takes a `--quantize` pass.
     private static func modelSourceOverride(job: Krea2Job, settings: AppSettings) -> String? {
         let custom = job.customModelRepo.trimmingCharacters(in: .whitespaces)
-        if !custom.isEmpty { return custom }
+        if !custom.isEmpty {
+            return custom
+        }
         let override = (settings.defaults(for: .krea2).modelRepoOverride ?? "")
             .trimmingCharacters(in: .whitespaces)
         return override.isEmpty ? nil : override

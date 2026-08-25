@@ -47,12 +47,16 @@ struct DimensionSliderRow: View {
                     .focused($focused)
                     .onSubmit(commitText)
                     .onChange(of: focused) { _, isFocused in
-                        if !isFocused { commitText() }
+                        if !isFocused {
+                            commitText()
+                        }
                     }
                     .onChange(of: value) { _, newValue in
                         // Reflect slider/stepper/preset-driven changes, but never
                         // clobber the field while the user is actively typing.
-                        if !focused { text = String(newValue) }
+                        if !focused {
+                            text = String(newValue)
+                        }
                     }
                     .accessibilityLabel(label)
                     .accessibilityValue("\(value)")

@@ -82,7 +82,9 @@ struct ColorPaletteEditor: View {
     private func editColor(at idx: Int) {
         guard colors.indices.contains(idx) else { return }
         ColorPanelController.shared.present(initial: Color(hexString: colors[idx]) ?? .black) { picked in
-            if colors.indices.contains(idx) { colors[idx] = picked.hexString }
+            if colors.indices.contains(idx) {
+                colors[idx] = picked.hexString
+            }
         }
     }
 }
@@ -109,10 +111,14 @@ private struct HexInputField: View {
             .focused($focused)
             .onSubmit(commit)
             .onChange(of: focused) { _, isFocused in
-                if !isFocused { commit() }
+                if !isFocused {
+                    commit()
+                }
             }
             .onChange(of: hex) { _, newValue in
-                if !focused { text = display(newValue) }
+                if !focused {
+                    text = display(newValue)
+                }
             }
             .onAppear { text = display(hex) }
             .help("Type or paste a hex color (e.g. 1A2B3C)")
@@ -130,7 +136,9 @@ private struct HexInputField: View {
         if let color = Color(hexString: candidate) {
             let normalized = color.hexString
             text = display(normalized)
-            if normalized != hex { onCommit(normalized) }
+            if normalized != hex {
+                onCommit(normalized)
+            }
         } else {
             text = display(hex)
         }
@@ -179,7 +187,9 @@ extension Color {
     /// Parses `#RRGGBB` (with or without the leading `#`). Returns nil on bad input.
     init?(hexString: String) {
         var s = hexString.trimmingCharacters(in: .whitespaces)
-        if s.hasPrefix("#") { s.removeFirst() }
+        if s.hasPrefix("#") {
+            s.removeFirst()
+        }
         guard s.count == 6, let v = UInt32(s, radix: 16) else { return nil }
         self = Color(
             .sRGB,

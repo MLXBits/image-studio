@@ -85,8 +85,12 @@ final class ZImageParamsPanelState {
         guard newVariant.isZImage, newVariant != variant else { return }
         let old = variant
         variant = newVariant
-        if steps == old.defaultSteps { steps = settings.resolvedDefaults(for: newVariant).steps }
-        if guidance == old.defaultGuidance { guidance = settings.resolvedDefaults(for: newVariant).guidance }
+        if steps == old.defaultSteps {
+            steps = settings.resolvedDefaults(for: newVariant).steps
+        }
+        if guidance == old.defaultGuidance {
+            guidance = settings.resolvedDefaults(for: newVariant).guidance
+        }
     }
 
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
@@ -163,7 +167,9 @@ final class ZImageParamsPanelState {
         steps = meta.steps
         guidance = meta.guidance
         quantize = meta.quantize
-        if let savedLoras = meta.loras { loras = savedLoras }
+        if let savedLoras = meta.loras {
+            loras = savedLoras
+        }
         imagePath = meta.imagePath ?? ""
         imageStrength = meta.imageStrength ?? 0.75
         board = meta.board ?? ""

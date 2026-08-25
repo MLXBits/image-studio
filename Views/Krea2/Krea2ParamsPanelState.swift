@@ -138,7 +138,9 @@ final class Krea2ParamsPanelState {
         steps = meta.steps
         guidance = meta.guidance
         quantize = meta.quantize
-        if let savedLoras = meta.loras { loras = savedLoras }
+        if let savedLoras = meta.loras {
+            loras = savedLoras
+        }
         imagePath = meta.imagePath ?? ""
         imageStrength = meta.imageStrength ?? 0.75
         board = meta.board ?? ""

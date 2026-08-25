@@ -45,7 +45,9 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     /// Display name, falling back to the filename/repo tail of `path`.
     var displayName: String {
         let trimmed = name.trimmingCharacters(in: .whitespaces)
-        if !trimmed.isEmpty { return trimmed }
+        if !trimmed.isEmpty {
+            return trimmed
+        }
         if path.hasPrefix("/") {
             return URL(fileURLWithPath: path).lastPathComponent
         }

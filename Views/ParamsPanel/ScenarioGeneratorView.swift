@@ -68,8 +68,12 @@ struct ScenarioGeneratorView: View {
                     categorySection
                     wildcardRow
                     generatingRow
-                    if let err = session.generateError { errorBox(err) }
-                    if !session.result.isEmpty { resultPreview }
+                    if let err = session.generateError {
+                        errorBox(err)
+                    }
+                    if !session.result.isEmpty {
+                        resultPreview
+                    }
                 }
                 .padding(12)
             }
@@ -280,7 +284,11 @@ struct ScenarioGeneratorView: View {
         Binding(
             get: { session.categories.contains(category) },
             set: { on in
-                if on { session.categories.insert(category) } else { session.categories.remove(category) }
+                if on {
+                    session.categories.insert(category)
+                } else {
+                    session.categories.remove(category)
+                }
             }
         )
     }
@@ -364,7 +372,11 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
         self.onSelect = onSelect
         self.onQueue = onQueue
         if let panel {
-            if panel.isVisible { panel.close() } else { attachAndShow(panel) }
+            if panel.isVisible {
+                panel.close()
+            } else {
+                attachAndShow(panel)
+            }
             return
         }
         self.session = session

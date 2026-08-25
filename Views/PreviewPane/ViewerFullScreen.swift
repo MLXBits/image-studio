@@ -114,7 +114,9 @@ private final class ResolvingView: NSView {
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        if let window { onResolve?(window) }
+        if let window {
+            onResolve?(window)
+        }
     }
 
     /// Invisible plumbing — never take a click off the view it backs.

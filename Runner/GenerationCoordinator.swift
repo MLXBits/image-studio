@@ -20,7 +20,9 @@ final class GenerationCoordinator {
     /// Grants the gate to `family` when idle or already held by it. Returns `false` when a
     /// *different* family is mid-run, in which case the caller must leave its job pending.
     func tryAcquire(_ family: ModelFamily) -> Bool {
-        if let activeFamily, activeFamily != family { return false }
+        if let activeFamily, activeFamily != family {
+            return false
+        }
         activeFamily = family
         return true
     }

@@ -56,7 +56,9 @@ nonisolated private func stripPNGMetadata(at url: URL) -> Bool {
             out.append(data[index ..< chunkEnd])
         }
         index = chunkEnd
-        if type == "IEND" { break }
+        if type == "IEND" {
+            break
+        }
     }
 
     guard sawMetadata else { return true } // nothing to remove — succeed without a rewrite

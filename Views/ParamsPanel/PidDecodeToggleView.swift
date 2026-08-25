@@ -133,7 +133,9 @@ struct PidDecodeToggleView: View {
                     .focused($sigmaFocused)
                     .onSubmit(commitSigmaText)
                     .onChange(of: sigmaFocused) { _, isFocused in
-                        if !isFocused { commitSigmaText() }
+                        if !isFocused {
+                            commitSigmaText()
+                        }
                     }
             }
             .accessibilityLabel("PiD degrade sigma")
@@ -142,7 +144,9 @@ struct PidDecodeToggleView: View {
             // or the last-used form restore — but never while the user is mid-edit.
             .onAppear { sigmaText = Self.format(pidDegradeSigma) }
             .onChange(of: pidDegradeSigma) { _, new in
-                if !sigmaFocused { sigmaText = Self.format(new) }
+                if !sigmaFocused {
+                    sigmaText = Self.format(new)
+                }
             }
 
             Spacer(minLength: 4)

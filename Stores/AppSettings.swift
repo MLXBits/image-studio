@@ -654,7 +654,9 @@ class AppSettings {
     /// see `LoraLibraryStore.migrateLegacyDefaults`).
     func drainLegacyDefaultLoras() -> [LoraEntry] {
         let drained = legacyDefaultLoras
-        if !drained.isEmpty { legacyDefaultLoras = [] }
+        if !drained.isEmpty {
+            legacyDefaultLoras = []
+        }
         return drained
     }
 
@@ -849,10 +851,18 @@ class AppSettings {
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
         env["PYTHONUNBUFFERED"] = "1"
-        if !hfHome.isEmpty { env["HF_HOME"] = hfHome }
-        if !mfluxCacheDir.isEmpty { env["MFLUX_CACHE_DIR"] = mfluxCacheDir }
-        if hfOffline { env["HF_HUB_OFFLINE"] = "1" }
-        if !hfToken.isEmpty { env["HF_TOKEN"] = hfToken }
+        if !hfHome.isEmpty {
+            env["HF_HOME"] = hfHome
+        }
+        if !mfluxCacheDir.isEmpty {
+            env["MFLUX_CACHE_DIR"] = mfluxCacheDir
+        }
+        if hfOffline {
+            env["HF_HUB_OFFLINE"] = "1"
+        }
+        if !hfToken.isEmpty {
+            env["HF_TOKEN"] = hfToken
+        }
         return env
     }
 }

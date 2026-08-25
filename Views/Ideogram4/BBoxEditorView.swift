@@ -109,10 +109,14 @@ struct BBoxEditorView: View {
             titleVisibility: .visible
         ) {
             Button("Replace existing boxes", role: .destructive) {
-                if let t = pendingTemplate { applyTemplate(t, replace: true) }
+                if let t = pendingTemplate {
+                    applyTemplate(t, replace: true)
+                }
             }
             Button("Add to existing") {
-                if let t = pendingTemplate { applyTemplate(t, replace: false) }
+                if let t = pendingTemplate {
+                    applyTemplate(t, replace: false)
+                }
             }
             Button("Cancel", role: .cancel) { pendingTemplate = nil }
         } message: {

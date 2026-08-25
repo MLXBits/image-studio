@@ -42,7 +42,11 @@ extension ScenarioGeneratorView {
         let enabled = held > 0 ? !session.isGenerating : canQueue
         return HStack(spacing: 0) {
             Button {
-                if held > 0 { flushHeldPrompts() } else { startBatchQueue(count: queueCount) }
+                if held > 0 {
+                    flushHeldPrompts()
+                } else {
+                    startBatchQueue(count: queueCount)
+                }
             } label: {
                 Text("Queue \(held > 0 ? held : queueCount)")
                     .padding(.horizontal, 10)
@@ -102,7 +106,9 @@ extension ScenarioGeneratorView {
         session.task = Task {
             var failure: String?
             for _ in 0 ..< count {
-                if Task.isCancelled { break }
+                if Task.isCancelled {
+                    break
+                }
                 do {
                     session.result = try await rollOne(session: session)
                     session.batchPrompts.append(session.result)
@@ -123,7 +129,9 @@ extension ScenarioGeneratorView {
             // Free the local model before the image jobs start loading theirs. A no-op
             // on the remote backend, where LM Studio owns the model.
             session.generator.shutdown()
-            if complete { flushHeldPrompts() }
+            if complete {
+                flushHeldPrompts()
+            }
         }
     }
 

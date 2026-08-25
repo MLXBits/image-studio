@@ -69,7 +69,11 @@ struct LoraManagerView: View {
                 .help("Add from library or apply a stack")
             }
             if showAdd {
-                Button { if !alwaysExpanded { isExpanded = true }; showingAdd = true } label: {
+                Button {
+                    if !alwaysExpanded {
+                        isExpanded = true
+                    }; showingAdd = true
+                } label: {
                     Image(systemName: "plus")
                         .font(.caption)
                 }
@@ -212,7 +216,9 @@ struct LoraManagerView: View {
             .compactMap { library.libraryEntry(path: $0.path)?.triggerWords }
             .filter { !$0.isEmpty }
             .joined(separator: ", ")
-        if !triggers.isEmpty { onInsertTriggerWords(triggers) }
+        if !triggers.isEmpty {
+            onInsertTriggerWords(triggers)
+        }
     }
 
     private func browseLocalFile() {
@@ -307,7 +313,9 @@ private struct LoraRowView: View {
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
         .onChange(of: lora.strength) { _, v in
             let rounded = round(v / 0.05) * 0.05
-            if abs(v - rounded) > 1e-10 { lora.strength = rounded }
+            if abs(v - rounded) > 1e-10 {
+                lora.strength = rounded
+            }
         }
     }
 }

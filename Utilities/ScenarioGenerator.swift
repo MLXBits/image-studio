@@ -118,6 +118,31 @@ extension ScenarioPromptConfig {
     }
 }
 
+// MARK: - Example prompts
+
+/// Bundled reference prompt files, seeded into Application Support next to the live scenario
+/// prompt file so they are ready to read, edit, or use as a base for tuning. No code path reads
+/// these — they exist purely as examples (e.g., "krea2_scenario_prompt_example.md" is derived from
+/// Krea 2's public prompting guide).
+enum ScenarioExamplePrompts {
+    /// Bundled resource names to seed, without the ".md" extension.
+    static let bundled = ["krea2_scenario_prompt_example"]
+
+    /// Copies each example that is not already in Application Support from the app bundle.
+    /// Mirrors ``ScenarioPromptConfig/seedIfNeeded()``: an existing copy — possibly user-edited —
+    /// is never overwritten. Called at launch, alongside the live prompt file's seeding.
+    static func seedIfNeeded() throws {
+        let dir = AppSettings.appSupportURL
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        for name in bundled {
+            let dest = dir.appendingPathComponent(name + ".md")
+            guard !FileManager.default.fileExists(atPath: dest.path),
+                  let bundleURL = Bundle.main.url(forResource: name, withExtension: "md") else { continue }
+            try FileManager.default.copyItem(at: bundleURL, to: dest)
+        }
+    }
+}
+
 // MARK: - Generator
 
 /// Expands a rough scenario outline into a full image-generation prompt via
@@ -310,8 +335,12 @@ final class ScenarioGenerator {
     }
 
     private func ensureDriverRunning(settings: AppSettings) async -> Bool {
-        if driverUnavailable { return false }
-        if process?.isRunning == true { return true }
+        if driverUnavailable {
+            return false
+        }
+        if process?.isRunning == true {
+            return true
+        }
         return await startDriver(settings: settings)
     }
 
@@ -357,14 +386,18 @@ final class ScenarioGenerator {
                 await MainActor.run { self?.resolveHandshake(false) }
             }
         }
-        if !ready { driverUnavailable = true }
+        if !ready {
+            driverUnavailable = true
+        }
         return ready
     }
 
     private func resolveHandshake(_ ok: Bool) {
         guard let cont = handshake else { return }
         handshake = nil
-        if !ok { process?.terminate(); process = nil; stdinHandle = nil }
+        if !ok {
+            process?.terminate(); process = nil; stdinHandle = nil
+        }
         cont.resume(returning: ok)
     }
 

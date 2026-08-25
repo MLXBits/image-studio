@@ -56,12 +56,22 @@ struct GenerationGalleryView: View {
             guard item.modelFamily == modelFilter else { return false }
             switch flagFilter {
             case .all: break
-            case .picks: if item.flag != .pick { return false }
-            case .rejects: if item.flag != .reject { return false }
-            case .unflagged: if item.flag != nil { return false }
+            case .picks: if item.flag != .pick {
+                    return false
+                }
+            case .rejects: if item.flag != .reject {
+                    return false
+                }
+            case .unflagged: if item.flag != nil {
+                    return false
+                }
             }
-            if item.rating < minRating { return false }
-            if !query.isEmpty, !searchHaystack(for: item).contains(query) { return false }
+            if item.rating < minRating {
+                return false
+            }
+            if !query.isEmpty, !searchHaystack(for: item).contains(query) {
+                return false
+            }
             return true
         }
     }
@@ -276,7 +286,11 @@ struct GenerationGalleryView: View {
         }
         .alert("Could not delete", isPresented: Binding(
             get: { gallery.deleteError != nil },
-            set: { if !$0 { gallery.deleteError = nil } }
+            set: {
+                if !$0 {
+                    gallery.deleteError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -284,7 +298,11 @@ struct GenerationGalleryView: View {
         }
         .alert("Image protected", isPresented: Binding(
             get: { gallery.lockError != nil },
-            set: { if !$0 { gallery.lockError = nil } }
+            set: {
+                if !$0 {
+                    gallery.lockError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -292,7 +310,11 @@ struct GenerationGalleryView: View {
         }
         .alert("Could not strip metadata", isPresented: Binding(
             get: { gallery.stripError != nil },
-            set: { if !$0 { gallery.stripError = nil } }
+            set: {
+                if !$0 {
+                    gallery.stripError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -329,7 +351,9 @@ struct GenerationGalleryView: View {
                     if anchorItemId == item.id {
                         anchorItemId = adjacent?.id
                         selectedItem = adjacent
-                        if selection.isEmpty, let adj = adjacent { selection.insert(adj.id) }
+                        if selection.isEmpty, let adj = adjacent {
+                            selection.insert(adj.id)
+                        }
                     }
                     gallery.delete(item, outputDir: settings.outputDir)
                     deleteTarget = nil
@@ -356,7 +380,9 @@ struct GenerationGalleryView: View {
         ) {
             Button("Delete", role: .destructive) {
                 if let board = deletingBoard {
-                    if collapsedBoards.contains(board) { collapsedBoards.remove(board) }
+                    if collapsedBoards.contains(board) {
+                        collapsedBoards.remove(board)
+                    }
                     gallery.deleteBoard(board, outputDir: settings.outputDir)
                 }
                 deletingBoard = nil

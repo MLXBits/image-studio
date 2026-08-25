@@ -27,7 +27,9 @@ struct CompletedImageView: View {
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
             .onTapGesture(count: 2) {
-                if let img = image { onShowFullSize?(img) }
+                if let img = image {
+                    onShowFullSize?(img)
+                }
             }
             .contextMenu {
                 if let path = job.outputPath {

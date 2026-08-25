@@ -65,7 +65,11 @@ struct SettingsView: View {
         }
         .alert("Could not save settings", isPresented: Binding(
             get: { settings.saveError != nil },
-            set: { if !$0 { settings.saveError = nil } }
+            set: {
+                if !$0 {
+                    settings.saveError = nil
+                }
+            }
         )) {
             Button("OK", role: .cancel) {}
         } message: {
@@ -279,7 +283,11 @@ struct SettingsView: View {
                         SecureField("Paste token here…", text: $hfTokenDraft)
                             .textFieldStyle(.roundedBorder)
                             .onSubmit { settings.hfToken = hfTokenDraft }
-                            .onChange(of: hfTokenDraft) { _, v in if !v.isEmpty { settings.hfToken = v } }
+                            .onChange(of: hfTokenDraft) {
+                                _, v in if !v.isEmpty {
+                                    settings.hfToken = v
+                                }
+                            }
                         if !settings.hfToken.isEmpty {
                             Button("Clear") {
                                 hfTokenDraft = ""
@@ -355,7 +363,9 @@ struct SettingsView: View {
                     .onChange(of: s.keepModelWarm) { _, enabled in
                         // Re-arm a driver that failed earlier (e.g. after the
                         // user fixed the binary directory).
-                        if enabled { driverController.resetAvailability() }
+                        if enabled {
+                            driverController.resetAvailability()
+                        }
                     }
                 if s.keepModelWarm {
                     LabeledContent("Evict after idle") {
@@ -423,7 +433,9 @@ struct SettingsView: View {
                 .multilineTextAlignment(.trailing)
                 .onChange(of: value.wrappedValue) { _, v in
                     let clamped = DimensionConstraints.clampMegapixels(v)
-                    if clamped != v { value.wrappedValue = clamped }
+                    if clamped != v {
+                        value.wrappedValue = clamped
+                    }
                 }
             Text("MP")
                 .foregroundStyle(.secondary)

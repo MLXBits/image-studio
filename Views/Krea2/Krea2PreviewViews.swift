@@ -153,8 +153,12 @@ struct Krea2CompletedPreviewView: View {
                     }
                     Divider()
                 }
-                if let fn = onApplySettings { Button("Apply Settings") { fn(metadata) } }
-                if let fn = onRemix { Button("Remix (new seed)") { fn(metadata) } }
+                if let fn = onApplySettings {
+                    Button("Apply Settings") { fn(metadata) }
+                }
+                if let fn = onRemix {
+                    Button("Remix (new seed)") { fn(metadata) }
+                }
                 if let path = job.outputPath {
                     Divider()
                     Button("Reveal in Finder") {

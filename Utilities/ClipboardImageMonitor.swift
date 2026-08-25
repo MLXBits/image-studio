@@ -46,7 +46,9 @@ final class ClipboardImageMonitor: ObservableObject {
             || pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true])?
             .compactMap { $0 as? URL }
             .first { imageExtensions.contains($0.pathExtension.lowercased()) } != nil
-        if value != hasImage { hasImage = value }
+        if value != hasImage {
+            hasImage = value
+        }
     }
 
     deinit {

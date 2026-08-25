@@ -10,7 +10,9 @@ struct TimingModelTests {
 
     private func expectClose(_ a: Double?, _ b: Double, tol: Double = 1e-6) {
         #expect(a != nil)
-        if let a { #expect(abs(a - b) < tol) }
+        if let a {
+            #expect(abs(a - b) < tol)
+        }
     }
 
     // MARK: - Degenerate

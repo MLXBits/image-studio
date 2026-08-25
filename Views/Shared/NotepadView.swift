@@ -132,8 +132,12 @@ private struct MarkdownPreview: View {
     private var blocks: [Block] {
         text.components(separatedBy: "\n").map { rawLine in
             let line = rawLine.trimmingCharacters(in: .whitespaces)
-            if line.isEmpty { return .spacer }
-            if let heading = headingBlock(line) { return heading }
+            if line.isEmpty {
+                return .spacer
+            }
+            if let heading = headingBlock(line) {
+                return heading
+            }
             if line.hasPrefix("- ") || line.hasPrefix("* ") {
                 return .bullet(text: String(line.dropFirst(2)))
             }

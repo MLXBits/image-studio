@@ -105,7 +105,9 @@ struct DimensionPickerView: View {
     }
 
     private var previewRatio: Double {
-        if let ratio = hoveredPreset?.ratio { return ratio }
+        if let ratio = hoveredPreset?.ratio {
+            return ratio
+        }
         return Double(width) / Double(max(height, 1))
     }
 
@@ -130,7 +132,9 @@ struct DimensionPickerView: View {
         .onChange(of: width) { _, w in resyncAspect(w: w, h: height) }
         .onChange(of: height) { _, h in resyncAspect(w: width, h: h) }
         .onChange(of: aspectLocked) { _, locked in
-            if !locked { halfRes = false }
+            if !locked {
+                halfRes = false
+            }
         }
     }
 

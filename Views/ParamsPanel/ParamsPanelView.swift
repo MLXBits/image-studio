@@ -615,7 +615,9 @@ struct ParamsPanelView: View {
                     guard let data, let url = URL(dataRepresentation: data, relativeTo: nil) else { return }
                     guard Self.imageExtensions.contains(url.pathExtension.lowercased()) else { return }
                     DispatchQueue.main.async {
-                        if !self.params.editImagePaths.contains(url.path) { self.params.editImagePaths.append(url.path) }
+                        if !self.params.editImagePaths.contains(url.path) {
+                            self.params.editImagePaths.append(url.path)
+                        }
                     }
                 }
             }
@@ -761,7 +763,9 @@ struct ParamsPanelView: View {
 
     private func pasteEditImage() {
         guard let path = imagePathFromPasteboard(tempPrefix: "pasted-edit") else { return }
-        if !params.editImagePaths.contains(path) { params.editImagePaths.append(path) }
+        if !params.editImagePaths.contains(path) {
+            params.editImagePaths.append(path)
+        }
     }
 }
 

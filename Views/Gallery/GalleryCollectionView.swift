@@ -548,7 +548,11 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func deleteKeyPressed(shift: Bool) {
             guard !parent.multiSelectionIds.isEmpty else { return }
-            if shift { parent.onDeleteMultiImmediate() } else { parent.onDeleteMultiRequest() }
+            if shift {
+                parent.onDeleteMultiImmediate()
+            } else {
+                parent.onDeleteMultiRequest()
+            }
         }
 
         func escapeKeyPressed() {
@@ -653,7 +657,9 @@ struct GalleryCollectionView: NSViewRepresentable {
             guard dropTargetBoard != nil else { return }
             let old = dropTargetBoard
             dropTargetBoard = nil
-            if let old { refreshDragHighlight(oldBoard: old, newBoard: nil, in: cv) }
+            if let old {
+                refreshDragHighlight(oldBoard: old, newBoard: nil, in: cv)
+            }
         }
 
         private func sectionAt(draggingInfo: NSDraggingInfo, cv: NSCollectionView) -> Int? {
@@ -677,7 +683,9 @@ struct GalleryCollectionView: NSViewRepresentable {
             let band = CGRect(x: 0, y: loc.y - 15, width: max(cv.bounds.width, 1), height: 30)
             let attrs = layout.layoutAttributesForElements(in: band)
             for attr in attrs where attr.representedElementCategory == .item {
-                if let sec = attr.indexPath?.section, sec < sections.count { return sec }
+                if let sec = attr.indexPath?.section, sec < sections.count {
+                    return sec
+                }
             }
             return nil
         }
@@ -946,7 +954,9 @@ struct GalleryCollectionView: NSViewRepresentable {
         if structureChanged {
             let cvHadFocus = isGalleryInResponderChain(scrollView: scrollView, window: cv.window)
             cv.reloadData()
-            if cvHadFocus { cv.window?.makeFirstResponder(cv) }
+            if cvHadFocus {
+                cv.window?.makeFirstResponder(cv)
+            }
         } else {
             // Refresh visible cells — thumbnail may have loaded or selection changed
             let hasAny = !multiSelectionIds.isEmpty
@@ -1026,7 +1036,9 @@ private func isGalleryInResponderChain(scrollView: NSScrollView, window: NSWindo
     guard let fr = window?.firstResponder as? NSView else { return false }
     var view: NSView? = fr
     while let v = view {
-        if v === scrollView { return true }
+        if v === scrollView {
+            return true
+        }
         view = v.superview
     }
     return false

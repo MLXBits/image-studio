@@ -62,7 +62,11 @@ struct IdeogramCaptionEditorView: View {
             .padding(.bottom, 8)
             .alert("Couldn't paste JSON", isPresented: Binding(
                 get: { jsonPasteError != nil },
-                set: { if !$0 { jsonPasteError = nil } }
+                set: {
+                    if !$0 {
+                        jsonPasteError = nil
+                    }
+                }
             )) {
                 Button("OK", role: .cancel) {}
             } message: {
@@ -219,7 +223,9 @@ struct IdeogramCaptionEditorView: View {
         let binding = Binding<String>(
             get: { caption.styleDescription?.photo ?? "" },
             set: { value in
-                if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
+                if caption.styleDescription == nil {
+                    caption.styleDescription = IdeogramCaptionStyle()
+                }
                 caption.styleDescription?.photo = value
             }
         )
@@ -231,7 +237,9 @@ struct IdeogramCaptionEditorView: View {
         let binding = Binding<[String]>(
             get: { caption.styleDescription?.colorPalette ?? [] },
             set: { values in
-                if caption.styleDescription == nil { caption.styleDescription = IdeogramCaptionStyle() }
+                if caption.styleDescription == nil {
+                    caption.styleDescription = IdeogramCaptionStyle()
+                }
                 caption.styleDescription?.colorPalette = values.isEmpty ? nil : values
             }
         )
@@ -421,7 +429,9 @@ struct IdeogramCaptionEditorView: View {
                 let result = try await generator.generate(from: desc, settings: settings)
                 lastGemmaLog = generator.lastLog
                 caption.highLevelDescription = result.highLevelDescription
-                if let style = result.styleDescription { caption.styleDescription = style }
+                if let style = result.styleDescription {
+                    caption.styleDescription = style
+                }
                 caption.compositionalDeconstruction.background =
                     result.compositionalDeconstruction.background
                 if !result.compositionalDeconstruction.elements.isEmpty {

@@ -185,14 +185,18 @@ struct SeedVR2UpscaleSheet: View {
 
     /// Header subtitle: the single filename, or a count for a multi-selection.
     private var subtitle: String {
-        if isBatch { return "\(sources.count) images" }
+        if isBatch {
+            return "\(sources.count) images"
+        }
         return (sources.first?.path as NSString?)?.lastPathComponent ?? ""
     }
 
     private var resultDimsLabel: String {
         // Per-image dimensions vary across a batch, so only preview them for a
         // single source; a batch just notes how many images will be upscaled.
-        if isBatch { return "\(sources.count) images" }
+        if isBatch {
+            return "\(sources.count) images"
+        }
         guard let size = sourceSize else { return "" }
         let w = Int(size.width) * scale
         let h = Int(size.height) * scale

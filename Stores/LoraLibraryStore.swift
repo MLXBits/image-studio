@@ -168,7 +168,9 @@ func insertTriggerWords(_ triggers: String, into prompt: String) -> String {
 
     let addition = missing.joined(separator: ", ")
     let trimmed = prompt.trimmingCharacters(in: .whitespacesAndNewlines)
-    if trimmed.isEmpty { return addition }
+    if trimmed.isEmpty {
+        return addition
+    }
     let separator = trimmed.hasSuffix(",") ? " " : ", "
     return trimmed + separator + addition
 }
