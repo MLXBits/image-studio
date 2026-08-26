@@ -743,7 +743,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let seedsToRun = job.seeds.isEmpty ? [ctx.seed] : Array(job.seeds)
 
         do {
-            var landed: [(seed: Int, path: String)] = []
+            var landedPaths: [String] = []
             let generatedAt = Date()
 
             for (index, seed) in seedsToRun.enumerated() {
@@ -782,28 +782,36 @@ final class JobRunner<Spec: JobRunnerSpec> {
                     let name = "\(Spec.outputPrefix)_seed_\(seed).png"
                     local = "\(outDir)/\(name)"
                 }
-                if await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local) {
-                    Spec.writeMetadata(job: job, seed: seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
-                    landed.append((seed: seed, path: local))
+                guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
+                else { continue }
+
+                Spec.writeMetadata(job: job, seed: seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
+                landedPaths.append(local)
+
+                // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
+                // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
+                // batchImageLanded to trigger a fresh scan that picks up the new file on disk. Thumbnails are loaded by the gallery from
+                // disk during its own scan, not attached here per-seed.
+                if landedPaths.count == 1 {
+                    job.resolvedSeed = seed
+                    lastCompletedOutputPath = local
                 }
+                batchImageLanded += 1
+                job.completedSeedsInBatch = landedPaths.count
             }
 
-            guard !landed.isEmpty else {
+            guard !landedPaths.isEmpty else {
                 finishJob(job, status: .failed("ComfyUI produced no retrievable image"), stepDir: stepDir); return
             }
-            let landedPaths = landed.map(\.path)
             if seedsToRun.count == 1 {
-                job.outputPath = landed[0].path
-                job.resolvedSeed = landed[0].seed
-                job.thumbnailData = RunnerSupport.loadThumbnail(at: landed[0].path)
-                lastCompletedOutputPath = landed[0].path
+                job.outputPath = landedPaths[0]
             } else {
+                // Keep outputPaths in sync incrementally so expandBatchJob (which zips job.seeds with
+                // job.outputPaths) sees a consistent set even mid-batch; final count may be less than
+                // requested if some seeds failed to download.
                 job.outputPaths = landedPaths
-                job.outputThumbnails = await RunnerSupport.makeThumbnails(for: landedPaths)
                 job.outputPath = landedPaths.first
-                job.resolvedSeed = seedsToRun[0]
-                job.thumbnailData = job.outputThumbnails.first
-                lastCompletedOutputPath = landedPaths.count == 1 ? landedPaths.first : landedPaths.last
+                lastCompletedOutputPath = landedPaths.last
             }
             finishJob(job, status: .completed, stepDir: stepDir)
         } catch let e as CancellationError {
