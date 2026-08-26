@@ -692,7 +692,11 @@ final class ComfyUIClient {
                 guard let self else { return }
                 switch result {
                 case let .success(message):
-                    if let snap = Self.decode(message, lastNodeID: &self.lastNodeID, executedNodes: &self.executedNodes) {
+                    if let snap = Self.decode(
+                        Self.payloadData(from: message),
+                        lastNodeID: &self.lastNodeID,
+                        executedNodes: &self.executedNodes
+                    ) {
                         self.continuation.yield(snap)
                     }
                     self.receiveLoop(task: task) // keep reading either way
@@ -704,15 +708,33 @@ final class ComfyUIClient {
             }
         }
 
-        /// Maps one raw websocket text frame to a LiveProgress snapshot, or nil if the frame carries no
-        /// progress-relevant data (status heartbeats, custom-node noise such as `crystools.monitor`, etc.).
-        /// `executedNodes` accumulates distinct node ids in first-seen order so consumers can derive "node X of N".
+        /// Extracts the JSON payload as `Data` from a websocket frame. ComfyUI sends its frames as text (`.string`) — not binary — so
+        /// handling
+        /// only `.data` silently drops every `executing`/`progress` message and live progress never reaches the UI. Accept both shapes;
+        /// return
+        /// nil for anything that is neither.
+        private static func payloadData(from message: URLSessionWebSocketTask.Message) -> Data? {
+            switch message {
+            case let .data(data):
+                return data
+            case let .string(text):
+                return text.data(using: .utf8)
+            @unknown default:
+                return nil
+            }
+        }
+
+        /// Maps one decoded JSON frame to a LiveProgress snapshot, or nil if the frame carries no progress-relevant data (status
+        /// heartbeats,
+        /// custom-node noise such as `crystools.monitor`, etc.). `executedNodes` accumulates distinct node ids in first-seen order so
+        /// consumers
+        /// can derive "node X of N".
         static func decode(
-            _ message: URLSessionWebSocketTask.Message,
+            _ data: Data?,
             lastNodeID: inout String?,
             executedNodes: inout [String]
         ) -> LiveProgress? {
-            guard case let .data(data) = message else { return nil }
+            guard let data else { return nil }
             guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let type = obj["type"] as? String,
                   let dataObj = obj["data"] as? [String: Any] else { return nil }
