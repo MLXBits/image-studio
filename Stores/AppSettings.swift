@@ -93,6 +93,15 @@ class AppSettings {
         var lastCustomBaseModel: FluxModelVariant?
         /// Krea 2 last-used form (remembered across launches)
         var lastKrea2: Krea2FormState?
+        // ComfyUI remote inference backend (per-family server-side filenames, keyed by `ModelFamily.id`)
+        var comfyURL: String?
+        var comfyUNet: [String: String]?
+        var comfyClip: [String: String]?
+        var comfyVae: [String: String]?
+        /// Per-family backend choice (true = ComfyUI remote, false/absent = local mflux), keyed by `ModelFamily.id`.
+        var comfyBackendEnabled: [String: Bool]?
+        /// Legacy single-checkpoint slot, kept only to decode pre-split settings files; migrated to ``comfyUNet``.
+        var comfyCheckpoint: [String: String]?
         /// Z-Image last-used form (remembered across launches)
         var lastZImage: ZImageFormState?
         /// SeedVR2 upscale defaults (remembered across launches)
@@ -365,6 +374,33 @@ class AppSettings {
         didSet { save() }
     }
 
+    // MARK: - ComfyUI remote inference backend
+
+    /// Base URL of a running ComfyUI server used as an alternate inference backend (empty = use local mflux).
+    var comfyURL: String {
+        didSet { save() }
+    }
+
+    /// Per-family server-side UNet/diffusion-model filename (`models/unet`), keyed by `ModelFamily.id`.
+    var comfyUNet: [String: String] {
+        didSet { save() }
+    }
+
+    /// Per-family server-side CLIP text-encoder filename (`models/clip`), keyed by `ModelFamily.id`.
+    var comfyClip: [String: String] {
+        didSet { save() }
+    }
+
+    /// Per-family server-side VAE filename (`models/vae`), keyed by `ModelFamily.id`.
+    var comfyVae: [String: String] {
+        didSet { save() }
+    }
+
+    /// Per-family inference-backend choice (true = ComfyUI remote, false/absent = local mflux), keyed by `ModelFamily.id`.
+    var comfyBackendEnabled: [String: Bool] {
+        didSet { save() }
+    }
+
     /// Last-used Z-Image form, restored on next launch.
     var lastZImage: ZImageFormState? {
         didSet { save() }
@@ -592,6 +628,30 @@ class AppSettings {
         lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
         lastKrea2 = s.lastKrea2
         lastZImage = s.lastZImage
+        comfyURL = s.comfyURL ?? ""
+        // Migrate a pre-split saved `comfyCheckpoint` entry into the UNet slot so existing config keeps working.
+        var unetMap = s.comfyUNet ?? [:]
+        if let legacy = s.comfyCheckpoint {
+            for (key, val) in legacy where unetMap[key] == nil && !val.isEmpty {
+                unetMap[key] = val
+            }
+        }
+        comfyUNet = unetMap
+        comfyClip = s.comfyClip ?? [:]
+        comfyVae = s.comfyVae ?? [:]
+        // Migrate backend intent: an existing remote setup (URL + all three model files present for a family)
+        // stays remote; everything else defaults to mflux so the segment matches prior behavior.
+        var backendMap = s.comfyBackendEnabled ?? [:]
+        let urlConfigured = !(s.comfyURL ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        for family in ModelFamily.allCases {
+            let id = family.id
+            guard backendMap[id] == nil else { continue }
+            let hasModels = unetMap[id].map { !$0.isEmpty } ?? false
+                && (s.comfyClip?[id]).map { !$0.isEmpty } ?? false
+                && (s.comfyVae?[id]).map { !$0.isEmpty } ?? false
+            backendMap[id] = urlConfigured && hasModels
+        }
+        comfyBackendEnabled = backendMap
         seedVR2Use7B = s.seedVR2Use7B ?? false
         seedVR2Quantize = s.seedVR2Quantize ?? 8
         seedVR2Scale = s.seedVR2Scale ?? 2
@@ -756,6 +816,11 @@ class AppSettings {
         s.lastCustomBaseModel = lastCustomBaseModel
         s.lastKrea2 = lastKrea2
         s.lastZImage = lastZImage
+        s.comfyURL = comfyURL
+        s.comfyUNet = comfyUNet
+        s.comfyClip = comfyClip
+        s.comfyVae = comfyVae
+        s.comfyBackendEnabled = comfyBackendEnabled
         s.seedVR2Use7B = seedVR2Use7B
         s.seedVR2Quantize = seedVR2Quantize
         s.seedVR2Scale = seedVR2Scale

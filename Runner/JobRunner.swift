@@ -139,6 +139,14 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var landed: [(seed: Int, path: String)] = []
     }
 
+    /// A resolved remote target when this job's family is pointed at a ComfyUI server (non-empty URL + required model files), else nil.
+    private struct ComfyTarget {
+        let client: ComfyUIClient
+        var input: ComfyUIClient.WorkflowInput
+        /// Total node count in the submitted workflow, for "Node X of N" progress.
+        let totalNodes: Int
+    }
+
     private static var cacheBase: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
@@ -278,6 +286,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
             stepwiseDir: stepDir, promptFile: promptFile
         )
 
+        // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server
+        // (non-empty URL + per-family checkpoint), generate there and fetch results back.
+        if let target = makeComfyTarget(job: job, settings: settings) {
+            await runViaComfyUI(target, job: job, ctx: ctx, stepDir: stepDir)
+            return
+        }
         // Warm-driver path: eligible jobs go to the persistent driver; any
         // startup failure falls through to the one-shot CLI below.
         if let driver, settings.keepModelWarm,
@@ -671,6 +685,117 @@ final class JobRunner<Spec: JobRunnerSpec> {
         if case .running = status {} else {
             activeJob = nil
             sessionCompleted += 1
+        }
+    }
+
+    // MARK: - Remote ComfyUI execution
+
+    private func makeComfyTarget(job: Job, settings: AppSettings) -> ComfyTarget? {
+        // The per-family segment (mflux / ComfyUI) is the intent gate: mflux routes locally even when a URL is set.
+        guard settings.comfyBackendEnabled[Spec.family.id] == true else { return nil }
+        let url = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Krea2's fp8 pipeline loads three files; all must be configured to route remote.
+        guard
+            let unet = settings.comfyUNet[Spec.family.id], !unet.isEmpty,
+            let clip = settings.comfyClip[Spec.family.id], !clip.isEmpty,
+            let vae = settings.comfyVae[Spec.family.id], !vae.isEmpty
+        else { return nil }
+
+        // PoC scope: Krea 2 is the first remote-enabled family (its UNet text-to-image graph + LoRA chain).
+        // Other families route to local mflux until they get a workflow builder. The concrete cast keeps this
+        // compiling against the generic Job without forcing every spec to implement a remote-request hook yet.
+        guard let krea = job as? Krea2Job else { return nil }
+
+        var input = ComfyUIClient.WorkflowInput(
+            prompt: krea.prompt,
+            negativePrompt: krea.negativePrompt.isEmpty ? nil : krea.negativePrompt,
+            width: krea.width, height: krea.height, steps: krea.steps, cfg: krea.guidance,
+            seed: 0, // filled in by runViaComfyUI from ctx.seed (resolved at run time)
+            unetName: unet, clipName: clip, vaeName: vae,
+            loras: krea.loras.filter(\.enabled).map { entry in
+                ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
+            },
+            // Server-side output subfolder. Left empty → prefix "mlxbits" (one level, output/mlxbits/). ComfyUI's SaveImage takes a
+            // single-level filename_prefix; a slash in it does NOT nest (verified on the live 0.33 server: "a/b" lands as subfolder "a",
+            // file "b_…").
+            saveSubfolder: ""
+        )
+
+        // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
+        // each enabled LoRA adds one LoraLoader node.
+        let totalNodes = 8 + input.loras.count
+        return ComfyTarget(
+            client: ComfyUIClient(config: .init(baseURL: url, apiKey: nil)),
+            input: input,
+            totalNodes: totalNodes
+        )
+    }
+
+    /// Execute one job on the remote server and land its image(s) exactly like a local run.
+    private func runViaComfyUI(_ target: ComfyTarget, job: Job, ctx: JobRunContext, stepDir: URL) async {
+        let client = target.client
+        var input = target.input
+        input.seed = ctx.seed // seed is resolved at run time (may be random for -1)
+        // Land remote outputs exactly where a local run would, so they're immediately visible in the same gallery
+        // board and family filter. (ComfyUI 0.33's SaveImage node takes no subfolder input — server-side output routing
+        // is controlled by the server's own config, not this client — so there is no per-request subfolder to set here.)
+
+        job.statusLine = "Submitting to ComfyUI…"
+        do {
+            var runStartedAt: Date?
+            let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
+                if !prog.isDenoising {
+                    return
+                }
+                // First denoise frame marks when the server actually started work (queue + model load excluded).
+                if runStartedAt == nil {
+                    runStartedAt = Date()
+                }
+                let phase = prog.phaseLabel ?? "Generating"
+                var detail = ""
+                // Node position is shown only when the server reports `executing` frames; on builds that don't,
+                // this stays empty and we fall back to the live elapsed clock below.
+                if prog.currentNode > 0 && prog.totalNodes > 1 {
+                    detail += "Node \(prog.currentNode)/\(prog.totalNodes)"
+                }
+                let s = runStartedAt.map { Int(Date().timeIntervalSince($0)) } ?? 0
+                let clock = "\(s / 60):" + String(format: "%02d", s % 60)
+                job.statusLine = detail.isEmpty ? "\(phase) · \(clock)" : "\(phase) · \(detail) · \(clock)"
+            }
+            let generatedAt = Date()
+            // Land each output to a local path in the gallery dir, mirroring buildOutputPath's naming. The primary image
+            // lands at `ctx.outputFile` itself (what a local run writes); extra batch images sit alongside it.
+            let outDir = (ctx.outputFile as NSString).deletingLastPathComponent
+            var landed: [String] = []
+            for (i, out) in outputs.enumerated() {
+                let local = (job.seeds.isEmpty && i == 0) ? ctx.outputFile : "\(outDir)/\(Spec.outputPrefix)_\(Int(Date().timeIntervalSince1970))_r\(i).png"
+                if await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local) {
+                    Spec.writeMetadata(job: job, seed: ctx.seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
+                    landed.append(local)
+                }
+            }
+
+            guard !landed.isEmpty else {
+                finishJob(job, status: .failed("ComfyUI produced no retrievable image"), stepDir: stepDir); return
+            }
+            if job.seeds.isEmpty {
+                job.outputPath = landed[0]
+                job.thumbnailData = RunnerSupport.loadThumbnail(at: landed[0])
+                lastCompletedOutputPath = landed[0]
+            } else {
+                job.outputPaths = landed
+                job.outputThumbnails = await RunnerSupport.makeThumbnails(for: landed)
+                job.outputPath = landed.first
+                job.thumbnailData = job.outputThumbnails.first
+                lastCompletedOutputPath = landed.count == 1 ? landed.first : landed.last
+            }
+            finishJob(job, status: .completed, stepDir: stepDir)
+        } catch let e as CancellationError {
+            job.status = .cancelled
+            finishJob(job, status: .cancelled, stepDir: stepDir)
+        } catch {
+            job.log += "\(error.localizedDescription)\n"
+            finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
         }
     }
 }

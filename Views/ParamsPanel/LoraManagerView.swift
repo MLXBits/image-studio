@@ -328,11 +328,19 @@ private struct LoraPickerSheet: View {
     let onAddLibrary: (LibraryLora) -> Void
     let onApplyStack: (LoraStack) -> Void
 
+    @Environment(AppSettings.self) private var settings
+
+    /// Whether this family currently routes generation to a ComfyUI server — read from live settings so the picker hides local-disk LoRAs
+    /// (which can't be used remote-side) and shows only auto-cataloged server ones when it does.
+    private var routedToComfyUI: Bool {
+        settings.comfyBackendEnabled[family.id] == true
+    }
+
     @Environment(\.dismiss) private var dismiss
     @State private var search: String = ""
 
     private var entries: [LibraryLora] {
-        let all = library.entries(for: family)
+        let all = library.visibleEntries(for: family, routedToComfyUI: routedToComfyUI)
         guard !search.isEmpty else { return all }
         let q = search.lowercased()
         return all.filter {
@@ -343,13 +351,31 @@ private struct LoraPickerSheet: View {
     }
 
     private var stacks: [LoraStack] {
-        let all = library.stacks(for: family)
+        let all = library.stacks(for: family).filter { stack in
+            // When routed to ComfyUI, a stack is only usable if every member LoRA resolves to a server-cataloged entry;
+            // any local-disk path mixed in would be submitted unresolvable to the remote workflow.
+            !routedToComfyUI || stack.loras.allSatisfy { libraryEntryMatchesServer($0) }
+        }
         guard !search.isEmpty else { return all }
         let q = search.lowercased()
         return all.filter {
             $0.displayName.lowercased().contains(q)
                 || $0.tags.contains { $0.lowercased().contains(q) }
         }
+    }
+
+    /// The message shown when both the (routing-filtered) LoRA list and stack list are empty after search. When routed to ComfyUI, the
+    /// actionable guidance is "no server LoRAs discovered yet — point Settings at a URL"; otherwise it's the ordinary local-library hint or
+    /// "No matches" if entries exist but didn't match the search text.
+    private var emptyStateMessage: String {
+        if routedToComfyUI {
+            return "No server LoRAs discovered for \(family.rawValue). Point Settings at a ComfyUI URL and"
+                + " it will catalog them automatically."
+        }
+        if library.entries(for: family).isEmpty && library.stacks(for: family).isEmpty {
+            return "No library LoRAs or stacks for \(family.rawValue). Add them in Settings › LoRAs."
+        }
+        return "No matches."
     }
 
     var body: some View {
@@ -364,9 +390,7 @@ private struct LoraPickerSheet: View {
                 .textFieldStyle(.roundedBorder)
 
             if entries.isEmpty && stacks.isEmpty {
-                Text(library.entries(for: family).isEmpty && library.stacks(for: family).isEmpty
-                    ? "No library LoRAs or stacks for \(family.rawValue). Add them in Settings › LoRAs."
-                    : "No matches.")
+                Text(emptyStateMessage)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -396,10 +420,26 @@ private struct LoraPickerSheet: View {
             .foregroundStyle(.secondary)
     }
 
+    /// True when a stack member's `path` matches an auto-cataloged (server) library entry for this family — i.e. the remote server actually
+    /// has that LoRA, so it can be submitted to a `LoraLoader` node by name.
+    private func libraryEntryMatchesServer(_ member: LoraEntry) -> Bool {
+        guard let lib = library.libraryEntry(path: member.path) else { return false }
+        return lib.isServerLoRA && lib.modelFamily == family
+    }
+
     private func libraryRow(_ entry: LibraryLora) -> some View {
         HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
-                Text(entry.displayName).font(.callout).lineLimit(1).truncationMode(.middle)
+                HStack(spacing: 6) {
+                    Text(entry.displayName).font(.callout).lineLimit(1).truncationMode(.middle)
+                    if entry.isServerLoRA {
+                        Text("Server")
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 5).padding(.vertical, 1)
+                            .background(Color.blue.opacity(0.2), in: Capsule())
+                            .foregroundStyle(.blue)
+                    }
+                }
                 if !entry.triggerWords.isEmpty {
                     Text("Trigger: \(entry.triggerWords)")
                         .font(.caption2).foregroundStyle(.secondary).lineLimit(1)
@@ -407,7 +447,6 @@ private struct LoraPickerSheet: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("Add") { onAddLibrary(entry) }
-                .controlSize(.small)
         }
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))

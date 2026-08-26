@@ -25,7 +25,7 @@ enum LoraRating: String, Codable, CaseIterable {
 struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     enum CodingKeys: String, CodingKey {
         case id, name, path, modelFamily, defaultStrength, triggerWords, tags, rating, thumbnailPath, notes,
-             isDefault
+             isDefault, isServerLoRA
     }
 
     var id = UUID()
@@ -33,6 +33,10 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
     var path: String = ""
     var modelFamily: ModelFamily = .flux
     var defaultStrength: Double = 1.0
+    /// True when this entry was auto-cataloged from a ComfyUI server's `/models/loras` discovery rather than picked from local disk. Server
+    /// LoRAs are submitted to the workflow by their relative name and must NOT be offered through the local-file browse path; the picker
+    /// hides `!isServerLoRA` entries for families routed to ComfyUI.
+    var isServerLoRA: Bool = false
     var triggerWords: String = ""
     var tags: [String] = []
     var rating: LoraRating = .unrated
@@ -69,7 +73,8 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         rating: LoraRating = .unrated,
         thumbnailPath: String? = nil,
         notes: String = "",
-        isDefault: Bool = false
+        isDefault: Bool = false,
+        isServerLoRA: Bool = false
     ) {
         self.id = id
         self.name = name
@@ -82,6 +87,7 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         self.thumbnailPath = thumbnailPath
         self.notes = notes
         self.isDefault = isDefault
+        self.isServerLoRA = isServerLoRA
     }
 
     init(from decoder: Decoder) throws {
@@ -97,6 +103,7 @@ struct LibraryLora: Identifiable, Codable, Equatable, Hashable {
         thumbnailPath = try c.decodeIfPresent(String.self, forKey: .thumbnailPath)
         notes = try c.decodeIfPresent(String.self, forKey: .notes) ?? ""
         isDefault = try c.decodeIfPresent(Bool.self, forKey: .isDefault) ?? false
+        isServerLoRA = try c.decodeIfPresent(Bool.self, forKey: .isServerLoRA) ?? false
     }
 
     /// A per-job entry seeded from this library LoRA's identity and default strength.
