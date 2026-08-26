@@ -753,21 +753,27 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 }
                 var input = target.input
                 input.seed = seed // resolved at run time (may be random for -1)
-
-                job.statusLine = "Submitting to ComfyUI… (batch \(index + 1)/\(seedsToRun.count))"
+                // Track the highest executing-node seen for this seed. The client also fires a coarse heartbeat frame every second with
+                // currentNode==0 (for the elapsed clock); without this, those ticks would clobber "Node X/N" back to a bare phase label and
+                // make it flicker.
+                var lastSeenNode = 0
+                job.statusLine = "Submitting to ComfyUI…"
                 let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
                     if !prog.isDenoising {
                         return
                     }
-                    // First denoise frame marks when the server actually started work (queue + model load excluded).
+                    // Coarse stage text for the bottom status line; carries the executing-node position when the server reports it. The
+                    // batch
+                    // progress (X/Y images) lives in the top-right queueStatusLabel, so we don't repeat it here.
                     let phase = prog.phaseLabel ?? "Generating"
-                    var detail = ""
-                    // Node position is shown only when the server reports `executing` frames; on builds that don't, this stays empty and we
-                    // fall back to the live elapsed clock below.
-                    if prog.currentNode > 0 && prog.totalNodes > 1 {
-                        detail += "Node \(prog.currentNode)/\(prog.totalNodes)"
+                    if prog.currentNode > lastSeenNode {
+                        lastSeenNode = prog.currentNode
                     }
-                    job.statusLine = detail.isEmpty ? "\(phase) · batch \(index + 1)/\(seedsToRun.count)" : "\(phase) · \(detail) · batch \(index + 1)/\(seedsToRun.count)"
+                    var detail = ""
+                    if lastSeenNode > 0 && prog.totalNodes > 1 {
+                        detail += "Node \(lastSeenNode)/\(prog.totalNodes)"
+                    }
+                    job.statusLine = detail.isEmpty ? phase : "\(phase) · \(detail)"
                 }
 
                 // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
