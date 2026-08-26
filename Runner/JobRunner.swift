@@ -744,7 +744,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         do {
             var landedPaths: [String] = []
-            let generatedAt = Date()
+            // Per-image timing window, mirroring the local mflux path's perImageStartTime/imageGeneratedAt. The first seed spans run-start
+            // -> its landing; each subsequent seed spans the previous seed's landing -> its own. Capturing generatedAt once up front (the
+            // old behavior) made every sidecar report ~0s because it was stamped before any image existed.
+            var perSeedStartTime = job.startedAt ?? Date()
 
             for (index, seed) in seedsToRun.enumerated() {
                 guard !Task.isCancelled else { throw CancellationError() }
@@ -791,8 +794,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
                 else { continue }
 
-                Spec.writeMetadata(job: job, seed: seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
-                landedPaths.append(local)
+                // Stamp the per-image window end only now that this seed's image has landed on disk, so the sidecar records real elapsed
+                // time (run-start -> first landing; previous landing -> next for batches), not ~0s.
+                let imageGeneratedAt = Date()
+                Spec.writeMetadata(job: job, seed: seed, startedAt: perSeedStartTime, generatedAt: imageGeneratedAt, path: local)
+                perSeedStartTime = imageGeneratedAt
 
                 // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
                 // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
