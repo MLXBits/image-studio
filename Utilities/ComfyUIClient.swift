@@ -16,9 +16,10 @@ import Foundation
 //   GET  /system_stats  liveness + GPU/VRAM (the Settings "Test Connection" proof).
 //   POST /interrupt     cooperative cancel of the currently-executing prompt.
 //
-// Output routing: ComfyUI's SaveImage node takes `filename_prefix` as a *single-level* path component (verified on the
-// live 0.33 server: prefix "a/b" → file lands in subfolder "a", named "b_…"). So we set it to "mlxbits/" and remote results
-// land in output/mlxbits/; /history reports that as `subfolder`, and downloadOutput resolves it (see the slash fallback).
+// Output routing: ComfyUI's get_save_image_path splits `filename_prefix` via os.path.dirname→subfolder, basename→filename. A bare
+// "mlxbits" has an empty dirname and drops the file in the output ROOT; a slash is required ("mlxbits/krea2" → subfolder "mlxbits",
+// file "krea2_…"). We always set saveSubfolder (the family id) to guarantee that. /history reports `subfolder`, which downloadOutput
+// resolves.
 
 enum ComfyUIError: LocalizedError {
     case invalidURL(String)
@@ -266,8 +267,9 @@ final class ComfyUIClient {
         var loras: [ComfyLora] = []
         var sampler: String = "euler"
         var scheduler: String = "normal"
-        /// Server-side output subfolder for the SaveImage node, appended as a path component to the `mlxbits` filename prefix.
-        /// ComfyUI treats it as a *single* level (a slash does not nest), so `"krea2"` → `output/mlxbits/…`. Empty uses just `mlxbits`.
+        /// Server-side output subfolder for the SaveImage node, appended as a path component to the `mlxbits` filename prefix. Must be
+        /// non-empty (e.g. `"krea2"` → prefix `mlxbits/krea2`) or ComfyUI's `get_save_image_path` computes an empty dirname and drops the
+        /// file in the output ROOT. Single level only — a second slash does not nest.
         var saveSubfolder: String = ""
     }
 

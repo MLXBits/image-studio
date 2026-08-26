@@ -715,10 +715,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
             loras: krea.loras.filter(\.enabled).map { entry in
                 ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
             },
-            // Server-side output subfolder. Left empty → prefix "mlxbits" (one level, output/mlxbits/). ComfyUI's SaveImage takes a
-            // single-level filename_prefix; a slash in it does NOT nest (verified on the live 0.33 server: "a/b" lands as subfolder "a",
-            // file "b_…").
-            saveSubfolder: ""
+            // Server-side output subfolder. Must be non-empty (we set the family id, e.g. "krea2") so the SaveImage filename_prefix
+            // becomes "mlxbits/krea2": ComfyUI's get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a
+            // bare "mlxbits" (empty subfolder) drops the file in the output ROOT. A single slash is required; it cannot nest.
+            saveSubfolder: Spec.family.id
         )
 
         // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
