@@ -383,6 +383,16 @@ final class ComfyUIClient {
             // Concurrent consumer: translate each live snapshot into a ComfyUIProgress for the UI. The node
             // position is derived from the ordered executedNodes list (1-based index of current + 1), so even
             // without per-step frames the user sees "Node X / N" advance as nodes complete.
+            // Both progressTask (real websocket frames) and tickerTask (1s elapsed-clock heartbeat) feed the same onProgress. Without
+            // shared, locked state they race and the status line flip-flops between a real "Node X/N" frame and the ticker's bare
+            // "Generating". lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it
+            // only keeps the elapsed clock ticking when frames are sparse.
+            let progressLock = NSLock()
+            var lastPhase: String?
+            var lastNode = 0
+            func publish(phase: String?, node: Int) {
+                onProgress(ComfyUIProgress(isDenoising: true, phaseLabel: phase, currentNode: node, totalNodes: totalNodes))
+            }
             let progressTask = Task { [weak self] in
                 guard let self else { return }
                 for await snap in tracker.progressStream where !Task.isCancelled {
@@ -392,19 +402,21 @@ final class ComfyUIClient {
                     let nodePos = snap.executedNodes.contains(snap.nodeID ?? "")
                         ? (snap.executedNodes.firstIndex(of: snap.nodeID!)! + 1)
                         : snap.executedNodes.count
-                    onProgress(ComfyUIProgress(
-                        currentStep: snap.step,
-                        totalSteps: max(snap.totalSteps, input.steps),
-                        isDenoising: true,
-                        phaseLabel: snap.phaseLabel,
-                        currentNode: nodePos,
-                        totalNodes: totalNodes
-                    ))
+                    progressLock.lock()
+                    lastPhase = snap.phaseLabel
+                    if nodePos > lastNode {
+                        lastNode = nodePos
+                    }
+                    let phase = snap.phaseLabel
+                    let node = lastNode
+                    progressLock.unlock()
+                    publish(phase: phase, node: node)
                 }
             }
 
             // Heartbeat ticker: fire a coarse denoising frame every second so the caller's elapsed clock keeps
-            // updating even on builds that send no websocket `executing`/`progress` frames through the handler.
+            // updating even on builds that send no websocket `executing`/`progress` frames through the handler. It carries forward the last
+            // real node/phase, never regressing them.
             let tickerTask = Task { [weak self] in
                 guard let self else { return }
                 while !Task.isCancelled {
@@ -412,7 +424,11 @@ final class ComfyUIClient {
                     if Task.isCancelled {
                         break
                     }
-                    onProgress(ComfyUIProgress(isDenoising: true, phaseLabel: "Generating", totalNodes: totalNodes))
+                    progressLock.lock()
+                    let phase = lastPhase ?? "Generating"
+                    let node = lastNode
+                    progressLock.unlock()
+                    publish(phase: phase, node: node)
                 }
             }
 
