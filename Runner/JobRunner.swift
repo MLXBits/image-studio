@@ -731,63 +731,79 @@ final class JobRunner<Spec: JobRunnerSpec> {
         )
     }
 
-    /// Execute one job on the remote server and land its image(s) exactly like a local run.
+    /// Execute a job on the remote server and land its image(s) exactly like a local run. For multi-seed jobs, one workflow is
+    /// submitted per seed (each with that seed), landing at the canonical `_seed_{N}` path; single-seed jobs submit once and land at
+    /// `ctx.outputFile`. ComfyUI's SaveImage node takes no subfolder input — server-side output routing is controlled by the server's own
+    /// config, not this client.
     private func runViaComfyUI(_ target: ComfyTarget, job: Job, ctx: JobRunContext, stepDir: URL) async {
         let client = target.client
-        var input = target.input
-        input.seed = ctx.seed // seed is resolved at run time (may be random for -1)
-        // Land remote outputs exactly where a local run would, so they're immediately visible in the same gallery
-        // board and family filter. (ComfyUI 0.33's SaveImage node takes no subfolder input — server-side output routing
-        // is controlled by the server's own config, not this client — so there is no per-request subfolder to set here.)
 
-        job.statusLine = "Submitting to ComfyUI…"
+        // Resolve the seed list exactly as a local multi-seed run does: `job.seeds` when set (batch count or keyboard shortcut),
+        // else the single effective seed from ctx (which is random for -1).
+        let seedsToRun = job.seeds.isEmpty ? [ctx.seed] : Array(job.seeds)
+
         do {
-            var runStartedAt: Date?
-            let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
-                if !prog.isDenoising {
-                    return
-                }
-                // First denoise frame marks when the server actually started work (queue + model load excluded).
-                if runStartedAt == nil {
-                    runStartedAt = Date()
-                }
-                let phase = prog.phaseLabel ?? "Generating"
-                var detail = ""
-                // Node position is shown only when the server reports `executing` frames; on builds that don't,
-                // this stays empty and we fall back to the live elapsed clock below.
-                if prog.currentNode > 0 && prog.totalNodes > 1 {
-                    detail += "Node \(prog.currentNode)/\(prog.totalNodes)"
-                }
-                let s = runStartedAt.map { Int(Date().timeIntervalSince($0)) } ?? 0
-                let clock = "\(s / 60):" + String(format: "%02d", s % 60)
-                job.statusLine = detail.isEmpty ? "\(phase) · \(clock)" : "\(phase) · \(detail) · \(clock)"
-            }
+            var landed: [(seed: Int, path: String)] = []
             let generatedAt = Date()
-            // Land each output to a local path in the gallery dir, mirroring buildOutputPath's naming. The primary image
-            // lands at `ctx.outputFile` itself (what a local run writes); extra batch images sit alongside it.
-            let outDir = (ctx.outputFile as NSString).deletingLastPathComponent
-            var landed: [String] = []
-            for (i, out) in outputs.enumerated() {
-                let local = (job.seeds.isEmpty && i == 0) ? ctx.outputFile : "\(outDir)/\(Spec.outputPrefix)_\(Int(Date().timeIntervalSince1970))_r\(i).png"
+
+            for (index, seed) in seedsToRun.enumerated() {
+                guard !Task.isCancelled else { throw CancellationError() }
+                if index > 0 {
+                    job.log += "── Batch \(index + 1)/\(seedsToRun.count): seed \(seed) ──\n"
+                }
+                var input = target.input
+                input.seed = seed // resolved at run time (may be random for -1)
+
+                job.statusLine = "Submitting to ComfyUI… (batch \(index + 1)/\(seedsToRun.count))"
+                let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
+                    if !prog.isDenoising {
+                        return
+                    }
+                    // First denoise frame marks when the server actually started work (queue + model load excluded).
+                    let phase = prog.phaseLabel ?? "Generating"
+                    var detail = ""
+                    // Node position is shown only when the server reports `executing` frames; on builds that don't, this stays empty and we
+                    // fall back to the live elapsed clock below.
+                    if prog.currentNode > 0 && prog.totalNodes > 1 {
+                        detail += "Node \(prog.currentNode)/\(prog.totalNodes)"
+                    }
+                    job.statusLine = detail.isEmpty ? "\(phase) · batch \(index + 1)/\(seedsToRun.count)" : "\(phase) · \(detail) · batch \(index + 1)/\(seedsToRun.count)"
+                }
+
+                // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
+                // canonical `_seed_{N}` name matching a local run's expandedPaths.
+                let outDir = (ctx.outputFile as NSString).deletingLastPathComponent
+                guard !outputs.isEmpty else { continue }
+                let out = outputs[0]
+                let local: String
+                if seedsToRun.count == 1 && index == 0 {
+                    local = ctx.outputFile
+                } else {
+                    let name = "\(Spec.outputPrefix)_seed_\(seed).png"
+                    local = "\(outDir)/\(name)"
+                }
                 if await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local) {
-                    Spec.writeMetadata(job: job, seed: ctx.seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
-                    landed.append(local)
+                    Spec.writeMetadata(job: job, seed: seed, startedAt: job.startedAt, generatedAt: generatedAt, path: local)
+                    landed.append((seed: seed, path: local))
                 }
             }
 
             guard !landed.isEmpty else {
                 finishJob(job, status: .failed("ComfyUI produced no retrievable image"), stepDir: stepDir); return
             }
-            if job.seeds.isEmpty {
-                job.outputPath = landed[0]
-                job.thumbnailData = RunnerSupport.loadThumbnail(at: landed[0])
-                lastCompletedOutputPath = landed[0]
+            let landedPaths = landed.map(\.path)
+            if seedsToRun.count == 1 {
+                job.outputPath = landed[0].path
+                job.resolvedSeed = landed[0].seed
+                job.thumbnailData = RunnerSupport.loadThumbnail(at: landed[0].path)
+                lastCompletedOutputPath = landed[0].path
             } else {
-                job.outputPaths = landed
-                job.outputThumbnails = await RunnerSupport.makeThumbnails(for: landed)
-                job.outputPath = landed.first
+                job.outputPaths = landedPaths
+                job.outputThumbnails = await RunnerSupport.makeThumbnails(for: landedPaths)
+                job.outputPath = landedPaths.first
+                job.resolvedSeed = seedsToRun[0]
                 job.thumbnailData = job.outputThumbnails.first
-                lastCompletedOutputPath = landed.count == 1 ? landed.first : landed.last
+                lastCompletedOutputPath = landedPaths.count == 1 ? landedPaths.first : landedPaths.last
             }
             finishJob(job, status: .completed, stepDir: stepDir)
         } catch let e as CancellationError {
