@@ -799,6 +799,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 let imageGeneratedAt = Date()
                 Spec.writeMetadata(job: job, seed: seed, startedAt: perSeedStartTime, generatedAt: imageGeneratedAt, path: local)
                 perSeedStartTime = imageGeneratedAt
+                landedPaths.append(local)
 
                 // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
                 // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
