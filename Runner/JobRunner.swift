@@ -139,6 +139,14 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var landed: [(seed: Int, path: String)] = []
     }
 
+    /// A resolved remote target when this job's family is pointed at a ComfyUI server (non-empty URL + required model files), else nil.
+    private struct ComfyTarget {
+        let client: ComfyUIClient
+        var input: ComfyUIClient.WorkflowInput
+        /// Total node count in the submitted workflow, for "Node X of N" progress.
+        let totalNodes: Int
+    }
+
     private static var cacheBase: URL {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
@@ -163,6 +171,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var driverJobActive = false
+    /// Client of the active remote ComfyUI run — non-nil only while ``runViaComfyUI(_:)`` is executing. Stop routes through it because
+    /// there is no local process to signal; the server must be asked (via /interrupt) and our own task made to observe cancellation.
+    private var comfyClient: ComfyUIClient?
     private let stepwiseWatcher = StepwiseWatcher()
     private var batchPollingTask: Task<Void, Never>?
 
@@ -201,6 +212,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 
     func cancel() {
+        if let client = comfyClient {
+            // Remote run: nothing local to kill. Ask the server to stop whatever prompt is executing (cooperative — an in-flight step
+            // finishes), and drop our task so its poll loop sees Task.isCancelled on the next check. Seeds that already landed stay in the
+            // gallery, same as a local cancel leaving partial output on disk.
+            Task { await client.interrupt() }
+            runTask?.cancel()
+            activeJob?.statusLine = "Stopping…"
+            return
+        }
         guard driverJobActive else {
             currentProcess?.terminate()
             return
@@ -278,6 +298,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
             stepwiseDir: stepDir, promptFile: promptFile
         )
 
+        // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server
+        // (non-empty URL + per-family checkpoint), generate there and fetch results back.
+        if let target = makeComfyTarget(job: job, settings: settings) {
+            await runViaComfyUI(target, job: job, ctx: ctx, stepDir: stepDir)
+            return
+        }
         // Warm-driver path: eligible jobs go to the persistent driver; any
         // startup failure falls through to the one-shot CLI below.
         if let driver, settings.keepModelWarm,
@@ -671,6 +697,157 @@ final class JobRunner<Spec: JobRunnerSpec> {
         if case .running = status {} else {
             activeJob = nil
             sessionCompleted += 1
+        }
+    }
+
+    // MARK: - Remote ComfyUI execution
+
+    private func makeComfyTarget(job: Job, settings: AppSettings) -> ComfyTarget? {
+        // The per-family segment (mflux / ComfyUI) is the intent gate: mflux routes locally even when a URL is set.
+        guard settings.comfyBackendEnabled[Spec.family.id] == true else { return nil }
+        let url = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        // Krea2's fp8 pipeline loads three files; all must be configured to route remote.
+        guard
+            let unet = settings.comfyUNet[Spec.family.id], !unet.isEmpty,
+            let clip = settings.comfyClip[Spec.family.id], !clip.isEmpty,
+            let vae = settings.comfyVae[Spec.family.id], !vae.isEmpty
+        else { return nil }
+
+        // PoC scope: Krea 2 is the first remote-enabled family (its UNet text-to-image graph + LoRA chain).
+        // Other families route to local mflux until they get a workflow builder. The concrete cast keeps this
+        // compiling against the generic Job without forcing every spec to implement a remote-request hook yet.
+        guard let krea = job as? Krea2Job else { return nil }
+
+        var input = ComfyUIClient.WorkflowInput(
+            prompt: krea.prompt,
+            negativePrompt: krea.negativePrompt.isEmpty ? nil : krea.negativePrompt,
+            width: krea.width, height: krea.height, steps: krea.steps, cfg: krea.guidance,
+            seed: 0, // filled in by runViaComfyUI from ctx.seed (resolved at run time)
+            unetName: unet, clipName: clip, vaeName: vae,
+            loras: krea.loras.filter(\.enabled).map { entry in
+                ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
+            },
+            // Server-side output subfolder. Must be non-empty (we set the family id, e.g. "krea2") so the SaveImage filename_prefix
+            // becomes "mlxbits/krea2": ComfyUI's get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a
+            // bare "mlxbits" (empty subfolder) drops the file in the output ROOT. A single slash is required; it cannot nest.
+            saveSubfolder: Spec.family.id
+        )
+
+        // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
+        // each enabled LoRA adds one LoraLoader node.
+        let totalNodes = 8 + input.loras.count
+        return ComfyTarget(
+            client: ComfyUIClient(config: .init(baseURL: url, apiKey: nil)),
+            input: input,
+            totalNodes: totalNodes
+        )
+    }
+
+    /// Execute a job on the remote server and land its image(s) exactly like a local run. For multi-seed jobs, one workflow is
+    /// submitted per seed (each with that seed), landing at the canonical `_seed_{N}` path; single-seed jobs submit once and land at
+    /// `ctx.outputFile`. ComfyUI's SaveImage node takes no subfolder input — server-side output routing is controlled by the server's own
+    /// config, not this client.
+    private func runViaComfyUI(_ target: ComfyTarget, job: Job, ctx: JobRunContext, stepDir: URL) async {
+        let client = target.client
+        // Expose the active client so cancel() can route Stop into this remote run; cleared on every exit path.
+        comfyClient = client
+        defer { comfyClient = nil }
+
+        // Resolve the seed list exactly as a local multi-seed run does: `job.seeds` when set (batch count or keyboard shortcut),
+        // else the single effective seed from ctx (which is random for -1).
+        let seedsToRun = job.seeds.isEmpty ? [ctx.seed] : Array(job.seeds)
+
+        do {
+            var landedPaths: [String] = []
+            // Per-image timing window, mirroring the local mflux path's perImageStartTime/imageGeneratedAt. The first seed spans run-start
+            // -> its landing; each subsequent seed spans the previous seed's landing -> its own. Capturing generatedAt once up front (the
+            // old behavior) made every sidecar report ~0s because it was stamped before any image existed.
+            var perSeedStartTime = job.startedAt ?? Date()
+
+            for (index, seed) in seedsToRun.enumerated() {
+                guard !Task.isCancelled else { throw CancellationError() }
+                if index > 0 {
+                    job.log += "── Batch \(index + 1)/\(seedsToRun.count): seed \(seed) ──\n"
+                }
+                var input = target.input
+                input.seed = seed // resolved at run time (may be random for -1)
+                // Track the highest executing-node seen for this seed. The client also fires a coarse heartbeat frame every second with
+                // currentNode==0 (for the elapsed clock); without this, those ticks would clobber "Node X/N" back to a bare phase label and
+                // make it flicker.
+                var lastSeenNode = 0
+                job.statusLine = "Submitting to ComfyUI…"
+                let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
+                    if !prog.isDenoising {
+                        return
+                    }
+                    // Coarse stage text for the bottom status line; carries the executing-node position when the server reports it. The
+                    // batch
+                    // progress (X/Y images) lives in the top-right queueStatusLabel, so we don't repeat it here.
+                    let phase = prog.phaseLabel ?? "Generating"
+                    if prog.currentNode > lastSeenNode {
+                        lastSeenNode = prog.currentNode
+                    }
+                    var detail = ""
+                    if lastSeenNode > 0 && prog.totalNodes > 1 {
+                        detail += "Node \(lastSeenNode)/\(prog.totalNodes)"
+                    }
+                    job.statusLine = detail.isEmpty ? phase : "\(phase) · \(detail)"
+                }
+
+                // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
+                // canonical `_seed_{N}` name matching a local run's expandedPaths.
+                let outDir = (ctx.outputFile as NSString).deletingLastPathComponent
+                guard !outputs.isEmpty else { continue }
+                let out = outputs[0]
+                let local: String
+                if seedsToRun.count == 1 && index == 0 {
+                    local = ctx.outputFile
+                } else {
+                    let name = "\(Spec.outputPrefix)_seed_\(seed).png"
+                    local = "\(outDir)/\(name)"
+                }
+                guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
+                else { continue }
+
+                // Stamp the per-image window end only now that this seed's image has landed on disk, so the sidecar records real elapsed
+                // time (run-start -> first landing; previous landing -> next for batches), not ~0s.
+                let imageGeneratedAt = Date()
+                Spec.writeMetadata(job: job, seed: seed, startedAt: perSeedStartTime, generatedAt: imageGeneratedAt, path: local)
+                perSeedStartTime = imageGeneratedAt
+                landedPaths.append(local)
+
+                // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
+                // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
+                // batchImageLanded to trigger a fresh scan that picks up the new file on disk. Thumbnails are loaded by the gallery from
+                // disk during its own scan, not attached here per-seed.
+                if landedPaths.count == 1 {
+                    job.resolvedSeed = seed
+                    lastCompletedOutputPath = local
+                }
+                batchImageLanded += 1
+                job.completedSeedsInBatch = landedPaths.count
+            }
+
+            guard !landedPaths.isEmpty else {
+                finishJob(job, status: .failed("ComfyUI produced no retrievable image"), stepDir: stepDir); return
+            }
+            if seedsToRun.count == 1 {
+                job.outputPath = landedPaths[0]
+            } else {
+                // Keep outputPaths in sync incrementally so expandBatchJob (which zips job.seeds with
+                // job.outputPaths) sees a consistent set even mid-batch; final count may be less than
+                // requested if some seeds failed to download.
+                job.outputPaths = landedPaths
+                job.outputPath = landedPaths.first
+                lastCompletedOutputPath = landedPaths.last
+            }
+            finishJob(job, status: .completed, stepDir: stepDir)
+        } catch let e as CancellationError {
+            job.status = .cancelled
+            finishJob(job, status: .cancelled, stepDir: stepDir)
+        } catch {
+            job.log += "\(error.localizedDescription)\n"
+            finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
         }
     }
 }

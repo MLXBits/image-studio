@@ -90,6 +90,32 @@ struct OpenAIModelsResponse: Decodable {
     }
 }
 
+// MARK: - LM Studio native session status (polling + eject)
+
+/// Snapshot of an OpenAI-compatible server's *loaded* model instances, from the
+/// LM Studio native `GET /api/v1/models` endpoint (the `/v1/*` path only reports ids).
+/// The header pill polls this so a co-resident LM Studio shows which models are holding
+/// memory and how much context each loaded instance is configured for. Non-LM-Studio
+/// servers that lack the native API surface simply never populate it (the poll throws).
+struct LMSessionStatus: Equatable {
+    /// One resident model instance (a model can hold several, e.g. different contexts).
+    struct Instance: Equatable {
+        let id: String
+        /// Configured context length for this instance — the practical memory footprint signal.
+        let contextLength: Int?
+    }
+
+    /// One model the server reports as loaded, with its resident instances.
+    struct LoadedModel: Equatable {
+        let modelKey: String
+        let displayName: String?
+        var instances: [Instance]
+    }
+
+    /// Every currently loaded model and its instances, in server-reported order. Empty = nothing resident.
+    let loaded: [LoadedModel]
+}
+
 // MARK: - Chat call
 
 /// Everything needed to run one remote chat completion. Bundled into a value so

@@ -19,6 +19,7 @@ struct ModelDefaultsView: View {
     }
 
     @Environment(AppSettings.self) var settings
+    @Environment(LoraLibraryStore.self) private var loraLibrary
     @State private var selection: Selection = .model(.builtIn[0])
 
     /// The selected FLUX model, or the first built-in as a placeholder while the
@@ -37,6 +38,11 @@ struct ModelDefaultsView: View {
     @State private var userCancelledCache = false
     @State private var cacheStartedAt: Date?
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
+    /// Discovered ComfyUI model lists, bound to the Krea 2 form's pickers. Refreshed when a server URL is set.
+    @State private var comfyModels = ComfyModelStore()
+    /// True once the auto-catalog callback has been wired for this view instance, so `.onAppear` doesn't re-install it on every appearance
+    /// (the closure captures `loraLibrary`; one install per live store is enough and idempotent cataloging makes re-runs harmless anyway).
+    @State private var catalogWired = false
 
     var body: some View {
         HStack(spacing: 0) {
@@ -48,11 +54,37 @@ struct ModelDefaultsView: View {
             modelForm
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .onAppear {
+            guard !catalogWired else { return }
+            catalogWired = true
+            // Race-free auto-cataloging: the store invokes this in the same task that stores `info.loras` after a
+            // successful discovery pass, so the library is updated before any picker observes it. Idempotent inside the
+            // store (deduped by path), so repeated discoveries never clobber user edits to existing entries.
+            comfyModels.onLorasDiscovered = { names in
+                loraLibrary.catalogServerLoras(names: names)
+            }
+        }
         .onChange(of: selection) { _, _ in
             cachePhase = .idle
             cacheLog = ""
             cacheProcess?.terminate()
             cacheProcess = nil
+        }
+        .onChange(of: settings.comfyURL) { _, newURL in
+            let trimmed = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                comfyModels.cancel()
+            } else {
+                comfyModels.refresh(baseURL: trimmed)
+            }
+        }
+        .onChange(of: settings.comfyBackendEnabled) { _, _ in
+            let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+            if trimmed.isEmpty {
+                comfyModels.cancel()
+            } else {
+                comfyModels.refresh(baseURL: trimmed)
+            }
         }
         .alert("Delete cached weights?", isPresented: Binding(
             get: { pendingDeleteVariant != nil },
@@ -77,6 +109,18 @@ struct ModelDefaultsView: View {
                         + " \(pending.model.displayName) from disk. You can re-download them later."
                 )
             }
+        }
+    }
+
+    /// Trigger ComfyUI model discovery when the Krea 2 form appears, but only if we're in remote mode with a URL
+    /// set and haven't already loaded lists for that exact server. This is what populates the dropdowns on first open
+    /// (the `.onChange` handlers alone never fire unless a value actually changes).
+    private func ensureComfyDiscovery() async {
+        guard settings.comfyBackendEnabled[ModelFamily.krea2.id] == true else { return }
+        let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !comfyModels.hasLoaded(for: trimmed) {
+            comfyModels.refresh(baseURL: trimmed)
         }
     }
 
@@ -158,7 +202,8 @@ struct ModelDefaultsView: View {
                     if selectedModel.isIdeogram4 {
                         ideogram4FormContent()
                     } else if selectedModel.isKrea2 {
-                        krea2FormContent()
+                        krea2FormContent(models: comfyModels)
+                            .task { await ensureComfyDiscovery() }
                     } else if selectedModel.isZImage {
                         zimageFormContent(model: selectedModel)
                     } else {

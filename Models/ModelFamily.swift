@@ -16,4 +16,10 @@ enum ModelFamily: String, CaseIterable, Codable {
 
     /// Families the user can pick and generate with (excludes the upscaler).
     static let generative: [Self] = [.flux, .ideogram4, .krea2, .zimage]
+    /// Stable, machine-safe identifier for use as a persisted-dictionary key (the
+    /// `rawValue`s above are human display strings and contain spaces). The ComfyUI
+    /// checkpoint store is keyed by this so the settings UI and the runner agree.
+    var id: String {
+        rawValue.replacingOccurrences(of: " ", with: "").lowercased()
+    }
 }

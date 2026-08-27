@@ -52,7 +52,22 @@ private struct TagChips: View {
 struct LoraLibraryEditorView: View {
     let family: ModelFamily
     @Environment(LoraLibraryStore.self) private var libraryStore
+    @Environment(AppSettings.self) private var settings
     @State private var editing: LibraryLora?
+
+    /// True when this family routes generation to a ComfyUI server; used only for the empty-state message so it can point at discovery
+    /// rather than local file-adding.
+    private var routedToComfyUI: Bool {
+        settings.comfyBackendEnabled[family.id] == true
+    }
+
+    private var emptyStateMessage: String {
+        if routedToComfyUI {
+            return "No server LoRAs discovered for \(family.rawValue) yet. Point Settings at a ComfyUI URL and"
+                + " it will catalog them automatically."
+        }
+        return "No library LoRAs for \(family.rawValue) yet."
+    }
 
     private var entries: [LibraryLora] {
         libraryStore.entries(for: family)
@@ -78,11 +93,7 @@ struct LoraLibraryEditorView: View {
             }
 
             if entries.isEmpty {
-                Text("No library LoRAs for \(family.rawValue) yet.")
-                    .font(.caption)
-                    .foregroundStyle(.tertiary)
-                    .frame(maxWidth: .infinity, alignment: .center)
-                    .padding(.vertical, 24)
+                Text(emptyStateMessage)
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
@@ -122,6 +133,14 @@ struct LoraLibraryEditorView: View {
                         .font(.callout)
                         .lineLimit(1)
                         .truncationMode(.middle)
+                    if entry.isServerLoRA {
+                        Text("Server")
+                            .font(.caption2.weight(.medium))
+                            .padding(.horizontal, 5)
+                            .padding(.vertical, 1)
+                            .background(Color.blue.opacity(0.2), in: Capsule())
+                            .foregroundStyle(.blue)
+                    }
                     RatingChip(rating: entry.rating)
                     TagChips(tags: entry.tags)
                 }

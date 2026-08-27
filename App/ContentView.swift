@@ -55,7 +55,7 @@ struct ContentView: View {
     @Environment(MfluxDriverController.self) private var driverController
     @Environment(LoraLibraryStore.self) private var loraLibrary
     @Environment(UpdateChecker.self) private var updates
-
+    @Environment(BackendModelStore.self) private var backendModels
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openURL) private var openURL
 
@@ -334,9 +334,11 @@ struct ContentView: View {
                     NSApp.keyWindow?.makeFirstResponder(nil)
                 }
             }
-            .onChange(of: img2imgLockedPaths) { _, newValue in
-                gallery.lockedPaths = newValue
-            }
+            .onAppear { backendModels.attach(settings) }
+            .onChange(of: settings.comfyURL) { _, _ in backendModels.restart() }
+            .onChange(of: settings.openAIBaseURL) { _, _ in backendModels.restart() }
+            .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
+            .task(id: isAnyStoreRunning) { backendModels.localRunInFlight = isAnyStoreRunning }
             .task { await checkAndAutoInstallMflux() }
             .onChange(of: loraLibrary.allDefaultLoras) { _, updated in
                 let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
@@ -867,9 +869,10 @@ struct ContentView: View {
                 fixedSeedPill
             }
 
-            HStack {
+            HStack(spacing: 6) {
                 headerModelPicker
                 Spacer(minLength: 0)
+                backendPills()
                 warmModelChip()
             }
         }
@@ -1648,6 +1651,121 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .disabled(driverController.isGenerating)
                 .help(driverController.isGenerating ? "Generating — cannot eject" : "Eject warm model")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.fill.quaternary, in: Capsule())
+        }
+    }
+
+    // MARK: - External backend residency pills (ComfyUI + LM Studio)
+
+    /// Header indicators for the two *external* inference hosts this app can reach, shown in the same
+    /// trailing cluster as ``warmModelChip()``. Each is hidden until its server is configured and reachable,
+    /// so an unconfigured box costs nothing visually. The pills mirror the warm-model chip's shape: an icon,
+    /// a label (model name / size), and — only when something is resident — an eject button.
+    @ViewBuilder
+    private func backendPills() -> some View {
+        comfyBackendPill()
+        lmStudioPill()
+    }
+
+    /// ComfyUI residency pill: shows "Resident · ~X GB" when VRAM is meaningfully below the idle baseline,
+    /// or just "ComfyUI" (no size) while the server is reachable but the baseline hasn't locked yet. Eject
+    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident.
+    @ViewBuilder
+    private func comfyBackendPill() -> some View {
+        if backendModels.comfy.reachable {
+            let gb = backendModels.comfyResidentGB
+            HStack(spacing: 6) {
+                Image(systemName: "server.rack")
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    Text("ComfyUI")
+                        .font(.caption2)
+                        .fontWeight(.medium)
+                    if let gb {
+                        Text(String(format: "%.1f GB resident", gb))
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    } else if backendModels.isComfyEjecting {
+                        Text("Freeing…")
+                            .font(.caption2)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                // Eject only when we actually know something is resident — not mid-warmup, not offline.
+                if backendModels.canEjectComfy {
+                    Button {
+                        backendModels.ejectComfy()
+                    } label: {
+                        Image(systemName: "eject.fill")
+                            .font(.caption2)
+                    }
+                    .buttonStyle(.iconButtonCompact)
+                    .foregroundStyle(.secondary)
+                    // Don't let a user free ComfyUI's VRAM while our own local run is holding the GPU —
+                    // the delta would be misattributed, and freeing mid-run could OOM the active job.
+                    .disabled(backendModels.localRunInFlight)
+                    .help(backendModels.localRunInFlight ? "Local run in progress" : "Unload all ComfyUI models")
+                }
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.fill.quaternary, in: Capsule())
+        }
+    }
+
+    /// LM Studio residency pill: lists each loaded model's short name and (first instance's) context length.
+    /// Eject unloads every resident instance via the native `/api/v1/models/unload`. Hidden entirely when no
+    /// remote LLM backend is configured, or when the server is reachable but speaks no native session API.
+    @ViewBuilder
+    private func lmStudioPill() -> some View {
+        let entries = backendModels.lmLoadedEntries
+        if settings.llmBackend == .remote && backendModels.lm.reachable, !entries.isEmpty {
+            HStack(spacing: 6) {
+                Image(systemName: "brain.profile")
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                VStack(alignment: .leading, spacing: 0) {
+                    // One line per loaded model; a two-model box still fits the pill's width budget because we
+                    // use the short key (last path component) and the context length, not full `org/model-quant`.
+                    ForEach(Array(entries.enumerated()), id: \.element.model.key) { index, entry in
+                        HStack(spacing: 3) {
+                            Text(entry.model.shortKey)
+                                .font(.caption2)
+                                .fontWeight(index == 0 ? .medium : .regular)
+                            if let ctx = entry.firstContextLength {
+                                Text("\(ctx / 1000)k")
+                                    .font(.caption2)
+                                    .foregroundStyle(.secondary)
+                            }
+                        }
+                    }
+                }
+                Button {
+                    backendModels.ejectAllLM()
+                } label: {
+                    Image(systemName: "eject.fill")
+                        .font(.caption2)
+                }
+                .buttonStyle(.iconButtonCompact)
+                .foregroundStyle(.secondary)
+                .help("Unload all LM Studio models")
+            }
+            .padding(.horizontal, 8)
+            .padding(.vertical, 3)
+            .background(.fill.quaternary, in: Capsule())
+        } else if settings.llmBackend == .remote && backendModels.lm.reachable && backendModels.isEjectingAll {
+            // Models are mid-unload — show a "Freeing…" placeholder rather than the pill vanishing for one poll.
+            HStack(spacing: 6) {
+                Image(systemName: "brain.profile")
+                    .font(.caption)
+                    .foregroundStyle(Color.accentColor)
+                Text("Freeing…")
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
