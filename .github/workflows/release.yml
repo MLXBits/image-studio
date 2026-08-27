@@ -69,6 +69,16 @@ jobs:
           echo "Imported signing identities:"
           security find-identity -v -p codesigning "$KEYCHAIN_PATH"
 
+      # Compile the app + test target and run the full Swift Testing suite so a red or
+      # non-compiling Tests/ fails before signing, DMG creation, or notarization.
+      - name: Test (Debug)
+        run: |
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "platform=macOS" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM"
+
       - name: Archive (Release, manual Developer ID signing)
         run: |
           mkdir -p build
