@@ -153,6 +153,14 @@ final class ComfyUIClient {
         var os: String?
         var gpuNames: [String] = []
         var vramTotalGb: Double?
+        /// Driver-level free VRAM (bytes) — `vram_free` from `/system_stats`. This is what actually
+        /// reflects GPU occupancy, because ComfyUI's safetensors weights are held outside torch's
+        /// allocator (via the CUDA driver), so `torch_vram_free` barely moves even with a large model
+        /// resident. The residency signal for the header pill uses *this*, not the torch number.
+        var vramFreeBytes: Int64?
+        /// Driver-level total VRAM (bytes) — `vram_total`. Constant for a given device; pairs with
+        /// ``vramFreeBytes`` so callers can derive occupancy as `total − free` when they want it.
+        var vramTotalBytes: Int64?
 
         /// One-line summary for the Settings "Test Connection" button.
         var summary: String {
@@ -178,8 +186,35 @@ final class ComfyUIClient {
                 if let name = d["name"] as? String, !name.isEmpty {
                     stats.gpuNames.append(name)
                 }
-                if let vram = d["vram_total"] as? Double {
-                    stats.vramTotalGb = vram / 1_073_741_824
+                /// Read both the driver-level and torch-tracked figures. Driver-level (`vram_free` /
+                /// `vram_total`) is what actually tracks occupancy because ComfyUI loads weights through the
+                /// CUDA driver, not torch's allocator; we keep `torch_vram_free` out of the residency math on
+                /// purpose for exactly that reason (it sits near-zero even with a 30 GB model resident).
+                func asBytes(_ key: String) -> Int64? {
+                    if let v = d[key] as? Int64 {
+                        return v
+                    }
+                    if let v = d[key] as? Double {
+                        return Int64(v)
+                    }
+                    if let v = d[key] as? Int {
+                        return Int64(v)
+                    }
+                    return nil
+                }
+                if let free = asBytes("vram_free") {
+                    stats.vramFreeBytes = free
+                } else if let torchFree = asBytes("torch_vram_free"), stats.vramFreeBytes == nil {
+                    // Fallback for builds that only expose the torch figure.
+                    stats.vramFreeBytes = torchFree
+                }
+                if let total = asBytes("vram_total") {
+                    stats.vramTotalBytes = total
+                    stats.vramTotalGb = Double(total) / 1_073_741_824
+                } else if let vram = d["vram_total"] as? Double {
+                    // Older/alternate shape where the value is already GB.
+                    stats.vramTotalBytes = Int64(vram * 1_073_741_824)
+                    stats.vramTotalGb = vram
                 }
             }
         }
@@ -609,6 +644,22 @@ final class ComfyUIClient {
         var req = URLRequest(url: url, timeoutInterval: 10)
         req.httpMethod = "POST"
         req.allHTTPHeaderFields = headers()
+        _ = try? await session.data(for: req)
+    }
+
+    /// Frees VRAM and (optionally) unloads every resident model — ComfyUI's global `POST /free`. There is no
+    /// per-model eject, so this is the whole-pill "eject" action. Best-effort like ``interrupt()``: a dead server
+    /// shouldn't surface as an error from a housekeeping click; the next poll simply still shows residency and
+    /// the user retries. `unloadModels` alone (no GC) is enough to vacate weights while keeping ComfyUI's own
+    /// allocator warm for the next run.
+    func freeModels(unload: Bool = true, clearMemory: Bool = false) async {
+        guard let url = URL(string: base + "/free") else { return }
+        var req = URLRequest(url: url, timeoutInterval: 30)
+        req.httpMethod = "POST"
+        req.allHTTPHeaderFields = headers()
+        if let body = try? JSONSerialization.data(withJSONObject: ["unload_models": unload, "free_memory": clearMemory]) {
+            req.httpBody = body
+        }
         _ = try? await session.data(for: req)
     }
 

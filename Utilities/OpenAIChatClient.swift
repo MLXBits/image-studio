@@ -111,6 +111,94 @@ enum OpenAIChatClient {
         }
     }
 
+    // MARK: - LM Studio native API (session polling + eject)
+
+    /// Mirrors the server's `GET /api/v1/models` shape for the fields we read. Kept here — not in
+    /// ``Models/OpenAIChat.swift`` — because it is wire-specific to this client, while ``LMSessionStatus``
+    /// is what stores and views consume. Unknown keys (e.g. `size_bytes`, `capabilities`) are ignored by
+    /// default decoding; the top-level array key is `models` per the live API. A model with several loaded
+    /// instances reports them all in one entry's `loaded_instances`.
+    private struct LMModelListResponse: Decodable {
+        enum CodingKeys: String, Swift.CodingKey { case models }
+
+        let models: [Entry]
+
+        struct Entry: Decodable {
+            enum CodingKeys: String, Swift.CodingKey {
+                case key
+                case displayName = "display_name"
+                case loadedInstances = "loaded_instances"
+            }
+
+            let key: String
+            let displayName: String?
+            let loadedInstances: [Instance]
+        }
+
+        struct Instance: Decodable {
+            let id: String
+            let config: Config?
+
+            struct Config: Decodable {
+                enum CodingKeys: String, Swift.CodingKey { case contextLength = "context_length" }
+
+                let contextLength: Int?
+            }
+        }
+    }
+
+    /// Polls the native session endpoint for currently-resident model instances. The base URL is stored as
+    /// `…/v1` (the OpenAI path); LM Studio's native API lives at `/api/v1`, so we strip one trailing segment
+    /// and re-add it — `http://host:1234/v1` becomes `http://host:1234/api/v1/models`. Servers without the
+    /// native surface (non-LM-Studio OpenAI-compatible backends) throw here; callers treat that as "no info",
+    /// not an error worth surfacing.
+    static func fetchSessionStatus(baseURL: String, apiKey: String) async throws -> LMSessionStatus {
+        let base = normalizedBase(baseURL).replacingOccurrences(of: "/v1", with: "/api/v1", options: [.anchored, .backwards])
+        guard let url = URL(string: base + "/models") else {
+            throw OpenAIChatClientError.invalidURL(baseURL)
+        }
+        var request = URLRequest(url: url)
+        request.timeoutInterval = 15
+        applyAuth(&request, apiKey: apiKey)
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try checkStatus(response, data: data)
+
+        do {
+            let decoded = try JSONDecoder().decode(LMModelListResponse.self, from: data)
+            var loaded: [LMSessionStatus.LoadedModel] = []
+            for entry in decoded.models {
+                guard !entry.loadedInstances.isEmpty else { continue } // only report *loaded* models
+                let instances = entry.loadedInstances.map { LMSessionStatus.Instance(id: $0.id, contextLength: $0.config?.contextLength) }
+                loaded.append(LMSessionStatus.LoadedModel(modelKey: entry.key, displayName: entry.displayName, instances: instances))
+            }
+            return LMSessionStatus(loaded: loaded)
+        } catch {
+            throw OpenAIChatClientError.decoding(error.localizedDescription)
+        }
+    }
+
+    /// Unloads one resident model instance (`POST /api/v1/models/unload`). Best-effort from the pill's
+    /// eject button: a transient failure just means the next poll still shows it loaded and the user
+    /// retries; the store surfaces nothing.
+    static func unloadModel(instanceID: String, baseURL: String, apiKey: String) async throws {
+        let base = normalizedBase(baseURL).replacingOccurrences(of: "/v1", with: "/api/v1", options: [.anchored, .backwards])
+        guard let url = URL(string: base + "/models/unload") else {
+            throw OpenAIChatClientError.invalidURL(baseURL)
+        }
+        var request = URLRequest(url: url)
+        request.httpMethod = "POST"
+        request.timeoutInterval = 60 // unload can take a moment to vacate weights
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        applyAuth(&request, apiKey: apiKey)
+        if let body = try? JSONSerialization.data(withJSONObject: ["instance_id": instanceID]) {
+            request.httpBody = body
+        }
+
+        let (data, response) = try await URLSession.shared.data(for: request)
+        try checkStatus(response, data: data)
+    }
+
     // MARK: - Helpers
 
     /// POSTs one chat-completions request and returns the raw response body.

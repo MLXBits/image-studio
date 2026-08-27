@@ -21,6 +21,7 @@
 		0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */; };
 		0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */; };
 		0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */; };
+		0E9571F6EEBDEE1180FF13BE /* ComfyLoraNameResolutionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A21C08C353EB1404BCEB46BC /* ComfyLoraNameResolutionTests.swift */; };
 		0F280E349F7241B82C9D7EC7 /* DriverProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */; };
 		15C9FB8C83845AA4C5806F9A /* PromptLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
@@ -81,6 +82,7 @@
 		65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E769B611A03FA4372F553CA /* Ideogram4Job.swift */; };
 		6619EBBB32F00CABCF2BC509 /* scenario_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = FE1832089B5311712FEF1286 /* scenario_prompt.md */; };
 		66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */; };
+		672F81EFC0F5D7D6548681FD /* BackendModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */; };
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
@@ -115,6 +117,7 @@
 		ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B8A946E00348D9BD857672E /* MfluxDriverController.swift */; };
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
+		B03C0AC9840CDD3F79D00434 /* ComfyProgressDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */; };
 		B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */; };
@@ -270,6 +273,7 @@
 		9F8DBAFEF3E0B6403D90EE29 /* ZImageJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJob.swift; sourceTree = "<group>"; };
 		A0CBC2E2A6CCF99FAB3F5B32 /* InfoButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InfoButton.swift; sourceTree = "<group>"; };
 		A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "IdeogramCaptionEditorView+Actions.swift"; sourceTree = "<group>"; };
+		A21C08C353EB1404BCEB46BC /* ComfyLoraNameResolutionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyLoraNameResolutionTests.swift; sourceTree = "<group>"; };
 		A31CFEFF049480510A99BB2F /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		A8EABE58BCB04CF6EDBF9751 /* BinaryDetector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BinaryDetector.swift; sourceTree = "<group>"; };
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
@@ -277,6 +281,7 @@
 		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
+		B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyProgressDecodeTests.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
 		B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionConstraints.swift; sourceTree = "<group>"; };
 		B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplate.swift; sourceTree = "<group>"; };
@@ -284,6 +289,7 @@
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
+		BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendModelStore.swift; sourceTree = "<group>"; };
 		C4443AEA2099305CADF36EE5 /* PromptHistory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistory.swift; sourceTree = "<group>"; };
 		C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2JobStore.swift; sourceTree = "<group>"; };
 		C87C7C46A40C6F9B9CF0C21D /* AboutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AboutView.swift; sourceTree = "<group>"; };
@@ -393,6 +399,8 @@
 			children = (
 				41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */,
 				5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */,
+				A21C08C353EB1404BCEB46BC /* ComfyLoraNameResolutionTests.swift */,
+				B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */,
 				05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */,
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
@@ -603,6 +611,7 @@
 			isa = PBXGroup;
 			children = (
 				3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */,
+				BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */,
 				038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */,
 				F812C375B01307E326002869 /* GalleryMetadataStripping.swift */,
 				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
@@ -768,6 +777,7 @@
 				02D8D41604DC3742D5AF6F3B /* BBoxKeyCatcher.swift in Sources */,
 				3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */,
 				82B2B12438C257ACCB85B12C /* BBoxTemplates.swift in Sources */,
+				672F81EFC0F5D7D6548681FD /* BackendModelStore.swift in Sources */,
 				0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */,
 				01C09E74CDB06D0262D98855 /* BinaryDetector.swift in Sources */,
 				F746EF59CF755C513993BBC9 /* ClipboardImageMonitor.swift in Sources */,
@@ -894,6 +904,8 @@
 			files = (
 				2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */,
 				635C82517A4D9D8A01AC05AC /* ColorHexTests.swift in Sources */,
+				0E9571F6EEBDEE1180FF13BE /* ComfyLoraNameResolutionTests.swift in Sources */,
+				B03C0AC9840CDD3F79D00434 /* ComfyProgressDecodeTests.swift in Sources */,
 				3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */,
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
