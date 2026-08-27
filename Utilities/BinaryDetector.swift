@@ -32,6 +32,7 @@ nonisolated enum BinaryDetector {
 
     private static let pidDecodeProbeCache = ProbeCache<Bool>()
     private static let mfluxVersionProbeCache = ProbeCache<String?>()
+    private static let baseModelProbeCache = ProbeCache<Bool>()
 
     /// Drops the memoised probes. Call after installing or upgrading mflux: the
     /// interpreter path is unchanged by an upgrade, so the cache key alone cannot
@@ -39,6 +40,7 @@ nonisolated enum BinaryDetector {
     static func invalidateProbes() {
         pidDecodeProbeCache.reset()
         mfluxVersionProbeCache.reset()
+        baseModelProbeCache.reset()
     }
 
     /// The version of the `mflux` package importable by the install rooted at `dir`,
@@ -99,6 +101,34 @@ nonisolated enum BinaryDetector {
             s = u.find_spec("mflux")
             loc = (s.submodule_search_locations or [None])[0] if s else None
             ok = loc is not None and (pathlib.Path(loc) / "models/common/pid_decoder").is_dir()
+            sys.stdout.write("1" if ok else "0")
+            """) == "1"
+        }
+    }
+
+    /// Whether the mflux install rooted at `dir` accepts `--base-model`. Gates the flag in
+    /// ``FluxRunnerSpec``'s buildArgs so a pre-option release is never handed an option its
+    /// argparse rejects with exit 2.
+    ///
+    /// Inspects the parser's own option list rather than comparing versions or trial-parsing a
+    /// value: package metadata lies on editable installs (a dev checkout reports an old version
+    /// while carrying every registry key), no release boundary marks when the option landed, and
+    /// this answers exactly what the gate needs — whether sending the flag would be rejected.
+    /// Cached per interpreter like ``supportsPidDecode(in:)``: one process spawn per install
+    /// per launch, reset by ``invalidateProbes()`` after installs and upgrades.
+    static func supportsBaseModel(in dir: String) -> Bool {
+        let shim = mfluxGenerateFlux2(in: dir)
+        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return false }
+        return baseModelProbeCache.value(for: python) {
+            runProbe(python: python, code: """
+            import sys
+            ok = False
+            try:
+                from mflux.models.flux2.cli import flux2_generate as f
+                p = f.build_parser()
+                ok = any("--base-model" in (a.option_strings or ()) for a in p._actions)
+            except BaseException:
+                pass
             sys.stdout.write("1" if ok else "0")
             """) == "1"
         }

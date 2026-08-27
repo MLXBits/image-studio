@@ -138,40 +138,55 @@ enum FluxRunnerSpec: JobRunnerSpec {
         return ["--pid-decode", "--pid-degrade-sigma", String(format: "%.2f", degradeSigma)]
     }
 
+    /// `--base-model` names the Flux.2 architecture mflux loads a custom checkpoint as, so
+    /// a klein-9b fine-tune runs on its own model instead of whatever default the CLI picks.
+    /// Probed per install (cached; see ``BinaryDetector/supportsBaseModel(in:)``) rather than
+    /// version-gated: package metadata lies on editable installs and no release boundary marks
+    /// when the option landed, so ask the parser — pre-option releases reject it with exit 2.
+    static func baseModelArgs(base: FluxModelVariant, settings: AppSettings) -> [String] {
+        guard BinaryDetector.supportsBaseModel(in: settings.mfluxBinaryDir) else { return [] }
+        return ["--base-model", base.mfluxModelID]
+    }
+
     static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
         if job.model == .custom {
-            // `--base-model` names the Flux.2 architecture mflux loads the checkpoint
-            // as. Custom checkpoints targeting another family are run by that family's
-            // runner, so only a Flux.2 target should ever reach here; clamp anyway so a
-            // job persisted with a since-changed target can't emit a bogus base model.
+            // `--model` carries the checkpoint (repo id or local path). `--base-model` names
+            // the Flux.2 architecture mflux loads it as — for a fine-tune, `customBaseModel`
+            // is that architecture; an mlx-community quantized repo resolves to its family
+            // member and keeps this one. Without it the wrong config reached the first
+            // attention reshape and crashed. Gated by version via `baseModelArgs`: before
+            // 0.19.0 the flag's argparse choices= list rejected klein keys and exited with
+            // code 2, so a stale or unreadable install must not see it — which drops back to
+            // that mflux's pre-gate behavior rather than failing here.
             let base = job.customBaseModel.family == .flux ? job.customBaseModel : .flux2Klein9B
-            args += ["--model", job.customModelRepo, "--base-model", base.mfluxModelID]
+            args += ["--model", job.customModelRepo] + baseModelArgs(base: base, settings: settings)
         } else if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
             // User-supplied override (HF repo ID or local path): use as-is.
             // No --quantize flag — the repo carries its own quantization metadata.
-            args += ["--model", override]
+            args += ["--model", override] + baseModelArgs(base: job.model, settings: settings)
         } else if job.quantize > 0 {
             if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
                 // Known mlx-community pre-quantized repo: pass directly, mflux detects stored_q.
-                args += ["--model", preQuantizedRepo]
+                args += ["--model", preQuantizedRepo] + baseModelArgs(base: job.model, settings: settings)
             } else {
                 let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
                 if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                    // Local mflux-saved weights: pass path directly, mflux detects stored_q.
-                    args += ["--model", savedPath.path]
+                    // Local mflux-saved weights: pass path directly — mflux detects stored_q,
+                    // but a bare local path carries no architecture, so name it explicitly.
+                    args += ["--model", savedPath.path] + baseModelArgs(base: job.model, settings: settings)
                 } else {
                     // No saved weights yet (mflux-save may have failed): fall back to in-memory quantization.
                     args += ["--model", job.model.mfluxModelID]
                 }
             }
         } else {
+            // Builtin model with no override or quantization: still pass the registry name —
+            // omitting --model silently falls back to the CLI's default entry.
             args += ["--model", job.model.mfluxModelID]
         }
-
         args += ["--prompt", job.prompt]
-
         let supportsNeg = job.model.supportsNegativePrompt
         if supportsNeg, !job.negativePrompt.isEmpty {
             args += ["--negative-prompt", job.negativePrompt]
