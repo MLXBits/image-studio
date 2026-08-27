@@ -125,6 +125,9 @@ final class ComfyUIClient {
     /// Unique id for this client; sent as `client_id` so the server can attribute runs.
     let clientID = UUID().uuidString
     private let session: URLSession
+    /// Consecutive `/history` transport failures tolerated before giving up — about a minute of blip tolerance at the default 1 Hz poll,
+    /// long enough to ride out a router hiccup while permanent loss still fails within roughly that same window.
+    static let maxConsecutiveHistoryFailures = 60
 
     init(config: Config) {
         self.config = config
@@ -474,27 +477,39 @@ final class ComfyUIClient {
             }
 
             let deadline = Date().addingTimeInterval(TimeInterval(maxWaitSeconds))
+            // A transient LAN blip drops a /history fetch without failing the server-side run, so one bad poll must not kill an hour-long
+            // job. Tolerate up to `maxConsecutiveHistoryFailures` consecutive transport failures (reset by any successful fetch) before
+            // rethrowing; permanent loss still surfaces within about a minute at the default 1 Hz rate.
+            var consecutiveFetchFailures = 0
             while Date() < deadline {
                 if Task.isCancelled {
                     throw CancellationError()
                 }
-                let record = try await fetchHistory(promptID: promptID)
+                do {
+                    let record = try await fetchHistory(promptID: promptID)
+                    consecutiveFetchFailures = 0
 
-                switch record.completed {
-                case true?:
-                    guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
-                    onProgress(ComfyUIProgress(currentStep: input.steps, totalSteps: input.steps, isDenoising: true))
-                    return record.outputs
-                case false?:
-                    // Genuine failure. Prefer the real diagnostic from `status.messages`; fall back to status_str.
-                    let detail = record.errorMessage ?? record.statusMessage
-                    throw ComfyUIError
-                        .graphRejected(detail?.isEmpty == false ? detail! : "the server reported an execution failure with no details")
-                case nil:
-                    break // still running → poll again
+                    switch record.completed {
+                    case true?:
+                        guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
+                        onProgress(ComfyUIProgress(currentStep: input.steps, totalSteps: input.steps, isDenoising: true))
+                        return record.outputs
+                    case false?:
+                        // Genuine failure. Prefer the real diagnostic from `status.messages`; fall back to status_str.
+                        let detail = record.errorMessage ?? record.statusMessage
+                        throw ComfyUIError
+                            .graphRejected(detail?.isEmpty == false ? detail! : "the server reported an execution failure with no details")
+                    case nil:
+                        break // still running → poll again
+                    }
+
+                    try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                } catch {
+                    consecutiveFetchFailures += 1
+                    guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures else { throw error }
+                    // Keep the poll rhythm instead of hot-looping a dead endpoint.
+                    try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
                 }
-
-                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
             }
         } catch {
             tracker.stop()
@@ -780,7 +795,7 @@ final class ComfyUIClient {
         /// only `.data` silently drops every `executing`/`progress` message and live progress never reaches the UI. Accept both shapes;
         /// return
         /// nil for anything that is neither.
-        private static func payloadData(from message: URLSessionWebSocketTask.Message) -> Data? {
+        static func payloadData(from message: URLSessionWebSocketTask.Message) -> Data? {
             switch message {
             case let .data(data):
                 return data

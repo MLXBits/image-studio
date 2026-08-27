@@ -62,14 +62,22 @@ struct ComfyKrea2WorkflowTopologyTests {
         return (nodeID, slot)
     }
 
+    /// Asserts a link input points to `(nodeID, slot)`. Tuple `==` does not compose with optionals, so compare element-wise; a missing or
+    /// malformed field fails the expect with what was actually parsed.
+    private static func expectLink(_ inputs: [String: Any], key: String, nodeID: String, slot: Int) {
+        let link = Self.link(inputs, key)
+        let actual = link.map { "\($0.id), \($0.slot)" } ?? "missing"
+        #expect(link?.id == nodeID && link?.slot == slot, "expected \(key) -> (\(nodeID), \(slot)); got \(actual)")
+    }
+
     @Test func noLorasConsumesBaseLoadersDirectly() throws {
         // With zero LoRAs the graph is UNET/CLIPL/VAEL -> encodes/KSampler/decode: every consumer reads a base loader.
         let payload = try #require(ComfyUIClient(config: .init(baseURL: "http://test"))
             .buildKrea2Workflow(Self.makeInput(loras: [])) as? [String: [String: Any]])
-        #expect(link(Self.inputs(of: payload, "KSAMPLER"), "model") == ("UNET", 0))
+        Self.expectLink(Self.inputs(of: payload, "KSAMPLER"), key: "model", nodeID: "UNET", slot: 0)
         // Base CLIPLoader emits a single CLIP at slot 0.
-        #expect(link(Self.inputs(of: payload, "CLIP_POS"), "clip") == ("CLIPL", 0))
-        #expect(link(Self.inputs(of: payload, "DECODE"), "vae") == ("VAEL", 0))
+        Self.expectLink(Self.inputs(of: payload, "CLIP_POS"), key: "clip", nodeID: "CLIPL", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "DECODE"), key: "vae", nodeID: "VAEL", slot: 0)
     }
 
     @Test func twoLorasFormAConnectedSeries() throws {
@@ -83,19 +91,19 @@ struct ComfyKrea2WorkflowTopologyTests {
         ])) as? [String: [String: Any]])
 
         // First lora sources from the base loaders (model slot 0, clip slot 0) and carries no vae input.
-        #expect(link(Self.inputs(of: payload, "LORA_0"), "model") == ("UNET", 0))
-        #expect(link(Self.inputs(of: payload, "LORA_0"), "clip") == ("CLIPL", 0))
+        Self.expectLink(Self.inputs(of: payload, "LORA_0"), key: "model", nodeID: "UNET", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "LORA_0"), key: "clip", nodeID: "CLIPL", slot: 0)
         #expect(Self.inputs(of: payload, "LORA_0")["vae"] == nil)
 
         // Second lora consumes the first's re-emitted outputs at the *correct* slots — this is exactly what was broken.
-        #expect(link(Self.inputs(of: payload, "LORA_1"), "model") == ("LORA_0", 0))
-        #expect(link(Self.inputs(of: payload, "LORA_1"), "clip") == ("LORA_0", 1))
+        Self.expectLink(Self.inputs(of: payload, "LORA_1"), key: "model", nodeID: "LORA_0", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "LORA_1"), key: "clip", nodeID: "LORA_0", slot: 1)
         #expect(Self.inputs(of: payload, "LORA_1")["vae"] == nil)
 
         // Every downstream consumer reads the final lora at its type-correct slot; VAE stays on the base loader.
-        #expect(link(Self.inputs(of: payload, "KSAMPLER"), "model") == ("LORA_1", 0))
-        #expect(link(Self.inputs(of: payload, "CLIP_POS"), "clip") == ("LORA_1", 1))
-        #expect(link(Self.inputs(of: payload, "DECODE"), "vae") == ("VAEL", 0))
+        Self.expectLink(Self.inputs(of: payload, "KSAMPLER"), key: "model", nodeID: "LORA_1", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "CLIP_POS"), key: "clip", nodeID: "LORA_1", slot: 1)
+        Self.expectLink(Self.inputs(of: payload, "DECODE"), key: "vae", nodeID: "VAEL", slot: 0)
         #expect(payload["KSAMPLER"] != nil && payload["LORA_0"] != nil && payload["LORA_1"] != nil)
     }
 
@@ -108,13 +116,13 @@ struct ComfyKrea2WorkflowTopologyTests {
             "c.safetensors",
         ])) as? [String: [String: Any]])
 
-        #expect(link(Self.inputs(of: payload, "LORA_0"), "model") == ("UNET", 0))
-        #expect(link(Self.inputs(of: payload, "LORA_1"), "model") == ("LORA_0", 0))
-        #expect(link(Self.inputs(of: payload, "LORA_2"), "clip") == ("LORA_1", 1))
+        Self.expectLink(Self.inputs(of: payload, "LORA_0"), key: "model", nodeID: "UNET", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "LORA_1"), key: "model", nodeID: "LORA_0", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "LORA_2"), key: "clip", nodeID: "LORA_1", slot: 1)
 
-        #expect(link(Self.inputs(of: payload, "KSAMPLER"), "model") == ("LORA_2", 0))
-        #expect(link(Self.inputs(of: payload, "CLIP_POS"), "clip") == ("LORA_2", 1))
-        #expect(link(Self.inputs(of: payload, "DECODE"), "vae") == ("VAEL", 0))
+        Self.expectLink(Self.inputs(of: payload, "KSAMPLER"), key: "model", nodeID: "LORA_2", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "CLIP_POS"), key: "clip", nodeID: "LORA_2", slot: 1)
+        Self.expectLink(Self.inputs(of: payload, "DECODE"), key: "vae", nodeID: "VAEL", slot: 0)
     }
 
     @Test func singleLoraStillConsumesFinalLora() throws {
@@ -122,11 +130,11 @@ struct ComfyKrea2WorkflowTopologyTests {
         let payload = try #require(ComfyUIClient(config: .init(baseURL: "http://test"))
             .buildKrea2Workflow(Self.makeInput(loras: ["only.safetensors"])) as? [String: [String: Any]])
 
-        #expect(link(Self.inputs(of: payload, "LORA_0"), "model") == ("UNET", 0))
-        #expect(link(Self.inputs(of: payload, "KSAMPLER"), "model") == ("LORA_0", 0))
-        #expect(link(Self.inputs(of: payload, "CLIP_POS"), "clip") == ("LORA_0", 1))
+        Self.expectLink(Self.inputs(of: payload, "LORA_0"), key: "model", nodeID: "UNET", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "KSAMPLER"), key: "model", nodeID: "LORA_0", slot: 0)
+        Self.expectLink(Self.inputs(of: payload, "CLIP_POS"), key: "clip", nodeID: "LORA_0", slot: 1)
         // VAE is never re-routed through a LoRA on this server — decode always uses the base loader.
-        #expect(link(Self.inputs(of: payload, "DECODE"), "vae") == ("VAEL", 0))
+        Self.expectLink(Self.inputs(of: payload, "DECODE"), key: "vae", nodeID: "VAEL", slot: 0)
     }
 
     @Test func loraStrengthsAreSubmittedPerNode() throws {

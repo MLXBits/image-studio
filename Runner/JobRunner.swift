@@ -171,6 +171,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
     private var driverJobActive = false
+    /// Client of the active remote ComfyUI run — non-nil only while ``runViaComfyUI(_:)`` is executing. Stop routes through it because
+    /// there is no local process to signal; the server must be asked (via /interrupt) and our own task made to observe cancellation.
+    private var comfyClient: ComfyUIClient?
     private let stepwiseWatcher = StepwiseWatcher()
     private var batchPollingTask: Task<Void, Never>?
 
@@ -209,6 +212,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 
     func cancel() {
+        if let client = comfyClient {
+            // Remote run: nothing local to kill. Ask the server to stop whatever prompt is executing (cooperative — an in-flight step
+            // finishes), and drop our task so its poll loop sees Task.isCancelled on the next check. Seeds that already landed stay in the
+            // gallery, same as a local cancel leaving partial output on disk.
+            Task { await client.interrupt() }
+            runTask?.cancel()
+            activeJob?.statusLine = "Stopping…"
+            return
+        }
         guard driverJobActive else {
             currentProcess?.terminate()
             return
@@ -737,6 +749,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
     /// config, not this client.
     private func runViaComfyUI(_ target: ComfyTarget, job: Job, ctx: JobRunContext, stepDir: URL) async {
         let client = target.client
+        // Expose the active client so cancel() can route Stop into this remote run; cleared on every exit path.
+        comfyClient = client
+        defer { comfyClient = nil }
 
         // Resolve the seed list exactly as a local multi-seed run does: `job.seeds` when set (batch count or keyboard shortcut),
         // else the single effective seed from ctx (which is random for -1).
