@@ -57,25 +57,27 @@ struct ModelPickerView: View {
         // below them on a second row.
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 10) {
-                // A `Menu` (vs `Picker(.menu)`) renders as a pull-down: the menu
-                // always anchors below the button and lists every item from the
-                // top, regardless of which is selected. A popup Picker instead
-                // aligns the selected row to the button, which pushed the Flux
-                // variants off-screen when Ideogram (near the list bottom) was
-                // selected. Checkmarks below preserve the selection indicator.
+                // A `Menu` (vs bare `Picker(.menu)`) anchors the list below the
+                // button and shows every item from the top — a popup Picker would
+                // align the selected row to the button, scrolling the Flux variants
+                // off-screen when Ideogram/Krea/Z-Image is selected. The inline
+                // Picker inside still renders AppKit's native checkmark + hover
+                // highlight; no custom row drawing needed.
                 Menu {
-                    ForEach(FluxModelVariant.builtIn, id: \.self) { v in
-                        modelMenuButton(v.displayName, value: v)
+                    Picker("Model", selection: $model) {
+                        ForEach(FluxModelVariant.builtIn, id: \.self) { v in
+                            Text(v.displayName).tag(v)
+                        }
+                        Divider()
+                        ForEach([FluxModelVariant.ideogram4, .krea2, .zimageTurbo, .zimage], id: \.self) { v in
+                            modelPickerRow(v)
+                        }
+                        Divider()
+                        Text("Custom…").tag(FluxModelVariant.custom)
                     }
-                    Divider()
-                    modelMenuButton("Ideogram 4", value: .ideogram4)
-                    modelMenuButton("Krea 2 Turbo", value: .krea2)
-                    modelMenuButton("Z-Image Turbo", value: .zimageTurbo)
-                    modelMenuButton("Z-Image", value: .zimage)
-                    Divider()
-                    modelMenuButton("Custom…", value: .custom)
+                    .pickerStyle(.inline)
                 } label: {
-                    Text(modelMenuLabel)
+                    Text(modelButtonLabel)
                 }
                 .menuStyle(.button)
                 .fixedSize()
@@ -90,12 +92,13 @@ struct ModelPickerView: View {
                         .foregroundStyle(.secondary)
                         .accessibilityLabel("Model source overridden in Settings")
                 } else if model != .custom {
-                    // Pull-down Menu to match the Model selector above (a popup
-                    // Picker would align the selected row to the button instead).
                     Menu {
-                        precisionMenuButton(model.baseWeightLabel, value: 0)
-                        precisionMenuButton("Q8", value: 8)
-                        precisionMenuButton("Q4", value: 4)
+                        Picker("Precision", selection: $quantize) {
+                            Text(model.baseWeightLabel).tag(0)
+                            Text("Q8").tag(8)
+                            Text("Q4").tag(4)
+                        }
+                        .pickerStyle(.inline)
                     } label: {
                         Text(precisionMenuLabel)
                     }
@@ -138,17 +141,15 @@ struct ModelPickerView: View {
         }
     }
 
-    // MARK: - Model menu
+    // MARK: - Menu labels & picker rows
 
-    /// Label shown on the closed Model menu button.
-    private var modelMenuLabel: String {
-        switch model {
-        case .custom: "Custom…"
-        default: model.displayName
-        }
+    /// Label on the closed Model menu button. "Custom…" for the custom case,
+    /// the model's display name otherwise.
+    private var modelButtonLabel: String {
+        model == .custom ? "Custom…" : model.displayName
     }
 
-    /// Label shown on the closed Precision menu button.
+    /// Label on the closed Precision menu button.
     private var precisionMenuLabel: String {
         switch quantize {
         case 8: "Q8"
@@ -248,39 +249,15 @@ struct ModelPickerView: View {
         )
     }
 
-    /// A menu row that selects `value` and shows a checkmark when active.
-    /// A model menu row. Rows whose generation CLI is missing from the selected
-    /// mflux install are disabled and say so, rather than being silently dropped
-    /// (reads as a bug) or left selectable (fails at spawn time). mflux adds CLIs
-    /// between releases and the app installs it unpinned, so this varies per
-    /// install — e.g. `mflux-generate-krea2` postdates the current PyPI release.
-    private func modelMenuButton(_ title: String, value: FluxModelVariant) -> some View {
-        let available = settings.supportsModel(value)
-        return Button {
-            model = value
-        } label: {
-            if model == value {
-                Label(title, systemImage: "checkmark")
-            } else if available {
-                Text(title)
-            } else {
-                Text("\(title) — not in this mflux install")
-            }
-        }
-        .disabled(!available && model != value)
-    }
-
-    /// A precision menu row that selects `value` and shows a checkmark when active.
-    private func precisionMenuButton(_ title: String, value: Int) -> some View {
-        Button {
-            quantize = value
-        } label: {
-            if quantize == value {
-                Label(title, systemImage: "checkmark")
-            } else {
-                Text(title)
-            }
-        }
+    /// A non-Flux model row inside the native Picker. Rows whose generation CLI
+    /// is missing from the selected mflux install are disabled and say so, rather
+    /// than being silently dropped (reads as a bug) or left selectable (fails at
+    /// spawn time). mflux adds CLIs between releases and the app installs it
+    /// unpinned, so this varies per install.
+    private func modelPickerRow(_ v: FluxModelVariant) -> some View {
+        let available = settings.supportsModel(v)
+        return Text(available || model == v ? v.displayName : "\(v.displayName) — not in this mflux install")
+            .tag(v)
     }
 
     // MARK: - Estimate pills (inline, beside the selector)
