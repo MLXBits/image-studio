@@ -391,7 +391,7 @@ struct IdeogramCaptionEditorView: View {
             jsonPasteError = "The clipboard is empty."
             return
         }
-        guard let parsed = IdeogramCaption.from(jsonString: raw) else {
+        guard let parsed = parseCaptionJSON(from: raw) else {
             jsonPasteError = "The clipboard doesn't contain a valid Ideogram caption JSON object."
             return
         }

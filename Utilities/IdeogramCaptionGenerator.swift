@@ -183,16 +183,132 @@ final class IdeogramCaptionGenerator {
             cleaned.removeSubrange(fenceEnd.lowerBound ..< fenceEnd.upperBound)
         }
 
-        // Walk the text to find the outermost { } block, tracking string contents so
-        // braces inside JSON string values don't corrupt the depth counter.
+        // Walk the text to find the outermost { } block. A container stack
+        // (push on openers, pop on matchers) tracks nesting so braces and brackets
+        // inside JSON string values don't corrupt it; if EOF is reached with open
+        // containers left over, the output was truncated mid-object and we try a
+        // bounded repair instead of failing outright.
         guard let start = cleaned.firstIndex(of: "{") else { return nil }
-        var depth = 0
-        var end: String.Index?
+        var stack: [Character] = []
         var current = start
         var inString = false
         var escaped = false
+        var stringStart: String.Index? // opening quote of an unterminated string at EOF
         while current < cleaned.endIndex {
             let ch = cleaned[current]
+            if escaped {
+                escaped = false
+            } else if inString {
+                if ch == "\\" {
+                    escaped = true
+                } else if ch == "\"" {
+                    inString = false
+                    stringStart = nil
+                }
+            } else {
+                switch ch {
+                case "\"":
+                    inString = true
+                    stringStart = current
+                case "{", "[": stack.append(ch)
+                case "}", "]":
+                    guard let open = stack.last,
+                          (open == "{" && ch == "}") || (open == "[" && ch == "]") else { break }
+                    _ = stack.popLast()
+                    if stack.isEmpty {
+                        // The outermost object is closed; anything after it is not part of the JSON.
+                        return sanitizeJSON(String(cleaned[start ... current]))
+                    }
+                default: break
+                }
+            }
+            current = cleaned.index(after: current)
+        }
+        // Truncation: at least one container is still open at EOF (a lone `{` with no closer).
+        guard !stack.isEmpty else { return nil }
+        var s = String(cleaned[start...])
+        if let stringStart {
+            // EOF landed inside an unterminated string (tracked by `stringStart`): drop from
+            // its opening quote so a half-emitted value or key is dropped whole, never kept
+            // partially.
+            s = String(cleaned[start ..< stringStart])
+        }
+        return repairTruncatedJSON(s).map { sanitizeJSON($0) }
+    }
+
+    /// Bounded repair of a JSON object whose outermost `}` never arrived (truncated model
+    /// output). Repairs only by structure, never inventing values: an unterminated string
+    /// tail and any dangling `"key"` or `"key":` fragment are dropped, then the still-open
+    /// containers are closed. If the loop has not converged after a few passes (malformed
+    /// rather than merely truncated input), returns nil so the caller's existing `.noJSONFound`
+    /// path handles it.
+    nonisolated private func repairTruncatedJSON(_ json: String) -> String? {
+        let closers = unclosedContainerClosers(in: json)
+
+        // Bounded tail repair: repeatedly trim trailing whitespace/commas and drop a dangling
+        // `"key"` / `"key":` fragment until the last character is a valid token terminal.
+        // Values are never invented — only incomplete tokens at the cut edge go away.
+        var chars = Array(json)
+        for _ in 0 ..< 32 {
+            while let last = chars.last, last.isWhitespace || last == "," {
+                chars.removeLast()
+            }
+            guard let last = chars.last else { break }
+
+            // Truncated number or container edge: the clipped value (if any) is accepted as-is;
+            // structural validity plus `JSONDecoder` are the real gates downstream.
+            if "0123456789.+-eE".contains(last) || "{}[]".contains(last) {
+                return String(chars) + closers
+            }
+
+            let tail5 = String(chars.suffix(5))
+            if tail5.hasSuffix("null") || tail5.hasSuffix("true") || tail5.hasSuffix("false") {
+                // Complete `true`/`false`/`null` literal at the edge.
+                return String(chars) + closers
+            }
+
+            if last == ":" {
+                chars = dropDanglingKeyTail(chars) ?? []
+                guard !chars.isEmpty else { return nil }
+            } else if last == "\"" {
+                let openQuote = quoteStart(before: chars.count - 2, in: chars)
+                var pre = openQuote - 1
+                while pre >= 0 && chars[pre].isWhitespace {
+                    pre -= 1
+                }
+                if pre >= 0 && chars[pre] == ":" {
+                    // A complete value after its key — structurally done at this point.
+                    return String(chars) + closers
+                }
+                // Dangling `"key"` (after `{`, `,`, or start of text): drop the token and any
+                // immediately preceding comma so the next pass re-examines the new edge.
+                if openQuote > 0 {
+                    while chars.count > openQuote {
+                        chars.removeLast()
+                    }
+                    while let l = chars.last, l == "," {
+                        chars.removeLast()
+                    }
+                } else {
+                    return nil
+                }
+            } else {
+                // Anything else at the edge is not repairable without inventing a value; return
+                // nil so `.noJSONFound` surfaces instead of fabricated JSON.
+                return nil
+            }
+        }
+        // Bounded loop exhausted without converging: malformed rather than merely truncated.
+        return nil
+    }
+
+    /// Scans `json` with the same string-state rules as the main walk and returns the matching
+    /// closers for every container still open at EOF, in closing order (innermost first).
+    nonisolated private func unclosedContainerClosers(in json: String) -> String {
+        var openers: [Character] = []
+        var inString = false
+        var escaped = false
+        for ch in json {
             if escaped {
                 escaped = false
             } else if inString {
@@ -204,19 +320,52 @@ final class IdeogramCaptionGenerator {
             } else {
                 switch ch {
                 case "\"": inString = true
-                case "{": depth += 1
-                case "}":
-                    depth -= 1
-                    if depth == 0 {
-                        end = current
-                    }
+                case "{", "[": openers.append(ch)
+                case "}", "]": _ = openers.popLast()
                 default: break
                 }
             }
-            current = cleaned.index(after: current)
         }
-        guard let endIdx = end else { return nil }
-        return sanitizeJSON(String(cleaned[start ... endIdx]))
+        return String(openers.reversed().map { $0 == "{" ? "}" : "]" })
+    }
+
+    /// Given a buffer ending in a dangling `"key":` (with optional trailing whitespace before the
+    /// colon), walks back to the key's opening quote and returns the buffer truncated there, or nil
+    /// if the expected closing quote is not found.
+    nonisolated private func dropDanglingKeyTail(_ charsIn: [Character]) -> [Character]? {
+        var chars = charsIn
+        // The last char is ":" (or whitespace after trimming — but we trimmed first). Walk back
+        // over any whitespace to the key's closing quote.
+        var i = chars.count - 2
+        while i >= 0 && chars[i].isWhitespace {
+            i -= 1
+        }
+        guard i >= 0, chars[i] == "\"" else { return nil }
+        // Now walk back to the key's opening quote.
+        let openQuote = quoteStart(before: i - 1, in: chars)
+        while chars.count > openQuote {
+            chars.removeLast()
+        }
+        return chars.isEmpty ? nil : chars
+    }
+
+    /// Finds the index of the opening quote of the string token whose closing quote sits at or just
+    /// before `endIndex`, honoring backslash escapes. Returns that index; callers use it as a cut point.
+    nonisolated private func quoteStart(before endIndex: Int, in chars: [Character]) -> Int {
+        var openQuote = endIndex
+        var esc = false
+        while openQuote > 0 {
+            let c = chars[openQuote]
+            if esc {
+                esc = false
+            } else if c == "\\" {
+                esc = true
+            } else if c == "\"" {
+                break
+            }
+            openQuote -= 1
+        }
+        return max(0, openQuote)
     }
 
     /// Fixes common model-output JSON defects before decoding.
@@ -233,11 +382,11 @@ final class IdeogramCaptionGenerator {
         )
         // Leading empty slot in array:  [,  →  [0,
         s = s.replacingOccurrences(of: #"\[\s*,"#, with: "[0,", options: .regularExpression)
-        // Middle empty slots:  ,,  →  , 0,  (iterate until no more)
+        // Middle empty slots:  ,,  →  , 0,  (iterate until stable)
         var prev = ""
         while prev != s {
             prev = s
-            s = s.replacingOccurrences(of: #",\s*,"#, with: ", 0,", options: .regularExpression)
+            s = s.replacingOccurrences(of: #",\s*,+"#, with: ", 0,", options: .regularExpression)
         }
         // Trailing empty slot before ]:  ,]  →  , 0]
         s = s.replacingOccurrences(of: #",\s*\]"#, with: ", 0]", options: .regularExpression)
@@ -258,4 +407,16 @@ final class IdeogramCaptionGenerator {
             error.localizedDescription
         }
     }
+}
+
+/// Extracts, repairs (bounded), sanitizes, and decodes an Ideogram caption from a raw
+/// string. Shared by the LLM generation flow and the paste-JSON path so both get
+/// identical extraction + repair behavior without instantiating the generator class.
+func parseCaptionJSON(from json: String) -> IdeogramCaption? {
+    // Reuses the same nonisolated instance methods via a throwaway; the generator holds
+    // no state that these pure helpers read, so this is zero-cost.
+    let gen = IdeogramCaptionGenerator()
+    guard let extracted = gen.extractJSONString(from: json) else { return nil }
+    guard let data = extracted.data(using: .utf8) else { return nil }
+    return try? JSONDecoder().decode(IdeogramCaption.self, from: data)
 }

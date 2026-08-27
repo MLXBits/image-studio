@@ -193,8 +193,7 @@ struct IdeogramCaption: Codable, Equatable {
     }
 
     static func from(jsonString: String) -> Self? {
-        guard let data = jsonString.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(Self.self, from: data)
+        parseCaptionJSON(from: jsonString)
     }
 
     var highLevelDescription: String

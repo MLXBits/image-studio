@@ -8,7 +8,6 @@ import Testing
 @MainActor
 struct IdeogramCaptionGeneratorTests {
     private let gen = IdeogramCaptionGenerator()
-
     // MARK: - extractJSONString
 
     @Test func extractsPlainJSON() {
@@ -63,5 +62,39 @@ struct IdeogramCaptionGeneratorTests {
 
     @Test func fillsTrailingEmptyArraySlot() {
         #expect(gen.sanitizeJSON("[1,2,]") == "[1,2, 0]")
+    }
+
+    // MARK: - truncated repair
+
+    @Test func truncationMidValueString() {
+        let raw = #"{"prompt":"a cat sitting","tail":"he"#
+        #expect(gen.extractJSONString(from: raw) == #"{"prompt":"a cat sitting"}"#)
+    }
+
+    @Test func truncationMidKeyString() {
+        let raw = #"{"a":"v","b"#
+        #expect(gen.extractJSONString(from: raw) == #"{"a":"v"}"#)
+    }
+
+    @Test func truncationAfterCompleteNestedValues() {
+        let raw = #"{"a":{"b":1,"c":[1,2]"#
+        #expect(gen.extractJSONString(from: raw) == #"{"a":{"b":1,"c":[1,2]}}"#)
+    }
+
+    @Test func truncationDanglingKeyNoColon() {
+        let raw = #"{"prompt":"x","compositional_deconstruction""#
+        #expect(gen.extractJSONString(from: raw) == #"{"prompt":"x"}"#)
+    }
+
+    @Test func truncationClippedScalarValue() {
+        let raw = #"{"a":{"b":12"#
+        #expect(gen.extractJSONString(from: raw) == #"{"a":{"b":12}}"#)
+    }
+
+    @Test func truncationTrailingCommaWhitespace() {
+        let raw = """
+        {"prompt":"x", \n
+        """
+        #expect(gen.extractJSONString(from: raw) == #"{"prompt":"x"}"#)
     }
 }
