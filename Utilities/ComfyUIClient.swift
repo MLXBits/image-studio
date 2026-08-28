@@ -27,6 +27,8 @@ enum ComfyUIError: LocalizedError {
     case httpStatus(Int, String)
     case graphRejected(String)
     case noImageOutput
+    /// Execution finished with an error (node exception, CUDA OOM, …) — the failure diagnostic from status.messages.
+    case executionFailed(String)
     case decodeFailed(String)
 
     var errorDescription: String? {
@@ -46,6 +48,8 @@ enum ComfyUIError: LocalizedError {
             return "The workflow was rejected by the server:\n…\(msg.suffix(500))"
         case .noImageOutput:
             return "The prompt finished but produced no output image."
+        case let .executionFailed(detail):
+            return "ComfyUI execution failed:\n\(detail)"
         case let .decodeFailed(detail):
             return "Could not parse the ComfyUI response: \(detail)"
         }
@@ -494,16 +498,24 @@ final class ComfyUIClient {
                         guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
                         onProgress(ComfyUIProgress(currentStep: input.steps, totalSteps: input.steps, isDenoising: true))
                         return record.outputs
+                    // A failed prompt surfaces here two ways, both of which must fail the job — polling that only looks for a
+                    // success never returns and Image Studio sits at "Generating…" until 1h or manual cancel:
+                    //   1. `completed == false` with an execution_error entry in status.messages (e.g. CUDA OOM) — this build's shape;
+                    //   2. no `completed` key but a terminal error message present — older ComfyUI writes only {"status": "error"}.
                     case false?:
-                        // Genuine failure. Prefer the real diagnostic from `status.messages`; fall back to status_str.
                         let detail = record.errorMessage ?? record.statusMessage
                         throw ComfyUIError
-                            .graphRejected(detail?.isEmpty == false ? detail! : "the server reported an execution failure with no details")
-                    case nil:
+                            .executionFailed(detail?
+                                .isEmpty == false ? detail! : "the server reported an execution failure with no details")
+                    case nil where record.errorMessage != nil:
+                        throw ComfyUIError.executionFailed(record.errorMessage!)
+                    default:
                         break // still running → poll again
                     }
 
                     try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                } catch let e as ComfyUIError {
+                    throw e // genuine terminal failure — surface immediately, no blip tolerance
                 } catch {
                     consecutiveFetchFailures += 1
                     guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures else { throw error }
@@ -576,21 +588,16 @@ final class ComfyUIClient {
             out.completed = statusObj["completed"] as? Bool
             out.statusMessage = statusObj["status_str"] as? String
 
-            // Real failure diagnostics live in `messages`: entries `[kind, payload]` where kind mentions error.
+            // Real failure diagnostics live in `messages`: entries `[kind, payload]` where kind mentions error. The OOM shape is an
+            // "execution_error" whose payload is a dict (exception_type / node_id / exception_message / traceback). Do NOT JSON-serialize
+            // the whole payload: it embeds every live input tensor of the failing node (~5 MB for one 1920×1088 latent) and would bloat
+            // job.log. Keep only selected fields; unrecognized payloads fall back to a bounded raw slice.
             if let messages = statusObj["messages"] as? [[Any]] {
                 for entry in messages {
                     guard entry.count >= 2,
                           let kind = entry[0] as? String,
                           kind.lowercased().contains("error") || kind.lowercased().contains("exception") else { continue }
-                    let payload = entry[1]
-                    if let s = payload as? String, !s.isEmpty {
-                        out.errorMessage = "\(kind): \(s)"
-                    } else if let data = try? JSONSerialization.data(withJSONObject: [payload], options: [.sortedKeys]),
-                              let text = String(data: data, encoding: .utf8) {
-                        out.errorMessage = "\(kind): …\(text.suffix(1200))"
-                    } else {
-                        out.errorMessage = kind
-                    }
+                    out.errorMessage = Self.formatErrorMessage(kind: kind, payload: entry[1])
                     break
                 }
             }
@@ -613,8 +620,42 @@ final class ComfyUIClient {
         return out
     }
 
-    // MARK: - Image fetch
+    /// Turns one `status.messages` `[kind, payload]` failure entry into the job-facing diagnostic. The OOM shape is an "execution_error"
+    /// whose payload is a dict carrying exception_type / node_id / node_type / exception_message (plus traceback and — the trap — full
+    /// input
+    /// tensors). Keep exactly what lets the user fix it; cap at 1600 chars so a pathological message can't bloat job.log.
+    static func formatErrorMessage(kind: String, payload: Any) -> String {
+        if let s = payload as? String, !s.isEmpty {
+            return String("\(kind): \(s)".prefix(1600))
+        }
+        guard let obj = payload as? [String: Any] else {
+            if let data = try? JSONSerialization.data(withJSONObject: [payload], options: [.sortedKeys]),
+               let text = String(data: data, encoding: .utf8) {
+                return "\(kind): …\(text.suffix(1200))"
+            }
+            return kind
+        }
+        var parts: [String] = []
+        if let t = obj["exception_type"] as? String, !t.isEmpty {
+            parts.append(t)
+        } else {
+            parts.append(kind)
+        }
+        if let n = obj["node_id"] as? String, !n.isEmpty {
+            let type = (obj["node_type"] as? String ?? "").isEmpty ? "" : " \((obj["node_type"] as? String)!)"
+            parts.append("[node \(n)\(type)]")
+        }
+        if let msg = obj["exception_message"] as? String, !msg.isEmpty {
+            parts.append(msg)
+        } else if let data = try? JSONSerialization.data(withJSONObject: [obj], options: [.sortedKeys]),
+                  let text = String(data: data, encoding: .utf8) {
+            // Unrecognized payload shape: show a bounded slice rather than the whole thing.
+            parts.append("…\(text.suffix(1200))")
+        }
+        return String(parts.joined(separator: " ").prefix(1600))
+    }
 
+    // MARK: - Image fetch
     /// Downloads one server-side output image to a local path. Returns true on success. Tries the `filename` as reported
     /// (a slash in it is passed through and resolves against the server's output dir); if that misses, retries with the last
     /// path component as `filename` and the remainder as `subfolder` — so both flat (`mlxbits/krea2_…png`) and genuinely nested
