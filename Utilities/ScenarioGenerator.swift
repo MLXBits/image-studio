@@ -60,7 +60,7 @@ enum ScenarioGeneratorError: LocalizedError {
         case .promptFileNotFound:
             "scenario_prompt.md not found in app bundle"
         case .uvNotFound:
-            "uv not found at ~/.local/bin/uv. Install from https://docs.astral.sh/uv/"
+            "uv not found. Install from https://docs.astral.sh/uv/ (or: brew install uv)."
         case let .subprocessFailed(code, output):
             // The tail, not the head — Python tracebacks put the actual
             // exception on the last lines.

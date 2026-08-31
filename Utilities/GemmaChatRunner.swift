@@ -7,7 +7,7 @@ enum GemmaChatRunnerError: LocalizedError {
     var errorDescription: String? {
         switch self {
         case .uvNotFound:
-            "uv not found at ~/.local/bin/uv. Install from https://docs.astral.sh/uv/"
+            "uv not found. Install from https://docs.astral.sh/uv/ (or: brew install uv)."
         case let .modelNotFound(path):
             "Gemma model not found at \(path). Check the model path in Settings → Advanced "
                 + "(it powers captions and the Scenario Generator)."
@@ -22,7 +22,8 @@ enum GemmaChatRunnerError: LocalizedError {
 /// mlx_lm output reply-region extractor, and the Gemma chat-template
 /// assembler.
 enum GemmaChatRunner {
-    static let uvPath = NSHomeDirectory() + "/.local/bin/uv"
+    /// Empty when uv is installed nowhere; callers guard with `fileExists`.
+    nonisolated static var uvPath: String { UvInstaller.resolvedPath }
     /// uv `--with` requirements. Bumping a floor forces uv past its cached
     /// resolution, so raise these when a model needs a newer architecture.
     static let mlxLMRequirement = "mlx-lm>=0.31.3"
@@ -158,7 +159,10 @@ enum GemmaChatRunner {
         temp: Double,
         environment: [String: String]
     ) async throws -> (output: String, exitCode: Int32) {
-        guard FileManager.default.fileExists(atPath: uvPath) else {
+        // Resolve once: `uvPath` probes the filesystem on every read, so the
+        // guard and the spawns below must share one answer.
+        let uv = uvPath
+        guard !uv.isEmpty else {
             throw GemmaChatRunnerError.uvNotFound
         }
 
@@ -181,6 +185,7 @@ enum GemmaChatRunner {
         }
 
         let first = try await spawn(
+            uv: uv,
             arguments: arguments(command: "mlx_lm.generate", package: mlxLMRequirement, extra: ["--temp", "\(temp)"]),
             environment: environment
         )
@@ -191,6 +196,7 @@ enum GemmaChatRunner {
         // the generated text, so extraction gets clean output.
         if first.exitCode != 0, first.output.contains("Model type"), first.output.contains("not supported") {
             return try await spawn(
+                uv: uv,
                 arguments: arguments(
                     command: "mlx_vlm.generate", package: mlxVLMRequirement,
                     extra: ["--temperature", "\(temp)", "--no-verbose"]
@@ -202,11 +208,12 @@ enum GemmaChatRunner {
     }
 
     private static func spawn(
+        uv: String,
         arguments: [String],
         environment: [String: String]
     ) async throws -> (output: String, exitCode: Int32) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: uvPath)
+        process.executableURL = URL(fileURLWithPath: uv)
         process.arguments = arguments
 
         var env = environment
