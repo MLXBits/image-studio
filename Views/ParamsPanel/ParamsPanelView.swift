@@ -701,6 +701,7 @@ struct ParamsPanelView: View {
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 36, height: 36)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
+                    .thumbnailHoverPreview(imagePath: path)
             }
             Text(URL(fileURLWithPath: path).lastPathComponent)
                 .font(.caption).lineLimit(1).truncationMode(.middle)
@@ -756,7 +757,8 @@ extension View {
 
     /// Shows the full-size image at `imagePath` in a popover after a 250 ms hover
     /// delay. No-ops when `imagePath` is empty or not a readable image. Shared by
-    /// the Flux and Krea 2 img2img reference thumbnails.
+    /// the Flux and Krea 2 img2img reference thumbnails and the Flux.2 edit-image
+    /// list rows.
     func thumbnailHoverPreview(imagePath: String) -> some View {
         modifier(ThumbnailHoverPreview(imagePath: imagePath))
     }
