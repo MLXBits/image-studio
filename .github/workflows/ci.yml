@@ -37,12 +37,21 @@ jobs:
       - name: SwiftFormat (lint only)
         run: swiftformat --lint --config .swiftformat .
 
-      # --strict promotes warnings to errors. The tree is at zero violations as
-      # of this workflow's first commit, so any new one is a real regression.
-      - name: SwiftLint (strict)
+      # --strict promotes warnings to errors, measured against a baseline of the
+      # 139 warning-severity violations that predate this workflow. New
+      # violations fail the build; the pre-existing backlog does not. The
+      # pre-build phase in project.yml emits those 139 as build warnings, which
+      # is why they were never noticed.
+      #
+      # After clearing some (many are autocorrectable with `swiftlint --fix`),
+      # regenerate with:
+      #   swiftlint lint --config .swiftlint.yml \
+      #     --write-baseline .swiftlint-baseline.json
+      - name: SwiftLint (strict, against baseline)
         run: |
           swiftlint lint \
             --config .swiftlint.yml \
+            --baseline .swiftlint-baseline.json \
             --strict \
             --reporter github-actions-logging
 
