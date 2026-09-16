@@ -152,4 +152,7 @@ jobs:
             echo "Periphery scan completed — findings, if any, are in the annotations." >> "$GITHUB_STEP_SUMMARY"
           else
             echo "Periphery failed to run (build or config problem), see the step log." >> "$GITHUB_STEP_SUMMARY"
+            # Findings are advisory; the scan breaking is not. Without this the
+            # trailing echo returns 0 and a dead tool reports as a green job.
+            exit 1
           fi
