@@ -1,0 +1,146 @@
+name: CI
+
+# The everyday gate: formatting, lint, and the Swift Testing suite on every pull
+# request and every push to main. Signed/notarized release builds live in
+# release.yml and fire on v* tags only — before this workflow existed, a tag
+# push was the first time lint or tests ran anywhere but a developer's machine.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+# A newer push to the same branch supersedes an in-flight run.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  SCHEME: "MLXBits Image Studio"
+  PROJECT: "MLXBits Image Studio.xcodeproj"
+
+jobs:
+  lint:
+    name: Format & lint
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftFormat and SwiftLint
+        run: brew install --quiet swiftformat swiftlint
+
+      # Must run before anything invokes xcodebuild: the app target's pre-build
+      # phase (project.yml) runs SwiftFormat in write mode, which would silently
+      # repair the very violations this step exists to catch.
+      - name: SwiftFormat (lint only)
+        run: swiftformat --lint --config .swiftformat .
+
+      # --strict promotes warnings to errors. The tree is at zero violations as
+      # of this workflow's first commit, so any new one is a real regression.
+      - name: SwiftLint (strict)
+        run: |
+          swiftlint lint \
+            --config .swiftlint.yml \
+            --strict \
+            --reporter github-actions-logging
+
+  test:
+    name: Test
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install SwiftLint
+        run: brew install --quiet swiftlint
+
+      # Same invocation release.yml uses. CODE_SIGNING_ALLOWED=NO because
+      # runners carry no Mac Development identity and these are pure-logic
+      # tests. Deliberately not -quiet: this log is the analyzer step's input.
+      - name: Test (Debug)
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild test \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -destination "platform=macOS" \
+            -resultBundlePath build/TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO \
+            | tee build/xcodebuild.log
+
+      # The analyzer_rules block in .swiftlint.yml (unused_import) does NOT run
+      # under plain `swiftlint lint` — not here, and not in the pre-build phase
+      # in project.yml. Analyzer rules need a full compiler log, which only
+      # exists once something has actually built. This is the only place it does.
+      #
+      # Advisory for now: 16 pre-existing unused_import violations as of
+      # 2026-09-16. Once those are cleared, drop the `|| true` and add --strict
+      # so new ones fail the build.
+      - name: SwiftLint analyzer rules (advisory)
+        run: |
+          swiftlint analyze \
+            --config .swiftlint.yml \
+            --compiler-log-path build/xcodebuild.log \
+            --reporter github-actions-logging || true
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results
+          path: build/TestResults.xcresult
+          retention-days: 7
+
+  duplication:
+    name: Duplication (advisory)
+    # jscpd is pure token analysis — no Xcode, no build — so it runs on Linux
+    # rather than burning a macOS runner.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+
+      # Config (thresholds, ignores, Swift-only format) lives in .jscpd.json.
+      - name: jscpd
+        run: |
+          npx --yes jscpd@4 --reporters console . > jscpd.txt 2>&1 || true
+          {
+            echo "### Duplication"
+            echo ""
+            echo '```'
+            tail -25 jscpd.txt
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deadcode:
+    name: Dead code (advisory)
+    # Periphery runs its own full build, so it would roughly double PR
+    # wall-clock for output nobody blocks on. Post-merge hygiene instead.
+    if: github.event_name == 'push'
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install Periphery
+        run: brew install --quiet peripheryapp/periphery/periphery
+
+      # Project, scheme, and retention rules come from .periphery.yml. Without
+      # --strict, findings exit 0 and surface as annotations — so a non-zero
+      # exit here means the scan itself broke, not that it found dead code.
+      - name: Scan
+        run: |
+          if periphery scan \
+            --disable-update-check \
+            --quiet \
+            --format github-actions \
+            -- CODE_SIGNING_ALLOWED=NO
+          then
+            echo "Periphery scan completed — findings, if any, are in the annotations." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "Periphery failed to run (build or config problem), see the step log." >> "$GITHUB_STEP_SUMMARY"
+          fi
