@@ -57,6 +57,10 @@ jobs:
 
   test:
     name: Test
+    # Lint is 16s against this job's ~2.5 min, so gating on it costs almost no
+    # latency and saves a full macOS runner's worth of minutes whenever a
+    # revision fails lint.
+    needs: lint
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v7
@@ -88,6 +92,10 @@ jobs:
       # 2026-09-16. Once those are cleared, drop the `|| true` and add --strict
       # so new ones fail the build.
       - name: SwiftLint analyzer rules (advisory)
+        # ~9 min: `swiftlint analyze` re-parses every file through SourceKit,
+        # which dwarfed the 2.4 min test run and delayed the blocking signal.
+        # Same call as Periphery: advisory work belongs post-merge.
+        if: github.event_name == 'push'
         run: |
           swiftlint analyze \
             --config .swiftlint.yml \
@@ -147,6 +155,7 @@ jobs:
             --disable-update-check \
             --quiet \
             --format github-actions \
+            --relative-results \
             -- CODE_SIGNING_ALLOWED=NO
           then
             echo "Periphery scan completed — findings, if any, are in the annotations." >> "$GITHUB_STEP_SUMMARY"
