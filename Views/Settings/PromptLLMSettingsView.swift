@@ -4,7 +4,7 @@ import SwiftUI
 /// Ideogram 4 caption generation and the Scenario Generator (Flux/Krea 2 prompt
 /// panels). Chooses between running Gemma locally (via `uv`/`mlx_lm`) and an
 /// OpenAI-compatible HTTP endpoint (e.g. LM Studio), and lets the user test the
-/// endpoint and pick a model. Rendered inside the Advanced tab's `Form`.
+/// endpoint and pick a model from the list it serves (loaded automatically). Rendered inside the Advanced tab's `Form`.
 struct PromptLLMSettingsView: View {
     /// State of the "Test Connection" probe against the endpoint.
     private enum ConnectionPhase { case idle, testing, ok(Int), failed(String) }
@@ -12,6 +12,8 @@ struct PromptLLMSettingsView: View {
     @Environment(AppSettings.self) private var settings
     @State private var apiKeyDraft: String = ""
     @State private var discoveredModels: [String] = []
+    @State private var isFetchingModels = false
+    @State private var modelFetchFailed = false
     @State private var connectionPhase: ConnectionPhase = .idle
 
     var body: some View {
@@ -214,23 +216,75 @@ struct PromptLLMSettingsView: View {
     private func modelField(_ s: AppSettings) -> some View {
         @Bindable var s = s
         VStack(alignment: .leading, spacing: 4) {
-            if discoveredModels.isEmpty {
-                TextField("Model id (e.g. as shown in LM Studio)", text: $s.openAIModel)
-                    .textFieldStyle(.roundedBorder)
-            } else {
-                Picker("Model", selection: $s.openAIModel) {
-                    // Keep a current value that isn't in the fetched list visible.
-                    if !s.openAIModel.isEmpty, !discoveredModels.contains(s.openAIModel) {
-                        Text(s.openAIModel).tag(s.openAIModel)
+            HStack(spacing: 6) {
+                if discoveredModels.isEmpty {
+                    TextField("Model id (e.g. as shown in LM Studio)", text: $s.openAIModel)
+                        .textFieldStyle(.roundedBorder)
+                } else {
+                    Picker("Model", selection: $s.openAIModel) {
+                        // Keep a current value that isn't in the fetched list visible.
+                        if !s.openAIModel.isEmpty, !discoveredModels.contains(s.openAIModel) {
+                            Text(s.openAIModel).tag(s.openAIModel)
+                        }
+                        ForEach(discoveredModels, id: \.self) { id in
+                            Text(id).tag(id)
+                        }
                     }
-                    ForEach(discoveredModels, id: \.self) { id in
-                        Text(id).tag(id)
-                    }
+                    .pickerStyle(.menu)
                 }
-                .pickerStyle(.menu)
+                if isFetchingModels {
+                    ProgressView().controlSize(.small)
+                } else {
+                    Button {
+                        Task { await refreshModels() }
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.borderless)
+                    .help("Reload the model list from the endpoint")
+                }
+            }
+            if modelFetchFailed, !isFetchingModels {
+                Text("Couldn't list models from this endpoint — enter the id by hand.")
+                    .font(.caption).foregroundStyle(.secondary)
             }
         }
         .padding(.vertical, 2)
+        // Load the model list as soon as an endpoint is configured, and again after
+        // the URL or key stops changing — debounced so typing doesn't fire a request
+        // per keystroke. Changing the id cancels the pending sleep.
+        .task(id: "\(s.openAIBaseURL)\n\(settings.openAIAPIKey)") {
+            if !isTesting {
+                connectionPhase = .idle
+            } // status described the old endpoint
+            try? await Task.sleep(for: .milliseconds(600))
+            guard !Task.isCancelled else { return }
+            await refreshModels()
+        }
+    }
+
+    /// Fetches `GET /v1/models` for the current endpoint into the model picker without
+    /// touching the Test Connection status. A failure clears the list — it belonged to
+    /// whatever endpoint was configured before — so the hand-entry field comes back.
+    private func refreshModels() async {
+        let baseURL = settings.openAIBaseURL.trimmingCharacters(in: .whitespaces)
+        guard !baseURL.isEmpty else {
+            discoveredModels = []
+            modelFetchFailed = false
+            return
+        }
+        isFetchingModels = true
+        defer { isFetchingModels = false }
+        let models = try? await OpenAIChatClient.fetchModels(baseURL: baseURL, apiKey: settings.openAIAPIKey)
+        // Drop a stale result if the endpoint changed while the request was in flight.
+        guard !Task.isCancelled, baseURL == settings.openAIBaseURL.trimmingCharacters(in: .whitespaces) else {
+            return
+        }
+        discoveredModels = models ?? []
+        modelFetchFailed = models == nil
+        if settings.openAIModel.isEmpty, let first = models?.first {
+            settings.openAIModel = first
+        }
     }
 
     /// Probes the endpoint's `GET /v1/models`, updating the status row and
@@ -243,6 +297,7 @@ struct PromptLLMSettingsView: View {
             do {
                 let models = try await OpenAIChatClient.fetchModels(baseURL: baseURL, apiKey: apiKey)
                 discoveredModels = models
+                modelFetchFailed = false
                 connectionPhase = .ok(models.count)
                 if settings.openAIModel.isEmpty, let first = models.first {
                     settings.openAIModel = first
