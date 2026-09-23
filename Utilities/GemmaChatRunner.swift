@@ -23,7 +23,10 @@ enum GemmaChatRunnerError: LocalizedError {
 /// assembler.
 enum GemmaChatRunner {
     /// Empty when uv is installed nowhere; callers guard with `fileExists`.
-    nonisolated static var uvPath: String { UvInstaller.resolvedPath }
+    nonisolated static var uvPath: String {
+        UvInstaller.resolvedPath
+    }
+
     /// uv `--with` requirements. Bumping a floor forces uv past its cached
     /// resolution, so raise these when a model needs a newer architecture.
     static let mlxLMRequirement = "mlx-lm>=0.31.3"
