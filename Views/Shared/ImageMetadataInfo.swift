@@ -178,6 +178,45 @@ struct ImageMetadataInfo {
         }
     }
 
+    init(qwenImageJob job: QwenImageJob) {
+        prompt = job.prompt
+        negativePrompt = job.usesTrueCFG ? job.negativePrompt : ""
+        modelName = job.customModelRepo.isEmpty
+            ? job.modelVariant.displayName
+            : job.customModelRepo.split(separator: "/").last.map(String.init) ?? job.customModelRepo
+        seed = job.resolvedSeed ?? job.seed
+        width = job.width
+        height = job.height
+        steps = job.steps
+        guidance = job.guidance
+        loras = []
+        filePath = job.outputPath
+        log = job.log.isEmpty ? nil : job.log
+        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
+            let secs = Int(ended.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
+    init?(qwenImageItem: GalleryItem) {
+        guard let meta = qwenImageItem.qwenImageMetadata else { return nil }
+        prompt = meta.prompt
+        negativePrompt = meta.guidance > 1.0 ? meta.negativePrompt ?? "" : ""
+        modelName = meta.displayModelName
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = meta.guidance
+        loras = []
+        filePath = qwenImageItem.path
+        log = meta.log
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init?(zimageItem: GalleryItem) {
         guard let meta = zimageItem.zimageMetadata else { return nil }
         prompt = meta.prompt

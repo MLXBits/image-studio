@@ -11,6 +11,8 @@ struct GalleryItemDetailView: View {
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     var onRemixZImage: ((ZImageMetadata) -> Void)?
     var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwenImage: ((QwenImageMetadata) -> Void)?
+    var onApplyQwenImageSettings: ((QwenImageMetadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
@@ -28,6 +30,8 @@ struct GalleryItemDetailView: View {
             ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else if item.zimageMetadata != nil {
             ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.qwenImageMetadata != nil {
+            ImageMetadataInfo(qwenImageItem: item) ?? ImageMetadataInfo(path: item.path)
         } else if item.seedVR2Metadata != nil {
             ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else {
@@ -82,6 +86,10 @@ struct GalleryItemDetailView: View {
                     Divider()
                     Button("Apply Settings") { onApplyZImageSettings?(correctedZImage(meta)) }
                     Button("Remix (new seed)") { onRemixZImage?(meta) }
+                } else if let meta = item.qwenImageMetadata {
+                    Divider()
+                    Button("Apply Settings") { onApplyQwenImageSettings?(correctedQwenImage(meta)) }
+                    Button("Remix (new seed)") { onRemixQwenImage?(meta) }
                 }
                 if let onUpscale {
                     Divider()
@@ -107,7 +115,7 @@ struct GalleryItemDetailView: View {
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
                 onUseInImg2Img: item.ideogram4Metadata == nil && item.krea2Metadata == nil
-                    && item.zimageMetadata == nil
+                    && item.zimageMetadata == nil && item.qwenImageMetadata == nil
                     ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
@@ -177,6 +185,9 @@ struct GalleryItemDetailView: View {
         if let meta = item.zimageMetadata, let fn = onApplyZImageSettings {
             return { fn(correctedZImage(meta)) }
         }
+        if let meta = item.qwenImageMetadata, let fn = onApplyQwenImageSettings {
+            return { fn(correctedQwenImage(meta)) }
+        }
         // SeedVR2 upscale: replay from the source generation metadata folded into the
         // upscale's sidecar, so an upscale is as re-applicable as its original.
         if let src = item.seedVR2Metadata {
@@ -196,6 +207,9 @@ struct GalleryItemDetailView: View {
             if let meta = src.sourceZImage, let fn = onApplyZImageSettings {
                 return { fn(correctedZImage(meta)) }
             }
+            if let meta = src.sourceQwenImage, let fn = onApplyQwenImageSettings {
+                return { fn(correctedQwenImage(meta)) }
+            }
         }
         return nil
     }
@@ -213,6 +227,9 @@ struct GalleryItemDetailView: View {
         if let meta = item.zimageMetadata, let fn = onRemixZImage {
             return { fn(meta) }
         }
+        if let meta = item.qwenImageMetadata, let fn = onRemixQwenImage {
+            return { fn(meta) }
+        }
         if let src = item.seedVR2Metadata {
             if let meta = src.sourceFlux {
                 return { onRemix(meta) }
@@ -224,6 +241,9 @@ struct GalleryItemDetailView: View {
                 return { fn(meta) }
             }
             if let meta = src.sourceZImage, let fn = onRemixZImage {
+                return { fn(meta) }
+            }
+            if let meta = src.sourceQwenImage, let fn = onRemixQwenImage {
                 return { fn(meta) }
             }
         }
@@ -252,6 +272,12 @@ struct GalleryItemDetailView: View {
     }
 
     private func correctedZImage(_ meta: ZImageMetadata) -> ZImageMetadata {
+        var corrected = meta
+        corrected.board = item.board == "Default" ? nil : item.board
+        return corrected
+    }
+
+    private func correctedQwenImage(_ meta: QwenImageMetadata) -> QwenImageMetadata {
         var corrected = meta
         corrected.board = item.board == "Default" ? nil : item.board
         return corrected

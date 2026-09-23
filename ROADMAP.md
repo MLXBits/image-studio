@@ -31,6 +31,20 @@ Deferred: **Qwen-Image-Edit** (~58 GB + net-new multi-image edit UI) and **FIBO*
 
 ## Shipped
 
+### Qwen-Image 2.1
+
+Qwen's second-generation text-to-image model (7.1B single-stream, block-causal
+DiT; Qwen3-VL text encoder; 64-channel 16×-compression VAE), shipped as a
+`.qwenImage` family driving `mflux-generate-qwen-2.1` (mflux 0.20.0+). One
+variant, sampled guidance-free at 40 steps by default; guidance above 1 plus a
+negative prompt switches mflux to true CFG. Text-to-image and img2img, a
+BF16/Q8/Q4 selector (Q8/Q4 quantize the DiT in memory at load, so every level
+shares the one `Qwen/Qwen-Image-2.1` download and there is no `mflux-save`
+pass), metadata sidecars with remix/apply, SeedVR2 source inheritance, and a
+Settings → Models form. One-shot CLI only (no warm-driver pipeline) and no
+LoRA, which mflux does not support for this model yet. Editing, multi-reference
+input, and RGBA output are not in mflux's CLI yet either.
+
 ### Z-Image & Z-Image Turbo
 
 Alibaba Tongyi's single-stream DiT text-to-image model, shipped as a new

@@ -48,6 +48,8 @@ struct ContentView: View {
     @Environment(Krea2JobRunner.self) private var krea2Runner
     @Environment(ZImageJobStore.self) private var zimageStore
     @Environment(ZImageJobRunner.self) private var zimageRunner
+    @Environment(QwenImageJobStore.self) private var qwenImageStore
+    @Environment(QwenImageJobRunner.self) private var qwenImageRunner
     @Environment(SeedVR2JobStore.self) private var seedVR2Store
     @Environment(SeedVR2JobRunner.self) private var seedVR2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
@@ -70,6 +72,7 @@ struct ContentView: View {
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
     @State private var zimageParams = ZImageParamsPanelState()
+    @State private var qwenImageParams = QwenImageParamsPanelState()
     /// Armed in `onAppear` when restoring the last-used model will change
     /// `params.model` away from its initial default. Swallows the resulting
     /// `onChange(of: params.model)` so the interactive "switch model → reset to
@@ -96,7 +99,7 @@ struct ContentView: View {
 
     private var isAnyStoreRunning: Bool {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
-            || zimageStore.isRunning || seedVR2Store.isRunning
+            || zimageStore.isRunning || qwenImageStore.isRunning || seedVR2Store.isRunning
     }
 
     /// Every image currently attached to an img2img / edit drop area, across the
@@ -114,6 +117,9 @@ struct ContentView: View {
         if !zimageParams.imagePath.isEmpty {
             paths.insert(zimageParams.imagePath)
         }
+        if !qwenImageParams.imagePath.isEmpty {
+            paths.insert(qwenImageParams.imagePath)
+        }
         return paths
     }
 
@@ -121,6 +127,7 @@ struct ContentView: View {
         ParamsPanelView(
             params: params, ideogramParams: ideogramParams,
             krea2Params: krea2Params, zimageParams: zimageParams,
+            qwenImageParams: qwenImageParams,
             onQueueScenarioBatch: queueScenarioBatch
         )
         .frame(width: 350)
@@ -141,6 +148,9 @@ struct ContentView: View {
                 if params.model.isZImage {
                     return zimageParams.quantize
                 }
+                if params.model.isQwenImage {
+                    return qwenImageParams.quantize
+                }
                 return params.quantize
             },
             set: { v in
@@ -151,6 +161,8 @@ struct ContentView: View {
                     krea2Params.quantize = v
                 } else if params.model.isZImage {
                     zimageParams.quantize = v
+                } else if params.model.isQwenImage {
+                    qwenImageParams.quantize = v
                 } else {
                     params.quantize = v
                 }
@@ -220,10 +232,12 @@ struct ContentView: View {
             onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
             onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
             onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
+            onRemixQwenImage: { meta in applyQwenImage(meta, newSeed: true); generate() },
+            onApplyQwenImageSettings: { meta in applyQwenImage(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onCancel: {
                 runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
-                zimageRunner.cancel(); seedVR2Runner.cancel()
+                zimageRunner.cancel(); qwenImageRunner.cancel(); seedVR2Runner.cancel()
             },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
@@ -321,6 +335,7 @@ struct ContentView: View {
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
                 krea2Params.applyDefaults(settings: settings, library: loraLibrary)
                 zimageParams.applyDefaults(settings: settings, library: loraLibrary)
+                qwenImageParams.applyDefaults(settings: settings)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 try? ScenarioExamplePrompts.seedIfNeeded()
@@ -398,6 +413,14 @@ struct ContentView: View {
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
+            .onChange(of: qwenImageRunner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: qwenImageRunner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
             .onChange(of: seedVR2Runner.lastCompletedOutputPath) { _, path in
                 pendingSelectPath = path
                 gallery.scan(outputDir: settings.outputDir)
@@ -422,6 +445,11 @@ struct ContentView: View {
             }
             .onChange(of: zimageStore.isRunning) {
                 _, running in if !running {
+                    pumpQueues()
+                }
+            }
+            .onChange(of: qwenImageStore.isRunning) { _, running in
+                if !running {
                     pumpQueues()
                 }
             }
@@ -565,6 +593,11 @@ struct ContentView: View {
             guard let id, let job = zimageStore.jobs.first(where: { $0.id == id }) else { return }
             selectedGalleryItem = nil
             previewState = .activeZImageJob(job)
+        }
+        .onChange(of: qwenImageRunner.activeJob?.id) { _, id in
+            guard let id, let job = qwenImageStore.jobs.first(where: { $0.id == id }) else { return }
+            selectedGalleryItem = nil
+            previewState = .activeQwenImageJob(job)
         }
         .onChange(of: seedVR2Runner.activeJob?.id) { _, id in
             guard let id, let job = seedVR2Store.jobs.first(where: { $0.id == id }) else { return }
@@ -755,6 +788,24 @@ struct ContentView: View {
                     .environment(zimageRunner)
                     .environment(settings)
                     .environment(coordinator)
+                } else if params.modelFamily == .qwenImage {
+                    QwenImageQueueDrawerView(selectedJob: Binding(
+                        get: {
+                            if case let .activeQwenImageJob(j) = previewState {
+                                return j
+                            }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job {
+                                previewState = .activeQwenImageJob(j)
+                            }
+                        }
+                    ))
+                    .environment(qwenImageStore)
+                    .environment(qwenImageRunner)
+                    .environment(settings)
+                    .environment(coordinator)
                 } else {
                     QueueDrawerView(selectedJob: Binding(
                         get: {
@@ -803,6 +854,8 @@ struct ContentView: View {
                     krea2Params.isReadyToGenerate(settings: settings)
                 case .zimage:
                     zimageParams.isReadyToGenerate(settings: settings)
+                case .qwenImage:
+                    qwenImageParams.isReadyToGenerate(settings: settings)
                 case .seedvr2:
                     false // upscaler — never the picker-selected family
                 }
@@ -823,6 +876,7 @@ struct ContentView: View {
                     case .ideogram4: ideogramParams.seed == -1
                     case .krea2: krea2Params.seed == -1
                     case .zimage: zimageParams.seed == -1
+                    case .qwenImage: qwenImageParams.seed == -1
                     case .seedvr2: false
                     }
                     if seedIsRandom {
@@ -891,6 +945,7 @@ struct ContentView: View {
         case .ideogram4: ideogramParams.seed != -1
         case .krea2: krea2Params.seed != -1
         case .zimage: zimageParams.seed != -1
+        case .qwenImage: qwenImageParams.seed != -1
         case .seedvr2: false
         }
     }
@@ -908,6 +963,7 @@ struct ContentView: View {
                     ideogramParams.seed = -1
                     krea2Params.seed = -1
                     zimageParams.seed = -1
+                    qwenImageParams.seed = -1
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
@@ -993,6 +1049,22 @@ struct ContentView: View {
                             .foregroundStyle(.secondary)
                     } else {
                         let remaining = zimageStore.pendingJobs.count + 1
+                        Text("\(remaining) left")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            } else if qwenImageStore.isRunning {
+                HStack(spacing: 6) {
+                    ProgressView().controlSize(.small)
+                    if let job = qwenImageRunner.activeJob, job.seeds.count > 1 {
+                        let done = job.completedSeedsInBatch
+                        let total = job.seeds.count
+                        Text("\(done)/\(total) images")
+                            .monospacedDigit()
+                            .foregroundStyle(.secondary)
+                    } else {
+                        let remaining = qwenImageStore.pendingJobs.count + 1
                         Text("\(remaining) left")
                             .monospacedDigit()
                             .foregroundStyle(.secondary)
@@ -1165,6 +1237,11 @@ struct ContentView: View {
                 : saved
             return true
         }
+        if m.isQwenImage {
+            // One variant and no LoRAs: the Qwen-Image form keeps its own state,
+            // so there is nothing to realign; returning true only keeps the Flux reset off it.
+            return true
+        }
         return false
     }
 
@@ -1198,6 +1275,13 @@ struct ContentView: View {
     private func applyZImage(_ meta: ZImageMetadata, newSeed: Bool) {
         selectFamily(meta.resolvedVariant, customRepo: meta.customModelRepo)
         zimageParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
+    /// Switches the params panel to Qwen-Image 2.1 and replays a completed
+    /// generation's settings.
+    private func applyQwenImage(_ meta: QwenImageMetadata, newSeed: Bool) {
+        selectFamily(.qwenImage21, customRepo: meta.customModelRepo)
+        qwenImageParams.apply(metadata: meta, newSeed: newSeed)
     }
 
     /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
@@ -1252,6 +1336,8 @@ struct ContentView: View {
             previewState = .activeKrea2Job(j)
         } else if let j = zimageRunner.activeJob {
             previewState = .activeZImageJob(j)
+        } else if let j = qwenImageRunner.activeJob {
+            previewState = .activeQwenImageJob(j)
         } else if let j = seedVR2Runner.activeJob {
             previewState = .activeSeedVR2Job(j)
         } else {
@@ -1523,6 +1609,9 @@ struct ContentView: View {
         case .zimage:
             generateZImage(count: count, scenarioPrompts: scenarioPrompts)
 
+        case .qwenImage:
+            generateQwenImage(count: count, scenarioPrompts: scenarioPrompts)
+
         case .seedvr2:
             break // upscaler — never the picker-selected family; started via startUpscale
         }
@@ -1619,6 +1708,60 @@ struct ContentView: View {
         if wasIdle, let firstJob = jobs.first {
             selectedGalleryItem = nil
             previewState = .activeZImageJob(firstJob)
+        }
+    }
+
+    /// Enqueues Qwen-Image 2.1 jobs for one Generate press. Wildcards fan out like
+    /// the Z-Image path: one job per option of the largest {a|b} group (capped 10),
+    /// or the batch count when set, each with its own resolved prompt + sidecar.
+    private func generateQwenImage(count: Int, scenarioPrompts: [String]? = nil) {
+        guard qwenImageParams.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else {
+            return
+        }
+        // Remember the picker selection across sessions. `custom` must survive as
+        // itself, not be flattened to the variant it happens to load as.
+        settings.lastModel = params.model == .custom ? .custom : qwenImageParams.variant
+        settings.lastQwenImage = qwenImageParams.snapshot() // remember the form across launches
+        if scenarioPrompts == nil {
+            settings.recordPromptUse(qwenImageParams.prompt)
+        }
+        let wasIdle = !isAnyStoreRunning
+        let variants = min(WildcardExpander.variantCount(qwenImageParams.prompt), 10)
+        let jobs: [QwenImageJob]
+        if let scenarioPrompts, !scenarioPrompts.isEmpty {
+            jobs = scenarioPrompts.map {
+                qwenImageParams.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: collapseWildcards(($0, qwenImageParams.negativePrompt))
+                )
+            }
+        } else if variants > 1 {
+            let jobCount = count > 1 ? count : variants
+            let positives = WildcardExpander.expandVariants(qwenImageParams.prompt, count: jobCount)
+            let negatives = WildcardExpander.expandVariants(qwenImageParams.negativePrompt, count: jobCount)
+            jobs = (0 ..< jobCount).map {
+                qwenImageParams.makeJob(
+                    count: 1,
+                    customModelRepo: params.effectiveCustomRepo,
+                    resolvedPrompt: (positives[$0], negatives[$0])
+                )
+            }
+        } else {
+            jobs = [qwenImageParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)]
+        }
+        for job in jobs {
+            qwenImageStore.add(job)
+        }
+        // Qwen-Image runs as a one-shot CLI (~45 GB at BF16), so free any warm model
+        // first rather than wait out the picker's debounced switch eviction.
+        if wasIdle {
+            driverController.eject(reason: "model_switch")
+        }
+        qwenImageRunner.runNext(in: qwenImageStore, settings: settings, coordinator: coordinator, timing: timing)
+        if wasIdle, let firstJob = jobs.first {
+            selectedGalleryItem = nil
+            previewState = .activeQwenImageJob(firstJob)
         }
     }
 
@@ -1843,6 +1986,9 @@ struct ContentView: View {
         } else if !zimageStore.pendingJobs.isEmpty {
             driverController.eject(reason: "model_switch")
             zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
+        } else if !qwenImageStore.pendingJobs.isEmpty {
+            driverController.eject(reason: "model_switch")
+            qwenImageRunner.runNext(in: qwenImageStore, settings: settings, coordinator: coordinator, timing: timing)
         } else if !seedVR2Store.pendingJobs.isEmpty {
             // Free any warm generative model before the upscale — SeedVR2 loads its own
             // weights in a fresh CLI process, and holding both risks OOM.

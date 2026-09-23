@@ -242,6 +242,15 @@ nonisolated enum BinaryDetector {
         return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-z-image")
     }
 
+    /// Returns the full path to mflux-generate-qwen-2.1 given a binary directory.
+    static func mfluxGenerateQwenImage21(in dir: String) -> String {
+        if dir.isEmpty {
+            return detect("mflux-generate-qwen-2.1")
+        }
+        let path = "\(dir)/mflux-generate-qwen-2.1"
+        return FileManager.default.fileExists(atPath: path) ? path : detect("mflux-generate-qwen-2.1")
+    }
+
     /// Returns the full path to mflux-upscale-seedvr2 given a binary directory.
     static func mfluxUpscaleSeedVR2(in dir: String) -> String {
         if dir.isEmpty {

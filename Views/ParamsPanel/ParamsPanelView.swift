@@ -21,6 +21,7 @@ struct ParamsPanelView: View {
     @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Bindable var krea2Params: Krea2ParamsPanelState
     @Bindable var zimageParams: ZImageParamsPanelState
+    @Bindable var qwenImageParams: QwenImageParamsPanelState
     /// Turns a batch of scenario-generated prompts into one image job apiece.
     /// Owned by ContentView (which holds the stores and runners) and forwarded to
     /// whichever family's panel is showing.
@@ -65,6 +66,8 @@ struct ParamsPanelView: View {
                     Krea2ParamsPanelView(params: krea2Params, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .zimage:
                     ZImageParamsPanelView(params: zimageParams, onQueueScenarioBatch: onQueueScenarioBatch)
+                case .qwenImage:
+                    QwenImageParamsPanelView(params: qwenImageParams, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .seedvr2:
                     EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }

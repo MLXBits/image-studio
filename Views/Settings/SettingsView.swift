@@ -237,7 +237,7 @@ struct SettingsView: View {
             .labelsHidden()
 
             Picker("", selection: $loraFamily) {
-                ForEach(ModelFamily.generative, id: \.self) { Text($0.rawValue).tag($0) }
+                ForEach(ModelFamily.generative.filter(\.supportsLoras), id: \.self) { Text($0.rawValue).tag($0) }
             }
             .pickerStyle(.segmented)
             .labelsHidden()

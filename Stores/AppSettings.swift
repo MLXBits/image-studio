@@ -104,6 +104,8 @@ class AppSettings {
         var comfyCheckpoint: [String: String]?
         /// Z-Image last-used form (remembered across launches)
         var lastZImage: ZImageFormState?
+        /// Qwen-Image 2.1 last-used form (remembered across launches)
+        var lastQwenImage: QwenImageFormState?
         /// SeedVR2 upscale defaults (remembered across launches)
         var seedVR2Use7B: Bool?
         var seedVR2Quantize: Int?
@@ -406,6 +408,11 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// Last-used Qwen-Image 2.1 form, restored on next launch.
+    var lastQwenImage: QwenImageFormState? {
+        didSet { save() }
+    }
+
     // MARK: - SeedVR2 upscale defaults
 
     /// Default SeedVR2 model size: false = 3B (fast), true = 7B (quality).
@@ -584,6 +591,7 @@ class AppSettings {
         return caches.appendingPathComponent("mflux")
     }
 
+    // swiftlint:disable:next function_body_length
     init() {
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
@@ -628,6 +636,7 @@ class AppSettings {
         lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
         lastKrea2 = s.lastKrea2
         lastZImage = s.lastZImage
+        lastQwenImage = s.lastQwenImage
         comfyURL = s.comfyURL ?? ""
         // Migrate a pre-split saved `comfyCheckpoint` entry into the UNet slot so existing config keeps working.
         var unetMap = s.comfyUNet ?? [:]
@@ -816,6 +825,7 @@ class AppSettings {
         s.lastCustomBaseModel = lastCustomBaseModel
         s.lastKrea2 = lastKrea2
         s.lastZImage = lastZImage
+        s.lastQwenImage = lastQwenImage
         s.comfyURL = comfyURL
         s.comfyUNet = comfyUNet
         s.comfyClip = comfyClip
@@ -880,6 +890,11 @@ class AppSettings {
         turbo
             ? BinaryDetector.mfluxGenerateZImageTurbo(in: mfluxBinaryDir)
             : BinaryDetector.mfluxGenerateZImage(in: mfluxBinaryDir)
+    }
+
+    /// Resolves `mflux-generate-qwen-2.1` (mflux 0.20.0+).
+    func mfluxQwenImageBinaryPath() -> String {
+        BinaryDetector.mfluxGenerateQwenImage21(in: mfluxBinaryDir)
     }
 
     func mfluxSeedVR2BinaryPath() -> String {
