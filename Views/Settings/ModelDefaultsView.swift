@@ -175,6 +175,15 @@ struct ModelDefaultsView: View {
                 .padding(.vertical, 2)
                 .tag(Selection.model(.zimage))
             }
+            Section("Qwen-Image") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Qwen-Image 2.1").font(.callout)
+                    Text("\(FluxModelVariant.qwenImage21.defaultSteps) steps · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.qwenImage21))
+            }
             Section("Upscale") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SeedVR2").font(.callout)
@@ -206,6 +215,8 @@ struct ModelDefaultsView: View {
                             .task { await ensureComfyDiscovery() }
                     } else if selectedModel.isZImage {
                         zimageFormContent(model: selectedModel)
+                    } else if selectedModel.isQwenImage {
+                        qwenImageFormContent(model: selectedModel)
                     } else {
                         formContent(model: selectedModel, defaults: settings.defaults(for: selectedModel))
                     }
@@ -316,7 +327,7 @@ struct ModelDefaultsView: View {
                     // A model with a pre-quantized repo (Ideogram, Z-Image Turbo Q4)
                     // just downloads it; only an mflux-save pass from a local BF16 base
                     // is a conversion.
-                    let usesPreQuant = model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil
+                    let usesPreQuant = model.directDownloadRepoID(quantize: quantize) != nil
                     let verb = !usesPreQuant
                         && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
                         ? "Converting" : "Downloading"
@@ -358,7 +369,9 @@ struct ModelDefaultsView: View {
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = cacheRevision // invalidates view when cache changes on disk
-                let cachedVariants = [0, 4, 8].filter { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir) }
+                let cachedVariants = model.cachedQuantizeLevels.filter {
+                    model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir)
+                }
                 ForEach(cachedVariants, id: \.self) { qLevel in
                     HStack(spacing: 3) {
                         Text(qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)")
@@ -378,7 +391,10 @@ struct ModelDefaultsView: View {
                     .foregroundStyle(.green)
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
-                ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
+                ForEach(
+                    model.cachedQuantizeLevels.filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) },
+                    id: \.self
+                ) { qLevel in
                     let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
                     Button("Download \(qLabel)") {
                         startCache(model: model, quantize: qLevel)
@@ -410,7 +426,7 @@ struct ModelDefaultsView: View {
         // load those weights straight from the HF cache, so a plain `hf download`
         // of that repo is all that's needed — no mflux-save quantize pass (which
         // would also leave a redundant full-precision copy on disk).
-        if model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil {
+        if model.directDownloadRepoID(quantize: quantize) != nil {
             Task { await runPreQuantizedDownload(model: model, quantize: quantize) }
         } else {
             Task { await runMfluxSave(model: model, quantize: quantize) }
@@ -420,24 +436,29 @@ struct ModelDefaultsView: View {
     /// " · 4.4 / 27 GB" while an Ideogram repo is downloading, polled from the blobs
     /// dir (includes in-flight `.incomplete` files). Empty for other models / no bytes yet.
     private func downloadedSuffix(model: FluxModelVariant, quantize: Int) -> String {
-        guard model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil else { return "" }
-        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
+        guard let repo = model.directDownloadRepoID(quantize: quantize) else { return "" }
         let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
         let blobs = settings.hfHubDir.appendingPathComponent(cacheName).appendingPathComponent("blobs")
         guard let entries = try? FileManager.default.contentsOfDirectory(
             at: blobs, includingPropertiesForKeys: [.fileSizeKey]
         ) else { return "" }
-        let bytes = entries.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        // Blob entries may be symlinks into the shared hub blob store; size the target.
+        let bytes = entries.reduce(0) {
+            $0 + ((try? $1.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+        }
         guard bytes > 0 else { return "" }
         let gb = Double(bytes) / 1_073_741_824
-        let total = model.approximateSizeGB(quantize: quantize)
+        let total = model.approximateDownloadGB(quantize: quantize)
         return total > 0
             ? " · \(String(format: "%.1f", gb)) / \(String(format: "%.0f", total)) GB"
             : " · \(String(format: "%.1f", gb)) GB"
     }
 
     private func runPreQuantizedDownload(model: FluxModelVariant, quantize: Int) async {
-        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
+        guard let repo = model.directDownloadRepoID(quantize: quantize) else {
+            cachePhase = .failed("No downloadable repo for \(model.displayName).")
+            return
+        }
         // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
         let hfBinary = BinaryDetector.detect("hf")
         guard !hfBinary.isEmpty else {

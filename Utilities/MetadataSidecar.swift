@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import Foundation
 
 // MARK: - Ideogram 4 metadata
@@ -232,6 +233,58 @@ nonisolated struct ZImageMetadata: Codable {
     }
 }
 
+// MARK: - Qwen-Image metadata
+
+nonisolated struct QwenImageMetadata: Codable {
+    @MainActor static func from(job: QwenImageJob) -> Self {
+        Self(
+            model: job.modelVariant.rawValue,
+            customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
+            prompt: job.prompt,
+            negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
+            seed: job.resolvedSeed ?? job.seed,
+            steps: job.steps,
+            guidance: job.guidance,
+            width: job.width,
+            height: job.height,
+            quantize: job.quantize,
+            imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
+            imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
+            board: job.board.isEmpty ? nil : job.board,
+            generatedAt: job.completedAt ?? Date(),
+            startedAt: job.startedAt,
+            log: job.log.isEmpty ? nil : job.log
+        )
+    }
+
+    /// Always "qwen-image-2.1". ``MetadataSidecar/readQwenImage(for:)`` checks it,
+    /// so a Flux sidecar (which also carries a `model`) never reads as Qwen-Image,
+    /// and Z-Image / Krea 2 sidecars (which have none) fail to decode as this.
+    var model: String
+    /// Custom checkpoint this was generated from, when the picker's `Custom…`
+    /// entry was loaded as Qwen-Image 2.1.
+    var customModelRepo: String?
+    var prompt: String
+    var negativePrompt: String?
+    var seed: Int
+    var steps: Int
+    var guidance: Double
+    var width: Int
+    var height: Int
+    var quantize: Int
+    var imagePath: String?
+    var imageStrength: Double?
+    var board: String?
+    var generatedAt: Date
+    var startedAt: Date?
+    var log: String?
+
+    var displayModelName: String {
+        customModelRepo.flatMap { $0.split(separator: "/").last.map(String.init) }
+            ?? FluxModelVariant.qwenImage21.displayName
+    }
+}
+
 // MARK: - SeedVR2 metadata
 
 /// The pre-upscale generation metadata resolved from a source image's sidecar.
@@ -241,6 +294,7 @@ nonisolated struct SeedVR2Source {
     var ideogram4: Ideogram4Metadata?
     var krea2: Krea2Metadata?
     var zimage: ZImageMetadata?
+    var qwenImage: QwenImageMetadata?
 }
 
 /// Source-forward display fields for a SeedVR2 upscale, derived from the source
@@ -298,6 +352,16 @@ nonisolated struct SeedVR2DisplayFields {
             seed = s.seed
             width = s.width
             height = s.height
+        } else if let s = source.qwenImage {
+            prompt = s.prompt
+            negativePrompt = s.negativePrompt ?? ""
+            sourceModel = s.displayModelName
+            steps = s.steps
+            guidance = s.guidance
+            loras = []
+            seed = s.seed
+            width = s.width
+            height = s.height
         } else {
             return nil
         }
@@ -323,7 +387,8 @@ nonisolated struct SeedVR2Metadata: Codable {
             sourceFlux: source.flux,
             sourceIdeogram4: source.ideogram4,
             sourceKrea2: source.krea2,
-            sourceZImage: source.zimage
+            sourceZImage: source.zimage,
+            sourceQwenImage: source.qwenImage
         )
     }
 
@@ -340,6 +405,9 @@ nonisolated struct SeedVR2Metadata: Codable {
         let name = (sourcePath as NSString).lastPathComponent.lowercased()
         if name.hasPrefix("zimage"), let zimage = MetadataSidecar.readZImage(for: sourcePath) {
             return SeedVR2Source(zimage: zimage)
+        }
+        if name.hasPrefix("qwenimage"), let qwenImage = MetadataSidecar.readQwenImage(for: sourcePath) {
+            return SeedVR2Source(qwenImage: qwenImage)
         }
         if name.hasPrefix("krea2"), let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
             return SeedVR2Source(krea2: krea2)
@@ -361,7 +429,8 @@ nonisolated struct SeedVR2Metadata: Codable {
                 flux: priorUpscale.sourceFlux,
                 ideogram4: priorUpscale.sourceIdeogram4,
                 krea2: priorUpscale.sourceKrea2,
-                zimage: priorUpscale.sourceZImage
+                zimage: priorUpscale.sourceZImage,
+                qwenImage: priorUpscale.sourceQwenImage
             )
         }
         return SeedVR2Source()
@@ -387,6 +456,7 @@ nonisolated struct SeedVR2Metadata: Codable {
     var sourceIdeogram4: Ideogram4Metadata?
     var sourceKrea2: Krea2Metadata?
     var sourceZImage: ZImageMetadata?
+    var sourceQwenImage: QwenImageMetadata?
 }
 
 enum MetadataSidecar {
@@ -418,6 +488,15 @@ enum MetadataSidecar {
     }
 
     static func writeZImage(_ metadata: ZImageMetadata, for imagePath: String) {
+        let url = sidecarURL(for: imagePath)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        encoder.dateEncodingStrategy = .iso8601
+        guard let data = try? encoder.encode(metadata) else { return }
+        try? data.write(to: url, options: .atomic)
+    }
+
+    static func writeQwenImage(_ metadata: QwenImageMetadata, for imagePath: String) {
         let url = sidecarURL(for: imagePath)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
@@ -465,6 +544,16 @@ enum MetadataSidecar {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(ZImageMetadata.self, from: data)
+    }
+
+    nonisolated static func readQwenImage(for imagePath: String) -> QwenImageMetadata? {
+        let url = sidecarURL(for: imagePath)
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        guard let meta = try? decoder.decode(QwenImageMetadata.self, from: data),
+              meta.model == FluxModelVariant.qwenImage21.rawValue else { return nil }
+        return meta
     }
 
     nonisolated static func readSeedVR2(for imagePath: String) -> SeedVR2Metadata? {

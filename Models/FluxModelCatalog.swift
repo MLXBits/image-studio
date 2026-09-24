@@ -9,6 +9,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     case krea2
     case zimageTurbo = "z-image-turbo"
     case zimage = "z-image"
+    case qwenImage21 = "qwen-image-2.1"
     case custom
 
     /// Flux.2 variants only — used for base-model pickers and LoRA sections.
@@ -18,7 +19,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     /// All non-custom models shown in Settings → Models.
     static var allModels: [Self] {
-        builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
+        builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage, .qwenImage21]
     }
 
     /// Models the `custom` picker entry can load through — every variant the app
@@ -41,8 +42,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         if blobs.contains(where: { $0.lastPathComponent.hasSuffix(".incomplete") }) {
             return false
         }
+        // Newer huggingface_hub releases keep the payload in a shared hub-level blob
+        // store and leave each repo's blobs/ entries as symlinks into it, so size the
+        // link target: the link itself is a few dozen bytes and would read as a
+        // metadata-only partial.
         let totalBytes = blobs.reduce(0) { sum, url in
-            sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            sum + ((try? url.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
         }
         // Every supported model's weights are multiple GB; a config-only partial is ~tens of MB.
         return totalBytes > 1_073_741_824
@@ -89,8 +94,13 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         self == .zimageTurbo
     }
 
+    /// Qwen-Image 2.1, which runs through its own ``ModelFamily/qwenImage`` pipeline.
+    var isQwenImage: Bool {
+        self == .qwenImage21
+    }
+
     var isFlux: Bool {
-        !isIdeogram4 && !isKrea2 && !isZImage && self != .custom
+        !isIdeogram4 && !isKrea2 && !isZImage && !isQwenImage && self != .custom
     }
 
     var displayName: String {
@@ -103,6 +113,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "Krea 2 Turbo"
         case .zimageTurbo: "Z-Image Turbo"
         case .zimage: "Z-Image"
+        case .qwenImage21: "Qwen-Image 2.1"
         case .custom: "Custom Model"
         }
     }
@@ -117,6 +128,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 8 // turbo reference default
         case .zimageTurbo: 9 // mflux z-image-turbo default
         case .zimage: 50 // mflux z-image default
+        case .qwenImage21: 40 // mflux qwen-2.1 reference default
         default: isDistilled ? 4 : 50
         }
     }
@@ -127,12 +139,13 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 1.0 // turbo reference (CFG 1.0)
         case .zimageTurbo: 1.0 // guidance-free turbo (model forces guidance 0)
         case .zimage: 3.5 // base model classifier-free guidance
+        case .qwenImage21: 1.0 // trained guidance-free; > 1 plus a negative prompt enables true CFG
         default: isDistilled ? 1.0 : 3.5
         }
     }
 
     var supportsNegativePrompt: Bool {
-        self == .custom || self == .zimage
+        self == .custom || self == .zimage || self == .qwenImage21
     }
 
     /// Soft cap (in estimated tokens) for the prompt field, or `nil` to hide the
@@ -145,6 +158,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: 512
         case .krea2: 1024 // krea/Krea-2 qwen3vl tokenizer, max_length=1024
         case .zimageTurbo, .zimage: 512 // Qwen3-4B encoder at max_sequence_length=512
+        case .qwenImage21: 2048 // Qwen3-VL tokenizer, max_length=2048
         case .ideogram4, .custom: nil
         }
     }
@@ -156,12 +170,19 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .ideogram4: 28.0 // FP8 checkpoint
         case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
         case .zimageTurbo, .zimage: 20.0 // 6.15B DiT + Qwen3-4B encoder + VAE, bf16
+        case .qwenImage21: 33.0 // 7.1B DiT (14.2) + Qwen3-VL-8B encoder (17.5) + VAE (1.35), bf16
         case .custom: 0
         }
     }
 
     var recommendedQuantize: Int {
-        8
+        // Qwen-Image 2.1 quantizes in memory on every load and upstream measures BF16
+        // as both its fastest and most accurate path (~45 GB peak), so only fall back
+        // to Q8 below the 64 GB the mflux README calls comfortable.
+        if isQwenImage {
+            return ProcessInfo.processInfo.physicalMemory >= 64 * 1_073_741_824 ? 0 : 8
+        }
+        return 8
     }
 
     var mfluxModelID: String {
@@ -169,7 +190,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea/Krea-2-Turbo" // official repo; rawValue "krea2" is reserved for local paths/keys
         case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
         case .zimage: "Tongyi-MAI/Z-Image"
-        default: rawValue
+        default: rawValue // qwenImage21: the mflux registry alias, which resolves to Qwen/Qwen-Image-2.1
         }
     }
 
@@ -181,6 +202,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .ideogram4: .ideogram4
         case .krea2: .krea2
         case .zimageTurbo, .zimage: .zimage
+        case .qwenImage21: .qwenImage
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B, .custom: .flux
         }
     }
@@ -198,6 +220,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "mflux-generate-krea2"
         case .zimageTurbo: "mflux-generate-z-image-turbo"
         case .zimage: "mflux-generate-z-image"
+        case .qwenImage21: "mflux-generate-qwen-2.1"
         case .custom: nil
         }
     }
@@ -218,6 +241,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea/Krea-2-Turbo"
         case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
         case .zimage: "Tongyi-MAI/Z-Image"
+        case .qwenImage21: "Qwen/Qwen-Image-2.1"
         case .custom: nil
         }
     }
@@ -233,13 +257,23 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea-2-turbo"
         case .zimageTurbo: "z-image-turbo"
         case .zimage: "tongyi-mai--z-image"
+        case .qwenImage21: "models--qwen--qwen-image-2.1"
         case .custom: ""
         }
+    }
+
+    /// Precision levels the Settings cache row lists. Qwen-Image 2.1 has one
+    /// checkpoint on disk whatever the level, so it lists (and deletes) only that.
+    var cachedQuantizeLevels: [Int] {
+        isQwenImage ? [0] : [0, 4, 8]
     }
 
     /// Returns true if any quantized variant of this model is fully downloaded in the HuggingFace hub cache.
     var isOnDisk: Bool {
         guard self != .custom else { return false }
+        if isQwenImage {
+            return onDiskURL(quantize: 0) != nil
+        }
         let hubDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".cache/huggingface/hub")
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return false }
@@ -280,6 +314,20 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
+    /// The repo a Settings download fetches as-is with `hf download`, or nil when
+    /// caching is an `mflux-save` quantize pass instead. Pre-quantized repos and
+    /// Ideogram's FP8 checkpoint load straight from the HF cache; Qwen-Image 2.1
+    /// quantizes in memory at load, so its one BF16 repo serves every level.
+    func directDownloadRepoID(quantize: Int) -> String? {
+        if let repo = preQuantizedRepoID(quantize: quantize) {
+            return repo
+        }
+        if isIdeogram4 {
+            return "ideogram-ai/ideogram-4-fp8"
+        }
+        return isQwenImage ? bf16HFRepoID : nil
+    }
+
     /// Approximate on-disk / unified-memory footprint in GB for a quantize level.
     /// Ideogram 4 ships as FP8 (already 8-bit), so its Q8 is roughly FP8-sized while
     /// Q4 roughly halves it — the generic BF16×factor model doesn't apply.
@@ -300,6 +348,16 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             default: return 27
             }
         }
+        // Qwen-Image 2.1 quantizes the DiT in memory at load; the Qwen3-VL encoder
+        // (~17.5 GB) never quantizes. Peak unified memory at 1024², measured on an
+        // M3 Ultra (BF16) and from the upstream mflux PR (Q8); Q4 extrapolated.
+        if isQwenImage {
+            switch quantize {
+            case 4: return 26
+            case 8: return 31
+            default: return 45
+            }
+        }
         // Z-Image quantizes the transformer; the Qwen3-4B encoder + VAE stay BF16,
         // so the footprint sits above the generic BF16×factor estimate.
         if isZImage {
@@ -311,6 +369,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
         return approximateBF16SizeGB * factor
+    }
+
+    /// Approximate download size in GB for a quantize level. Equal to
+    /// ``approximateSizeGB(quantize:)`` except for models that only ever download
+    /// one checkpoint and quantize it in memory, where every level fetches the
+    /// same BF16 repo.
+    func approximateDownloadGB(quantize: Int) -> Double {
+        isQwenImage ? approximateBF16SizeGB : approximateSizeGB(quantize: quantize)
     }
 
     /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
@@ -341,6 +407,17 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         let hubDir = FileManager.default.homeDirectoryForCurrentUser
             .appendingPathComponent(".cache/huggingface/hub")
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
+        // Qwen-Image 2.1 quantizes in memory from the one official BF16 repo, so every
+        // level is on disk exactly when that repo is. Matched by its exact cache name:
+        // a substring match would also catch third-party "Qwen-Image-2.1-*bit" packs
+        // that mflux cannot load.
+        if isQwenImage {
+            guard let repo = bf16HFRepoID else { return nil }
+            let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
+            guard entries.contains(cacheName) else { return nil }
+            let url = hubDir.appendingPathComponent(cacheName)
+            return Self.isCompleteHFCache(at: url) ? url : nil
+        }
         // A published pre-quantized repo maps directly to its hub cache dir
         // (models--org--name), so match it explicitly rather than by substring.
         if quantize > 0, let repo = preQuantizedRepoID(quantize: quantize) {

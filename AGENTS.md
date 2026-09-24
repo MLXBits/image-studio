@@ -53,8 +53,9 @@ the Python driver and `Runner/DriverProtocol.swift`.
 
 ## Naming conventions
 
-Five model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
-`krea2`, `zimage`, `seedvr2`. Files follow the family name exactly:
+Six model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
+`krea2`, `zimage`, `qwenImage`, `seedvr2`. Files follow the family name exactly
+(`qwenImage` files are spelled `QwenImage…`):
 
 | Concern | Path |
 |---|---|
@@ -108,7 +109,7 @@ next load.
 
 When adding a parameter, prefer extending the family's `buildArgs` over touching
 `JobRunner` itself. If a change needs `JobRunner` edits, it probably belongs to
-all five families.
+every family.
 
 ## Recipe: add a model family
 

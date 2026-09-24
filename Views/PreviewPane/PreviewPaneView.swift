@@ -8,6 +8,7 @@ enum PreviewState {
     case activeIdeogram4Job(Ideogram4Job)
     case activeKrea2Job(Krea2Job)
     case activeZImageJob(ZImageJob)
+    case activeQwenImageJob(QwenImageJob)
     case activeSeedVR2Job(SeedVR2Job)
     case galleryItem(GalleryItem)
 }
@@ -25,6 +26,8 @@ struct PreviewPaneView: View {
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     var onRemixZImage: ((ZImageMetadata) -> Void)?
     var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwenImage: ((QwenImageMetadata) -> Void)?
+    var onApplyQwenImageSettings: ((QwenImageMetadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -147,6 +150,28 @@ struct PreviewPaneView: View {
                         zimagePendingView(job: job)
                     }
 
+                case let .activeQwenImageJob(job):
+                    switch job.status {
+                    case .running:
+                        QwenImageStepwisePreviewView(job: job, onCancel: onCancel)
+
+                    case .completed:
+                        QwenImageCompletedPreviewView(
+                            job: job,
+                            onRemix: onRemixQwenImage,
+                            onApplySettings: onApplyQwenImageSettings
+                        )
+
+                    case let .failed(msg):
+                        qwenImageFailedView(message: msg, job: job)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        qwenImagePendingView(job: job)
+                    }
+
                 case let .activeSeedVR2Job(job):
                     switch job.status {
                     case .running:
@@ -176,6 +201,8 @@ struct PreviewPaneView: View {
                         onApplyKrea2Settings: onApplyKrea2Settings,
                         onRemixZImage: onRemixZImage,
                         onApplyZImageSettings: onApplyZImageSettings,
+                        onRemixQwenImage: onRemixQwenImage,
+                        onApplyQwenImageSettings: onApplyQwenImageSettings,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
@@ -269,6 +296,12 @@ struct PreviewPaneView: View {
             return true
 
         case let .activeZImageJob(job):
+            if case .running = job.status {
+                return false
+            }
+            return true
+
+        case let .activeQwenImageJob(job):
             if case .running = job.status {
                 return false
             }
@@ -531,6 +564,47 @@ struct PreviewPaneView: View {
     }
 
     private func zimagePendingView(job: ZImageJob) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "clock")
+                .font(.system(size: 40))
+                .foregroundStyle(.tertiary)
+            Text("Waiting in queue")
+                .font(.title3)
+                .foregroundStyle(.secondary)
+            Text(job.displayName)
+                .font(.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private func qwenImageFailedView(message: String, job: QwenImageJob) -> some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundStyle(.red)
+                Text("Generation failed")
+                    .font(.headline)
+                Spacer()
+            }
+            .padding()
+            Divider()
+            ScrollViewReader { proxy in
+                ScrollView {
+                    Text(job.log.isEmpty ? message : job.log)
+                        .font(.system(.caption, design: .monospaced))
+                        .foregroundStyle(.secondary)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                    Color.clear.frame(height: 1).id("errEnd")
+                }
+                .onAppear { proxy.scrollTo("errEnd") }
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func qwenImagePendingView(job: QwenImageJob) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
                 .font(.system(size: 40))

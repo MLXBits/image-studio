@@ -1,6 +1,6 @@
 # MLXBits Image Studio
 
-A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
+A native macOS Swift app for **FLUX, Krea 2, Z-Image, Qwen-Image 2.1, and (prototype) Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
 
 > **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) is installed automatically on first launch.
 
@@ -29,9 +29,10 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 
 ## Features
 
-- **Text-to-image and image-to-image** generation via FLUX.2 Klein, Krea 2 Turbo, and Z-Image models
+- **Text-to-image and image-to-image** generation via FLUX.2 Klein, Krea 2 Turbo, Z-Image, and Qwen-Image 2.1 models
 - **Krea 2 Turbo** — fast photographic model family, with img2img support
 - **Z-Image & Z-Image Turbo** — Tongyi's 6B single-stream model; the distilled Turbo (9-step, guidance-free) and the base variant (classifier-free guidance + negative prompt), both with img2img and LoRA
+- **Qwen-Image 2.1**: Qwen's 7B single-stream DiT with a Qwen3-VL text encoder; guidance-free 40-step sampling, long prompts and legible in-image text, img2img, and optional true CFG (guidance > 1 plus a negative prompt). Needs mflux 0.20.0+
 - **Ideogram 4** *(prototype)* — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring (see [Ideogram 4](#ideogram-4) below)
 - **Warm-model engine** — keeps the model loaded between generations, eliminating reload time on consecutive runs
 - **Scenario generator** — turn a rough outline into finished prompts with a local LLM (no API key, no network round-trip)
@@ -60,6 +61,7 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 | Krea 2 Turbo                | ~few  | Fast photographic model; text-to-image and img2img                      |
 | Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
+| Qwen-Image 2.1              | 40    | Qwen's 7B DiT; guidance-free, text-to-image and img2img; BF16/Q8/Q4 quantized in memory from one ~33 GB download (~45 GB peak at BF16). Needs mflux 0.20.0+ |
 | Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Needs mflux 0.18.1+ — see below |
 | Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
 

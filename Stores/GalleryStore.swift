@@ -1,3 +1,4 @@
+// swiftlint:disable file_length
 import AppKit
 import Foundation
 import UniformTypeIdentifiers
@@ -17,6 +18,7 @@ struct GalleryItem: Identifiable, Equatable {
     var ideogram4Metadata: Ideogram4Metadata?
     var krea2Metadata: Krea2Metadata?
     var zimageMetadata: ZImageMetadata?
+    var qwenImageMetadata: QwenImageMetadata?
     var seedVR2Metadata: SeedVR2Metadata?
     /// Lightroom-style cull verdict, persisted as an xattr on the file (see ``GalleryCulling``).
     var flag: PickFlag?
@@ -51,6 +53,9 @@ struct GalleryItem: Identifiable, Equatable {
         if name.hasPrefix("zimage") {
             return .zimage
         }
+        if name.hasPrefix("qwenimage") {
+            return .qwenImage
+        }
         if name.hasPrefix("seedvr2") {
             // Prefer the embedded source metadata (definitive, and correct even for a
             // chained upscale whose source filename is itself "seedvr2_…").
@@ -62,6 +67,9 @@ struct GalleryItem: Identifiable, Equatable {
             }
             if seedVR2Metadata?.sourceZImage != nil {
                 return .zimage
+            }
+            if seedVR2Metadata?.sourceQwenImage != nil {
+                return .qwenImage
             }
             if seedVR2Metadata?.sourceFlux != nil {
                 return .flux
@@ -76,6 +84,9 @@ struct GalleryItem: Identifiable, Equatable {
             }
             if src.hasPrefix("zimage") {
                 return .zimage
+            }
+            if src.hasPrefix("qwenimage") {
+                return .qwenImage
             }
             return .flux
         }
@@ -466,11 +477,13 @@ nonisolated private func scanDirectory(
         let ideogramMeta: Ideogram4Metadata?
         let krea2Meta: Krea2Metadata?
         let zimageMeta: ZImageMetadata?
+        let qwenImageMeta: QwenImageMetadata?
         let seedVR2Meta: SeedVR2Metadata?
         let priorHasMetadata = prior?.metadata != nil
             || prior?.ideogram4Metadata != nil
             || prior?.krea2Metadata != nil
             || prior?.zimageMetadata != nil
+            || prior?.qwenImageMetadata != nil
             || prior?.seedVR2Metadata != nil
         if let prior, prior.modifiedAt == modDate, priorHasMetadata {
             // Unchanged file already carrying sidecar metadata: skip the JSON re-read.
@@ -479,19 +492,23 @@ nonisolated private func scanDirectory(
             ideogramMeta = prior.ideogram4Metadata
             krea2Meta = prior.krea2Metadata
             zimageMeta = prior.zimageMetadata
+            qwenImageMeta = prior.qwenImageMetadata
             seedVR2Meta = prior.seedVR2Metadata
         } else {
             // New or changed file — or one whose sidecar hadn't landed yet when last
             // scanned (batch sidecars are written just after the PNG), so retry the read.
             // Z-Image is probed by filename prefix first — its sidecar shares the FLUX
             // shape closely enough that a blind FLUX decode could mis-claim it.
-            let isZImageFile = url.lastPathComponent.lowercased().hasPrefix("zimage")
-            zimageMeta = isZImageFile ? MetadataSidecar.readZImage(for: url.path) : nil
-            fluxMeta = zimageMeta == nil ? MetadataSidecar.read(for: url.path) : nil
-            ideogramMeta = fluxMeta == nil && zimageMeta == nil ? MetadataSidecar.readIdeogram4(for: url.path) : nil
-            krea2Meta = fluxMeta == nil && ideogramMeta == nil && zimageMeta == nil
+            // Qwen-Image likewise, since its sidecar would also decode as Krea 2.
+            let lowerName = url.lastPathComponent.lowercased()
+            zimageMeta = lowerName.hasPrefix("zimage") ? MetadataSidecar.readZImage(for: url.path) : nil
+            qwenImageMeta = lowerName.hasPrefix("qwenimage") ? MetadataSidecar.readQwenImage(for: url.path) : nil
+            let claimedByPrefix = zimageMeta != nil || qwenImageMeta != nil
+            fluxMeta = claimedByPrefix ? nil : MetadataSidecar.read(for: url.path)
+            ideogramMeta = fluxMeta == nil && !claimedByPrefix ? MetadataSidecar.readIdeogram4(for: url.path) : nil
+            krea2Meta = fluxMeta == nil && ideogramMeta == nil && !claimedByPrefix
                 ? MetadataSidecar.readKrea2(for: url.path) : nil
-            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil && zimageMeta == nil
+            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil && !claimedByPrefix
                 ? MetadataSidecar.readSeedVR2(for: url.path) : nil
         }
         // Flags/ratings live in xattrs and never change the file's mtime, so the
@@ -505,6 +522,7 @@ nonisolated private func scanDirectory(
             ideogram4Metadata: ideogramMeta,
             krea2Metadata: krea2Meta,
             zimageMetadata: zimageMeta,
+            qwenImageMetadata: qwenImageMeta,
             seedVR2Metadata: seedVR2Meta,
             flag: GalleryCulling.readFlag(path: url.path),
             rating: GalleryCulling.readRating(path: url.path)

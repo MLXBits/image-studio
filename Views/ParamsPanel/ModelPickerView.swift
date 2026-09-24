@@ -69,7 +69,7 @@ struct ModelPickerView: View {
                             Text(v.displayName).tag(v)
                         }
                         Divider()
-                        ForEach([FluxModelVariant.ideogram4, .krea2, .zimageTurbo, .zimage], id: \.self) { v in
+                        ForEach([FluxModelVariant.ideogram4, .krea2, .zimageTurbo, .zimage, .qwenImage21], id: \.self) { v in
                             modelPickerRow(v)
                         }
                         Divider()
@@ -224,12 +224,14 @@ struct ModelPickerView: View {
         default: .red
         }
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
+        // In-memory-quantizing models download one checkpoint whatever the precision.
+        let downloadGB = model.approximateDownloadGB(quantize: quantize)
         // The disk pill is a binary download-state signal — green when cached,
         // neutral "download" otherwise. Size-based warning colors live on the RAM
         // pill only, so a not-yet-downloaded model never looks like a warning.
         let diskLabel = onDisk
-            ? "≈\(String(format: "%.0f", gb)) GB cached"
-            : "≈\(String(format: "%.0f", gb)) GB to download"
+            ? "≈\(String(format: "%.0f", downloadGB)) GB cached"
+            : "≈\(String(format: "%.0f", downloadGB)) GB to download"
         let diskColor: Color = onDisk ? .green : .secondary
         let diskIcon = onDisk ? "internaldrive" : "arrow.down.circle"
         let quantName = quantize == 0 ? model.baseWeightLabel : "Q\(quantize)"
@@ -240,7 +242,7 @@ struct ModelPickerView: View {
         default: ""
         }
         let diskInfoTitle = "\(model.displayName) \(quantName)"
-        let diskInfoBody = "\(quantName) weights cached locally (~\(Int(gb)) GB). \(qualityNote)"
+        let diskInfoBody = "\(quantName) weights cached locally (~\(Int(downloadGB)) GB). \(qualityNote)"
         return VRAMEstimate(
             label: label, color: color,
             diskLabel: diskLabel, diskColor: diskColor, diskIcon: diskIcon,
