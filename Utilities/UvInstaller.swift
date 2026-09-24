@@ -26,8 +26,9 @@ nonisolated enum UvInstaller {
     /// first, then the standard user and package-manager locations (Homebrew's
     /// `/opt/homebrew/bin` among them). Empty when uv is installed nowhere —
     /// matching ``BinaryDetector/detect(_:)``, so callers keep guarding with
-    /// `fileExists`. Computed, not cached: the Settings indicator has to notice
-    /// a uv installed after launch.
+    /// `fileExists`. Computed, not cached, so each read sees the current disk:
+    /// a uv installed after launch shows up in the Settings indicator the next
+    /// time that view redraws — nothing here triggers the redraw.
     static var resolvedPath: String {
         if FileManager.default.fileExists(atPath: installPath.path) {
             return installPath.path
