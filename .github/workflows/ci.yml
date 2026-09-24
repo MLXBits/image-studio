@@ -111,28 +111,59 @@ jobs:
           retention-days: 7
 
   duplication:
-    name: Duplication (advisory)
+    name: Duplication
     # jscpd is pure token analysis — no Xcode, no build — so it runs on Linux
-    # rather than burning a macOS runner.
+    # rather than burning a macOS runner. main is far past any absolute
+    # threshold, so a PR is instead measured against its base: it fails when it
+    # raises the duplicated-token share by more than MAX_RISE percentage points.
+    # Pushes to main only report.
     runs-on: ubuntu-latest
+    env:
+      MAX_RISE: "0.1"
     steps:
       - uses: actions/checkout@v7
+        with:
+          path: head
+
+      - if: github.event_name == 'pull_request'
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: base
 
       - uses: actions/setup-node@v7
         with:
           node-version: "22"
 
-      # Config (thresholds, ignores, Swift-only format) lives in .jscpd.json.
+      # Config (ignores, Swift-only format) lives in .jscpd.json. Each tree is
+      # scanned with its own config; jscpd exits non-zero on an older config's
+      # threshold, so the exit code is ignored and the JSON report is read.
       - name: jscpd
         run: |
-          npx --yes jscpd@4 --reporters console . > jscpd.txt 2>&1 || true
+          scan() {
+            (cd "$1" && npx --yes jscpd@4 --reporters console,json . > jscpd.txt 2>&1 || true)
+            jq -r '.statistics.total.percentageTokens' "$1/.jscpd-report/jscpd-report.json"
+          }
+          head_pct=$(scan head)
           {
             echo "### Duplication"
             echo ""
             echo '```'
-            tail -25 jscpd.txt
+            tail -25 head/jscpd.txt
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ "${{ github.event_name }}" != "pull_request" ]; then
+            echo "Duplicated tokens: ${head_pct}%" >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          base_pct=$(scan base)
+          rise=$(echo "$head_pct - $base_pct" | bc -l)
+          echo "Duplicated tokens: base ${base_pct}% → PR ${head_pct}% (${rise} pts; limit +${MAX_RISE})" \
+            | tee -a "$GITHUB_STEP_SUMMARY"
+          if [ "$(echo "$rise > $MAX_RISE" | bc -l)" = 1 ]; then
+            echo "::error::Duplication rose ${rise} pts (${base_pct}% → ${head_pct}%), over the +${MAX_RISE} limit. The jscpd output in the step summary lists the clones."
+            exit 1
+          fi
 
   deadcode:
     name: Dead code (advisory)

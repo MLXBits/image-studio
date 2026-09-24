@@ -12,6 +12,5 @@
     "**/*.generated.swift"
   ],
   "reporters": ["console", "html"],
-  "output": "./.jscpd-report",
-  "threshold": 2.5
+  "output": "./.jscpd-report"
 }
