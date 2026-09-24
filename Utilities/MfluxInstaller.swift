@@ -103,16 +103,8 @@ nonisolated enum MfluxInstaller {
     }
 
     private static func resolveUv() -> String? {
-        if FileManager.default.fileExists(atPath: UvInstaller.installPath.path) {
-            return UvInstaller.installPath.path
-        }
-        let home = NSHomeDirectory()
-        let candidates = [
-            "\(home)/.local/bin/uv",
-            "/opt/homebrew/bin/uv",
-            "/usr/local/bin/uv",
-        ]
-        return candidates.first { FileManager.default.fileExists(atPath: $0) }
+        let path = UvInstaller.resolvedPath
+        return path.isEmpty ? nil : path
     }
 
     private static func installUv() async throws -> String {

@@ -22,6 +22,20 @@ nonisolated enum UvInstaller {
         return base.appendingPathComponent("MLXBits Image Studio/bin/uv")
     }
 
+    /// The uv binary every uv-driven feature should run: the app-managed install
+    /// first, then the standard user and package-manager locations (Homebrew's
+    /// `/opt/homebrew/bin` among them). Empty when uv is installed nowhere —
+    /// matching ``BinaryDetector/detect(_:)``, so callers keep guarding with
+    /// `fileExists`. Computed, not cached, so each read sees the current disk:
+    /// a uv installed after launch shows up in the Settings indicator the next
+    /// time that view redraws — nothing here triggers the redraw.
+    static var resolvedPath: String {
+        if FileManager.default.fileExists(atPath: installPath.path) {
+            return installPath.path
+        }
+        return BinaryDetector.detect("uv")
+    }
+
     static func install() async throws -> String {
         #if arch(arm64)
             let archName = "aarch64"

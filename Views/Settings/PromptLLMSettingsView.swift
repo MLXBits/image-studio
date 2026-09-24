@@ -53,8 +53,8 @@ struct PromptLLMSettingsView: View {
     @ViewBuilder
     private var localFields: some View {
         @Bindable var s = settings
-        let uvPath = NSHomeDirectory() + "/.local/bin/uv"
-        let uvFound = FileManager.default.fileExists(atPath: uvPath)
+        let uvPath = GemmaChatRunner.uvPath
+        let uvFound = !uvPath.isEmpty
         VStack(alignment: .leading, spacing: 4) {
             TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
                 .textFieldStyle(.roundedBorder)
@@ -72,12 +72,14 @@ struct PromptLLMSettingsView: View {
                 .foregroundStyle(uvFound ? Color.green : Color.red)
             Text(
                 uvFound
-                    ? "uv found — \(GemmaChatRunner.mlxLMRequirement) / \(GemmaChatRunner.mlxVLMRequirement) "
-                    + "managed automatically"
-                    : "uv not found at ~/.local/bin/uv"
+                    ? "uv found at \(uvPath) — \(GemmaChatRunner.mlxLMRequirement) / "
+                    + "\(GemmaChatRunner.mlxVLMRequirement) managed automatically"
+                    : "uv not found — install from https://docs.astral.sh/uv/ (or: brew install uv)"
             )
             .font(.caption).foregroundStyle(.secondary)
-            .lineLimit(1).truncationMode(.middle)
+            // Tail, not middle: the resolved path now sits at the head of the
+            // string and middle truncation would eat exactly that.
+            .lineLimit(1).truncationMode(.tail)
         }
         .padding(.vertical, 2)
     }
