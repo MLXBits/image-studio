@@ -141,7 +141,8 @@ extension ComfyUIClient {
         }
         field("type", "input")
         field("subfolder", subfolder)
-        let filename = (localPath as NSString).lastPathComponent
+        // Only names the server copy (the graph uses the returned name), so swap anything that would break the quoted header.
+        let filename = String((localPath as NSString).lastPathComponent.map { "\"\\\r\n".contains($0) ? "_" : $0 })
         body.append(Data((
             "--\(boundary)\r\nContent-Disposition: form-data; name=\"image\"; filename=\"\(filename)\"\r\n"
                 + "Content-Type: application/octet-stream\r\n\r\n"
