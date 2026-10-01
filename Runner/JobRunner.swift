@@ -89,6 +89,11 @@ protocol JobRunnerSpec {
     /// (see ``MfluxDriverController``), or nil to always use the CLI
     /// subprocess. Default: nil (family not supported by the driver).
     static func driverRequest(job: Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest?
+    /// The job's remote graph once the family's backend segment is set to ComfyUI (the runner checks that and the URL first),
+    /// or nil to run locally — no remote builder for this family, or its server config is incomplete. Throws when the remote
+    /// route can't be prepared (e.g. the source upload fails), failing the job rather than silently running it locally.
+    /// Default: nil.
+    static func comfyGraph(job: Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph?
 }
 
 extension JobRunnerSpec {
@@ -99,6 +104,20 @@ extension JobRunnerSpec {
     static func driverRequest(job _: Job, ctx _: JobRunContext, settings _: AppSettings) -> DriverGenerateRequest? {
         nil
     }
+
+    static func comfyGraph(job _: Job, settings _: AppSettings, client _: ComfyUIClient) async throws -> ComfyGraph? {
+        nil
+    }
+}
+
+/// A job's remote ComfyUI workflow, prepared once per job and rendered per seed.
+struct ComfyGraph {
+    /// Node count of the rendered graph, for "Node X of N" progress.
+    let totalNodes: Int
+    /// Denoise steps, reported as a full bar on completion.
+    let totalSteps: Int
+    /// The `/prompt` graph for one seed.
+    let build: (_ seed: Int) -> Any
 }
 
 /// Per-run values handed to ``JobRunnerSpec/buildArgs(job:ctx:settings:)``.
@@ -142,9 +161,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
     /// A resolved remote target when this job's family is pointed at a ComfyUI server (non-empty URL + required model files), else nil.
     private struct ComfyTarget {
         let client: ComfyUIClient
-        var input: ComfyUIClient.WorkflowInput
-        /// Total node count in the submitted workflow, for "Node X of N" progress.
-        let totalNodes: Int
+        let graph: ComfyGraph
     }
 
     private static var cacheBase: URL {
@@ -252,29 +269,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.latestStepwisePath = latest
         }
 
-        let binaryPath = Spec.binaryPath(job: job, settings: settings)
-        guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
-            let message = "\(Spec.binaryName(job: job)) not found. Check Settings → Advanced."
-            finishJob(job, status: .failed(message), stepDir: stepDir)
-            return
-        }
-
-        // One-time mflux-save quantization pass, so every subsequent load skips
-        // in-memory quantization. The spec decides whether the job needs it.
-        if let savedPath = Spec.quantSaveDestination(job: job, settings: settings),
-           !FluxModelVariant.hasSavedWeights(at: savedPath) {
-            switch await runSave(job: job, savePath: savedPath, settings: settings) {
-            case .success:
-                job.statusLine = ""
-            case .cancelled:
-                finishJob(job, status: .cancelled, stepDir: stepDir)
-                return
-            case .failed:
-                finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
-                return
-            }
-        }
-
         settings.ensureOutputDirExists()
         let isMultiSeed = !job.seeds.isEmpty
         guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
@@ -298,12 +292,49 @@ final class JobRunner<Spec: JobRunnerSpec> {
             stepwiseDir: stepDir, promptFile: promptFile
         )
 
-        // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server
-        // (non-empty URL + per-family checkpoint), generate there and fetch results back.
-        if let target = makeComfyTarget(job: job, settings: settings) {
+        // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server and its spec can build the graph, generate there
+        // and fetch results back. Resolved before the local binary check and save pass, neither of which a remote run needs.
+        let target: ComfyTarget?
+        do {
+            target = try await makeComfyTarget(job: job, settings: settings)
+        } catch {
+            // Stop mid-upload surfaces as a cancelled URLSession request, not a CancellationError.
+            if error is CancellationError || Task.isCancelled {
+                finishJob(job, status: .cancelled, stepDir: stepDir)
+                return
+            }
+            job.log += "\(error.localizedDescription)\n"
+            finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
+            return
+        }
+        if let target {
             await runViaComfyUI(target, job: job, ctx: ctx, stepDir: stepDir)
             return
         }
+
+        let binaryPath = Spec.binaryPath(job: job, settings: settings)
+        guard !binaryPath.isEmpty, FileManager.default.fileExists(atPath: binaryPath) else {
+            let message = "\(Spec.binaryName(job: job)) not found. Check Settings → Advanced."
+            finishJob(job, status: .failed(message), stepDir: stepDir)
+            return
+        }
+
+        // One-time mflux-save quantization pass, so every subsequent load skips
+        // in-memory quantization. The spec decides whether the job needs it.
+        if let savedPath = Spec.quantSaveDestination(job: job, settings: settings),
+           !FluxModelVariant.hasSavedWeights(at: savedPath) {
+            switch await runSave(job: job, savePath: savedPath, settings: settings) {
+            case .success:
+                job.statusLine = ""
+            case .cancelled:
+                finishJob(job, status: .cancelled, stepDir: stepDir)
+                return
+            case .failed:
+                finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
+                return
+            }
+        }
+
         // Warm-driver path: eligible jobs go to the persistent driver; any
         // startup failure falls through to the one-shot CLI below.
         if let driver, settings.keepModelWarm,
@@ -702,45 +733,17 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     // MARK: - Remote ComfyUI execution
 
-    private func makeComfyTarget(job: Job, settings: AppSettings) -> ComfyTarget? {
+    private func makeComfyTarget(job: Job, settings: AppSettings) async throws -> ComfyTarget? {
         // The per-family segment (mflux / ComfyUI) is the intent gate: mflux routes locally even when a URL is set.
         guard settings.comfyBackendEnabled[Spec.family.id] == true else { return nil }
         let url = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        // Krea2's fp8 pipeline loads three files; all must be configured to route remote.
-        guard
-            let unet = settings.comfyUNet[Spec.family.id], !unet.isEmpty,
-            let clip = settings.comfyClip[Spec.family.id], !clip.isEmpty,
-            let vae = settings.comfyVae[Spec.family.id], !vae.isEmpty
-        else { return nil }
-
-        // PoC scope: Krea 2 is the first remote-enabled family (its UNet text-to-image graph + LoRA chain).
-        // Other families route to local mflux until they get a workflow builder. The concrete cast keeps this
-        // compiling against the generic Job without forcing every spec to implement a remote-request hook yet.
-        guard let krea = job as? Krea2Job else { return nil }
-
-        var input = ComfyUIClient.WorkflowInput(
-            prompt: krea.prompt,
-            negativePrompt: krea.negativePrompt.isEmpty ? nil : krea.negativePrompt,
-            width: krea.width, height: krea.height, steps: krea.steps, cfg: krea.guidance,
-            seed: 0, // filled in by runViaComfyUI from ctx.seed (resolved at run time)
-            unetName: unet, clipName: clip, vaeName: vae,
-            loras: krea.loras.filter(\.enabled).map { entry in
-                ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
-            },
-            // Server-side output subfolder. Must be non-empty (we set the family id, e.g. "krea2") so the SaveImage filename_prefix
-            // becomes "mlxbits/krea2": ComfyUI's get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a
-            // bare "mlxbits" (empty subfolder) drops the file in the output ROOT. A single slash is required; it cannot nest.
-            saveSubfolder: Spec.family.id
-        )
-
-        // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
-        // each enabled LoRA adds one LoraLoader node.
-        let totalNodes = 8 + input.loras.count
-        return ComfyTarget(
-            client: ComfyUIClient(config: .init(baseURL: url, apiKey: nil)),
-            input: input,
-            totalNodes: totalNodes
-        )
+        guard !url.isEmpty else { return nil }
+        let client = ComfyUIClient(config: .init(baseURL: url, apiKey: nil))
+        // Expose the client while the spec prepares (e.g. uploads a source image) so Stop already routes into this run.
+        comfyClient = client
+        defer { comfyClient = nil }
+        guard let graph = try await Spec.comfyGraph(job: job, settings: settings, client: client) else { return nil }
+        return ComfyTarget(client: client, graph: graph)
     }
 
     /// Execute a job on the remote server and land its image(s) exactly like a local run. For multi-seed jobs, one workflow is
@@ -769,14 +772,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 if index > 0 {
                     job.log += "── Batch \(index + 1)/\(seedsToRun.count): seed \(seed) ──\n"
                 }
-                var input = target.input
-                input.seed = seed // resolved at run time (may be random for -1)
+                let workflow = target.graph.build(seed) // seed resolved at run time (may be random for -1)
                 // Track the highest executing-node seen for this seed. The client also fires a coarse heartbeat frame every second with
                 // currentNode==0 (for the elapsed clock); without this, those ticks would clobber "Node X/N" back to a bare phase label and
                 // make it flicker.
                 var lastSeenNode = 0
                 job.statusLine = "Submitting to ComfyUI…"
-                let outputs = try await client.generate(input, totalNodes: target.totalNodes) { prog in
+                let outputs = try await client.generate(
+                    workflow: workflow, totalNodes: target.graph.totalNodes, totalSteps: target.graph.totalSteps
+                ) { prog in
                     if !prog.isDenoising {
                         return
                     }

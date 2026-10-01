@@ -1,6 +1,17 @@
 import AppKit
 import Foundation
 
+/// Reads the true pixel dimensions (not point size) of the image at `path`, as displayed: EXIF orientations 5–8 (rotated
+/// 90°) swap width and height, matching mflux's `open_oriented` and ComfyUI's `LoadImage`.
+func seedVR2PixelSize(ofImageAt path: String) -> CGSize? {
+    guard let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
+          let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
+          let w = props[kCGImagePropertyPixelWidth] as? Int,
+          let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
+    let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
+    return orientation >= 5 ? CGSize(width: h, height: w) : CGSize(width: w, height: h)
+}
+
 /// A single SeedVR2 upscale request managed by ``SeedVR2JobStore``.
 ///
 /// SeedVR2 is a diffusion super-resolution model applied to an *existing* image

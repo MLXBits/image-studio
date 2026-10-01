@@ -22,18 +22,35 @@ extension ModelDefaultsView {
         .padding()
     }
 
-    func seedVR2FormContent() -> some View {
+    func seedVR2FormContent(models: ComfyModelStore) -> some View {
         @Bindable var settings = settings
         return VStack(alignment: .leading, spacing: 0) {
             seedVR2Header
             Divider()
-            seedVR2Form(settings: settings)
+            seedVR2Form(settings: settings, models: models)
         }
     }
 
-    private func seedVR2Form(settings: AppSettings) -> some View {
+    private func seedVR2Form(settings: AppSettings, models: ComfyModelStore) -> some View {
         @Bindable var settings = settings
+        let remote = settings.comfyBackendEnabled[ModelFamily.seedvr2.id] == true
         return Form {
+            comfyBackendPicker(family: .seedvr2)
+
+            if remote {
+                Section {
+                    comfyServerRow(models: models)
+                    seedVR2ServerFile(label: "3B", models: models, is7B: false)
+                    seedVR2ServerFile(label: "7B", models: models, is7B: true)
+                } footer: {
+                    Text(
+                        "Runs on ComfyUI's built-in SeedVR2 nodes, with model files picked from the server. Scale, softness, "
+                            + "model size and seed carry over unchanged; quantize doesn't apply, since the server file sets the precision."
+                    )
+                    .font(.caption).foregroundStyle(.tertiary)
+                }
+            }
+
             Section("Upscale defaults") {
                 Picker("Model", selection: $settings.seedVR2Use7B) {
                     Text("3B — fast").tag(false)
@@ -44,6 +61,7 @@ extension ModelDefaultsView {
                     Text("8-bit").tag(8)
                     Text("4-bit").tag(4)
                 }
+                .disabled(remote)
                 Picker("Scale", selection: $settings.seedVR2Scale) {
                     Text("2×").tag(2)
                     Text("3×").tag(3)
@@ -72,5 +90,18 @@ extension ModelDefaultsView {
             }
         }
         .formStyle(.grouped)
+    }
+
+    /// Which server file a remote upscale at this size would load, from the discovered loader options.
+    private func seedVR2ServerFile(label: String, models: ComfyModelStore, is7B: Bool) -> some View {
+        LabeledContent(label) {
+            if let files = ComfyUIClient.pickSeedVR2Files(unets: models.unets, vaes: models.vaes, is7B: is7B) {
+                Text(files.unet).font(.caption).foregroundStyle(.secondary).lineLimit(1).truncationMode(.middle)
+            } else if case .loaded = models.status {
+                Text("Not found on server").font(.caption).foregroundStyle(.red)
+            } else {
+                Text("—").font(.caption).foregroundStyle(.secondary)
+            }
+        }
     }
 }

@@ -62,6 +62,42 @@ enum SeedVR2RunnerSpec: JobRunnerSpec {
         MetadataSidecar.writeSeedVR2(meta, for: path)
     }
 
+    /// Remote upscale on ComfyUI's core SeedVR2 nodes. Every Upscale-sheet control carries over except quantize: the server
+    /// file's own precision (int8 by preference) stands in for it. Model files are picked from the server's loader options,
+    /// so there is nothing to configure beyond the backend segment; a missing model fails the job instead of running it
+    /// locally, since remote was asked for.
+    static func comfyGraph(job: SeedVR2Job, settings _: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
+        guard let size = seedVR2PixelSize(ofImageAt: job.sourcePath) else {
+            throw ComfyUIError.decodeFailed("could not read the source image at \(job.sourcePath)")
+        }
+        let unets = try await client.loaderOptions(nodeClass: "UNETLoader", input: "unet_name")
+        let vaes = try await client.loaderOptions(nodeClass: "VAELoader", input: "vae_name")
+        guard let files = ComfyUIClient.pickSeedVR2Files(unets: unets, vaes: vaes, is7B: job.is7B) else {
+            throw ComfyUIError.executionFailed(
+                "no \(job.modelLabel) model on the server — expected a seedvr2_\(job.is7B ? "7b" : "3b") file in "
+                    + "models/diffusion_models and a seedvr2 VAE in models/vae"
+            )
+        }
+        let geometry = ComfyUIClient.seedVR2Geometry(
+            sourceWidth: Int(size.width), sourceHeight: Int(size.height), scale: job.scale, softness: job.softness
+        )
+
+        job.statusLine = "Uploading source to ComfyUI…"
+        let imageName = try await client.uploadImage(localPath: job.sourcePath)
+        job.log += "ComfyUI: \(files.unet) · \(geometry.width)×\(geometry.height)"
+            + (geometry.softWidth.map { " · softened via \($0)×\(geometry.softHeight ?? 0)" } ?? "") + "\n"
+
+        let input = ComfyUIClient.SeedVR2WorkflowInput(
+            imageName: imageName, geometry: geometry, seed: 0,
+            unetName: files.unet, vaeName: files.vae, saveSubfolder: family.id
+        )
+        return ComfyGraph(totalNodes: ComfyUIClient.seedVR2NodeCount(geometry), totalSteps: 1) { seed in
+            var seeded = input
+            seeded.seed = seed
+            return client.buildSeedVR2Workflow(seeded)
+        }
+    }
+
     static func buildArgs(job: SeedVR2Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 

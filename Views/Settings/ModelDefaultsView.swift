@@ -38,7 +38,7 @@ struct ModelDefaultsView: View {
     @State private var userCancelledCache = false
     @State private var cacheStartedAt: Date?
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
-    /// Discovered ComfyUI model lists, bound to the Krea 2 form's pickers. Refreshed when a server URL is set.
+    /// Discovered ComfyUI model lists, bound to the Krea 2 and SeedVR2 forms. Refreshed when a server URL is set.
     @State private var comfyModels = ComfyModelStore()
     /// True once the auto-catalog callback has been wired for this view instance, so `.onAppear` doesn't re-install it on every appearance
     /// (the closure captures `loraLibrary`; one install per live store is enough and idempotent cataloging makes re-runs harmless anyway).
@@ -112,11 +112,11 @@ struct ModelDefaultsView: View {
         }
     }
 
-    /// Trigger ComfyUI model discovery when the Krea 2 form appears, but only if we're in remote mode with a URL
-    /// set and haven't already loaded lists for that exact server. This is what populates the dropdowns on first open
-    /// (the `.onChange` handlers alone never fire unless a value actually changes).
+    /// Trigger ComfyUI model discovery when a remote-capable form (Krea 2, SeedVR2) appears, but only if some family is in
+    /// remote mode with a URL set and lists haven't already loaded for that exact server. This is what populates the pickers
+    /// on first open (the `.onChange` handlers alone never fire unless a value actually changes).
     private func ensureComfyDiscovery() async {
-        guard settings.comfyBackendEnabled[ModelFamily.krea2.id] == true else { return }
+        guard settings.comfyBackendEnabled.values.contains(true) else { return }
         let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         if !comfyModels.hasLoaded(for: trimmed) {
@@ -193,7 +193,8 @@ struct ModelDefaultsView: View {
     @ViewBuilder
     private var modelForm: some View {
         if case .seedVR2 = selection {
-            ScrollView { seedVR2FormContent() }
+            ScrollView { seedVR2FormContent(models: comfyModels) }
+                .task { await ensureComfyDiscovery() }
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {

@@ -398,15 +398,18 @@ final class ComfyUIClient {
     /// Live progress is driven by the websocket `ProgressTracker` (real KSampler step counts), while
     /// the `/history` poll remains the *sole* completion/failure authority — so if the socket drops,
     /// the run still completes and the UI simply degrades to a coarse "Generating…" label.
+    ///
+    /// `workflow` is a prebuilt `/prompt` graph from one of the `build…Workflow` builders; `totalSteps` is only used to report
+    /// a full progress bar on completion.
     func generate(
-        _ input: WorkflowInput,
+        workflow: Any,
         totalNodes: Int,
+        totalSteps: Int,
         onProgress: @escaping (ComfyUIProgress) -> Void,
         pollInterval: TimeInterval = 1.0,
         maxWaitSeconds: Int = 3600
     ) async throws -> [ComfyOutputFile] {
-        let payload = buildKrea2Workflow(input)
-        let bodyObj: [String: Any] = ["prompt": payload, "client_id": clientID]
+        let bodyObj: [String: Any] = ["prompt": workflow, "client_id": clientID]
         guard let data = try? JSONSerialization.data(withJSONObject: bodyObj) else {
             throw ComfyUIError.decodeFailed("could not encode workflow")
         }
@@ -496,7 +499,7 @@ final class ComfyUIClient {
                     switch record.completed {
                     case true?:
                         guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
-                        onProgress(ComfyUIProgress(currentStep: input.steps, totalSteps: input.steps, isDenoising: true))
+                        onProgress(ComfyUIProgress(currentStep: totalSteps, totalSteps: totalSteps, isDenoising: true))
                         return record.outputs
                     // A failed prompt surfaces here two ways, both of which must fail the job — polling that only looks for a
                     // success never returns and Image Studio sits at "Generating…" until 1h or manual cancel:
@@ -747,7 +750,10 @@ final class ComfyUIClient {
             if n.hasPrefix("CLIP") {
                 return "Encoding prompt"
             } // CLIP_POS / CLIP_NEG
-            if n == "DECODE" || n == "SAVE" {
+            if n == "ENCODE" {
+                return "Encoding image"
+            } // SeedVR2
+            if n == "DECODE" || n == "POST" || n == "SAVE" {
                 return "Decoding & saving"
             }
             if n == "EMPTY" {
@@ -950,6 +956,36 @@ final class ComfyUIClient {
             }
         }
         return lines.isEmpty ? message : message + "\n\n" + lines.joined(separator: "\n")
+    }
+}
+
+// MARK: - Transport for sibling-file extensions
+
+/// `private` members aren't visible from `ComfyUIClient+*.swift`; these are the requests those extensions make.
+extension ComfyUIClient {
+    /// GET `path` with this client's auth headers; returns the 2xx response body.
+    func getData(_ path: String) async throws -> Data {
+        try await get(path)
+    }
+
+    /// POST `body` to `path` with this client's auth headers and `contentType`; returns the 2xx response body.
+    func post(_ path: String, body: Data, contentType: String, timeout: TimeInterval = 120) async throws -> Data {
+        guard let url = URL(string: base + path) else { throw ComfyUIError.invalidURL(base) }
+        var req = URLRequest(url: url, timeoutInterval: timeout)
+        req.httpMethod = "POST"
+        var hdrs = headers()
+        hdrs["Content-Type"] = contentType
+        req.allHTTPHeaderFields = hdrs
+        req.httpBody = body
+        let (data, response): (Data, URLResponse)
+        do { (data, response) = try await session.data(for: req) } catch {
+            throw ComfyUIError.unreachable((error as? URLError)?.localizedDescription ?? error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else { throw ComfyUIError.unreachable("no HTTP status") }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw ComfyUIError.httpStatus(http.statusCode, String(data: data, encoding: .utf8) ?? "")
+        }
+        return data
     }
 }
 

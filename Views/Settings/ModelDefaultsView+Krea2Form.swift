@@ -12,75 +12,15 @@ extension ModelDefaultsView {
         let model = FluxModelVariant.krea2
         let d = settings.defaults(for: model)
         return Form {
-            // Backend segment lives at the top of this form, not in a section header (a Picker styled as
-            // segmented can't host a custom trailing refresh control cleanly). mflux is first/default.
-            Picker("Inference backend", selection: Binding(
-                get: { settings.comfyBackendEnabled[ModelFamily.krea2.id] ?? false },
-                set: { settings.comfyBackendEnabled[ModelFamily.krea2.id] = $0 }
-            )) {
-                Text("mflux (local)").tag(false)
-                Text("ComfyUI").tag(true)
-            }
-            .pickerStyle(.segmented)
+            comfyBackendPicker(family: .krea2)
 
             if settings.comfyBackendEnabled[ModelFamily.krea2.id] == true {
                 Section {
-                    // Server URL + refresh on the same row; status underneath.
-                    HStack(spacing: 8) {
-                        TextField("http://192.168.x.x:8188", text: Binding(
-                            get: { settings.comfyURL },
-                            set: { settings.comfyURL = $0 }
-                        ))
-                        .textFieldStyle(.roundedBorder)
-                        .font(.caption)
-                        .autocorrectionDisabled()
-                        Button {
-                            let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
-                            if !trimmed.isEmpty {
-                                models.refresh(baseURL: trimmed)
-                            }
-                        } label: {
-                            Image(systemName: "arrow.clockwise")
-                        }
-                        .buttonStyle(.iconButtonCompact)
-                        .help("Re-discover available model files on the server")
-                    }
-                    comfyStatus(models: models)
+                    comfyServerRow(models: models)
 
-                    // Each long model filename gets its own line above the control so rows never wrap inconsistently.
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("UNet model").font(.caption).foregroundStyle(.secondary)
-                        comfyPicker(
-                            value: Binding(
-                                get: { settings.comfyUNet[ModelFamily.krea2.id] ?? "" },
-                                set: { settings.comfyUNet[ModelFamily.krea2.id] = $0 }
-                            ),
-                            options: models.unets,
-                            placeholder: "krea2_turbo_fp8_scaled.safetensors"
-                        )
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("CLIP encoder").font(.caption).foregroundStyle(.secondary)
-                        comfyPicker(
-                            value: Binding(
-                                get: { settings.comfyClip[ModelFamily.krea2.id] ?? "" },
-                                set: { settings.comfyClip[ModelFamily.krea2.id] = $0 }
-                            ),
-                            options: models.clips,
-                            placeholder: "qwen3vl_4b_fp8_scaled.safetensors"
-                        )
-                    }
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("VAE").font(.caption).foregroundStyle(.secondary)
-                        comfyPicker(
-                            value: Binding(
-                                get: { settings.comfyVae[ModelFamily.krea2.id] ?? "" },
-                                set: { settings.comfyVae[ModelFamily.krea2.id] = $0 }
-                            ),
-                            options: models.vaes,
-                            placeholder: "qwen_image_vae.safetensors"
-                        )
-                    }
+                    comfyFileRow("UNet model", \.comfyUNet, options: models.unets, placeholder: "krea2_turbo_fp8_scaled.safetensors")
+                    comfyFileRow("CLIP encoder", \.comfyClip, options: models.clips, placeholder: "qwen3vl_4b_fp8_scaled.safetensors")
+                    comfyFileRow("VAE", \.comfyVae, options: models.vaes, placeholder: "qwen_image_vae.safetensors")
                 } footer: {
                     Text(
                         "Runs on the remote box using these files. Local mflux and this config are saved independently, " +
@@ -131,6 +71,62 @@ extension ModelDefaultsView {
 // MARK: - ComfyUI model picker (live-discovered lists, manual-entry fallback)
 
 extension ModelDefaultsView {
+    /// The mflux / ComfyUI segment for one family. It sits at the top of the form, not in a section header (a Picker styled
+    /// as segmented can't host a custom trailing refresh control cleanly). mflux is first/default.
+    func comfyBackendPicker(family: ModelFamily) -> some View {
+        Picker("Inference backend", selection: Binding(
+            get: { settings.comfyBackendEnabled[family.id] ?? false },
+            set: { settings.comfyBackendEnabled[family.id] = $0 }
+        )) {
+            Text("mflux (local)").tag(false)
+            Text("ComfyUI").tag(true)
+        }
+        .pickerStyle(.segmented)
+    }
+
+    /// Server URL + refresh on one row, discovery status underneath. The URL is shared by every ComfyUI-routed family.
+    func comfyServerRow(models: ComfyModelStore) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                TextField("http://192.168.x.x:8188", text: Binding(
+                    get: { settings.comfyURL },
+                    set: { settings.comfyURL = $0 }
+                ))
+                .textFieldStyle(.roundedBorder)
+                .font(.caption)
+                .autocorrectionDisabled()
+                Button {
+                    let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if !trimmed.isEmpty {
+                        models.refresh(baseURL: trimmed)
+                    }
+                } label: {
+                    Image(systemName: "arrow.clockwise")
+                }
+                .buttonStyle(.iconButtonCompact)
+                .help("Re-discover available model files on the server")
+            }
+            comfyStatus(models: models)
+        }
+    }
+
+    /// One Krea 2 server file: the label on its own line above the picker, so long filenames never wrap inconsistently.
+    func comfyFileRow(
+        _ label: String, _ map: ReferenceWritableKeyPath<AppSettings, [String: String]>, options: [String], placeholder: String
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text(label).font(.caption).foregroundStyle(.secondary)
+            comfyPicker(
+                value: Binding(
+                    get: { settings[keyPath: map][ModelFamily.krea2.id] ?? "" },
+                    set: { settings[keyPath: map][ModelFamily.krea2.id] = $0 }
+                ),
+                options: options,
+                placeholder: placeholder
+            )
+        }
+    }
+
     /// A picker for a server-side model file. Shows a menu of the discovered `options` when available;
     /// otherwise falls back to a free-text field so a custom/undiscovered filename still works. The current
     /// value is preserved even if it isn't in the list (e.g. typed manually or from a different server).

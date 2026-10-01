@@ -1,15 +1,6 @@
 import AppKit
 import SwiftUI
 
-/// Reads the true pixel dimensions (not point size) of the image at `path`.
-private func seedVR2PixelSize(ofImageAt path: String) -> CGSize? {
-    guard let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
-          let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
-          let w = props[kCGImagePropertyPixelWidth] as? Int,
-          let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
-    return CGSize(width: w, height: h)
-}
-
 /// Sheet for configuring a SeedVR2 upscale of one or more existing images. SeedVR2
 /// is prompt-free super-resolution, so the only inputs are scale factor, softness,
 /// model size (3B/7B), and quantize. Presented from the "Upscale…" action in the

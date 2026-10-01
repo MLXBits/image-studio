@@ -144,6 +144,39 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         )
     }
 
+    /// Remote text-to-image graph (UNet + LoRA chain). Krea 2's fp8 pipeline loads three files; all must be configured
+    /// to route remote, otherwise the job runs on local mflux.
+    static func comfyGraph(job: Krea2Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
+        let id = family.id
+        guard
+            let unet = settings.comfyUNet[id], !unet.isEmpty,
+            let clip = settings.comfyClip[id], !clip.isEmpty,
+            let vae = settings.comfyVae[id], !vae.isEmpty
+        else { return nil }
+
+        let input = ComfyUIClient.WorkflowInput(
+            prompt: job.prompt,
+            negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
+            width: job.width, height: job.height, steps: job.steps, cfg: job.guidance,
+            seed: 0, // set per seed by build
+            unetName: unet, clipName: clip, vaeName: vae,
+            loras: job.loras.filter(\.enabled).map { entry in
+                ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
+            },
+            // Server-side output subfolder. Must be non-empty (we set the family id, e.g. "krea2") so the SaveImage filename_prefix
+            // becomes "mlxbits/krea2": ComfyUI's get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a
+            // bare "mlxbits" (empty subfolder) drops the file in the output ROOT. A single slash is required; it cannot nest.
+            saveSubfolder: id
+        )
+        // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
+        // each enabled LoRA adds one LoraLoader node.
+        return ComfyGraph(totalNodes: 8 + input.loras.count, totalSteps: job.steps) { seed in
+            var seeded = input
+            seeded.seed = seed
+            return client.buildKrea2Workflow(seeded)
+        }
+    }
+
     static func buildArgs(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         var args: [String] = []
 
