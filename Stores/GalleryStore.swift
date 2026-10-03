@@ -115,6 +115,9 @@ final class GalleryStore {
     /// flagged as a pick (deletion only). Distinct from ``deleteError``: this is an
     /// intentional block, not a failure. Observed by ``GenerationGalleryView``.
     var lockError: String?
+    /// The active profile's thumbnail cache folder. Copied into each background
+    /// task when it starts, so work for a previous profile stays in its folder.
+    private(set) var thumbnailDirectory: URL = ThumbnailCache.rootDirectory
 
     var displayedItems: [GalleryItem] {
         if selectedBoard == "All" {
@@ -123,12 +126,29 @@ final class GalleryStore {
         return items.filter { $0.board == selectedBoard }
     }
 
+    /// Points the gallery at a profile's thumbnail folder and drops everything
+    /// from the previous library. Bumping ``scanGeneration`` discards a scan of
+    /// the old library that is still in flight.
+    func activate(thumbnailDirectory: URL) {
+        self.thumbnailDirectory = thumbnailDirectory
+        scanGeneration += 1
+        items = []
+        boards = []
+        selectedBoard = "All"
+        lockedPaths = []
+        isScanning = false
+        deleteError = nil
+        stripError = nil
+        lockError = nil
+    }
+
     func scan(outputDir: String) {
         guard !outputDir.isEmpty else { return }
         isScanning = true
         scanGeneration += 1
         let myGeneration = scanGeneration
         let exts = Self.imageExtensions
+        let thumbs = thumbnailDirectory
         // Snapshot existing items so the detached task can preserve UUIDs and cached thumbnails.
         let existing = Dictionary(uniqueKeysWithValues: items.map { ($0.path, $0) })
         Task.detached(priority: .userInitiated) {
@@ -137,7 +157,11 @@ final class GalleryStore {
             // directly rather than deriving boards solely from the images found.
             let folders = scanBoardFolders(outputDir)
             // Safety net for files deleted outside the app (Finder, scripts).
-            ThumbnailCache.sweep(validPaths: Set(found.map(\.path)))
+            // A missing root (unplugged drive) scans as empty — sweeping then
+            // would wipe every thumbnail, so leave the cache alone.
+            if FileManager.default.fileExists(atPath: outputDir) {
+                ThumbnailCache.sweep(validPaths: Set(found.map(\.path)), in: thumbs)
+            }
             await MainActor.run { [weak self] in
                 guard let self, self.scanGeneration == myGeneration else { return }
                 self.items = found
@@ -155,15 +179,16 @@ final class GalleryStore {
         guard item.thumbnailImage == nil else { return }
         let path = item.path
         let existingData = item.thumbnailData
+        let thumbs = thumbnailDirectory
         Task.detached(priority: .background) {
             let thumbnailData: Data?
             if let data = existingData {
                 thumbnailData = data
-            } else if let cached = ThumbnailCache.read(for: path) {
+            } else if let cached = ThumbnailCache.read(for: path, in: thumbs) {
                 thumbnailData = cached
             } else {
                 guard let generated = ThumbnailCache.makeThumbnailData(forSourcePath: path) else { return }
-                ThumbnailCache.store(data: generated, for: path)
+                ThumbnailCache.store(data: generated, for: path, in: thumbs)
                 thumbnailData = generated
             }
             let nsImage = thumbnailData.flatMap { NSImage(data: $0) }
@@ -233,7 +258,7 @@ final class GalleryStore {
             try? FileManager.default.moveItem(at: srcJson, to: destJson)
         }
         // Cache is keyed by absolute path; the moved file regenerates under the new key.
-        ThumbnailCache.purge(path: item.path)
+        ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         scan(outputDir: outputDir)
     }
 
@@ -253,7 +278,7 @@ final class GalleryStore {
             deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
         }
         try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
-        ThumbnailCache.purge(path: item.path)
+        ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         scan(outputDir: outputDir)
     }
 
@@ -279,7 +304,7 @@ final class GalleryStore {
         // Purge cache entries for every image we know lives under this board
         // before the folder goes away. The post-scan sweep then catches any we
         // didn't know about (e.g., images added externally since the last scan).
-        ThumbnailCache.purge(paths: items.filter { $0.board == board }.map(\.path))
+        ThumbnailCache.purge(paths: items.filter { $0.board == board }.map(\.path), in: thumbnailDirectory)
         do {
             try FileManager.default.removeItem(at: dir)
         } catch {
@@ -302,7 +327,7 @@ final class GalleryStore {
             return
         }
         // Every image under the board changes path, so its cache key changes too.
-        ThumbnailCache.purge(paths: items.filter { $0.board == oldName }.map(\.path))
+        ThumbnailCache.purge(paths: items.filter { $0.board == oldName }.map(\.path), in: thumbnailDirectory)
         try? FileManager.default.moveItem(at: oldDir, to: newDir)
         scan(outputDir: outputDir)
     }
@@ -329,7 +354,7 @@ final class GalleryStore {
             }
             purgedPaths.append(item.path)
         }
-        ThumbnailCache.purge(paths: purgedPaths)
+        ThumbnailCache.purge(paths: purgedPaths, in: thumbnailDirectory)
         if !locked.isEmpty {
             lockError = lockMessage(skipped: locked)
         }
@@ -354,7 +379,7 @@ final class GalleryStore {
             }
             try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         }
-        ThumbnailCache.purge(paths: deletable.map(\.path))
+        ThumbnailCache.purge(paths: deletable.map(\.path), in: thumbnailDirectory)
         if !failures.isEmpty {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }
