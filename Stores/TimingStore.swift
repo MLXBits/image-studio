@@ -46,7 +46,7 @@ final class TimingStore {
     }
 
     private static let storeURL: URL =
-        JobStore.appSupportURL.appendingPathComponent("timing.json")
+        AppSettings.appSupportURL.appendingPathComponent("timing.json")
 
     /// EWMA smoothing factor for repeated samples at the same key/bucket.
     private static let alpha = 0.4
@@ -135,7 +135,7 @@ final class TimingStore {
     private func save() {
         guard let data = try? JSONEncoder().encode(profiles) else { return }
         try? FileManager.default.createDirectory(
-            at: JobStore.appSupportURL, withIntermediateDirectories: true
+            at: AppSettings.appSupportURL, withIntermediateDirectories: true
         )
         try? data.write(to: Self.storeURL, options: .atomic)
     }

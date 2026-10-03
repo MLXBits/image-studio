@@ -7,27 +7,20 @@ import Foundation
 /// only calls it for jobs with a non-empty `seeds`, which SeedVR2 never has).
 @Observable
 @MainActor
-final class SeedVR2JobStore {
-    private static let appSupportURL: URL = {
-        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
-            ?? FileManager.default.temporaryDirectory
-        return base.appendingPathComponent("MLXBits Image Studio", isDirectory: true)
-    }()
+final class SeedVR2JobStore: ProfileScopedJobStore {
+    static let interruptedMessage = "Interrupted — app was quit during upscale"
 
-    private static let jobsURL: URL = appSupportURL.appendingPathComponent("seedvr2-jobs.json")
-    private static let maxJobs = 100
+    @ObservationIgnored let history = JobHistoryFile(fileName: "seedvr2-jobs.json", directory: AppSettings.appSupportURL)
 
     var jobs: [SeedVR2Job] = []
     var isRunning: Bool = false
-
-    @ObservationIgnored private let saveDebouncer = Debouncer()
 
     var pendingJobs: [SeedVR2Job] {
         jobs.filter { $0.status == .pending }
     }
 
     init() {
-        load()
+        jobs = loadJobs()
     }
 
     // MARK: - Queue management
@@ -78,44 +71,5 @@ final class SeedVR2JobStore {
         jobs.removeAll { $0.id == job.id }
         jobs.insert(job, at: 0)
         save()
-    }
-
-    // MARK: - Persistence
-
-    private func pruneIfNeeded() {
-        guard jobs.count > Self.maxJobs else { return }
-        var result = jobs
-        while result.count > Self.maxJobs {
-            if let idx = result.indices.reversed().first(where: { result[$0].status.isTerminal }) {
-                result.remove(at: idx)
-            } else {
-                break
-            }
-        }
-        jobs = result
-    }
-
-    func save() {
-        saveDebouncer.schedule { [weak self] in self?.saveNow() }
-    }
-
-    private func saveNow() {
-        let encoder = JSONEncoder()
-        encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(Array(jobs.prefix(Self.maxJobs))) {
-            try? FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
-            try? data.write(to: Self.jobsURL, options: .atomic)
-        }
-    }
-
-    private func load() {
-        guard let data = try? Data(contentsOf: Self.jobsURL) else { return }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        guard let loaded = try? decoder.decode([SeedVR2Job].self, from: data) else { return }
-        for job in loaded where job.status == .running {
-            job.status = .failed("Interrupted — app was quit during upscale")
-        }
-        jobs = loaded
     }
 }
