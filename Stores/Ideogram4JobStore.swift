@@ -4,17 +4,13 @@ import Foundation
 @Observable
 @MainActor
 final class Ideogram4JobStore: ProfileScopedJobStore {
-    @ObservationIgnored let history = JobHistoryFile(fileName: "ideogram4-jobs.json", directory: AppSettings.appSupportURL)
+    @ObservationIgnored let history = JobHistoryFile(fileName: "ideogram4-jobs.json", directory: nil)
 
     var jobs: [Ideogram4Job] = []
     var isRunning: Bool = false
 
     var pendingJobs: [Ideogram4Job] {
         jobs.filter { $0.status == .pending }
-    }
-
-    init() {
-        jobs = loadJobs()
     }
 
     // MARK: - Queue management

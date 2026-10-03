@@ -39,6 +39,7 @@ struct ContentView: View {
     private static let galleryWidthStep: CGFloat = 16
 
     @Environment(AppSettings.self) private var settings
+    @Environment(ProfileStore.self) private var profiles
     @Environment(JobStore.self) private var store
     @Environment(FluxJobRunner.self) private var runner
     @Environment(GalleryStore.self) private var gallery
@@ -306,6 +307,7 @@ struct ContentView: View {
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                     .environment(settings)
+                    .environment(profiles)
             }
             .sheet(item: $boxOverlay) { ctx in
                 boxOverlaySheet(ctx)
@@ -357,11 +359,9 @@ struct ContentView: View {
                 krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
                 zimageParams.loras = updated.filter { $0.modelFamily == .zimage }
             }
-            .onChange(of: showingOutputDirPrompt) { _, showing in
-                if !showing, !settings.outputDir.isEmpty {
-                    gallery.scan(outputDir: settings.outputDir)
-                }
-            }
+            // A profile switch tears this view down while the outgoing profile
+            // is still active, so the unsaved form drafts are kept with it.
+            .onDisappear { saveContentDrafts() }
     }
 
     var body: some View {
@@ -1445,6 +1445,14 @@ struct ContentView: View {
     }
 
     // MARK: - Generate
+    /// Keeps the prompts typed but not yet generated with the current profile.
+    /// Generating saves these too; this covers leaving the profile first.
+    private func saveContentDrafts() {
+        settings.lastPrompt = params.prompt
+        settings.lastLoras = params.loras
+        settings.lastKrea2 = krea2Params.snapshot()
+        settings.lastZImage = zimageParams.snapshot()
+    }
 
     /// One Generate press. `scenarioPrompts`, when supplied, is a batch of prompts
     /// independently rolled by the scenario generator — each becomes its own job,

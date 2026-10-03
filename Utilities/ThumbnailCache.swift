@@ -26,17 +26,13 @@ enum ThumbnailCache {
     /// 400px covers @2x display at the gallery's typical 180–200pt cell width.
     nonisolated static let defaultMaxPixelSize: CGFloat = 400
 
-    /// Parent of the per-profile cache folders.
+    /// Parent of the per-profile cache folders (see ``ProfilePaths``).
     nonisolated static let rootDirectory: URL = {
         let base = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first
             ?? URL(fileURLWithPath: NSTemporaryDirectory())
         let bundleID = Bundle.main.bundleIdentifier ?? "MLXBitsImageStudio"
         return base.appendingPathComponent(bundleID).appendingPathComponent("Thumbnails", isDirectory: true)
     }()
-
-    nonisolated static func directory(forProfile id: UUID) -> URL {
-        rootDirectory.appendingPathComponent(id.uuidString, isDirectory: true)
-    }
 
     nonisolated static func cacheURL(for sourcePath: String, in directory: URL) -> URL {
         let digest = SHA256.hash(data: Data(sourcePath.utf8))

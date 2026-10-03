@@ -269,7 +269,15 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.latestStepwisePath = latest
         }
 
-        settings.ensureOutputDirExists()
+        // Never create the library root here: a folder on an unplugged drive
+        // would be recreated on the boot disk under /Volumes.
+        guard settings.libraryRootExists() else {
+            let reason = settings.outputDir.isEmpty
+                ? "No library folder chosen — choose one in Settings"
+                : "Library folder not found: \(settings.outputDir) — reconnect its drive or choose a folder in Settings"
+            finishJob(job, status: .failed(reason), stepDir: stepDir)
+            return
+        }
         let isMultiSeed = !job.seeds.isEmpty
         guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
             finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)

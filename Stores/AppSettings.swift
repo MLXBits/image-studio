@@ -56,19 +56,15 @@ class AppSettings {
     // MARK: - Stored
 
     private struct Stored: Codable {
-        var mfluxBinaryDir: String?; var outputDir: String?
+        var mfluxBinaryDir: String?
         var defaultModel: FluxModelVariant?
-        var defaultBoard: String?; var defaultWidth: Int?; var defaultHeight: Int?
+        var defaultWidth: Int?; var defaultHeight: Int?
         var defaultLoras: [LoraEntry]?
         var mlxCacheLimitGB: Double?; var hfHome: String?; var mfluxCacheDir: String?
-        var hfOffline: Bool?; var logFontSize: Double?; var lastPrompt: String?
-        var lastWidth: Int?; var lastHeight: Int?; var lastLoras: [LoraEntry]?
+        var hfOffline: Bool?; var logFontSize: Double?
+        var lastWidth: Int?; var lastHeight: Int?
         var lastModel: FluxModelVariant?; var lastQuantize: Int?
         var modelDefaults: [String: ModelDefaults]?
-        var customTemplates: [PromptTemplate]?
-        /// Legacy single-ID field kept for migration only; new writes use activeTemplateIDs.
-        var activeTemplateID: UUID?
-        var activeTemplateIDs: [UUID]?
         var batchShortcutPreset: Int?
         var batchShortcutCustomCount: Int?
         /// Aspect-preset area targets, in megapixels: normal quality and rapid iteration.
@@ -81,18 +77,12 @@ class AppSettings {
         var lastIdeogramWidth: Int?
         var lastIdeogramHeight: Int?
         var lastIdeogramQuantize: Int?
-        var lastIdeogramCaption: IdeogramCaption?
-        var lastIdeogramPlainPrompt: String?
-        var lastIdeogramUsePlainPrompt: Bool?
-        var lastIdeogramSeed: Int?
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
         var ideogram4CfgEnd: Double?
         /// Custom model picker entry (remembered across launches)
         var lastCustomModelRepo: String?
         var lastCustomBaseModel: FluxModelVariant?
-        /// Krea 2 last-used form (remembered across launches)
-        var lastKrea2: Krea2FormState?
         // ComfyUI remote inference backend (per-family server-side filenames, keyed by `ModelFamily.id`)
         var comfyURL: String?
         var comfyUNet: [String: String]?
@@ -102,24 +92,17 @@ class AppSettings {
         var comfyBackendEnabled: [String: Bool]?
         /// Legacy single-checkpoint slot, kept only to decode pre-split settings files; migrated to ``comfyUNet``.
         var comfyCheckpoint: [String: String]?
-        /// Z-Image last-used form (remembered across launches)
-        var lastZImage: ZImageFormState?
         /// SeedVR2 upscale defaults (remembered across launches)
         var seedVR2Use7B: Bool?
         var seedVR2Quantize: Int?
         var seedVR2Scale: Int?
         var seedVR2Softness: Double?
-        /// Notepad
-        var notepadText: String?
-        /// Prompt history (recorded on job enqueue)
-        var promptHistory: [PromptHistoryEntry]?
         /// Warm-model driver
         var keepModelWarm: Bool?
         var warmIdleMinutes: Int?
         var warmTextEncoderPolicy: WarmTextEncoderPolicy?
         /// Scenario generator (raw values so future category changes degrade
         /// gracefully instead of failing the whole settings decode)
-        var lastScenarioOutline: String?
         var scenarioCategories: [String]?
         var scenarioWildcardMode: Bool?
         var scenarioQueueCount: Int?
@@ -137,31 +120,29 @@ class AppSettings {
 
         init() {}
         init(
-            mfluxBinaryDir: String, outputDir: String, defaultModel: FluxModelVariant,
-            defaultBoard: String, defaultWidth: Int, defaultHeight: Int,
+            mfluxBinaryDir: String, defaultModel: FluxModelVariant,
+            defaultWidth: Int, defaultHeight: Int,
             defaultLoras: [LoraEntry],
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
-            hfOffline: Bool, logFontSize: Double, lastPrompt: String,
-            lastWidth: Int, lastHeight: Int, lastLoras: [LoraEntry],
+            hfOffline: Bool, logFontSize: Double,
+            lastWidth: Int, lastHeight: Int,
             modelDefaults: [String: ModelDefaults],
             lastModel: FluxModelVariant, lastQuantize: Int,
-            customTemplates: [PromptTemplate], activeTemplateIDs: [UUID],
             batchShortcutPreset: Int, batchShortcutCustomCount: Int,
             gemmaModelPath: String, ideogram4ModelRepoOverride: String?,
             lastIdeogramPreset: Ideogram4Preset?, lastIdeogramWidth: Int?,
             lastIdeogramHeight: Int?, lastIdeogramQuantize: Int?
         ) {
-            self.mfluxBinaryDir = mfluxBinaryDir; self.outputDir = outputDir
+            self.mfluxBinaryDir = mfluxBinaryDir
             self.defaultModel = defaultModel
-            self.defaultBoard = defaultBoard; self.defaultWidth = defaultWidth
+            self.defaultWidth = defaultWidth
             self.defaultHeight = defaultHeight
             self.defaultLoras = defaultLoras; self.mlxCacheLimitGB = mlxCacheLimitGB
             self.hfHome = hfHome; self.mfluxCacheDir = mfluxCacheDir
             self.hfOffline = hfOffline; self.logFontSize = logFontSize
-            self.lastPrompt = lastPrompt; self.lastWidth = lastWidth; self.lastHeight = lastHeight
-            self.lastLoras = lastLoras; self.modelDefaults = modelDefaults
+            self.lastWidth = lastWidth; self.lastHeight = lastHeight
+            self.modelDefaults = modelDefaults
             self.lastModel = lastModel; self.lastQuantize = lastQuantize
-            self.customTemplates = customTemplates; self.activeTemplateIDs = activeTemplateIDs
             self.batchShortcutPreset = batchShortcutPreset
             self.batchShortcutCustomCount = batchShortcutCustomCount
             self.gemmaModelPath = gemmaModelPath
@@ -202,16 +183,17 @@ class AppSettings {
     /// directory changes and by ``refreshAvailableModels()`` after an install.
     private(set) var availableModels: [FluxModelVariant] = []
 
-    var outputDir: String {
-        didSet { save() }
-    }
+    /// The active profile's library folder. Read-only here: the profile registry
+    /// owns it, and ``activateProfile(contentURL:libraryPath:)`` /
+    /// ``applyLibraryPath(_:)`` are the only writers.
+    private(set) var outputDir: String
 
     var defaultModel: FluxModelVariant {
         didSet { save() }
     }
 
     var defaultBoard: String {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     var defaultWidth: Int {
@@ -262,7 +244,7 @@ class AppSettings {
     }
 
     var lastPrompt: String {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     var lastWidth: Int {
@@ -274,7 +256,7 @@ class AppSettings {
     }
 
     var lastLoras: [LoraEntry] {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     var lastModel: FluxModelVariant {
@@ -341,20 +323,20 @@ class AppSettings {
     }
 
     var lastIdeogramCaption: IdeogramCaption? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     var lastIdeogramPlainPrompt: String? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     var lastIdeogramUsePlainPrompt: Bool? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     /// Last Ideogram 4 seed (-1 = random), restored on next launch.
     var lastIdeogramSeed: Int? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     /// Repo ID or path last entered for the picker's `Custom…` entry. Persisted
@@ -371,7 +353,7 @@ class AppSettings {
 
     /// Last-used Krea 2 form, restored on next launch.
     var lastKrea2: Krea2FormState? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     // MARK: - ComfyUI remote inference backend
@@ -403,7 +385,7 @@ class AppSettings {
 
     /// Last-used Z-Image form, restored on next launch.
     var lastZImage: ZImageFormState? {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     // MARK: - SeedVR2 upscale defaults
@@ -448,7 +430,7 @@ class AppSettings {
 
     /// Free-form markdown scratchpad for reusable prompt notes. Autosaves on edit.
     var notepadText: String {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     // MARK: - Prompt history
@@ -456,7 +438,7 @@ class AppSettings {
     /// Prompts recorded when jobs are queued, newest first. Unpinned entries are
     /// capped at ``promptHistoryCap``; pinned entries are never evicted.
     var promptHistory: [PromptHistoryEntry] {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     // MARK: - Warm-model driver
@@ -481,7 +463,7 @@ class AppSettings {
 
     /// Last outline entered in the scenario generator, restored across launches.
     var lastScenarioOutline: String {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     /// Detail categories the scenario generator is allowed to invent.
@@ -549,12 +531,12 @@ class AppSettings {
 
     /// User-created prompt templates (built-ins live in `BuiltInTemplates.all`).
     var customTemplates: [PromptTemplate] {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     /// IDs of the currently active prompt templates, in selection order.
     var activeTemplateIDs: [UUID] {
-        didSet { save() }
+        didSet { saveProfile() }
     }
 
     /// Set to a human-readable message when ``save()`` fails; cleared on the next
@@ -562,6 +544,25 @@ class AppSettings {
     var saveError: String?
 
     @ObservationIgnored private let saveDebouncer = Debouncer()
+
+    // MARK: - Per-profile persistence
+
+    /// Gallery boards the user collapsed in the active profile's library.
+    var galleryCollapsedBoards: [String] {
+        didSet { saveProfile() }
+    }
+
+    /// The active profile's `profile.json`; `nil` until a profile is activated.
+    /// The debounced save reads it when it runs, which is why activation flushes
+    /// before swapping it.
+    @ObservationIgnored private var profileFileURL: URL?
+    @ObservationIgnored private let profileSaveDebouncer = Debouncer()
+    /// Set while a profile's fields are being loaded, so the `didSet` observers
+    /// don't write the half-loaded state straight back.
+    @ObservationIgnored private var isApplyingProfile = false
+    /// Set when the profile registry can't be read: nothing is written until the
+    /// user fixes or removes it, so no data is overwritten while it's unreadable.
+    @ObservationIgnored private var persistenceSuspended = false
 
     /// All templates: built-ins first, then user customs.
     var allTemplates: [PromptTemplate] {
@@ -589,9 +590,11 @@ class AppSettings {
         let model = s.defaultModel ?? .flux2Klein9B
 
         mfluxBinaryDir = s.mfluxBinaryDir ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
-        outputDir = s.outputDir ?? "" // empty = not yet chosen; app will prompt on first use
+        // Per-profile fields start empty; ProfileStore activates a profile right
+        // after init, which loads them from that profile's profile.json.
+        outputDir = ""
         defaultModel = model
-        defaultBoard = s.defaultBoard ?? ""
+        defaultBoard = ""
         defaultWidth = s.defaultWidth ?? 1024
         defaultHeight = s.defaultHeight ?? 1024
         legacyDefaultLoras = s.defaultLoras ?? []
@@ -601,10 +604,10 @@ class AppSettings {
         hfOffline = s.hfOffline ?? false
         hfToken = KeychainHelper.get("hf_token")
         logFontSize = s.logFontSize ?? 12.0
-        lastPrompt = s.lastPrompt ?? ""
+        lastPrompt = ""
         lastWidth = s.lastWidth ?? 1024
         lastHeight = s.lastHeight ?? 1024
-        lastLoras = s.lastLoras ?? []
+        lastLoras = []
         modelDefaults = s.modelDefaults ?? [:]
         let lastM = s.lastModel ?? s.defaultModel ?? .flux2Klein9B
         lastModel = lastM
@@ -620,14 +623,14 @@ class AppSettings {
         lastIdeogramWidth = s.lastIdeogramWidth
         lastIdeogramHeight = s.lastIdeogramHeight
         lastIdeogramQuantize = s.lastIdeogramQuantize
-        lastIdeogramCaption = s.lastIdeogramCaption
-        lastIdeogramPlainPrompt = s.lastIdeogramPlainPrompt
-        lastIdeogramUsePlainPrompt = s.lastIdeogramUsePlainPrompt
-        lastIdeogramSeed = s.lastIdeogramSeed
+        lastIdeogramCaption = nil
+        lastIdeogramPlainPrompt = nil
+        lastIdeogramUsePlainPrompt = nil
+        lastIdeogramSeed = nil
         lastCustomModelRepo = s.lastCustomModelRepo ?? ""
         lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
-        lastKrea2 = s.lastKrea2
-        lastZImage = s.lastZImage
+        lastKrea2 = nil
+        lastZImage = nil
         comfyURL = s.comfyURL ?? ""
         // Migrate a pre-split saved `comfyCheckpoint` entry into the UNet slot so existing config keeps working.
         var unetMap = s.comfyUNet ?? [:]
@@ -659,12 +662,12 @@ class AppSettings {
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
-        notepadText = s.notepadText ?? ""
-        promptHistory = s.promptHistory ?? []
+        notepadText = ""
+        promptHistory = []
         keepModelWarm = s.keepModelWarm ?? false
         warmIdleMinutes = s.warmIdleMinutes ?? 10
         warmTextEncoderPolicy = s.warmTextEncoderPolicy ?? .auto
-        lastScenarioOutline = s.lastScenarioOutline ?? ""
+        lastScenarioOutline = ""
         scenarioCategories = s.scenarioCategories
             .map { Set($0.compactMap(ScenarioCategory.init)) }
             ?? Set(ScenarioCategory.allCases)
@@ -677,15 +680,9 @@ class AppSettings {
         openAITopP = s.openAITopP ?? 0.95
         openAITopK = s.openAITopK ?? 64
         openAIAPIKey = KeychainHelper.get("openai_api_key")
-        customTemplates = s.customTemplates ?? []
-        // Migrate single-ID storage (written by earlier builds) to array.
-        if let ids = s.activeTemplateIDs {
-            activeTemplateIDs = ids
-        } else if let id = s.activeTemplateID {
-            activeTemplateIDs = [id]
-        } else {
-            activeTemplateIDs = []
-        }
+        customTemplates = []
+        activeTemplateIDs = []
+        galleryCollapsedBoards = []
         refreshAvailableModels()
     }
 
@@ -778,22 +775,74 @@ class AppSettings {
     /// autosaves per keystroke — coalesce so each burst costs one encode + write.
     /// The Debouncer flushes pending work at app termination.
     func save() {
+        guard !persistenceSuspended else { return }
         saveDebouncer.schedule { [weak self] in self?.saveNow() }
+    }
+
+    /// Writes settings.json now. Used once after migration, so the moved
+    /// per-profile keys are dropped from the global file straight away.
+    func persistGlobalNow() {
+        guard !persistenceSuspended else { return }
+        saveDebouncer.flush()
+        saveNow()
+    }
+
+    /// Stops all settings writes for the rest of the session. See
+    /// ``persistenceSuspended``.
+    func suspendPersistence() {
+        persistenceSuspended = true
+    }
+
+    /// Points the per-profile fields at another profile: pending edits are
+    /// written to the current profile's file first, then the new profile's
+    /// fields load without triggering saves.
+    func activateProfile(contentURL: URL?, libraryPath: String) {
+        profileSaveDebouncer.flush()
+        profileFileURL = contentURL
+        isApplyingProfile = true
+        defer { isApplyingProfile = false }
+        outputDir = libraryPath
+        apply(ProfileStored.load(from: contentURL))
+    }
+
+    /// Re-points the active profile at a different library folder (Change Folder).
+    func applyLibraryPath(_ path: String) {
+        outputDir = path
+    }
+
+    /// Debounced save of the per-profile fields to the active profile's file.
+    func saveProfile() {
+        guard !isApplyingProfile, !persistenceSuspended, profileFileURL != nil else { return }
+        profileSaveDebouncer.schedule { [weak self] in self?.saveProfileNow() }
+    }
+
+    private func saveProfileNow() {
+        guard let url = profileFileURL else { return }
+        do {
+            try FileManager.default.createDirectory(
+                at: url.deletingLastPathComponent(), withIntermediateDirectories: true
+            )
+            let enc = JSONEncoder()
+            enc.outputFormatting = .prettyPrinted
+            try enc.encode(ProfileStored(snapshotOf: self)).write(to: url, options: .atomic)
+            saveError = nil
+        } catch {
+            saveError = "Could not save profile: \(error.localizedDescription)"
+        }
     }
 
     private func saveNow() {
         var s = Stored(
-            mfluxBinaryDir: mfluxBinaryDir, outputDir: outputDir,
-            defaultModel: defaultModel, defaultBoard: defaultBoard,
+            mfluxBinaryDir: mfluxBinaryDir,
+            defaultModel: defaultModel,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
             defaultLoras: legacyDefaultLoras,
             mlxCacheLimitGB: mlxCacheLimitGB, hfHome: hfHome,
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
-            logFontSize: logFontSize, lastPrompt: lastPrompt,
+            logFontSize: logFontSize,
             lastWidth: lastWidth, lastHeight: lastHeight,
-            lastLoras: lastLoras, modelDefaults: modelDefaults,
+            modelDefaults: modelDefaults,
             lastModel: lastModel, lastQuantize: lastQuantize,
-            customTemplates: customTemplates, activeTemplateIDs: activeTemplateIDs,
             batchShortcutPreset: batchShortcutPreset,
             batchShortcutCustomCount: batchShortcutCustomCount,
             gemmaModelPath: gemmaModelPath,
@@ -805,17 +854,11 @@ class AppSettings {
         )
         s.targetMegapixels = targetMegapixels
         s.rapidTargetMegapixels = rapidTargetMegapixels
-        s.lastIdeogramCaption = lastIdeogramCaption
-        s.lastIdeogramPlainPrompt = lastIdeogramPlainPrompt
-        s.lastIdeogramUsePlainPrompt = lastIdeogramUsePlainPrompt
-        s.lastIdeogramSeed = lastIdeogramSeed
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
         s.lastCustomModelRepo = lastCustomModelRepo
         s.lastCustomBaseModel = lastCustomBaseModel
-        s.lastKrea2 = lastKrea2
-        s.lastZImage = lastZImage
         s.comfyURL = comfyURL
         s.comfyUNet = comfyUNet
         s.comfyClip = comfyClip
@@ -825,12 +868,9 @@ class AppSettings {
         s.seedVR2Quantize = seedVR2Quantize
         s.seedVR2Scale = seedVR2Scale
         s.seedVR2Softness = seedVR2Softness
-        s.notepadText = notepadText
-        s.promptHistory = promptHistory
         s.keepModelWarm = keepModelWarm
         s.warmIdleMinutes = warmIdleMinutes
         s.warmTextEncoderPolicy = warmTextEncoderPolicy
-        s.lastScenarioOutline = lastScenarioOutline
         s.scenarioCategories = scenarioCategories.map(\.rawValue).sorted()
         s.scenarioWildcardMode = scenarioWildcardMode
         s.scenarioQueueCount = scenarioQueueCount
@@ -852,10 +892,13 @@ class AppSettings {
         }
     }
 
-    func ensureOutputDirExists() {
-        try? FileManager.default.createDirectory(
-            at: URL(fileURLWithPath: outputDir), withIntermediateDirectories: true
-        )
+    /// Whether the library folder exists. The root is never created implicitly:
+    /// a path on an unplugged drive would be recreated on the boot disk.
+    func libraryRootExists() -> Bool {
+        var isDir: ObjCBool = false
+        return !outputDir.isEmpty
+            && FileManager.default.fileExists(atPath: outputDir, isDirectory: &isDir)
+            && isDir.boolValue
     }
 
     func mfluxBinaryPath() -> String {

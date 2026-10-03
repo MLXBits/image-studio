@@ -8,7 +8,7 @@ import Foundation
 @Observable
 @MainActor
 final class JobStore: ProfileScopedJobStore {
-    @ObservationIgnored let history = JobHistoryFile(fileName: "jobs.json", directory: AppSettings.appSupportURL)
+    @ObservationIgnored let history = JobHistoryFile(fileName: "jobs.json", directory: nil)
 
     var jobs: [FluxJob] = []
     var isRunning: Bool = false
@@ -19,10 +19,6 @@ final class JobStore: ProfileScopedJobStore {
 
     var runningJob: FluxJob? {
         jobs.first { $0.status == .running }
-    }
-
-    init() {
-        jobs = loadJobs()
     }
 
     // MARK: - Queue management

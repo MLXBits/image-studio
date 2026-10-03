@@ -3,8 +3,6 @@ import AppKit
 import SwiftUI
 
 struct GenerationGalleryView: View {
-    private static let collapsedBoardsKey = "gallery.collapsedBoards"
-
     @Environment(GalleryStore.self) private var gallery
     @Environment(AppSettings.self) private var settings
 
@@ -282,7 +280,7 @@ struct GenerationGalleryView: View {
             anchorItemId = id
         }
         .onChange(of: collapsedBoards) { _, newValue in
-            UserDefaults.standard.set(Array(newValue), forKey: Self.collapsedBoardsKey)
+            settings.galleryCollapsedBoards = newValue.sorted()
         }
         .alert("Could not delete", isPresented: Binding(
             get: { gallery.deleteError != nil },
@@ -761,10 +759,9 @@ struct GenerationGalleryView: View {
 
     // MARK: - Persist collapsed state
 
+    /// Collapsed boards are per profile (board names are library content).
     private func loadCollapsedBoards() {
-        if let saved = UserDefaults.standard.array(forKey: Self.collapsedBoardsKey) as? [String] {
-            collapsedBoards = Set(saved)
-        }
+        collapsedBoards = Set(settings.galleryCollapsedBoards)
     }
 
     private func adjacentItem(to item: GalleryItem) -> GalleryItem? {

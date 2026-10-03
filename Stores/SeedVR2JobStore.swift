@@ -10,17 +10,13 @@ import Foundation
 final class SeedVR2JobStore: ProfileScopedJobStore {
     static let interruptedMessage = "Interrupted — app was quit during upscale"
 
-    @ObservationIgnored let history = JobHistoryFile(fileName: "seedvr2-jobs.json", directory: AppSettings.appSupportURL)
+    @ObservationIgnored let history = JobHistoryFile(fileName: "seedvr2-jobs.json", directory: nil)
 
     var jobs: [SeedVR2Job] = []
     var isRunning: Bool = false
 
     var pendingJobs: [SeedVR2Job] {
         jobs.filter { $0.status == .pending }
-    }
-
-    init() {
-        jobs = loadJobs()
     }
 
     // MARK: - Queue management

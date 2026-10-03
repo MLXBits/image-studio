@@ -4,7 +4,9 @@ import SwiftUI
 /// without forcing a location (avoids accidental iCloud sync via ~/Pictures).
 struct OutputDirectoryPromptView: View {
     @Environment(AppSettings.self) private var settings
+    @Environment(ProfileStore.self) private var profiles
     @Binding var isPresented: Bool
+    @State private var error: String?
 
     var body: some View {
         VStack(spacing: 20) {
@@ -42,6 +44,14 @@ struct OutputDirectoryPromptView: View {
                     }
                 }
 
+                if let error {
+                    Text(error)
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                        .multilineTextAlignment(.center)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
                 Button("Choose Folder…") {
                     pickFolder()
                 }
@@ -54,8 +64,12 @@ struct OutputDirectoryPromptView: View {
                 Button("Skip for Now") {
                     // Use a safe non-iCloud default so the app is functional
                     let home = NSHomeDirectory()
-                    settings.outputDir = "\(home)/MLXBits Image Studio"
-                    isPresented = false
+                    error = profiles.changeActiveLibrary(
+                        to: "\(home)/MLXBits Image Studio", createIfMissing: true
+                    )?.message
+                    if error == nil {
+                        isPresented = false
+                    }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
@@ -75,15 +89,11 @@ struct OutputDirectoryPromptView: View {
     }
 
     private func pickFolder() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.title = "Choose Output Folder"
-        panel.message = "Generated images will be saved here. Avoid iCloud-synced folders unless you want cloud backup."
-        panel.prompt = "Select"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.outputDir = url.path
-        }
+        guard let path = LibraryFolderPanel.choose(
+            title: "Choose Output Folder",
+            message: "Generated images will be saved here. Avoid iCloud-synced folders unless you want cloud backup.",
+            near: settings.outputDir
+        ) else { return }
+        error = profiles.changeActiveLibrary(to: path)?.message
     }
 }

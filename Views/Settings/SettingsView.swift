@@ -26,6 +26,7 @@ struct SettingsView: View {
     }
 
     @Environment(AppSettings.self) private var settings
+    @Environment(ProfileStore.self) private var profiles
     @Environment(GalleryStore.self) private var gallery
     @Environment(MfluxDriverController.self) private var driverController
     @State private var selectedTab: SettingsTab = .generation
@@ -34,6 +35,7 @@ struct SettingsView: View {
     @State private var loraFamily: ModelFamily = .flux
     @State private var loraTabMode: LoraTabMode = .library
     @State private var hfTokenDraft: String = ""
+    @State private var libraryError: String?
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -62,6 +64,7 @@ struct SettingsView: View {
         .sheet(isPresented: $showingOutputDirPrompt) {
             OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
                 .environment(settings)
+                .environment(profiles)
         }
         .alert("Could not save settings", isPresented: Binding(
             get: { settings.saveError != nil },
@@ -153,9 +156,18 @@ struct SettingsView: View {
 
                 Section {
                     HStack {
-                        TextField("Output folder", text: $s.outputDir)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Browse…") { browseOutputDir() }
+                        Text(s.outputDir.isEmpty ? "No folder chosen" : s.outputDir)
+                            .foregroundStyle(s.outputDir.isEmpty ? .secondary : .primary)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
+                            .textSelection(.enabled)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button("Change…") { changeLibraryFolder() }
+                            .disabled(profiles.switchBlockReason != nil)
+                        Button("Reveal") {
+                            NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: s.outputDir)])
+                        }
+                        .disabled(s.outputDir.isEmpty || profiles.isLibraryMissing)
                         Button {
                             showingOutputDirPrompt = true
                         } label: {
@@ -166,9 +178,21 @@ struct SettingsView: View {
                         .buttonStyle(.iconButtonCompact)
                         .help("Avoid ~/Pictures and ~/Documents if you don't want iCloud to sync generated images")
                     }
-                    if s.outputDir.isEmpty {
-                        Label("No output folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
+                    if let reason = profiles.switchBlockReason {
+                        Text(reason).font(.caption).foregroundStyle(.secondary)
+                    }
+                    if let libraryError {
+                        Label(libraryError, systemImage: "exclamationmark.triangle.fill")
                             .font(.caption).foregroundStyle(.orange)
+                    } else if s.outputDir.isEmpty {
+                        Label("No library folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption).foregroundStyle(.orange)
+                    } else if profiles.isLibraryMissing {
+                        Label(
+                            "This folder isn't there — reconnect its drive or choose another.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.caption).foregroundStyle(.orange)
                     }
                     LabeledContent("Default group") {
                         FolderComboBox(
@@ -178,7 +202,7 @@ struct SettingsView: View {
                         )
                     }
                 } header: {
-                    Text("Output")
+                    Text("Library: \(profiles.activeProfile?.name ?? "")")
                 } footer: {
                     Text("Tip: choose a folder outside ~/Pictures and ~/Documents to avoid automatic iCloud sync of generated images.")
                         .font(.caption).foregroundStyle(.tertiary)
@@ -466,15 +490,15 @@ struct SettingsView: View {
         }
     }
 
-    private func browseOutputDir() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.title = "Choose Output Directory"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.outputDir = url.path
-        }
+    /// Points the active profile at another folder, after the same checks as
+    /// New Profile (not the same as, inside, or containing another library).
+    private func changeLibraryFolder() {
+        guard let path = LibraryFolderPanel.choose(
+            title: "Choose Library Folder",
+            message: "Images for “\(profiles.activeProfile?.name ?? "")” will be saved here.",
+            near: settings.outputDir
+        ) else { return }
+        libraryError = profiles.changeActiveLibrary(to: path)?.message
     }
 
     private func browseBinaryDir() {

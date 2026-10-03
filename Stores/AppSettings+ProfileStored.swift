@@ -8,6 +8,20 @@ extension AppSettings {
     /// Keys match the pre-profiles `settings.json`, so migration decodes that
     /// file straight into this type and ignores the global keys around them.
     struct ProfileStored: Codable {
+        /// The profile's saved fields; empty when there is no file yet. A file
+        /// that isn't readable JSON at all is moved aside to
+        /// `profile.corrupt.json`, so the next save can't silently replace it.
+        static func load(from url: URL?) -> Self {
+            guard let url, let data = try? Data(contentsOf: url) else { return Self() }
+            if let stored = try? JSONDecoder().decode(Self.self, from: data) {
+                return stored
+            }
+            let aside = url.deletingLastPathComponent().appendingPathComponent("profile.corrupt.json")
+            try? FileManager.default.removeItem(at: aside)
+            try? FileManager.default.moveItem(at: url, to: aside)
+            return Self()
+        }
+
         var defaultBoard: String?
         var notepadText: String?
         var promptHistory: [PromptHistoryEntry]?
@@ -34,6 +48,24 @@ extension AppSettings {
 
         init() {}
 
+        init(snapshotOf settings: AppSettings) {
+            defaultBoard = settings.defaultBoard
+            notepadText = settings.notepadText
+            promptHistory = settings.promptHistory
+            customTemplates = settings.customTemplates
+            activeTemplateIDs = settings.activeTemplateIDs
+            lastPrompt = settings.lastPrompt
+            lastLoras = settings.lastLoras
+            lastIdeogramCaption = settings.lastIdeogramCaption
+            lastIdeogramPlainPrompt = settings.lastIdeogramPlainPrompt
+            lastIdeogramUsePlainPrompt = settings.lastIdeogramUsePlainPrompt
+            lastIdeogramSeed = settings.lastIdeogramSeed
+            lastKrea2 = settings.lastKrea2
+            lastZImage = settings.lastZImage
+            lastScenarioOutline = settings.lastScenarioOutline
+            galleryCollapsedBoards = settings.galleryCollapsedBoards
+        }
+
         /// Decodes field by field so one malformed entry (a bad history item, a
         /// draft from a newer build) costs only that field, not the notepad.
         init(from decoder: Decoder) throws {
@@ -55,5 +87,25 @@ extension AppSettings {
             lastScenarioOutline = try? c.decode(String.self, forKey: .lastScenarioOutline)
             galleryCollapsedBoards = try? c.decode([String].self, forKey: .galleryCollapsedBoards)
         }
+    }
+
+    /// Replaces every per-profile field. Called only from
+    /// ``activateProfile(contentURL:libraryPath:)``, which suppresses the saves.
+    func apply(_ stored: ProfileStored) {
+        defaultBoard = stored.defaultBoard ?? ""
+        notepadText = stored.notepadText ?? ""
+        promptHistory = stored.promptHistory ?? []
+        customTemplates = stored.customTemplates ?? []
+        activeTemplateIDs = stored.resolvedActiveTemplateIDs
+        lastPrompt = stored.lastPrompt ?? ""
+        lastLoras = stored.lastLoras ?? []
+        lastIdeogramCaption = stored.lastIdeogramCaption
+        lastIdeogramPlainPrompt = stored.lastIdeogramPlainPrompt
+        lastIdeogramUsePlainPrompt = stored.lastIdeogramUsePlainPrompt
+        lastIdeogramSeed = stored.lastIdeogramSeed
+        lastKrea2 = stored.lastKrea2
+        lastZImage = stored.lastZImage
+        lastScenarioOutline = stored.lastScenarioOutline ?? ""
+        galleryCollapsedBoards = stored.galleryCollapsedBoards ?? []
     }
 }

@@ -4,17 +4,13 @@ import Foundation
 @Observable
 @MainActor
 final class ZImageJobStore: ProfileScopedJobStore {
-    @ObservationIgnored let history = JobHistoryFile(fileName: "zimage-jobs.json", directory: AppSettings.appSupportURL)
+    @ObservationIgnored let history = JobHistoryFile(fileName: "zimage-jobs.json", directory: nil)
 
     var jobs: [ZImageJob] = []
     var isRunning: Bool = false
 
     var pendingJobs: [ZImageJob] {
         jobs.filter { $0.status == .pending }
-    }
-
-    init() {
-        jobs = loadJobs()
     }
 
     // MARK: - Queue management

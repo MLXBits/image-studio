@@ -4,17 +4,13 @@ import Foundation
 @Observable
 @MainActor
 final class Krea2JobStore: ProfileScopedJobStore {
-    @ObservationIgnored let history = JobHistoryFile(fileName: "krea2-jobs.json", directory: AppSettings.appSupportURL)
+    @ObservationIgnored let history = JobHistoryFile(fileName: "krea2-jobs.json", directory: nil)
 
     var jobs: [Krea2Job] = []
     var isRunning: Bool = false
 
     var pendingJobs: [Krea2Job] {
         jobs.filter { $0.status == .pending }
-    }
-
-    init() {
-        jobs = loadJobs()
     }
 
     // MARK: - Queue management
