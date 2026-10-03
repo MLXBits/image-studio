@@ -362,6 +362,23 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
     // They're stored here and refreshed on every toggle instead.
     private var onSelect: (String) -> Void = { _ in }
     private var onQueue: ([String]) -> Void = { _ in }
+    private var profileObserver: NSObjectProtocol?
+
+    override init() {
+        super.init()
+        // A profile switch rebuilds the main window but not this panel. Cancel a
+        // roll in flight (a cancelled batch never auto-queues) and close the panel,
+        // so neither its prompts nor its outline edits reach the next profile.
+        // Synchronous (`queue: nil`), so it runs before the switch proceeds.
+        profileObserver = NotificationCenter.default.addObserver(
+            forName: ProfileStore.willDeactivateNotification, object: nil, queue: nil
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.session?.task?.cancel()
+                self?.panel?.close()
+            }
+        }
+    }
 
     func toggle(
         session: ScenarioSession,

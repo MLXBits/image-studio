@@ -338,6 +338,7 @@ struct ZImageParamsPanelView: View {
         let panel = NSOpenPanel()
         panel.allowsOtherFileTypes = true
         panel.title = "Select Reference Image"
+        panel.startInLibrary(settings.outputDir)
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if Self.imageExtensions.contains(ext) {

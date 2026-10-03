@@ -18,12 +18,12 @@ struct PromptTemplatePickerView: View {
         .frame(width: 360)
         .onExitCommand { dismiss() }
         .sheet(isPresented: $showingAddSheet) {
-            TemplateEditSheet(template: nil) { newTemplate in
+            TemplateEditSheet(template: nil, libraryPath: settings.outputDir) { newTemplate in
                 settings.customTemplates.append(newTemplate)
             }
         }
         .sheet(item: $editingTemplate) { template in
-            TemplateEditSheet(template: template) { updated in
+            TemplateEditSheet(template: template, libraryPath: settings.outputDir) { updated in
                 if let idx = settings.customTemplates.firstIndex(where: { $0.id == updated.id }) {
                     settings.customTemplates[idx] = updated
                 }
@@ -229,6 +229,8 @@ struct PromptTemplatePickerView: View {
 
 struct TemplateEditSheet: View {
     let template: PromptTemplate?
+    /// The active library, where the example-image picker opens.
+    let libraryPath: String
     let onSave: (PromptTemplate) -> Void
 
     @Environment(\.dismiss) private var dismiss
@@ -386,8 +388,9 @@ struct TemplateEditSheet: View {
         }
     }
 
-    init(template: PromptTemplate?, onSave: @escaping (PromptTemplate) -> Void) {
+    init(template: PromptTemplate?, libraryPath: String, onSave: @escaping (PromptTemplate) -> Void) {
         self.template = template
+        self.libraryPath = libraryPath
         self.onSave = onSave
         _name = State(initialValue: template?.name ?? "")
         _positiveTemplate = State(initialValue: template?.positiveTemplate ?? "")
@@ -419,6 +422,7 @@ struct TemplateEditSheet: View {
         panel.allowsOtherFileTypes = true
         panel.title = "Choose Example Image"
         panel.message = "Select an image that represents this style"
+        panel.startInLibrary(libraryPath)
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if ["png", "jpg", "jpeg", "webp"].contains(ext) {

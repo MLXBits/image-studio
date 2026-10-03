@@ -22,3 +22,13 @@ enum LibraryFolderPanel {
         return panel.runModal() == .OK ? panel.url?.path : nil
     }
 }
+
+extension NSOpenPanel {
+    /// Opens the panel in the active profile's library. Otherwise macOS reopens
+    /// wherever the last panel was — after a switch, inside another profile's
+    /// library.
+    func startInLibrary(_ path: String) {
+        guard !path.isEmpty else { return }
+        directoryURL = URL(fileURLWithPath: path, isDirectory: true)
+    }
+}

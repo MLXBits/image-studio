@@ -682,6 +682,7 @@ struct ParamsPanelView: View {
         panel.allowedContentTypes = []
         panel.allowsOtherFileTypes = true
         panel.title = "Select Reference Image"
+        panel.startInLibrary(settings.outputDir)
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if Self.imageExtensions.contains(ext) {
@@ -725,6 +726,7 @@ struct ParamsPanelView: View {
         panel.allowsOtherFileTypes = true
         panel.allowsMultipleSelection = true
         panel.title = "Select Images"
+        panel.startInLibrary(settings.outputDir)
         if panel.runModal() == .OK {
             let valid = panel.urls.filter { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
             for url in valid where !params.editImagePaths.contains(url.path) {
