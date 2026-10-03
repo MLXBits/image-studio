@@ -64,6 +64,8 @@ struct ContentView: View {
     @State private var selectedGalleryItem: GalleryItem?
     @State private var showingQueue: Bool = false
     @State private var showingNotepad: Bool = false
+    /// New / Rename / Remove, as picked from the toolbar's profile menu.
+    @State private var profileAction: ProfileAction?
     @State private var showingOutputDirPrompt: Bool = false
     /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
     @State private var upscaleTarget: UpscaleTarget?
@@ -494,6 +496,7 @@ struct ContentView: View {
                 VStack(spacing: 0) {
                     topControlBar
                     mfluxInstallBanner
+                    MissingLibraryBanner()
                 }
             }
 
@@ -546,6 +549,7 @@ struct ContentView: View {
             NotepadView()
                 .environment(settings)
         }
+        .modifier(ProfileActionPresenter(action: $profileAction))
         .onChange(of: runner.activeJob?.id) { _, id in
             guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
             selectedGalleryItem = nil
@@ -656,6 +660,13 @@ struct ContentView: View {
             Button { openSettings() } label: {
                 Label("Settings", systemImage: "gear")
             }
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            ProfileMenu(
+                onAction: { profileAction = $0 },
+                onShowQueue: { showingQueue = true }
+            )
         }
     }
 
