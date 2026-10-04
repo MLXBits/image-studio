@@ -71,39 +71,41 @@ jobs:
           INSTALLER_P12: ${{ secrets.APPSTORE_INSTALLER_CERT_P12_BASE64 }}
           INSTALLER_PASSWORD: ${{ secrets.APPSTORE_INSTALLER_CERT_PASSWORD }}
         run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/appstore.keychain-db"
+          # One keychain per .p12: certificates made from one signing request
+          # share a private key, and importing that key twice into one keychain
+          # fails ("already exists"), which can drop the second certificate.
           KEYCHAIN_PASSWORD="$(uuidgen)"
+          DIST_KEYCHAIN="$RUNNER_TEMP/appstore-dist.keychain-db"
+          INSTALLER_KEYCHAIN="$RUNNER_TEMP/appstore-installer.keychain-db"
 
-          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
-          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-
-          import_p12() {  # import_p12 <base64> <password> <label>
-            echo "$1" | base64 --decode > "$RUNNER_TEMP/$3.p12"
-            security import "$RUNNER_TEMP/$3.p12" -P "$2" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-            rm -f "$RUNNER_TEMP/$3.p12"
+          import_p12() {  # import_p12 <keychain> <base64> <password> <label>
+            security create-keychain -p "$KEYCHAIN_PASSWORD" "$1"
+            security set-keychain-settings -lut 21600 "$1"
+            security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$1"
+            echo "$2" | base64 --decode > "$RUNNER_TEMP/$4.p12"
+            security import "$RUNNER_TEMP/$4.p12" -P "$3" -A -t cert -f pkcs12 -k "$1"
+            rm -f "$RUNNER_TEMP/$4.p12"
+            # The Apple Distribution and installer certificates chain to WWDR G3.
+            security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$1" 2>/dev/null || true
+            # Let codesign and productbuild use the key without a prompt.
+            security set-key-partition-list \
+              -S apple-tool:,apple:,codesign:,productbuild: \
+              -k "$KEYCHAIN_PASSWORD" "$1" >/dev/null
           }
-          import_p12 "$DIST_P12" "$DIST_PASSWORD" distribution
-          import_p12 "$INSTALLER_P12" "$INSTALLER_PASSWORD" installer
-
-          # The Apple Distribution certificate chains to the WWDR G3 intermediate.
           curl -fsSL -o "$RUNNER_TEMP/AppleWWDRCAG3.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
-          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH" || true
+          import_p12 "$DIST_KEYCHAIN" "$DIST_P12" "$DIST_PASSWORD" distribution
+          import_p12 "$INSTALLER_KEYCHAIN" "$INSTALLER_P12" "$INSTALLER_PASSWORD" installer
+          security list-keychains -d user -s "$DIST_KEYCHAIN" "$INSTALLER_KEYCHAIN" login.keychain-db
 
-          # Let codesign and productbuild use the keys without a prompt.
-          security set-key-partition-list \
-            -S apple-tool:,apple:,codesign:,productbuild: \
-            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
-          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
-
-          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "KEYCHAIN_PATH=$DIST_KEYCHAIN" >> "$GITHUB_ENV"
           echo "Imported identities:"
-          security find-identity -v "$KEYCHAIN_PATH" | tee "$RUNNER_TEMP/identities.txt"
-          # A .p12 exported without its private key imports without error but
-          # yields no identity, and the export step fails minutes later. Catch it here.
+          security find-identity -v | tee "$RUNNER_TEMP/identities.txt"
+          # A .p12 holding the wrong certificate, or one without its private key,
+          # imports cleanly but leaves no identity; the export step would fail
+          # minutes later. Catch it here.
           for want in "Apple Distribution" "3rd Party Mac Developer Installer"; do
             if ! grep -q "\"$want: " "$RUNNER_TEMP/identities.txt"; then
-              echo "::error::No '$want' identity after import. Re-export that certificate from Keychain Access ▸ My Certificates together with its private key, and update its .p12 secret."
+              echo "::error::No '$want' identity after import. Export that certificate from Keychain Access ▸ My Certificates (it carries its private key) and update its .p12 secret."
               exit 1
             fi
           done
@@ -246,5 +248,6 @@ jobs:
       - name: Remove signing material
         if: always()
         run: |
-          security delete-keychain "$RUNNER_TEMP/appstore.keychain-db" 2>/dev/null || true
+          security delete-keychain "$RUNNER_TEMP/appstore-dist.keychain-db" 2>/dev/null || true
+          security delete-keychain "$RUNNER_TEMP/appstore-installer.keychain-db" 2>/dev/null || true
           rm -f "$RUNNER_TEMP"/AuthKey_*.p8 "$RUNNER_TEMP/appstore.provisionprofile" "$RUNNER_TEMP/profile.plist"
