@@ -346,13 +346,19 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         // Warm-driver path: eligible jobs go to the persistent driver; any
         // startup failure falls through to the one-shot CLI below.
-        if let driver, settings.keepModelWarm,
-           let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
-            if await driver.ensureRunning() {
-                await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
-                return
+        if settings.keepModelWarm {
+            if let driver, let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
+                if await driver.ensureRunning() {
+                    await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
+                    return
+                }
+                job.log += "⚠️  Warm driver unavailable — falling back to one-shot CLI.\n"
+            } else {
+                // Say why, so a one-shot run with Keep model warm on isn't a mystery.
+                job.log += driver == nil
+                    ? "⚠️  No warm driver attached for \(Spec.family.rawValue) — running one-shot.\n"
+                    : "▸ This job isn't eligible for the warm driver — running one-shot.\n"
             }
-            job.log += "⚠️  Warm driver unavailable — falling back to one-shot CLI.\n"
         }
 
         let args = Spec.buildArgs(job: job, ctx: ctx, settings: settings)

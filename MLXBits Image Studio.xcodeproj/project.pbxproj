@@ -63,6 +63,7 @@
 		3AFED2C263CCBA74B59D34C4 /* ScenarioBatchQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */; };
 		3B99A4928633B8D1F563F68A /* ModelDefaultsView+ZImageForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00F416C559B37939372672BB /* ModelDefaultsView+ZImageForm.swift */; };
 		3C726FBF0194D16AF5DCA047 /* PromptTemplate.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5A80EFA17087C3CF5ED894C /* PromptTemplate.swift */; };
+		3CB78AB5BDFF05ED862AC6FF /* WarmDriverEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */; };
 		3DEE52936B36955647BE6E45 /* ProfileRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FDC6C81B1A3D2212D5D8342 /* ProfileRegistryTests.swift */; };
 		3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */; };
 		3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */; };
@@ -263,6 +264,7 @@
 		318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Forms.swift"; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		32928AD081B6EF992C7BF1B1 /* ProfileBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrap.swift; sourceTree = "<group>"; };
+		33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmDriverEligibilityTests.swift; sourceTree = "<group>"; };
 		35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+SeedVR2Form.swift"; sourceTree = "<group>"; };
 		377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2UpscaleSheet.swift; sourceTree = "<group>"; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
@@ -557,6 +559,7 @@
 				B53824D8F5CACEF836DDE9FB /* ToolchainMigrationTests.swift */,
 				DE254A77370537174B0B917E /* ToolchainTests.swift */,
 				F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */,
+				33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */,
 				F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */,
 				38813EA5CAE8447346ABD282 /* Support */,
 			);
@@ -1149,6 +1152,7 @@
 				8E27695F9C62870A3412DA70 /* ToolchainMigrationTests.swift in Sources */,
 				1FC3BC94E2871CA8911EEFBE /* ToolchainTests.swift in Sources */,
 				3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */,
+				3CB78AB5BDFF05ED862AC6FF /* WarmDriverEligibilityTests.swift in Sources */,
 				939D3FE8CED702E3C86445B9 /* WildcardExpanderTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
