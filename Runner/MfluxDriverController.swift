@@ -21,20 +21,6 @@ final class MfluxDriverController {
 
     // MARK: - Static helpers
 
-    /// The venv interpreter, read from the shebang of an installed mflux shim
-    /// (e.g. `#!/Users/x/.local/share/uv/tools/mflux/bin/python`).
-    nonisolated static func venvPython(fromShim shimPath: String) -> String? {
-        guard !shimPath.isEmpty,
-              let handle = FileHandle(forReadingAtPath: shimPath),
-              let head = try? handle.read(upToCount: 512),
-              let text = String(data: head, encoding: .utf8),
-              text.hasPrefix("#!") else { return nil }
-        let firstLine = text.split(separator: "\n", maxSplits: 1)[0]
-        let python = firstLine.dropFirst(2).trimmingCharacters(in: .whitespaces)
-        guard FileManager.default.isExecutableFile(atPath: python) else { return nil }
-        return python
-    }
-
     /// Combined chunk stream for one pipe (same pattern as
     /// ``RunnerSupport/outputStream(for:)`` but per-pipe).
     nonisolated private static func chunkStream(for pipe: Pipe) -> AsyncStream<String> {
@@ -135,7 +121,7 @@ final class MfluxDriverController {
             availability = .unavailable("mflux_driver.py missing from app bundle")
             return false
         }
-        guard let python = Self.venvPython(fromShim: settings.mfluxBinaryPath()) else {
+        guard let python = ToolchainMigration.venvPython(fromShim: settings.mfluxBinaryPath()) else {
             availability = .unavailable("Could not locate the mflux venv Python")
             return false
         }

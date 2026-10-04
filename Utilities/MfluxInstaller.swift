@@ -76,7 +76,7 @@ nonisolated enum MfluxInstaller {
     /// hand-picked directory is left alone: reinstalling over someone's editable
     /// install would silently detach the app from the tree they are working in.
     static func isUVManaged(binaryDir: String) -> Bool {
-        guard let python = MfluxDriverController.venvPython(
+        guard let python = ToolchainMigration.venvPython(
             fromShim: BinaryDetector.mfluxGenerateFlux2(in: binaryDir)
         ), let root = uvToolDir() else { return false }
         return python.hasPrefix(root.hasSuffix("/") ? root : root + "/")

@@ -48,7 +48,7 @@ nonisolated enum BinaryDetector {
     /// a `dist-info` directory name so editable installs resolve correctly.
     static func mfluxVersion(in dir: String) -> String? {
         let shim = mfluxGenerateFlux2(in: dir)
-        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return nil }
+        guard let python = ToolchainMigration.venvPython(fromShim: shim) else { return nil }
         return mfluxVersionProbeCache.value(for: python) {
             runProbe(python: python, code: """
             import importlib.metadata as m, sys
@@ -94,7 +94,7 @@ nonisolated enum BinaryDetector {
     /// Remove this gate and its call sites once PiD lands in a released mflux.
     static func supportsPidDecode(in dir: String) -> Bool {
         let shim = mfluxGenerateFlux2(in: dir)
-        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return false }
+        guard let python = ToolchainMigration.venvPython(fromShim: shim) else { return false }
         return pidDecodeProbeCache.value(for: python) {
             runProbe(python: python, code: """
             import importlib.util as u, pathlib, sys
@@ -118,7 +118,7 @@ nonisolated enum BinaryDetector {
     /// per launch, reset by ``invalidateProbes()`` after installs and upgrades.
     static func supportsBaseModel(in dir: String) -> Bool {
         let shim = mfluxGenerateFlux2(in: dir)
-        guard let python = MfluxDriverController.venvPython(fromShim: shim) else { return false }
+        guard let python = ToolchainMigration.venvPython(fromShim: shim) else { return false }
         return baseModelProbeCache.value(for: python) {
             runProbe(python: python, code: """
             import sys
