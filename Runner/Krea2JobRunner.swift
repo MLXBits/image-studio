@@ -19,12 +19,8 @@ enum Krea2RunnerSpec: JobRunnerSpec {
     static let outputPrefix = "krea2"
     static let encodingLabel = "Generating"
 
-    static func binaryName(job _: Krea2Job) -> String {
-        "mflux-generate-krea2"
-    }
-
-    static func binaryPath(job _: Krea2Job, settings: AppSettings) -> String {
-        settings.mfluxKrea2BinaryPath()
+    static func tool(job _: Krea2Job) -> PythonTool {
+        .krea2
     }
 
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir. Skipped
@@ -33,10 +29,6 @@ enum Krea2RunnerSpec: JobRunnerSpec {
     static func quantSaveDestination(job: Krea2Job, settings: AppSettings) -> URL? {
         guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
         return FluxModelVariant.krea2.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveBinaryPath(settings: AppSettings) -> String {
-        BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
     }
 
     static func saveModelID(job _: Krea2Job) -> String {

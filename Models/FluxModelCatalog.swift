@@ -21,12 +21,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
     }
 
-    /// Models the `custom` picker entry can load through — every variant the app
-    /// has a params panel for, minus any whose CLI is missing from the mflux
-    /// install at `binaryDir`. A custom checkpoint is run by its target family's
-    /// runner, so the target must be one the install can actually spawn.
-    static func customTargets(binaryDir: String) -> [Self] {
-        allModels.filter { BinaryDetector.supports($0, in: binaryDir) }
+    /// Models the `custom` picker entry can load through: every variant the app
+    /// has a params panel for, minus any whose tool the toolchain can't run.
+    /// A custom checkpoint is run by its target family's runner, so the target
+    /// must be one this toolchain can actually spawn.
+    static func customTargets(toolchain: Toolchain) -> [Self] {
+        allModels.filter { model in model.generateTool.map(toolchain.hasTool) ?? true }
     }
 
     /// Returns true if the HF hub model directory is fully downloaded: no in-flight
@@ -185,19 +185,16 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// The mflux console script this variant generates with, or nil when the
-    /// variant has no CLI of its own (`custom` inherits its target's).
-    ///
-    /// mflux ships new CLIs between releases and the app installs it unpinned, so
-    /// presence of the script — not a version number — is what says whether a
-    /// family can run here. See ``BinaryDetector/supports(_:in:)``.
-    var generateCLIName: String? {
+    /// The tool this variant generates with, or nil when the variant has no
+    /// tool of its own (`custom` inherits its target's). The bundled runtime
+    /// ships every one; a Custom Python may not (see ``Toolchain/hasTool(_:)``).
+    var generateTool: PythonTool? {
         switch self {
-        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: "mflux-generate-flux2"
-        case .ideogram4: "mflux-generate-ideogram4"
-        case .krea2: "mflux-generate-krea2"
-        case .zimageTurbo: "mflux-generate-z-image-turbo"
-        case .zimage: "mflux-generate-z-image"
+        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: .flux2
+        case .ideogram4: .ideogram4
+        case .krea2: .krea2
+        case .zimageTurbo: .zImageTurbo
+        case .zimage: .zImage
         case .custom: nil
         }
     }

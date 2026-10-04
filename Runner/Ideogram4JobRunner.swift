@@ -17,12 +17,8 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
     static let outputPrefix = "ideogram4"
     static let encodingLabel = "Encoding caption"
 
-    static func binaryName(job _: Ideogram4Job) -> String {
-        "mflux-generate-ideogram4"
-    }
-
-    static func binaryPath(job _: Ideogram4Job, settings: AppSettings) -> String {
-        settings.mfluxIdeogram4BinaryPath()
+    static func tool(job _: Ideogram4Job) -> PythonTool {
+        .ideogram4
     }
 
     /// Q8/Q4 load pre-quantized MLX weights directly from the published repo —
@@ -33,12 +29,6 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
               modelSourceOverride(job: job, settings: settings) == nil,
               FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize) == nil else { return nil }
         return FluxModelVariant.ideogram4.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    /// Ideogram 4 support is only in the uv-installed mflux (~/.local/bin); skip the
-    /// configured dev dir.
-    static func saveBinaryPath(settings _: AppSettings) -> String {
-        BinaryDetector.detect("mflux-save")
     }
 
     static func saveModelID(job _: Ideogram4Job) -> String {

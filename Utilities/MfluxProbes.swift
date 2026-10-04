@@ -1,0 +1,124 @@
+import Foundation
+
+// Nonisolated: process probes, callable off the main actor.
+/// Questions asked of the interpreter mflux runs on: its mflux version, and
+/// whether it accepts options the app sends only when supported. Each probe
+/// spawns that interpreter once and is cached by its path for the rest of the
+/// launch, so choosing another Custom Python asks again.
+nonisolated enum MfluxProbes {
+    /// Memoises a probe per interpreter path. The probe spawns a process, so it
+    /// must not run on every view body evaluation.
+    private final class ProbeCache<Value: Sendable>: @unchecked Sendable {
+        private let lock = NSLock()
+        private var results: [String: Value] = [:]
+
+        func value(for key: String, compute: () -> Value) -> Value {
+            lock.lock()
+            if let hit = results[key] {
+                lock.unlock()
+                return hit
+            }
+            lock.unlock()
+            let computed = compute()
+            lock.lock()
+            results[key] = computed
+            lock.unlock()
+            return computed
+        }
+    }
+
+    private static let pidDecodeCache = ProbeCache<Bool>()
+    private static let versionCache = ProbeCache<String?>()
+    private static let baseModelCache = ProbeCache<Bool>()
+
+    /// The version of the `mflux` package importable by `python`, or nil when it
+    /// cannot be determined. Asks the interpreter rather than reading a
+    /// `dist-info` directory name so editable installs resolve correctly.
+    static func mfluxVersion(python: String?) -> String? {
+        guard let python else { return nil }
+        return versionCache.value(for: python) {
+            runProbe(python: python, code: """
+            import importlib.metadata as m, sys
+            try:
+                sys.stdout.write(m.version("mflux"))
+            except Exception:
+                pass
+            """)
+        }
+    }
+
+    /// Whether the mflux importable by `python` has the PiD pixel-diffusion
+    /// decoder (`--pid-decode`). Gates the toggle in the Dimensions section so it
+    /// only appears against an mflux that can honour it.
+    ///
+    /// PiD is unmerged upstream (filipstrand/mflux#490), so this cannot be
+    /// inferred from a version number. Probes for the module rather than a console
+    /// script: the flag is added to seven existing scripts, so no new script
+    /// appears, and asking the interpreter resolves editable installs (whose
+    /// `mflux` lives outside site-packages behind a `.pth`) correctly.
+    ///
+    /// Remove this gate and its call sites once PiD lands in a released mflux.
+    static func supportsPidDecode(python: String?) -> Bool {
+        guard let python else { return false }
+        return pidDecodeCache.value(for: python) {
+            runProbe(python: python, code: """
+            import importlib.util as u, pathlib, sys
+            s = u.find_spec("mflux")
+            loc = (s.submodule_search_locations or [None])[0] if s else None
+            ok = loc is not None and (pathlib.Path(loc) / "models/common/pid_decoder").is_dir()
+            sys.stdout.write("1" if ok else "0")
+            """) == "1"
+        }
+    }
+
+    /// Whether the mflux importable by `python` accepts `--base-model`. Gates the flag in
+    /// ``FluxRunnerSpec``'s buildArgs so a pre-option release is never handed an option its
+    /// argparse rejects with exit 2.
+    ///
+    /// Inspects the parser's own option list rather than comparing versions or trial-parsing a
+    /// value: package metadata lies on editable installs (a dev checkout reports an old version
+    /// while carrying every registry key), no release boundary marks when the option landed, and
+    /// this answers exactly what the gate needs — whether sending the flag would be rejected.
+    /// Cached per interpreter like ``supportsPidDecode(python:)``: one process spawn per
+    /// interpreter per launch.
+    static func supportsBaseModel(python: String?) -> Bool {
+        guard let python else { return false }
+        return baseModelCache.value(for: python) {
+            runProbe(python: python, code: """
+            import sys
+            ok = False
+            try:
+                from mflux.models.flux2.cli import flux2_generate as f
+                p = f.build_parser()
+                ok = any("--base-model" in (a.option_strings or ()) for a in p._actions)
+            except BaseException:
+                pass
+            sys.stdout.write("1" if ok else "0")
+            """) == "1"
+        }
+    }
+
+    /// Runs `python -c code` with the toolchain environment and returns its
+    /// trimmed stdout, or nil when the process cannot start or writes nothing.
+    private static func runProbe(python: String, code: String) -> String? {
+        let proc = Process()
+        proc.executableURL = URL(fileURLWithPath: python)
+        proc.arguments = ["-c", code]
+        proc.environment = Toolchain.environment(
+            base: ProcessInfo.processInfo.environment, cachesURL: Toolchain.cachesURL
+        )
+        let pipe = Pipe()
+        proc.standardOutput = pipe
+        proc.standardError = FileHandle.nullDevice
+        do {
+            try proc.run()
+        } catch {
+            return nil
+        }
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        proc.waitUntilExit()
+        let out = (String(data: data, encoding: .utf8) ?? "")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        return out.isEmpty ? nil : out
+    }
+}

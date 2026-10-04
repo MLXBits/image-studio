@@ -481,7 +481,6 @@ struct SettingsView: View {
         mfluxSetupPhase = .installing
         do {
             let binDir = try await MfluxInstaller.install()
-            BinaryDetector.invalidateProbes()
             settings.mfluxBinaryDir = binDir
             settings.refreshAvailableModels()
             mfluxSetupPhase = .idle

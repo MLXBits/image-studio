@@ -89,7 +89,7 @@ final class FluxJob: Identifiable {
     var board: String
     /// Decode with PiD's pixel-diffusion decoder instead of the VAE, emitting an
     /// image 4x the generation size. Only offered when the installed mflux has it
-    /// (see ``BinaryDetector/supportsPidDecode(in:)``).
+    /// (see ``MfluxProbes/supportsPidDecode(python:)``).
     var pidDecode: Bool
     /// Noise added to the latent before PiD conditions on it (0.0-0.8). Higher values
     /// make PiD lean less on the latent's high-frequency content and more on its own

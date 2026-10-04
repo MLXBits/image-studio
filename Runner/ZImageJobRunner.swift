@@ -30,12 +30,8 @@ enum ZImageRunnerSpec: JobRunnerSpec {
         return trimmed.isEmpty ? nil : job.negativePrompt
     }
 
-    static func binaryName(job: ZImageJob) -> String {
-        job.isTurbo ? "mflux-generate-z-image-turbo" : "mflux-generate-z-image"
-    }
-
-    static func binaryPath(job: ZImageJob, settings: AppSettings) -> String {
-        settings.mfluxZImageBinaryPath(turbo: job.isTurbo)
+    static func tool(job: ZImageJob) -> PythonTool {
+        job.isTurbo ? .zImageTurbo : .zImage
     }
 
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir — unless a
@@ -47,10 +43,6 @@ enum ZImageRunnerSpec: JobRunnerSpec {
             return nil
         }
         return job.modelVariant.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveBinaryPath(settings: AppSettings) -> String {
-        BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
     }
 
     static func saveModelID(job: ZImageJob) -> String {

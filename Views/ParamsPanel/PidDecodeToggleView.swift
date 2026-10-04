@@ -5,7 +5,7 @@ import SwiftUI
 /// Renders nothing unless the configured mflux install actually has the decoder,
 /// so the control cannot be switched on against an mflux that would reject
 /// `--pid-decode`. PiD is unmerged upstream (filipstrand/mflux#490); once it ships
-/// in a release, drop the `BinaryDetector.supportsPidDecode` guard and show the
+/// in a release, drop the `MfluxProbes.supportsPidDecode` guard and show the
 /// toggle unconditionally.
 struct PidDecodeToggleView: View {
     private static let infoText = """
@@ -58,7 +58,7 @@ struct PidDecodeToggleView: View {
     @FocusState private var sigmaFocused: Bool
 
     private var isSupported: Bool {
-        BinaryDetector.supportsPidDecode(in: settings.mfluxBinaryDir)
+        MfluxProbes.supportsPidDecode(python: try? settings.toolchain.mfluxInterpreter())
     }
 
     /// PiD decodes mflux latents; a ComfyUI-routed family never produces one here.

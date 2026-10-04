@@ -1444,7 +1444,6 @@ struct ContentView: View {
     private func runMfluxInstall() async {
         do {
             let binDir = try await MfluxInstaller.install()
-            BinaryDetector.invalidateProbes()
             settings.mfluxBinaryDir = binDir
             settings.refreshAvailableModels()
             mfluxAutoInstall = .done

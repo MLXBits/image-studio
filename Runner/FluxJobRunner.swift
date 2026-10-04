@@ -17,12 +17,8 @@ enum FluxRunnerSpec: JobRunnerSpec {
     static let outputPrefix = "image"
     static let encodingLabel = "Encoding prompt"
 
-    static func binaryName(job: FluxJob) -> String {
-        job.isEditMode ? "mflux-generate-flux2-edit" : "mflux-generate-flux2"
-    }
-
-    static func binaryPath(job: FluxJob, settings: AppSettings) -> String {
-        job.isEditMode ? settings.mfluxEditBinaryPath() : settings.mfluxBinaryPath()
+    static func tool(job: FluxJob) -> PythonTool {
+        job.isEditMode ? .flux2Edit : .flux2
     }
 
     /// For quantized non-custom models without a published pre-quantized repo, a local
@@ -31,10 +27,6 @@ enum FluxRunnerSpec: JobRunnerSpec {
         guard job.quantize > 0, job.model != .custom,
               job.model.preQuantizedRepoID(quantize: job.quantize) == nil else { return nil }
         return job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveBinaryPath(settings: AppSettings) -> String {
-        BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
     }
 
     static func saveModelID(job: FluxJob) -> String {
@@ -140,11 +132,11 @@ enum FluxRunnerSpec: JobRunnerSpec {
 
     /// `--base-model` names the Flux.2 architecture mflux loads a custom checkpoint as, so
     /// a klein-9b fine-tune runs on its own model instead of whatever default the CLI picks.
-    /// Probed per install (cached; see ``BinaryDetector/supportsBaseModel(in:)``) rather than
+    /// Probed per interpreter (cached; see ``MfluxProbes/supportsBaseModel(python:)``) rather than
     /// version-gated: package metadata lies on editable installs and no release boundary marks
     /// when the option landed, so ask the parser — pre-option releases reject it with exit 2.
     static func baseModelArgs(base: FluxModelVariant, settings: AppSettings) -> [String] {
-        guard BinaryDetector.supportsBaseModel(in: settings.mfluxBinaryDir) else { return [] }
+        guard MfluxProbes.supportsBaseModel(python: try? settings.toolchain.mfluxInterpreter()) else { return [] }
         return ["--base-model", base.mfluxModelID]
     }
 

@@ -20,21 +20,13 @@ enum SeedVR2RunnerSpec: JobRunnerSpec {
     static let outputPrefix = "seedvr2"
     static let encodingLabel = "Upscaling"
 
-    static func binaryName(job _: SeedVR2Job) -> String {
-        "mflux-upscale-seedvr2"
-    }
-
-    static func binaryPath(job _: SeedVR2Job, settings: AppSettings) -> String {
-        settings.mfluxSeedVR2BinaryPath()
+    static func tool(job _: SeedVR2Job) -> PythonTool {
+        .seedVR2
     }
 
     /// SeedVR2 loads weights directly by builtin name; no one-time save pass.
     static func quantSaveDestination(job _: SeedVR2Job, settings _: AppSettings) -> URL? {
         nil
-    }
-
-    static func saveBinaryPath(settings _: AppSettings) -> String {
-        "" // unused — quantSaveDestination is always nil
     }
 
     static func saveModelID(job _: SeedVR2Job) -> String {

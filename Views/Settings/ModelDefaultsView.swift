@@ -440,16 +440,18 @@ struct ModelDefaultsView: View {
     private func runPreQuantizedDownload(model: FluxModelVariant, quantize: Int) async {
         let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
         // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
-        let hfBinary = BinaryDetector.detect("hf")
-        guard !hfBinary.isEmpty else {
-            cachePhase = .failed("Hugging Face CLI (hf) not found. Install it (e.g. brew install huggingface-cli).")
+        let hf: ToolCommand
+        do {
+            hf = try settings.toolchain.command(.hf)
+        } catch {
+            cachePhase = .failed(error.localizedDescription)
             return
         }
         cacheLog = "▸ Downloading \(repo) into the Hugging Face cache…\n"
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: hfBinary)
-        process.arguments = ["download", repo]
+        process.executableURL = hf.executableURL
+        process.arguments = hf.arguments + ["download", repo]
         process.environment = settings.buildEnvironment()
 
         guard await runStreamingToCacheLog(process) else { return }
@@ -503,12 +505,11 @@ struct ModelDefaultsView: View {
     }
 
     private func runMfluxSave(model: FluxModelVariant, quantize: Int) async {
-        // Ideogram 4 support is only in the uv-installed mflux; skip the configured dev dir.
-        let saveBinary = model.isIdeogram4
-            ? BinaryDetector.detect("mflux-save")
-            : BinaryDetector.mfluxSave(in: settings.mfluxBinaryDir)
-        guard !saveBinary.isEmpty, FileManager.default.fileExists(atPath: saveBinary) else {
-            cachePhase = .failed("mflux-save not found. Check Settings → Advanced.")
+        let save: ToolCommand
+        do {
+            save = try settings.toolchain.command(.save)
+        } catch {
+            cachePhase = .failed(error.localizedDescription)
             return
         }
         let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
@@ -534,8 +535,8 @@ struct ModelDefaultsView: View {
         }
 
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: saveBinary)
-        process.arguments = args
+        process.executableURL = save.executableURL
+        process.arguments = save.arguments + args
         process.environment = settings.buildEnvironment()
 
         guard await runStreamingToCacheLog(process) else { return }

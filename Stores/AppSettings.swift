@@ -200,9 +200,8 @@ class AppSettings {
     /// How Python tools run. Rebuilt by ``refreshToolchain()``.
     private(set) var toolchain = Toolchain(resourcesURL: nil, customPython: "")
 
-    /// Models the mflux install at ``mfluxBinaryDir`` ships a generation CLI for.
-    /// Cached rather than probed per view update — recomputed when the binary
-    /// directory changes and by ``refreshAvailableModels()`` after an install.
+    /// Models the current toolchain ships a generation tool for. Cached rather
+    /// than probed per view update; recomputed by ``refreshToolchain()``.
     private(set) var availableModels: [FluxModelVariant] = []
 
     /// The active profile's library folder. Read-only here: the profile registry
@@ -721,19 +720,17 @@ class AppSettings {
         refreshAvailableModels()
     }
 
-    /// Re-probes which families the current mflux install can run. Call after an
-    /// install or update; the ``mfluxBinaryDir`` setter does it automatically.
+    /// Re-checks which families the current toolchain can run.
     func refreshAvailableModels() {
-        availableModels = FluxModelVariant.customTargets(binaryDir: mfluxBinaryDir)
+        availableModels = FluxModelVariant.customTargets(toolchain: toolchain)
     }
 
-    /// Whether this mflux install ships `model`'s generation CLI. `custom` has no
-    /// CLI of its own — its target is what gets checked.
+    /// Whether the toolchain can run `model`'s generation tool. `custom` has no
+    /// tool of its own — its target is what gets checked.
     ///
-    /// An empty ``availableModels`` means nothing was detected at all (mflux not
-    /// installed yet, or installed somewhere unexpected). Gating on that would
-    /// leave the picker with nothing selectable, so nothing is gated until at
-    /// least one CLI is found.
+    /// An empty ``availableModels`` means nothing was detected at all (no runtime
+    /// and no usable Custom Python). Gating on that would leave the picker with
+    /// nothing selectable, so nothing is gated until at least one tool is found.
     func supportsModel(_ model: FluxModelVariant) -> Bool {
         model == .custom || availableModels.isEmpty || availableModels.contains(model)
     }
@@ -943,34 +940,6 @@ class AppSettings {
 
     func mfluxBinaryPath() -> String {
         BinaryDetector.mfluxGenerateFlux2(in: mfluxBinaryDir)
-    }
-
-    func mfluxEditBinaryPath() -> String {
-        BinaryDetector.mfluxGenerateFlux2Edit(in: mfluxBinaryDir)
-    }
-
-    func mfluxIdeogram4BinaryPath() -> String {
-        BinaryDetector.mfluxGenerateIdeogram4(in: mfluxBinaryDir)
-    }
-
-    func mfluxKrea2BinaryPath() -> String {
-        BinaryDetector.mfluxGenerateKrea2(in: mfluxBinaryDir)
-    }
-
-    /// Resolves the Z-Image CLI for the given variant: the Turbo shim for the
-    /// distilled variant, the base shim otherwise.
-    func mfluxZImageBinaryPath(turbo: Bool) -> String {
-        turbo
-            ? BinaryDetector.mfluxGenerateZImageTurbo(in: mfluxBinaryDir)
-            : BinaryDetector.mfluxGenerateZImage(in: mfluxBinaryDir)
-    }
-
-    func mfluxSeedVR2BinaryPath() -> String {
-        BinaryDetector.mfluxUpscaleSeedVR2(in: mfluxBinaryDir)
-    }
-
-    func mlxLmBinaryPath() -> String {
-        BinaryDetector.mlxLmGenerate(in: mfluxBinaryDir)
     }
 
     /// Returns true when Ideogram 4 model weights are already cached locally.
