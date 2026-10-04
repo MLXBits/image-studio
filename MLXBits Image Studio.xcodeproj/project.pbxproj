@@ -156,6 +156,7 @@
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */; };
 		C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BEC8C22A135C0CC75CE08 /* LibraryFolderPanel.swift */; };
+		C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */; };
 		C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
 		CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9474B6243420062519AB6BA /* ParamsPanelState.swift */; };
@@ -236,6 +237,7 @@
 		16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Subviews.swift"; sourceTree = "<group>"; };
 		1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBatchQueueTests.swift; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsToolchainTests.swift; sourceTree = "<group>"; };
 		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
 		20929E59AB251C273A8C9999 /* OpenAIChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChat.swift; sourceTree = "<group>"; };
@@ -508,6 +510,7 @@
 			isa = PBXGroup;
 			children = (
 				54319FFDDA384384985FA769 /* AppSettingsProfileTests.swift */,
+				17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */,
 				49C3919786032AB418561420 /* AspectDirectiveTests.swift */,
 				41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */,
 				5C6E918DA5C6AF5C7590F13E /* ColorHexTests.swift */,
@@ -1090,6 +1093,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				551DEB915D184838A51E5A50 /* AppSettingsProfileTests.swift in Sources */,
+				C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */,
 				633485FDBFCC7C674C29B049 /* AspectDirectiveTests.swift in Sources */,
 				2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */,
 				635C82517A4D9D8A01AC05AC /* ColorHexTests.swift in Sources */,
