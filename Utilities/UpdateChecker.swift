@@ -16,8 +16,7 @@ final class UpdateChecker {
     /// leading "v" and any non-numeric suffix on each component (e.g. "1.2.0-rc").
     /// Returns true when `lhs` is a strictly newer release than `rhs`.
     ///
-    /// Nonisolated: a pure comparison, also used off the main actor by
-    /// ``MfluxInstaller/satisfiesMinimum(_:)`` to gate the mflux version floor.
+    /// Nonisolated: a pure comparison, callable from any actor.
     nonisolated static func compare(_ lhs: String, isNewerThan rhs: String) -> Bool {
         let a = components(lhs)
         let b = components(rhs)

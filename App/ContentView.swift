@@ -5,18 +5,6 @@ import SwiftUI
 // MARK: - ContentView
 
 struct ContentView: View {
-    private enum MfluxAutoInstall {
-        case idle, installing, upgrading, done, failed(String), outdated(String)
-
-        /// Distinguishes the two spinner cases, which share a banner.
-        var isUpgrade: Bool {
-            if case .upgrading = self {
-                return true
-            }
-            return false
-        }
-    }
-
     /// Identifies a pending box-overlay editor session (image + its generation dims).
     private struct BoxOverlayContext: Identifiable {
         let id = UUID()
@@ -88,7 +76,6 @@ struct ContentView: View {
 
     @State private var showingParams: Bool = true
     @State private var pendingSelectPath: String?
-    @State private var mfluxAutoInstall: MfluxAutoInstall = .idle
 
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
     @State private var galleryWidth: Double = 260
@@ -343,7 +330,6 @@ struct ContentView: View {
             .onChange(of: settings.openAIBaseURL) { _, _ in backendModels.restart() }
             .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
             .task(id: isAnyStoreRunning) { backendModels.localRunInFlight = isAnyStoreRunning }
-            .task { await checkAndAutoInstallMflux() }
             .onChange(of: loraLibrary.allDefaultLoras) { _, updated in
                 let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
                     e.notes.isEmpty ? nil : (e.path, e.notes)
@@ -495,7 +481,7 @@ struct ContentView: View {
             .safeAreaInset(edge: .top, spacing: 0) {
                 VStack(spacing: 0) {
                     topControlBar
-                    mfluxInstallBanner
+                    ToolchainBanner()
                     MissingLibraryBanner()
                 }
             }
@@ -1056,83 +1042,6 @@ struct ContentView: View {
         return (idx > 0, idx < items.count - 1)
     }
 
-    @ViewBuilder
-    private var mfluxInstallBanner: some View {
-        switch mfluxAutoInstall {
-        case .idle:
-            EmptyView()
-        case .installing, .upgrading:
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                Text(mfluxAutoInstall.isUpgrade ? "Updating mflux…" : "Installing mflux…")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.bar)
-            .overlay(alignment: .bottom) { Divider() }
-        case let .outdated(version):
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.caption)
-                Text("mflux \(version) is older than \(MfluxInstaller.minimumVersion) — some models are unavailable")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .help(
-                        "The mflux directory set in Settings → Advanced is not managed by this app,"
-                            + " so it was left untouched. Update it yourself to enable every model."
-                    )
-                Spacer()
-                Button("Dismiss") { mfluxAutoInstall = .idle }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
-            .background(.bar)
-            .overlay(alignment: .bottom) { Divider() }
-        case .done:
-            HStack(spacing: 8) {
-                Image(systemName: "checkmark.circle.fill")
-                    .foregroundStyle(.green)
-                    .font(.caption)
-                Text("mflux ready")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.bar)
-            .overlay(alignment: .bottom) { Divider() }
-        case let .failed(msg):
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.orange)
-                    .font(.caption)
-                Text("mflux install failed — open Settings → Advanced to retry")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-                    .lineLimit(1)
-                    .help(msg)
-                Spacer()
-                Button("Retry") { Task { await checkAndAutoInstallMflux() } }
-                    .buttonStyle(.bordered)
-                    .controlSize(.mini)
-            }
-            .padding(.horizontal, 16)
-            .padding(.vertical, 6)
-            .frame(maxWidth: .infinity)
-            .background(.bar)
-            .overlay(alignment: .bottom) { Divider() }
-        }
-    }
-
     private func useInImg2Img(_ path: String) {
         if params.isEditMode {
             if !params.editImagePaths.contains(path) {
@@ -1407,51 +1316,6 @@ struct ContentView: View {
         guard let id = comparePair?.candidateId,
               let item = gallery.items.first(where: { $0.id == id }) else { return }
         gallery.setRating(rating, for: item)
-    }
-
-    private func checkAndAutoInstallMflux() async {
-        guard BinaryDetector.mfluxGenerateFlux2(in: settings.mfluxBinaryDir).isEmpty else {
-            await enforceMfluxVersionFloor()
-            return
-        }
-        mfluxAutoInstall = .installing
-        await runMfluxInstall()
-    }
-
-    /// An mflux below ``MfluxInstaller/minimumVersion`` is missing model CLIs the app
-    /// advertises — Krea 2 landed in 0.18.1 — and those families just vanish from the
-    /// picker with nothing said. The install path alone cannot fix that: it only runs
-    /// when mflux is absent entirely, so anyone already on an older one would never be
-    /// lifted. Check the version too, and upgrade our own uv-managed install in place.
-    private func enforceMfluxVersionFloor() async {
-        let dir = settings.mfluxBinaryDir
-        guard let version = await Task.detached(priority: .utility, operation: {
-            BinaryDetector.mfluxVersion(in: dir)
-        }).value, !MfluxInstaller.satisfiesMinimum(version) else { return }
-
-        // A dev checkout or hand-picked directory is the user's to manage; say it is
-        // too old rather than reinstalling over it.
-        guard await Task.detached(priority: .utility, operation: {
-            MfluxInstaller.isUVManaged(binaryDir: dir)
-        }).value else {
-            mfluxAutoInstall = .outdated(version)
-            return
-        }
-        mfluxAutoInstall = .upgrading
-        await runMfluxInstall()
-    }
-
-    private func runMfluxInstall() async {
-        do {
-            let binDir = try await MfluxInstaller.install()
-            settings.mfluxBinaryDir = binDir
-            settings.refreshAvailableModels()
-            mfluxAutoInstall = .done
-            try? await Task.sleep(for: .seconds(3))
-            mfluxAutoInstall = .idle
-        } catch {
-            mfluxAutoInstall = .failed(error.localizedDescription)
-        }
     }
 
     // MARK: - Generate

@@ -5,8 +5,6 @@ extension Notification.Name {
 }
 
 struct SettingsView: View {
-    private enum SetupPhase { case idle, installing, failed(String) }
-
     enum SettingsTab: String, CaseIterable, Identifiable {
         case generation = "Generation"
         case models = "Models"
@@ -31,7 +29,6 @@ struct SettingsView: View {
     @Environment(MfluxDriverController.self) private var driverController
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
-    @State private var mfluxSetupPhase: SetupPhase = .idle
     @State private var loraFamily: ModelFamily = .flux
     @State private var loraTabMode: LoraTabMode = .library
     @State private var hfTokenDraft: String = ""
@@ -84,14 +81,7 @@ struct SettingsView: View {
 
     private var generationTab: some View {
         @Bindable var s = settings
-        let mfluxMissing = BinaryDetector.mfluxGenerateFlux2(in: s.mfluxBinaryDir).isEmpty
         return VStack(spacing: 0) {
-            if mfluxMissing {
-                mfluxSetupBanner
-                    .padding(.horizontal, 16)
-                    .padding(.top, 12)
-                    .padding(.bottom, 4)
-            }
             Form {
                 Section {
                     Picker("Default model", selection: $s.defaultModel) {
@@ -212,44 +202,6 @@ struct SettingsView: View {
         }
     }
 
-    private var mfluxSetupBanner: some View {
-        HStack(spacing: 12) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundStyle(.orange)
-                .font(.title3)
-            VStack(alignment: .leading, spacing: 2) {
-                Text("mflux not found")
-                    .font(.callout.weight(.medium))
-                Text("mflux is required to run generations.")
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            switch mfluxSetupPhase {
-            case .idle:
-                Button("Install Automatically") { Task { await installMflux() } }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-
-            case .installing:
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    Text("Installing…").font(.caption).foregroundStyle(.secondary)
-                }
-
-            case let .failed(msg):
-                HStack(spacing: 8) {
-                    Text(msg).font(.caption).foregroundStyle(.red).lineLimit(2)
-                    Button("Retry") { Task { await installMflux() } }
-                        .buttonStyle(.bordered).controlSize(.small)
-                }
-            }
-        }
-        .padding(12)
-        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 10))
-        .overlay(RoundedRectangle(cornerRadius: 10).stroke(Color.orange.opacity(0.25), lineWidth: 1))
-    }
-
     // MARK: - LoRAs
 
     private var lorasTab: some View {
@@ -284,22 +236,7 @@ struct SettingsView: View {
     private var advancedTab: some View {
         @Bindable var s = settings
         return Form {
-            Section("mflux Binary") {
-                HStack {
-                    TextField("Binary directory", text: $s.mfluxBinaryDir)
-                        .textFieldStyle(.roundedBorder)
-                    Button("Browse…") { browseBinaryDir() }
-                }
-                HStack {
-                    let path = BinaryDetector.mfluxGenerateFlux2(in: s.mfluxBinaryDir)
-                    let exists = !path.isEmpty && FileManager.default.fileExists(atPath: path)
-                    Image(systemName: exists ? "checkmark.circle.fill" : "xmark.circle.fill")
-                        .foregroundStyle(exists ? .green : .red)
-                    Text(path.isEmpty ? "Not found" : path)
-                        .font(.caption).foregroundStyle(.secondary)
-                        .lineLimit(1).truncationMode(.middle)
-                }
-            }
+            PythonSettingsSection()
 
             Section("HuggingFace") {
                 VStack(alignment: .leading, spacing: 4) {
@@ -476,19 +413,6 @@ struct SettingsView: View {
             + " \(rapid.width)×\(rapid.height) rapid."
     }
 
-    @MainActor
-    private func installMflux() async {
-        mfluxSetupPhase = .installing
-        do {
-            let binDir = try await MfluxInstaller.install()
-            settings.mfluxBinaryDir = binDir
-            settings.refreshAvailableModels()
-            mfluxSetupPhase = .idle
-        } catch {
-            mfluxSetupPhase = .failed(error.localizedDescription)
-        }
-    }
-
     /// Points the active profile at another folder, after the same checks as
     /// New Profile (not the same as, inside, or containing another library).
     private func changeLibraryFolder() {
@@ -498,16 +422,6 @@ struct SettingsView: View {
             near: settings.outputDir
         ) else { return }
         libraryError = profiles.changeActiveLibrary(to: path)?.message
-    }
-
-    private func browseBinaryDir() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.title = "Choose mflux Binary Directory"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.mfluxBinaryDir = url.path
-        }
     }
 
     private func browseHFHome() {

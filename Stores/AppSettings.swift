@@ -56,6 +56,8 @@ class AppSettings {
     // MARK: - Stored
 
     private struct Stored: Codable {
+        /// Read-only legacy key: migrated into `customPython` at launch
+        /// (``ToolchainMigration``) and never written again.
         var mfluxBinaryDir: String?
         /// DMG only: the Custom Python override (spec §3). Absent until the
         /// first launch of 0.16.0 migrates `mfluxBinaryDir` into it.
@@ -123,7 +125,7 @@ class AppSettings {
 
         init() {}
         init(
-            mfluxBinaryDir: String, defaultModel: FluxModelVariant,
+            defaultModel: FluxModelVariant,
             defaultWidth: Int, defaultHeight: Int,
             defaultLoras: [LoraEntry],
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
@@ -136,7 +138,6 @@ class AppSettings {
             lastIdeogramPreset: Ideogram4Preset?, lastIdeogramWidth: Int?,
             lastIdeogramHeight: Int?, lastIdeogramQuantize: Int?
         ) {
-            self.mfluxBinaryDir = mfluxBinaryDir
             self.defaultModel = defaultModel
             self.defaultWidth = defaultWidth
             self.defaultHeight = defaultHeight
@@ -178,14 +179,6 @@ class AppSettings {
     /// checkout carries over; a uv-managed install (or none) means the bundled runtime.
     private static func customPython(migrating s: Stored) -> String {
         s.customPython ?? ToolchainMigration.customPython(fromLegacyBinaryDir: s.mfluxBinaryDir ?? "") ?? ""
-    }
-
-    /// Global
-    var mfluxBinaryDir: String {
-        didSet {
-            refreshAvailableModels()
-            save()
-        }
     }
 
     /// Global, DMG only: an interpreter that runs mflux and the warm driver in
@@ -610,7 +603,6 @@ class AppSettings {
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
 
-        mfluxBinaryDir = s.mfluxBinaryDir ?? BinaryDetector.detectBinaryDir(for: "mflux-generate-flux2")
         customPythonPath = Self.customPython(migrating: s)
         // Per-profile fields start empty; ProfileStore activates a profile right
         // after init, which loads them from that profile's profile.json.
@@ -863,7 +855,6 @@ class AppSettings {
 
     private func saveNow() {
         var s = Stored(
-            mfluxBinaryDir: mfluxBinaryDir,
             defaultModel: defaultModel,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
             defaultLoras: legacyDefaultLoras,
@@ -936,10 +927,6 @@ class AppSettings {
         let root = URL(fileURLWithPath: outputDir).resolvingSymlinksInPath()
         let volume = try? root.resourceValues(forKeys: [.volumeURLKey]).volume
         return ProfileRules.isOnExpectedVolume(path: root.path, volumePath: volume?.path ?? "/")
-    }
-
-    func mfluxBinaryPath() -> String {
-        BinaryDetector.mfluxGenerateFlux2(in: mfluxBinaryDir)
     }
 
     /// Returns true when Ideogram 4 model weights are already cached locally.
