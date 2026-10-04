@@ -74,7 +74,7 @@ A throwaway app signed with the Apple Development identity and given sandbox ent
 - **"MLXBits Image Studio"** is unchanged: Run, Test and Archive work as today.
 - **"MLXBits Image Studio (App Store)"** is new. Run uses `Debug-AppStore`, Archive uses `Release-AppStore`, and it has no test action. Choosing the scheme is how you choose the flavor.
 
-**Runtime build step.** It runs in every configuration and is controlled by a `BUNDLE_PYTHON_RUNTIME` setting, default `YES`. CI's test job and the App Store compile-only job set it to `NO` to stay fast. An app without a runtime shows a clear "Python runtime missing from this build" state instead of failing jobs obscurely.
+**Runtime build step.** It runs in every configuration and is controlled by a `BUNDLE_PYTHON_RUNTIME` setting, default `YES`. CI's test job and the App Store compile-only job set it to `NO` to stay fast. An app without a runtime shows a clear "Python runtime missing from this build" state instead of failing jobs obscurely. Both flavors are arm64 only.
 
 **CI** (`ci.yml`):
 - **Existing jobs unchanged:** format/lint, duplication, tests.
@@ -85,9 +85,7 @@ A throwaway app signed with the Apple Development identity and given sandbox ent
 - **DMG build number:** the commit count, as `release.yml` already does.
 - **App Store build number:** `<commit count>.<workflow run number>`. App Store Connect requires every upload's build number to be higher than all earlier uploads, and this stays unique when the same tag is re-uploaded.
 
-**Open item: app name collision.** Both flavors install as `MLXBits Image Studio.app`.
-- **Unknown:** whether the App Store installer refuses, renames or replaces an existing DMG copy.
-- **Plan:** check this on the first TestFlight install. Rename one flavor's bundle file only if needed.
+**App name collision, resolved by the first TestFlight install (2026-10-04).** The App Store installer renames rather than refusing or replacing: next to a DMG copy, the TestFlight build installed as `MLXBits Image Studio 2.app`, and the DMG copy kept its name, so dragging a new DMG over it still replaces only the DMG copy. No rename needed.
 
 ## 2. Python runtime
 
@@ -135,6 +133,7 @@ Signing is cached per identity with a stamp file, so routine Debug builds don't 
 - **`release.yml`** signs with Developer ID before notarizing.
 - **Both re-run the smoke test** against the *signed* runtime, so hardened-runtime or library-validation failures appear before notarization or upload.
 - **The post-signing smoke test runs through the app.** The app's executable takes a hidden `--runtime-self-test` flag (added with the toolchain in milestone 4). It runs the tool and import checks as children of the real app process, prints the results, and exits non-zero on failure. The reason: in the App Store flavor, `python3.14` carries the sandbox-inherit entitlements, and a sandbox-inherit binary launched outside a sandboxed parent crashes. The DMG flavor uses the same flag for consistency.
+- **`appstore.yml` can't run `--runtime-self-test`:** an app signed for App Store distribution won't launch outside the store. It keeps its static checks (signature, python entitlements, arm64); the sandboxed runtime is exercised by the `Debug-AppStore` self-test and TestFlight.
 
 ## 3. Toolchain
 
@@ -153,13 +152,13 @@ Signing is cached per identity with a stamp file, so routine Debug builds don't 
   - `HF_HOME`: the models folder in the App Store build, or the existing setting in the DMG
   - plus whatever `AppSettings.buildEnvironment()` sets today (HF token, cache limits)
 
-**`run_tool.py`** looks up *X* with `importlib.metadata.entry_points(group="console_scripts", name=X)`, sets `sys.argv`, and calls it. Tool names stay identical to today's command names, so runner code and the one-shot fallback path don't change shape.
+**`run_tool.py`** looks up *X* with `importlib.metadata.entry_points(group="console_scripts", name=X)`, sets `sys.argv`, and calls it. Tool names stay identical to today's command names, so runner code and the one-shot fallback path don't change shape. Tool names are the `PythonTool` enum, kept equal to `Runtime/tools.txt` by a test.
 
 **Interpreter:**
 - **Default:** the bundled `python3.14`.
 - **DMG only, "Custom Python (advanced)" setting:** any interpreter with mflux installed, such as `~/Git/mflux/.venv/bin/python`. It applies to mflux tools and the mflux driver.
 - **Scenario Generator and caption tools** always use the bundled interpreter.
-- **Capability probes** (`supports`, `supportsBaseModel`, version) run through the selected interpreter. Results are cached per interpreter path and mflux version.
+- **Capability probes** (`supports`, `supportsBaseModel`, version) run through the selected interpreter. Results are cached per interpreter path for the launch; choosing another Custom Python asks again.
 
 **One-time migration** (DMG, first launch of the new version), applied to the old `mfluxBinaryDir`:
 - **A uv-managed mflux** (the venv Python lives under uv's tools folder) is dropped in favor of the bundled runtime.
@@ -357,7 +356,7 @@ It opens with:
    - a generation on the bundled runtime
    - the Custom Python override pointing at `~/Git/mflux/.venv`, including the automatic migration
    - Ko-fi visible, GitHub hidden
-10. **Side by side:** install the TestFlight build next to the DMG (name-collision check, §1).
+10. **Side by side:** install the TestFlight build next to the DMG (name-collision check, §1). Done 2026-10-04: installs side by side (see §1).
 
 **Data safety:**
 - App Store-scheme runs use their own container and can't touch real data.

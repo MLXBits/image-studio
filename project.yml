@@ -131,18 +131,17 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio.entitlements
-        # Read by scripts/embed-python-runtime.sh. The DMG configurations switch
-        # BUNDLE_PYTHON_RUNTIME on when the app starts using the runtime.
-        BUNDLE_PYTHON_RUNTIME: NO
+        # Read by scripts/embed-python-runtime.sh. Every configuration bundles
+        # the runtime; CI's test and compile-only jobs pass NO to stay fast.
+        BUNDLE_PYTHON_RUNTIME: YES
         PYTHON_RUNTIME_SANDBOXED: NO
+        # The bundled runtime is arm64 only, and MLX needs Apple silicon.
+        ARCHS: arm64
       configs:
         Debug-AppStore:
           PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
-          # The bundled Python runtime is arm64 only; so is the App Store build.
-          ARCHS: arm64
           CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
-          BUNDLE_PYTHON_RUNTIME: YES
           PYTHON_RUNTIME_SANDBOXED: YES
           # A stable identity: ad-hoc signatures change every build, which
           # invalidates security-scoped bookmarks. Team from Config/Local.xcconfig.
@@ -150,11 +149,8 @@ targets:
           CODE_SIGN_IDENTITY: Apple Development
         Release-AppStore:
           PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
-          # The bundled Python runtime is arm64 only; so is the App Store build.
-          ARCHS: arm64
           CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
-          BUNDLE_PYTHON_RUNTIME: YES
           PYTHON_RUNTIME_SANDBOXED: YES
           CODE_SIGN_STYLE: Manual
           CODE_SIGN_IDENTITY: Apple Distribution

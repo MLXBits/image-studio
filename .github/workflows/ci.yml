@@ -212,7 +212,7 @@ jobs:
             --quiet \
             --format github-actions \
             --relative-results \
-            -- CODE_SIGNING_ALLOWED=NO
+            -- CODE_SIGNING_ALLOWED=NO BUNDLE_PYTHON_RUNTIME=NO
           then
             echo "Periphery scan completed — findings, if any, are in the annotations." >> "$GITHUB_STEP_SUMMARY"
           else

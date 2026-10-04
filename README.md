@@ -79,8 +79,8 @@ a compositional breakdown of regional elements (each with an optional bounding
 box and color palette).
 
 - **Caption editor** — author the structured caption in a sectioned form, or let
-  Gemma turn a plain description into a full caption (`mlx_lm` runs locally via
-  `uv`; no API key).
+  Gemma turn a plain description into a full caption (`mlx_lm` runs locally on
+  the bundled Python; no API key).
 - **Bounding-box layout editor** — drag, resize, and color regional elements on a
   canvas overlaid on the output aspect ratio.
 - **Color palettes** — per-element and per-style palettes with editable hex entry,
@@ -89,11 +89,11 @@ box and color palette).
   directly; FP8 quantizes once via `mflux-save`.
 
 > **mflux support:** Ideogram 4 generation drives the `mflux-generate-ideogram4`
-> CLI, present from mflux 0.18.0 (0.18.1 adds stepwise progress). Any model whose
-> CLI is missing from your mflux install is disabled in the model picker with a
-> note saying so, rather than failing when you hit Generate — which family CLIs
-> exist varies by mflux version. The model is gated on HuggingFace — accept the
-> terms on the model page before first download.
+> CLI, present from mflux 0.18.0 (0.18.1 adds stepwise progress). The bundled
+> mflux carries every family. With a Custom Python, any model whose CLI is missing
+> from that install is disabled in the model picker with a note saying so, rather
+> than failing when you hit Generate. The model is gated on HuggingFace — accept
+> the terms on the model page before first download.
 
 ---
 
@@ -104,7 +104,9 @@ box and color palette).
 | macOS         | Tahoe 26.0+ |
 | Apple Silicon | M1 or later |
 
-mflux and uv are installed automatically on first launch if not already present. A progress banner appears at the top of the window while the install runs — no manual setup required.
+Everything the app runs (Python, mflux, and the local Gemma tools) ships inside the app (about 1.6 GB installed), so there is nothing to install on first launch and nothing is downloaded except model weights.
+
+**Upgrading from 0.15 or earlier:** the app no longer uses the mflux that earlier versions installed with uv. To reclaim its space, run `uv tool uninstall mflux`. If you pointed the app at your own mflux checkout, 0.16.0 keeps using it as **Settings → Advanced → Python → Custom Python**.
 
 ---
 
@@ -123,7 +125,7 @@ Like the app? Support me by [buying me a coffee](https://ko-fi.com/mlxbits). :) 
 Requirements: Xcode 26+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [SwiftLint](https://github.com/realm/SwiftLint), [SwiftFormat](https://github.com/nicklockwood/SwiftFormat).
 
 ```bash
-brew install xcodegen swiftlint swiftformat
+brew install xcodegen swiftlint swiftformat uv
 
 git clone https://github.com/MLXBits/image-studio
 cd mlxbits-image-studio
@@ -139,10 +141,17 @@ open "MLXBits Image Studio.xcodeproj"
 
 ### Python runtime and the App Store flavor
 
-The App Store build bundles its own Python with mflux and every dependency,
-pinned in `Runtime/`. `scripts/build-python-runtime.sh` builds it into
+Both flavors bundle their own Python with mflux and every dependency, pinned
+in `Runtime/`. `scripts/build-python-runtime.sh` builds it into
 `build/python-runtime/` (it needs `uv`: `brew install uv`), and the
-"Embed Python runtime" build phase runs it automatically when needed.
+"Embed Python runtime" build phase runs it automatically when needed. The first
+build takes several minutes; later builds reuse it.
+
+**Developing against an mflux checkout:** set **Settings → Advanced → Python →
+Custom Python** (DMG build only) to the checkout's `.venv/bin/python`. mflux and
+the warm driver then run on it; everything else stays on the bundled runtime.
+To check a built app's runtime:
+`"<app>/Contents/MacOS/MLXBits Image Studio" --runtime-self-test`.
 
 To build the App Store flavor locally, copy `Config/Local.xcconfig.example` to
 `Config/Local.xcconfig` and set your Team ID, then build the

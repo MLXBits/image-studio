@@ -54,7 +54,7 @@ App/           Entry point + ContentView root layout
 Models/        Job models, model catalog, LoRA entries, prompt history/templates
 Runner/        Generic JobRunner<Spec> engine, per-family specs, warm-driver controller
 Stores/        @Observable app state (settings, per-family job stores, gallery, timings)
-Utilities/     Keychain, metadata sidecars, progress parsing, installers, caption/scenario LLMs
+Utilities/     Keychain, metadata sidecars, progress parsing, the Python toolchain, caption/scenario LLMs
 Views/         SwiftUI, one subdirectory per surface (see below)
 Tests/         Swift Testing unit tests — pure logic only, no UI tests
 Resources/     Info.plist, entitlements, and the Python drivers shipped in the bundle
@@ -125,6 +125,11 @@ When adding a parameter, prefer extending the family's `buildArgs` over touching
 `JobRunner` itself. If a change needs `JobRunner` edits, it probably belongs to
 all five families.
 
+Every Python tool runs through `Utilities/Toolchain.swift`:
+`<interpreter> Resources/run_tool.py <tool> <args>`, on the bundled runtime or
+the DMG's Custom Python (mflux tools and the warm driver only). Add new tools to
+`PythonTool` and `Runtime/tools.txt` together; a test keeps them equal.
+
 ## Recipe: add a model family
 
 Adding Z-Image touched 24 files. In dependency order:
@@ -146,7 +151,8 @@ Adding Z-Image touched 24 files. In dependency order:
    `Views/PreviewPane/GalleryItemDetailView.swift`.
 10. Metadata and constraints: `Utilities/MetadataSidecar.swift`,
     `Views/Shared/ImageMetadataInfo.swift`, `Views/Shared/DimensionConstraints.swift`,
-    `Stores/GalleryStore.swift`, `Utilities/BinaryDetector.swift`.
+    `Stores/GalleryStore.swift`, `Utilities/PythonTool.swift` (a case for the
+    new CLI) plus `Runtime/tools.txt` (same name), and the catalog's `generateTool`.
 11. If the family needs a new *directory*, add it to `sources:` in `project.yml`
     and re-run `xcodegen generate`. New files inside an existing directory are
     picked up automatically — no manifest change needed.
