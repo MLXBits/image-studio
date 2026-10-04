@@ -2,7 +2,6 @@ import Foundation
 
 enum IdeogramCaptionGeneratorError: LocalizedError {
     case promptFileNotFound
-    case uvNotFound
     case subprocessFailed(Int32, String)
     /// No { } block was found in the model output at all.
     case noJSONFound(String)
@@ -13,8 +12,6 @@ enum IdeogramCaptionGeneratorError: LocalizedError {
         switch self {
         case .promptFileNotFound:
             "ideogram_caption_prompt.md not found in app bundle"
-        case .uvNotFound:
-            "uv not found. Install from https://docs.astral.sh/uv/ (or: brew install uv)."
         case let .subprocessFailed(code, output):
             // The tail, not the head — Python tracebacks put the actual
             // exception on the last lines.
@@ -117,14 +114,10 @@ final class IdeogramCaptionGenerator {
                 system: config.system, examples: examples, finalUser: finalUser
             )
             let exitCode: Int32
-            do {
-                (rawOutput, exitCode) = try await GemmaChatRunner.run(
-                    modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.3,
-                    environment: settings.buildEnvironment()
-                )
-            } catch GemmaChatRunnerError.uvNotFound {
-                throw IdeogramCaptionGeneratorError.uvNotFound
-            }
+            (rawOutput, exitCode) = try await GemmaChatRunner.run(
+                modelPath: modelPath, prompt: fullPrompt, maxTokens: 8192, temp: 0.3,
+                environment: settings.buildEnvironment(), toolchain: settings.toolchain
+            )
             lastLog = [
                 "=== PROMPT ===", fullPrompt,
                 "=== MODEL OUTPUT ===", rawOutput.isEmpty ? "(no output)" : rawOutput,

@@ -73,6 +73,7 @@
 		475A8B7C2E1AEE605A9C3580 /* GalleryCollectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */; };
 		4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 620B629F83341AF0145AA278 /* NotepadView.swift */; };
 		48494188DF57F0CB46800729 /* ZImageJobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FA542CC2211E134C4BBE819D /* ZImageJobStore.swift */; };
+		48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */; };
 		496D74D402C4B89472069404 /* LoraLibrary.swift in Sources */ = {isa = PBXBuildFile; fileRef = F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */; };
 		499C6F5744EC44732A518B5D /* OpenAIChat.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20929E59AB251C273A8C9999 /* OpenAIChat.swift */; };
 		49BF0B410A6E1BD8CC6F2566 /* ImageDropTarget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */; };
@@ -341,6 +342,7 @@
 		97CCCF9C84722B5E96AF25F4 /* ProfileEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileEditorSheet.swift; sourceTree = "<group>"; };
 		985F3C0FD2619F10E9F451D5 /* OpenAIChatClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChatClient.swift; sourceTree = "<group>"; };
 		989B03F4B6A6D224348122FD /* WildcardExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpander.swift; sourceTree = "<group>"; };
+		98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunnerRunTests.swift; sourceTree = "<group>"; };
 		9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGenerator.swift; sourceTree = "<group>"; };
 		9E13B8A515FD7C7D6D2D87A5 /* BuildFlavor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BuildFlavor.swift; sourceTree = "<group>"; };
 		9F8DBAFEF3E0B6403D90EE29 /* ZImageJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJob.swift; sourceTree = "<group>"; };
@@ -528,6 +530,7 @@
 				B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */,
 				CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */,
 				05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */,
+				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
@@ -1116,6 +1119,7 @@
 				3AF0A186931B9DD5DE124DAE /* ComfySeedVR2WorkflowTests.swift in Sources */,
 				3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
+				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,

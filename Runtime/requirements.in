@@ -3,9 +3,15 @@
 # mflux is pinned exactly: a bump is a deliberate app change (new model families,
 # changed CLI flags) and ships with an app release.
 mflux==0.21.0
-# Local Gemma for the Scenario Generator and caption tools (Utilities/GemmaChatRunner.swift).
+# Local Gemma for the Scenario Generator and caption tools.
 mlx-lm>=0.31.3
-# Pinned, not a floor: 0.6.4 regressed gemma4_unified (see GemmaChatRunner.swift).
+# Pinned, not a floor. mlx-vlm 0.6.4 regressed gemma4_unified: its
+# Gemma4UnifiedProcessor always passes video_processor= to transformers'
+# ProcessorMixin, which (with no torchvision installed) rejects it, and mlx-vlm
+# swallows that and reports a misleading "Could not import module
+# 'Gemma4UnifiedProcessor'". Bump once mlx-vlm fixes it.
 mlx-vlm==0.6.3
-# One pin both sides accept: mflux needs >=5.5; mlx-lm/mlx-vlm break on 5.13.
+# One pin both sides accept: mflux needs >=5.5. transformers 5.13 rejects
+# mlx-lm's AutoTokenizer.register("NewlineTokenizer", …) string argument, so
+# every generate dies with "'str' object has no attribute '__module__'".
 transformers>=5.5,<5.13

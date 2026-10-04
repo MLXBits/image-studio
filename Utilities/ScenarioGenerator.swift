@@ -51,7 +51,6 @@ enum ScenarioCategory: String, CaseIterable, Codable, Identifiable {
 
 enum ScenarioGeneratorError: LocalizedError {
     case promptFileNotFound
-    case uvNotFound
     case subprocessFailed(Int32, String)
     case emptyReply(String)
 
@@ -59,8 +58,6 @@ enum ScenarioGeneratorError: LocalizedError {
         switch self {
         case .promptFileNotFound:
             "scenario_prompt.md not found in app bundle"
-        case .uvNotFound:
-            "uv not found. Install from https://docs.astral.sh/uv/ (or: brew install uv)."
         case let .subprocessFailed(code, output):
             // The tail, not the head — Python tracebacks put the actual
             // exception on the last lines.
@@ -201,7 +198,7 @@ final class ScenarioGenerator {
         // answer — keep only the first turn's text.
         reply = GemmaChatRunner.firstTurn(of: reply)
         // The mlx_vlm --no-verbose one-shot has no separators, so replyRegion
-        // returns the whole merged stdout+stderr, including uv's install noise.
+        // returns the whole merged stdout+stderr, including any tool preamble.
         reply = GemmaChatRunner.stripToolPreamble(from: reply)
         return reply.isEmpty ? nil : reply
     }
@@ -345,21 +342,15 @@ final class ScenarioGenerator {
     }
 
     private func startDriver(settings: AppSettings) async -> Bool {
-        guard FileManager.default.fileExists(atPath: GemmaChatRunner.uvPath),
+        guard let python = try? settings.toolchain.bundledInterpreter(),
               let script = Bundle.main.url(forResource: "scenario_llm_driver", withExtension: "py") else {
             driverUnavailable = true
             return false
         }
         let proc = Process()
-        proc.executableURL = URL(fileURLWithPath: GemmaChatRunner.uvPath)
-        proc.arguments = [
-            "run", "--with", GemmaChatRunner.mlxLMRequirement, "--with", GemmaChatRunner.mlxVLMRequirement,
-            "--", "python", script.path,
-        ]
-        var env = settings.buildEnvironment()
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-        env["PYTHONUNBUFFERED"] = "1"
-        proc.environment = env
+        proc.executableURL = URL(fileURLWithPath: python)
+        proc.arguments = [script.path]
+        proc.environment = settings.buildEnvironment()
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
@@ -382,7 +373,7 @@ final class ScenarioGenerator {
         let ready = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
             handshake = cont
             Task { [weak self] in
-                try? await Task.sleep(for: .seconds(120)) // first uv resolve can be slow
+                try? await Task.sleep(for: .seconds(120)) // first import (mlx, transformers) can be slow
                 await MainActor.run { self?.resolveHandshake(false) }
             }
         }
@@ -455,14 +446,10 @@ final class ScenarioGenerator {
     private func generateOneShot(prompt: String, modelPath: String, settings: AppSettings) async throws -> String {
         let rawOutput: String
         let exitCode: Int32
-        do {
-            (rawOutput, exitCode) = try await GemmaChatRunner.run(
-                modelPath: modelPath, prompt: prompt, maxTokens: 8192, temp: settings.llmTemperature,
-                environment: settings.buildEnvironment()
-            )
-        } catch GemmaChatRunnerError.uvNotFound {
-            throw ScenarioGeneratorError.uvNotFound
-        }
+        (rawOutput, exitCode) = try await GemmaChatRunner.run(
+            modelPath: modelPath, prompt: prompt, maxTokens: 8192, temp: settings.llmTemperature,
+            environment: settings.buildEnvironment(), toolchain: settings.toolchain
+        )
 
         lastLog = [
             "=== PROMPT ===", prompt,

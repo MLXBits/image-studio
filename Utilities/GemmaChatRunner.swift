@@ -1,13 +1,10 @@
 import Foundation
 
 enum GemmaChatRunnerError: LocalizedError {
-    case uvNotFound
     case modelNotFound(String)
 
     var errorDescription: String? {
         switch self {
-        case .uvNotFound:
-            "uv not found. Install from https://docs.astral.sh/uv/ (or: brew install uv)."
         case let .modelNotFound(path):
             "Gemma model not found at \(path). Check the model path in Settings → Advanced "
                 + "(it powers captions and the Scenario Generator)."
@@ -15,40 +12,13 @@ enum GemmaChatRunnerError: LocalizedError {
     }
 }
 
-/// Shared plumbing for local Gemma generation via `uv run mlx_lm.generate`,
+/// Shared plumbing for local Gemma generation on the bundled Python (`mlx_lm.generate` through run_tool.py),
 /// used by ``IdeogramCaptionGenerator`` (structured captions) and
-/// ``ScenarioGenerator`` (prompt writing): the uv subprocess runner with
+/// ``ScenarioGenerator`` (prompt writing): the subprocess runner with
 /// task-cancellation → terminate, the `## Heading` prompt-config parser, the
 /// mlx_lm output reply-region extractor, and the Gemma chat-template
 /// assembler.
 enum GemmaChatRunner {
-    /// Empty when uv is installed nowhere; callers guard with `fileExists`.
-    nonisolated static var uvPath: String {
-        UvInstaller.resolvedPath
-    }
-
-    /// uv `--with` requirements. Bumping a floor forces uv past its cached
-    /// resolution, so raise these when a model needs a newer architecture.
-    static let mlxLMRequirement = "mlx-lm>=0.31.3"
-    /// Pinned to 0.6.3 (not a floor). mlx-vlm 0.6.4 regressed gemma4_unified:
-    /// its Gemma4UnifiedProcessor unconditionally passes `video_processor=` to
-    /// transformers' ProcessorMixin, which — with no torchvision in the MLX env —
-    /// drops "video_processor" from its accepted attributes and raises
-    /// `TypeError: Unexpected keyword argument video_processor`. mlx-vlm's
-    /// AutoProcessor patch swallows that under a bare `except: pass` and falls
-    /// through to the stock loader, surfacing the misleading
-    /// `Could not import module 'Gemma4UnifiedProcessor'`. 0.6.3 loads the model
-    /// cleanly under the transformers<5.13 pin below. Bump once mlx-vlm fixes it.
-    static let mlxVLMRequirement = "mlx-vlm==0.6.3"
-    /// Upper-bound transformers below 5.13. mlx-lm 0.31.3 registers its
-    /// NewlineTokenizer with `AutoTokenizer.register("NewlineTokenizer", …)`
-    /// — passing a string — which transformers 5.13 rejects (it now requires a
-    /// config *class*), so every generate dies with an opaque
-    /// `'str' object has no attribute '__module__'` traceback. mlx-lm requires
-    /// transformers>=5.0.0, so the working window is 5.0–5.12. Remove this pin
-    /// once mlx-lm ships a build compatible with transformers 5.13+.
-    static let transformersRequirement = "transformers<5.13"
-
     /// Extracts one `## Heading` section's body from an editable prompt
     /// config markdown file (content up to the next `## ` or EOF, trimmed;
     /// empty string when the heading is absent).
@@ -109,7 +79,8 @@ enum GemmaChatRunner {
     /// on the `mlx_vlm.generate --no-verbose` path there are no `==========`
     /// separators for ``replyRegion`` to bound the reply, so they land at the
     /// top of the extracted prompt. Only leading lines are removed, so a
-    /// prompt that legitimately mentions such words later is untouched.
+    /// prompt that legitimately mentions such words later is untouched. Kept
+    /// for remote and older outputs; the bundled runtime prints none.
     nonisolated static func stripToolPreamble(from text: String) -> String {
         let pattern =
             "^(Resolved|Prepared|Installed|Downloaded|Uninstalled|Audited|Built|Building|Updated|Bytecode compiled)\\b.*$"
@@ -147,27 +118,23 @@ enum GemmaChatRunner {
         return prompt
     }
 
-    /// Runs `mlx_lm.generate` under uv and returns the combined stdout+stderr
-    /// plus the exit code (callers log the output before acting on a nonzero
-    /// exit, so failures still surface the model's raw text). Cancelling the
-    /// enclosing Task terminates the subprocess.
+    /// Runs `mlx_lm.generate` on the bundled Python and returns the combined
+    /// stdout+stderr plus the exit code (callers log the output before acting on
+    /// a nonzero exit, so failures still surface the model's raw text).
+    /// Cancelling the enclosing Task terminates the subprocess.
     ///
     /// `environment` should come from `AppSettings.buildEnvironment()` so the
     /// user's HF_HOME / HF_TOKEN / HF_HUB_OFFLINE settings apply to mlx_lm's
     /// model resolution exactly as they do to mflux.
-    static func run(
+    static func run( // swiftlint:disable:this function_parameter_count
         modelPath: String,
         prompt: String,
         maxTokens: Int,
         temp: Double,
-        environment: [String: String]
+        environment: [String: String],
+        toolchain: Toolchain
     ) async throws -> (output: String, exitCode: Int32) {
-        // Resolve once: `uvPath` probes the filesystem on every read, so the
-        // guard and the spawns below must share one answer.
-        let uv = uvPath
-        guard !uv.isEmpty else {
-            throw GemmaChatRunnerError.uvNotFound
-        }
+        let mlxLM = try toolchain.command(.mlxLmGenerate)
 
         // A local path that doesn't exist would silently fall through to HF
         // repo-ID resolution inside mlx_lm and die with an opaque traceback —
@@ -177,10 +144,8 @@ enum GemmaChatRunner {
             throw GemmaChatRunnerError.modelNotFound(expandedModel)
         }
 
-        func arguments(command: String, package: String, extra: [String]) -> [String] {
-            [
-                "run", "--with", package, "--with", transformersRequirement, "--",
-                command,
+        func arguments(_ command: ToolCommand, extra: [String]) -> [String] {
+            command.arguments + [
                 "--model", expandedModel,
                 "--prompt", prompt,
                 "--max-tokens", "\(maxTokens)",
@@ -188,9 +153,7 @@ enum GemmaChatRunner {
         }
 
         let first = try await spawn(
-            uv: uv,
-            arguments: arguments(command: "mlx_lm.generate", package: mlxLMRequirement, extra: ["--temp", "\(temp)"]),
-            environment: environment
+            mlxLM, arguments: arguments(mlxLM, extra: ["--temp", "\(temp)"]), environment: environment
         )
         // VLM-only architectures (e.g. gemma4_unified) aren't in mlx-lm's
         // model registry — retry through mlx-vlm's CLI. It spells the flag
@@ -198,12 +161,10 @@ enum GemmaChatRunner {
         // the whole re-templated prompt into stdout; --no-verbose prints only
         // the generated text, so extraction gets clean output.
         if first.exitCode != 0, first.output.contains("Model type"), first.output.contains("not supported") {
+            let mlxVLM = try toolchain.command(.mlxVlmGenerate)
             return try await spawn(
-                uv: uv,
-                arguments: arguments(
-                    command: "mlx_vlm.generate", package: mlxVLMRequirement,
-                    extra: ["--temperature", "\(temp)", "--no-verbose"]
-                ),
+                mlxVLM,
+                arguments: arguments(mlxVLM, extra: ["--temperature", "\(temp)", "--no-verbose"]),
                 environment: environment
             )
         }
@@ -211,18 +172,14 @@ enum GemmaChatRunner {
     }
 
     private static func spawn(
-        uv: String,
+        _ command: ToolCommand,
         arguments: [String],
         environment: [String: String]
     ) async throws -> (output: String, exitCode: Int32) {
         let process = Process()
-        process.executableURL = URL(fileURLWithPath: uv)
+        process.executableURL = command.executableURL
         process.arguments = arguments
-
-        var env = environment
-        env["PYTHONDONTWRITEBYTECODE"] = "1"
-        process.environment = env
-
+        process.environment = environment
         let output = try await runCollectingOutput(process)
         return (output, process.terminationStatus)
     }
