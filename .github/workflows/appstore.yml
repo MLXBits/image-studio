@@ -98,7 +98,15 @@ jobs:
 
           echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
           echo "Imported identities:"
-          security find-identity -v "$KEYCHAIN_PATH"
+          security find-identity -v "$KEYCHAIN_PATH" | tee "$RUNNER_TEMP/identities.txt"
+          # A .p12 exported without its private key imports without error but
+          # yields no identity, and the export step fails minutes later. Catch it here.
+          for want in "Apple Distribution" "3rd Party Mac Developer Installer"; do
+            if ! grep -q "\"$want: " "$RUNNER_TEMP/identities.txt"; then
+              echo "::error::No '$want' identity after import. Re-export that certificate from Keychain Access ▸ My Certificates together with its private key, and update its .p12 secret."
+              exit 1
+            fi
+          done
 
       - name: Install provisioning profile
         env:
