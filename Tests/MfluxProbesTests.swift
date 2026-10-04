@@ -29,4 +29,14 @@ struct MfluxProbesTests {
         #expect(!MfluxProbes.supportsPidDecode(python: nil))
         #expect(MfluxProbes.mfluxVersion(python: nil) == nil)
     }
+
+    /// A wedged interpreter must not hold the caller (the flux arg builder runs
+    /// on the main actor) indefinitely.
+    @Test func aHungProbeGivesUpAtItsTimeout() throws {
+        let url = FakeRuntime.tempDirectory("probe").appendingPathComponent("python")
+        try FakeRuntime.writeExecutable("#!/bin/sh\nexec sleep 30\n", to: url)
+        let start = Date()
+        #expect(MfluxProbes.runProbe(python: url.path, code: "", timeout: 0.5) == nil)
+        #expect(Date().timeIntervalSince(start) < 5)
+    }
 }

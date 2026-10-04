@@ -99,8 +99,10 @@ nonisolated enum MfluxProbes {
     }
 
     /// Runs `python -c code` with the toolchain environment and returns its
-    /// trimmed stdout, or nil when the process cannot start or writes nothing.
-    private static func runProbe(python: String, code: String) -> String? {
+    /// trimmed stdout, or nil when the process cannot start, writes nothing, or
+    /// outlives `timeout`. Some callers wait on the main actor (the Flux argument
+    /// builder), so a wedged interpreter must not hold them indefinitely.
+    static func runProbe(python: String, code: String, timeout: TimeInterval = 30) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: python)
         proc.arguments = ["-c", code]
@@ -115,8 +117,17 @@ nonisolated enum MfluxProbes {
         } catch {
             return nil
         }
+        // Terminating the probe closes its end of the pipe, which ends the read below.
+        let watchdog = DispatchWorkItem {
+            if proc.isRunning {
+                proc.terminate()
+            }
+        }
+        DispatchQueue.global().asyncAfter(deadline: .now() + timeout, execute: watchdog)
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
         proc.waitUntilExit()
+        watchdog.cancel()
+        guard proc.terminationReason == .exit else { return nil }
         let out = (String(data: data, encoding: .utf8) ?? "")
             .trimmingCharacters(in: .whitespacesAndNewlines)
         return out.isEmpty ? nil : out
