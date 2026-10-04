@@ -77,7 +77,14 @@ targets:
         CFBundleShortVersionString: "$(MARKETING_VERSION)"
         CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
         LSMinimumSystemVersion: "26.0"
-        NSHumanReadableCopyright: ""
+        NSHumanReadableCopyright: "© 2026 MLXBits"
+        # Required for Mac App Store uploads; matches the App Store Connect category.
+        LSApplicationCategoryType: public.app-category.graphics-design
+        # Shown in macOS's local-network permission prompt.
+        NSLocalNetworkUsageDescription: "Image Studio connects to LM Studio or ComfyUI on your local network when you set them up in Settings."
+        # Only standard HTTPS: skips the export-compliance question on every
+        # App Store Connect upload (ignored outside the store).
+        ITSAppUsesNonExemptEncryption: false
         NSPrincipalClass: NSApplication
         NSHighResolutionCapable: true
         NSSupportsAutomaticGraphicsSwitching: true
@@ -131,6 +138,8 @@ targets:
       configs:
         Debug-AppStore:
           PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
+          # The bundled Python runtime is arm64 only; so is the App Store build.
+          ARCHS: arm64
           CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
           BUNDLE_PYTHON_RUNTIME: YES
@@ -141,6 +150,8 @@ targets:
           CODE_SIGN_IDENTITY: Apple Development
         Release-AppStore:
           PRODUCT_BUNDLE_IDENTIFIER: com.mlxbits.image-studio.appstore
+          # The bundled Python runtime is arm64 only; so is the App Store build.
+          ARCHS: arm64
           CODE_SIGN_ENTITLEMENTS: Resources/MLXBits_Image_Studio_AppStore.entitlements
           SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) APP_STORE"
           BUNDLE_PYTHON_RUNTIME: YES

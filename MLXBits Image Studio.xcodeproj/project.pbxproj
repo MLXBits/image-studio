@@ -1317,6 +1317,7 @@
 		849DF2FBDC576EB9228E7A15 /* Release-AppStore */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_PYTHON_RUNTIME = YES;
 				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio_AppStore.entitlements;
@@ -1408,6 +1409,7 @@
 		D0E8618859F7D39F74E7F64C /* Debug-AppStore */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				BUNDLE_PYTHON_RUNTIME = YES;
 				CODE_SIGN_ENTITLEMENTS = Resources/MLXBits_Image_Studio_AppStore.entitlements;
