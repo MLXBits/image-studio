@@ -99,12 +99,15 @@ jobs:
 
           echo "KEYCHAIN_PATH=$DIST_KEYCHAIN" >> "$GITHUB_ENV"
           echo "Imported identities:"
-          security find-identity -v | tee "$RUNNER_TEMP/identities.txt"
+          security find-identity -v "$DIST_KEYCHAIN" | tee "$RUNNER_TEMP/dist-identities.txt"
+          security find-identity -v "$INSTALLER_KEYCHAIN" | tee "$RUNNER_TEMP/installer-identities.txt"
           # A .p12 holding the wrong certificate, or one without its private key,
           # imports cleanly but leaves no identity; the export step would fail
-          # minutes later. Catch it here.
-          for want in "Apple Distribution" "3rd Party Mac Developer Installer"; do
-            if ! grep -q "\"$want: " "$RUNNER_TEMP/identities.txt"; then
+          # minutes later. Check each identity in its own keychain, so swapped
+          # secrets are caught too. Catch it here.
+          for pair in "Apple Distribution:dist" "3rd Party Mac Developer Installer:installer"; do
+            want="${pair%:*}"; file="$RUNNER_TEMP/${pair##*:}-identities.txt"
+            if ! grep -q "\"$want: " "$file"; then
               echo "::error::No '$want' identity after import. Export that certificate from Keychain Access ▸ My Certificates (it carries its private key) and update its .p12 secret."
               exit 1
             fi
