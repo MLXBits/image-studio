@@ -196,3 +196,8 @@ ln -s AGENTS.md CLAUDE.md
 
 The symlink is gitignored on purpose — one tracked file, no duplicated
 guidance to keep in sync, and no tool-specific artifact in the repo.
+
+## License
+
+MIT — see [LICENSE](LICENSE). mflux, MLX and the models the app downloads
+carry their own licenses.
