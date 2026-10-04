@@ -268,7 +268,7 @@ It opens with:
 ## 6. App Store Connect, release workflow, review
 
 **One-time setup (owner):**
-1. Accept the **Paid Applications agreement** and add bank and tax details. In-app purchases need it even in a free app.
+1. Accept the **Paid Applications agreement** and add bank and tax details. In-app purchases need it even in a free app. Then enroll in the **App Store Small Business Program**, which brings the commission to 15%.
 2. Create **Apple Distribution** and **Mac Installer Distribution** certificates. Use a CSR generated in the portal, not from Xcode.
 3. Register the App ID `com.mlxbits.image-studio.appstore` (In-App Purchase capability), then create a **Mac App Store distribution provisioning profile** for it.
 4. Create the **App Store Connect record**:
@@ -284,13 +284,13 @@ It opens with:
    - `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64`
 
 **`appstore.yml`** (`workflow_dispatch`):
-- **Input:** `tag`, defaulting to the latest `v*`.
+- **Input:** `ref`, any tag, branch or commit, defaulting to the newest `vX.Y.Z` tag. The first upload built `main`, because the App Store configurations postdate `v0.15.0`.
 - **Steps:**
-  1. Check out the tag with full history, then derive the version and build number (§1).
+  1. Check out the ref with full history, then derive the version and build number (§1). The version comes from the nearest `vX.Y.Z` tag at or behind the ref.
   2. Import both certificates into a temporary keychain (same pattern as `release.yml`) and install the profile.
   3. Restore or build the runtime, which includes the license guard.
   4. Archive `Release-AppStore` with manual signing.
-  5. Smoke-test the signed runtime.
+  5. Smoke-test the signed runtime. Until `--runtime-self-test` exists (milestone 4), the workflow checks the archived app's signatures, entitlements (no `get-task-allow`; `python3.14` has exactly app-sandbox + inherit) and arm64-only slice instead.
   6. Export with `method: app-store-connect` and `destination: upload`, authenticating with the API key.
 - **Result:** the build appears in TestFlight.
 
@@ -298,7 +298,9 @@ It opens with:
 - **Both flavors:**
   - `NSHumanReadableCopyright` = "© 2026 MLXBits"
   - `NSLocalNetworkUsageDescription`, explaining the LM Studio and ComfyUI connections
-- **App Store flavor:** `ITSAppUsesNonExemptEncryption = NO`. It only uses standard HTTPS.
+  - `LSApplicationCategoryType` = `public.app-category.graphics-design`, which Mac App Store uploads require
+  - `ITSAppUsesNonExemptEncryption = NO`. The app only uses standard HTTPS. The key does nothing outside the store, so one shared `Info.plist` carries it.
+- **App Store flavor:** `ARCHS = arm64`, matching the arm64-only runtime.
 
 **Review prep:**
 - **App privacy:** "Data Not Collected." Nothing is sent to the developer. Hugging Face, LM Studio and ComfyUI traffic is the user's own.

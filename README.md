@@ -183,6 +183,23 @@ The tag is the sole source of truth for the version. (Optionally bump `MARKETING
 | `APPLE_ID` | Apple ID email for notarization |
 | `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password from appleid.apple.com |
 
+### App Store builds
+
+App Store builds are uploaded by a hand-run GitHub Actions workflow
+([`.github/workflows/appstore.yml`](.github/workflows/appstore.yml)): **Actions ▸ App Store ▸
+Run workflow**, or `gh workflow run appstore.yml` (newest `vX.Y.Z` tag) /
+`gh workflow run appstore.yml -f ref=main`. It builds the sandboxed App Store flavor with the
+bundled Python runtime, signs it with the Apple Distribution certificate, and uploads it to
+App Store Connect. The build shows up in TestFlight once Apple has processed it; submitting
+it for review is done in App Store Connect.
+
+| Secret | Value |
+|---|---|
+| `APPSTORE_DIST_CERT_P12_BASE64` / `_PASSWORD` | Apple Distribution certificate `.p12`, base64, and its export password |
+| `APPSTORE_INSTALLER_CERT_P12_BASE64` / `_PASSWORD` | Mac Installer Distribution certificate `.p12`, base64, and its export password |
+| `APPSTORE_PROFILE_BASE64` | Mac App Store provisioning profile for `com.mlxbits.image-studio.appstore`, base64 |
+| `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64` | App Store Connect API key (App Manager role): key ID, issuer ID, `.p8` base64 |
+
 ---
 
 ## Project layout
