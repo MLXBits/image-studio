@@ -8,11 +8,11 @@ struct MLXBitsImageStudioApp: App {
     @State private var runner: FluxJobRunner
     @State private var driverController: MfluxDriverController
     @State private var ideogram4Store: Ideogram4JobStore
-    @State private var ideogram4Runner = Ideogram4JobRunner()
+    @State private var ideogram4Runner: Ideogram4JobRunner
     @State private var krea2Store: Krea2JobStore
-    @State private var krea2Runner = Krea2JobRunner()
+    @State private var krea2Runner: Krea2JobRunner
     @State private var zimageStore: ZImageJobStore
-    @State private var zimageRunner = ZImageJobRunner()
+    @State private var zimageRunner: ZImageJobRunner
     @State private var seedVR2Store: SeedVR2JobStore
     @State private var seedVR2Runner = SeedVR2JobRunner()
     @State private var coordinator: GenerationCoordinator
@@ -121,8 +121,19 @@ struct MLXBitsImageStudioApp: App {
             defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
         )
         let driver = MfluxDriverController(settings: settings)
+        // One shared driver across families — it keeps a single warm model,
+        // so cross-family switches evict before loading (see coordinator gate).
+        // Each runner is built here and handed to State, like the stores: a
+        // runner given as a property default and then mutated in init is not
+        // the instance SwiftUI installs, so it ran without the driver.
         let runner = FluxJobRunner()
+        let ideogram4Runner = Ideogram4JobRunner()
+        let krea2Runner = Krea2JobRunner()
+        let zimageRunner = ZImageJobRunner()
         runner.driver = driver
+        ideogram4Runner.driver = driver
+        krea2Runner.driver = driver
+        zimageRunner.driver = driver
         _settings = State(initialValue: settings)
         _profiles = State(initialValue: profiles)
         _store = State(initialValue: store)
@@ -134,11 +145,9 @@ struct MLXBitsImageStudioApp: App {
         _coordinator = State(initialValue: coordinator)
         _driverController = State(initialValue: driver)
         _runner = State(initialValue: runner)
-        // One shared driver across families — it keeps a single warm model,
-        // so cross-family switches evict before loading (see coordinator gate).
-        ideogram4Runner.driver = driver
-        krea2Runner.driver = driver
-        zimageRunner.driver = driver
+        _ideogram4Runner = State(initialValue: ideogram4Runner)
+        _krea2Runner = State(initialValue: krea2Runner)
+        _zimageRunner = State(initialValue: zimageRunner)
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }
