@@ -46,8 +46,12 @@ struct ProfileActionPresenter: ViewModifier {
                 }),
                 titleVisibility: .visible,
                 presenting: removing
-            ) { profile in
-                Button("Remove Profile", role: .destructive) { profiles.removeProfile(profile.id) }
+            ) { _ in
+                Button("Remove Profile", role: .destructive) {
+                    // After the dialog is gone: removing switches profiles, which
+                    // rebuilds the window presenting it.
+                    Task { @MainActor in profiles.removeActiveProfile() }
+                }
                 Button("Cancel", role: .cancel) {}
             } message: { profile in
                 Text(removalMessage(for: profile))
@@ -67,8 +71,12 @@ struct ProfileActionPresenter: ViewModifier {
     }
 
     private func removalMessage(for profile: Profile) -> String {
-        let removed = "Its notepad, prompt history, templates, drafts and job history will be deleted."
-        guard !profile.libraryPath.isEmpty else { return removed }
-        return removed + " The library folder and all its generated images stay on disk at:\n\(profile.libraryPath)"
+        let fallback = profiles.profiles.first?.name ?? "Default"
+        var message = "You'll switch to “\(fallback)”. This profile's notepad, prompt history, templates, "
+            + "drafts and job history will be deleted."
+        if !profile.libraryPath.isEmpty {
+            message += " The library folder and all its generated images stay on disk at:\n\(profile.libraryPath)"
+        }
+        return message
     }
 }

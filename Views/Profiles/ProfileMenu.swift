@@ -16,16 +16,12 @@ enum ProfileAction: Identifiable {
 }
 
 /// The toolbar's profile switcher: the active profile's name, a one-click list
-/// of profiles, and New / Rename / Remove.
+/// of profiles, and New / Rename / Remove. Rename and Remove act on the active
+/// profile — you change the profile you're in.
 struct ProfileMenu: View {
     @Environment(ProfileStore.self) private var profiles
     var onAction: (ProfileAction) -> Void
     var onShowQueue: () -> Void
-
-    /// Profiles that can be removed: any but the active one.
-    private var removable: [Profile] {
-        profiles.profiles.filter { $0.id != profiles.activeProfileID }
-    }
 
     var body: some View {
         let blockReason = profiles.switchBlockReason
@@ -52,17 +48,12 @@ struct ProfileMenu: View {
             }
             Divider()
             Button("New Profile…") { onAction(.create) }
-            Menu("Rename") {
-                ForEach(profiles.profiles) { profile in
-                    Button("\(profile.name)…") { onAction(.rename(profile)) }
-                }
+            if let active = profiles.activeProfile {
+                Button("Rename “\(active.name)”…") { onAction(.rename(active)) }
+                // Not for the default profile, which removal falls back to.
+                Button("Remove “\(active.name)”…") { onAction(.remove(active)) }
+                    .disabled(!profiles.canRemoveActiveProfile)
             }
-            Menu("Remove") {
-                ForEach(removable) { profile in
-                    Button("\(profile.name)…") { onAction(.remove(profile)) }
-                }
-            }
-            .disabled(removable.isEmpty)
         } label: {
             Label(profiles.activeProfile?.name ?? "Profile", systemImage: "person.crop.circle")
                 .labelStyle(.titleAndIcon)

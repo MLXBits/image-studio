@@ -49,6 +49,8 @@ final class ProfileStore {
     @ObservationIgnored private let gallery: GalleryStore
     @ObservationIgnored private let coordinator: GenerationCoordinator
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
+    /// The profile to delete once the switch away from it completes.
+    @ObservationIgnored private var pendingRemoval: UUID?
 
     var profiles: [Profile] {
         registry.profiles
@@ -60,6 +62,18 @@ final class ProfileStore {
 
     var activeProfileID: UUID? {
         activeProfile?.id
+    }
+
+    /// The first profile — the one migration created. It can't be removed, and
+    /// removing any other profile switches back to it.
+    var defaultProfileID: UUID? {
+        registry.profiles.first?.id
+    }
+
+    /// Remove acts on the active profile, which means switching away from it,
+    /// so it's unavailable for the default profile and while switching is blocked.
+    var canRemoveActiveProfile: Bool {
+        phase == .ready && activeProfileID != defaultProfileID && switchBlockReason == nil
     }
 
     /// Why the active profile (or its folder) can't change right now, or `nil`.
@@ -135,11 +149,19 @@ final class ProfileStore {
     /// more than once.
     func completePendingSwitch() {
         guard case let .switching(id) = phase else { return }
+        let removing = pendingRemoval
+        pendingRemoval = nil
         var next = registry
         next.activeProfileID = id
+        next.profiles.removeAll { $0.id == removing }
         if save(next) {
             registry = next
+            // Activation flushes the outgoing profile's pending saves into its
+            // folders, so a removed profile's data is deleted only after that.
             activateCurrentProfile()
+            if let removing {
+                deleteData(for: removing)
+            }
         }
         phase = .ready
     }
@@ -189,17 +211,16 @@ final class ProfileStore {
         return nil
     }
 
-    /// Removes a profile that isn't active, with its app-side data (notepad,
-    /// history, templates, drafts, job history, thumbnails). Its library folder
-    /// and images are left on disk.
-    func removeProfile(_ id: UUID) {
-        guard id != activeProfileID else { return }
-        var next = registry
-        next.profiles.removeAll { $0.id == id }
-        guard save(next) else { return }
-        registry = next
-        try? FileManager.default.removeItem(at: paths.dataDirectory(for: id))
-        try? FileManager.default.removeItem(at: paths.thumbnailDirectory(for: id))
+    /// Removes the active profile with its app-side data (notepad, history,
+    /// templates, drafts, job history, thumbnails), switching to the default
+    /// profile. Its library folder and images are left on disk.
+    func removeActiveProfile() {
+        guard canRemoveActiveProfile, let id = activeProfileID, let fallback = defaultProfileID else { return }
+        pendingRemoval = id
+        requestSwitch(to: fallback)
+        if phase == .ready {
+            pendingRemoval = nil
+        }
     }
 
     // MARK: - Library folder
@@ -271,6 +292,11 @@ final class ProfileStore {
         }
         return ProfileRules.libraryProblem(path: Self.resolvedPath(path), profiles: others, excluding: excluding)?
             .message
+    }
+
+    private func deleteData(for id: UUID) {
+        try? FileManager.default.removeItem(at: paths.dataDirectory(for: id))
+        try? FileManager.default.removeItem(at: paths.thumbnailDirectory(for: id))
     }
 
     private func save(_ next: ProfileRegistry) -> Bool {
