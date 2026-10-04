@@ -102,6 +102,8 @@ struct PythonSettingsSection: View {
         }
         customStatus = .checking
         let version = await Task.detached(priority: .utility) { MfluxProbes.mfluxVersion(python: python) }.value
+        // The path changed while the probe ran: a newer check owns the status.
+        guard !Task.isCancelled else { return }
         customStatus = version.map(CustomStatus.found) ?? .noMflux
     }
 
