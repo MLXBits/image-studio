@@ -33,8 +33,10 @@ struct AboutView: View {
             }
 
             #if !DEBUG
-                Divider()
-                updateStatus
+                if updates.isEnabled {
+                    Divider()
+                    updateStatus
+                }
             #endif
 
             Text("© MLXBits")

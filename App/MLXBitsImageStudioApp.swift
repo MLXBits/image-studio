@@ -1,6 +1,5 @@
 import SwiftUI
 
-@main
 struct MLXBitsImageStudioApp: App {
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
@@ -53,6 +52,15 @@ struct MLXBitsImageStudioApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             AboutCommands()
+            CommandGroup(after: .help) {
+                // The bundled runtime's third-party notices (spec §2).
+                Button("Acknowledgements") {
+                    if let url = settings.toolchain.acknowledgementsURL {
+                        NSWorkspace.shared.open(url)
+                    }
+                }
+                .disabled(settings.toolchain.acknowledgementsURL == nil)
+            }
         }
 
         Window("About MLXBits Image Studio", id: AboutCommands.windowID) {

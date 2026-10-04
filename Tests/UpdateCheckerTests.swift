@@ -34,4 +34,14 @@ struct UpdateCheckerTests {
         #expect(!UpdateChecker.compare("v0.6", isNewerThan: "0.6.0"))
         #expect(UpdateChecker.compare("v0.6.1", isNewerThan: "0.6"))
     }
+
+    /// App Store apps update through the store (spec §3), so the App Store
+    /// build never asks GitHub.
+    @Test func disabledCheckerNeverChecks() async {
+        let checker = UpdateChecker(isEnabled: false)
+        await checker.check()
+        #expect(checker.latestVersion == nil)
+        #expect(checker.lastError == nil)
+        #expect(!checker.isUpdateAvailable)
+    }
 }
