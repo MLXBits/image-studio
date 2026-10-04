@@ -5,8 +5,8 @@ import Foundation
 /// idle-timeout eviction, proactive eviction on model switches, manual eject,
 /// and auto text-encoder policy from measured peak memory.
 ///
-/// The driver runs with the mflux tool venv's Python (discovered from the
-/// `mflux-generate-flux2` shim's shebang) and speaks NDJSON over stdio:
+/// The driver runs on the toolchain's mflux interpreter (the bundled runtime,
+/// or the DMG's Custom Python) and speaks NDJSON over stdio:
 /// protocol events on stdout, mflux's own output on stderr (routed into the
 /// active job's log via ``onLog``). Any startup or handshake failure marks
 /// the controller unavailable and jobs fall back to the one-shot CLI path.
@@ -56,6 +56,9 @@ final class MfluxDriverController {
 
     private weak var settings: AppSettings?
     private var process: Process?
+    /// The interpreter the running (or last attempted) driver started on. A
+    /// different one in the toolchain means the Custom Python changed.
+    private(set) var interpreter: String?
     private var stdinHandle: FileHandle?
     private var stdoutTail = ""
     private var handshake: CheckedContinuation<Bool, Never>?
@@ -88,6 +91,10 @@ final class MfluxDriverController {
         loadedFingerprint != nil
     }
 
+    var isRunning: Bool {
+        process?.isRunning == true
+    }
+
     init(settings: AppSettings) {
         self.settings = settings
     }
@@ -98,10 +105,17 @@ final class MfluxDriverController {
     /// handshake. Returns false — without throwing — when the driver can't be
     /// used, so callers fall back to the CLI subprocess.
     func ensureRunning() async -> Bool {
+        // A changed Custom Python retires the current driver, and re-arms one
+        // that failed on the old interpreter: the next job must run on the new one.
+        let wanted = try? settings?.toolchain.mfluxInterpreter()
+        if wanted != interpreter {
+            retire()
+            availability = .unknown
+        }
         if case .unavailable = availability {
             return false
         }
-        if process?.isRunning == true {
+        if isRunning {
             return true
         }
         return await start()
@@ -115,16 +129,30 @@ final class MfluxDriverController {
         }
     }
 
+    /// Stops the driver now, for a restart on another interpreter. Its state is
+    /// cleared here; the termination callback that follows is ignored because
+    /// `process` no longer points at it.
+    private func retire() {
+        guard let proc = process else { return }
+        processDied(proc)
+        proc.terminate()
+    }
+
     private func start() async -> Bool {
         guard let settings else { return false }
         guard let script = Bundle.main.url(forResource: "mflux_driver", withExtension: "py") else {
             availability = .unavailable("mflux_driver.py missing from app bundle")
             return false
         }
-        guard let python = ToolchainMigration.venvPython(fromShim: settings.mfluxBinaryPath()) else {
-            availability = .unavailable("Could not locate the mflux venv Python")
+        let python: String
+        do {
+            python = try settings.toolchain.mfluxInterpreter()
+        } catch {
+            interpreter = nil
+            availability = .unavailable(error.localizedDescription)
             return false
         }
+        interpreter = python
 
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: python)
@@ -159,7 +187,7 @@ final class MfluxDriverController {
             }
         }
         proc.terminationHandler = { [weak self] _ in
-            Task { @MainActor [weak self] in self?.processDied() }
+            Task { @MainActor [weak self] in self?.processDied(proc) }
         }
 
         send(["cmd": "hello"])
@@ -199,7 +227,9 @@ final class MfluxDriverController {
         lastStepInterval = nil
     }
 
-    private func processDied() {
+    private func processDied(_ proc: Process) {
+        // A retired driver's exit arrives after its replacement started.
+        guard proc === process else { return }
         let wasGenerating = finishRun != nil
         let cancelled = intentionalKill
         intentionalKill = false

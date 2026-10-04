@@ -17,6 +17,7 @@
 		0656414DEF830D93E90FBA77 /* BatchMenuButton.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */; };
 		0703F36886C67EE775626A49 /* SeedVR2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */; };
 		096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */; };
+		0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
 		0CB0E07846DEFA72DB96A2BB /* PromptTokenEstimator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */; };
@@ -397,6 +398,7 @@
 		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
 		E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
+		E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverControllerTests.swift; sourceTree = "<group>"; };
 		E9A0FCCEEF7103CD4889BEF8 /* Toolchain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolchain.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
@@ -529,6 +531,7 @@
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
+				E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */,
 				C921C6EC83B36F702B982D48 /* MfluxInstallerTests.swift */,
 				83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */,
 				15867BF96F3C6A4258A837A4 /* ModelAvailabilityTests.swift */,
@@ -1116,6 +1119,7 @@
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
+				0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */,
 				F25C2722C97A6A8CA4EC5729 /* MfluxInstallerTests.swift in Sources */,
 				B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */,
 				CF29E56985F1E02CF7241BD7 /* ModelAvailabilityTests.swift in Sources */,
