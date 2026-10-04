@@ -43,8 +43,11 @@ struct PythonSettingsSection: View {
         VStack(alignment: .leading, spacing: 4) {
             Text("Custom Python (advanced)")
             HStack {
-                TextField("Bundled (default)", text: $s.customPythonPath)
+                // A prompt, not a title: in a grouped Form a title renders as its own label line.
+                TextField("Custom Python", text: $s.customPythonPath, prompt: Text("Bundled (default)"))
+                    .labelsHidden()
                     .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
                 Button("Browse…") { browse() }
                 if !s.customPythonPath.isEmpty {
                     Button("Use Bundled") { s.customPythonPath = "" }
