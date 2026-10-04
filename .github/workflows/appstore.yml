@@ -133,9 +133,10 @@ jobs:
 
       - uses: astral-sh/setup-uv@v10.2.0  # setup-uv publishes no floating major tag
 
-      # Same key as runtime.yml, so a runtime that already passed there is reused.
+      # Restore only, with runtime.yml's key: the runtime this release signs is one
+      # that passed there on main, or is built fresh here. Releases never write it.
       - name: Restore Python runtime
-        uses: actions/cache@v6
+        uses: actions/cache/restore@v6
         with:
           path: build/python-runtime
           key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py') }}
