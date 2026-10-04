@@ -52,6 +52,17 @@ struct ToolchainMigrationTests {
         #expect(ToolchainMigration.customPython(fromLegacyBinaryDir: bin.path) == python)
     }
 
+    /// uv writes the same `/bin/sh` form with single quotes, spelling an
+    /// apostrophe in the path as `'"'"'` (uv 0.12.9's exact output).
+    @Test func uvExecLauncherIsUnwrapped() throws {
+        let bin = FakeRuntime.tempDirectory("home").appendingPathComponent("it's here/My Projects/mflux/.venv/bin")
+        let python = try venv(at: bin) { python in
+            let quoted = python.replacingOccurrences(of: "'", with: "'\"'\"'")
+            return "#!/bin/sh\n'''exec' '\(quoted)' \"$0\" \"$@\"\n' '''\nimport sys\n"
+        }
+        #expect(ToolchainMigration.customPython(fromLegacyBinaryDir: bin.path) == python)
+    }
+
     @Test func emptyOrStaleSettingsUseBundled() throws {
         #expect(ToolchainMigration.customPython(fromLegacyBinaryDir: "") == nil)
         #expect(ToolchainMigration.customPython(fromLegacyBinaryDir: "/nonexistent/bin") == nil)

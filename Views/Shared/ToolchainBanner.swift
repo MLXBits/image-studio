@@ -6,7 +6,7 @@ struct ToolchainBanner: View {
     @Environment(AppSettings.self) private var settings
     @Environment(\.openSettings) private var openSettings
 
-    var body: some View {
+    @ViewBuilder private var content: some View {
         if let problem = settings.toolchain.problem {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -35,5 +35,13 @@ struct ToolchainBanner: View {
             .background(.bar)
             .overlay(alignment: .bottom) { Divider() }
         }
+    }
+
+    var body: some View {
+        content
+            // A Custom Python can vanish while the app is in the background.
+            .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+                settings.refreshToolchain()
+            }
     }
 }

@@ -323,6 +323,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         do {
             command = try settings.toolchain.command(tool)
         } catch {
+            settings.refreshToolchain() // so the banner shows what went missing
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
             return
         }

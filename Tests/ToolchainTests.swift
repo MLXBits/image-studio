@@ -46,6 +46,16 @@ struct ToolchainTests {
         #expect(throws: Never.self) { try toolchain.command(.hf) }
     }
 
+    /// The venv can vanish while the app runs (deleted, checkout moved); jobs
+    /// must then get the Custom Python message, not a stale "runnable".
+    @Test func customPythonDeletedAfterwardsIsReportedMissing() throws {
+        let custom = try customVenv()
+        let toolchain = try FakeRuntime().toolchain(customPython: custom)
+        try FileManager.default.removeItem(atPath: custom)
+        #expect(throws: ToolchainError.customPythonMissing(custom)) { try toolchain.command(.flux2) }
+        #expect(toolchain.problem == .customPythonMissing(custom))
+    }
+
     @Test func tildeInCustomPythonIsExpanded() throws {
         let toolchain = try FakeRuntime().toolchain(customPython: "~/no-such-venv/bin/python")
         #expect(toolchain.customPython == NSHomeDirectory() + "/no-such-venv/bin/python")

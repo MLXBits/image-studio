@@ -82,7 +82,16 @@ nonisolated struct Toolchain: Equatable, Sendable {
     /// The runtime's third-party notices (Help ▸ Acknowledgements).
     let acknowledgementsURL: URL?
     private let runTool: String
-    private let customPythonIsRunnable: Bool
+    /// Whether the Custom Python existed when this value was built. Checks use
+    /// ``customPythonIsRunnable`` instead, since a venv can vanish mid-session;
+    /// this snapshot makes a rebuild after that compare unequal, so observers
+    /// (the banner) update.
+    private let customPythonFound: Bool
+
+    /// Checked live: the venv may have been deleted or moved since launch.
+    private var customPythonIsRunnable: Bool {
+        !customPython.isEmpty && FileManager.default.isExecutableFile(atPath: customPython)
+    }
 
     /// The first problem that stops a generation, for the banner.
     var problem: ToolchainError? {
@@ -103,7 +112,7 @@ nonisolated struct Toolchain: Equatable, Sendable {
         runTool = resourcesURL?.appendingPathComponent("run_tool.py").path ?? "run_tool.py"
         let trimmed = customPython.trimmingCharacters(in: .whitespaces)
         self.customPython = trimmed.isEmpty ? "" : (trimmed as NSString).expandingTildeInPath
-        customPythonIsRunnable = !self.customPython.isEmpty && fileManager.isExecutableFile(atPath: self.customPython)
+        customPythonFound = !self.customPython.isEmpty && fileManager.isExecutableFile(atPath: self.customPython)
     }
 
     /// The bundled interpreter, for everything that never follows the override:
