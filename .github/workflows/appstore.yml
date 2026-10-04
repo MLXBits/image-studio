@@ -1,0 +1,242 @@
+name: App Store
+
+# Builds the App Store flavor, signs it for the Mac App Store, and uploads it to
+# App Store Connect, where it appears in TestFlight once Apple has processed it.
+# Run by hand: Actions ▸ App Store ▸ Run workflow, or
+#   gh workflow run appstore.yml [-f ref=<tag|branch>]
+# Submitting a build for review stays a manual step in App Store Connect.
+# Design: docs/specs/2026-10-03-app-store-build-design.md §6.
+run-name: App Store upload (${{ inputs.ref || 'newest tag' }})
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: "Tag, branch or commit to build (empty: the newest vX.Y.Z tag)"
+        required: false
+        default: ""
+
+# One upload at a time, and never cancel one halfway through.
+concurrency:
+  group: appstore
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  upload:
+    name: Build & upload to App Store Connect
+    runs-on: macos-26
+    env:
+      SCHEME: "MLXBits Image Studio (App Store)"
+      PROJECT: "MLXBits Image Studio.xcodeproj"
+      APP_NAME: "MLXBits Image Studio"
+      BUNDLE_ID: com.mlxbits.image-studio.appstore
+      DEVELOPMENT_TEAM: ${{ secrets.DEVELOPMENT_TEAM }}
+
+    steps:
+      - name: Checkout (full history for version and build number)
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Resolve ref, version and build number
+        env:
+          INPUT_REF: ${{ inputs.ref }}
+        run: |
+          REF="$INPUT_REF"
+          if [ -z "$REF" ]; then
+            REF=$(git tag --list 'v*' --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -1)
+          fi
+          git checkout --quiet "$REF"
+          # App Store Connect needs a numeric X.Y.Z: take the nearest release tag
+          # at or behind the ref (a branch build shares its last release's version).
+          TAG=$(git describe --tags --abbrev=0 --match 'v[0-9]*.[0-9]*.[0-9]*')
+          VERSION="${TAG#v}"
+          # Commit count plus this workflow's run number: re-uploading the same
+          # commit still gets a higher number, which App Store Connect requires.
+          BUILD_NUMBER="$(git rev-list --count HEAD).${{ github.run_number }}"
+          {
+            echo "REF=$REF"
+            echo "VERSION=$VERSION"
+            echo "BUILD_NUMBER=$BUILD_NUMBER"
+          } >> "$GITHUB_ENV"
+          echo "Building $REF ($(git rev-parse --short HEAD)) as version $VERSION, build $BUILD_NUMBER"
+
+      - name: Import App Store signing certificates
+        env:
+          DIST_P12: ${{ secrets.APPSTORE_DIST_CERT_P12_BASE64 }}
+          DIST_PASSWORD: ${{ secrets.APPSTORE_DIST_CERT_PASSWORD }}
+          INSTALLER_P12: ${{ secrets.APPSTORE_INSTALLER_CERT_P12_BASE64 }}
+          INSTALLER_PASSWORD: ${{ secrets.APPSTORE_INSTALLER_CERT_PASSWORD }}
+        run: |
+          KEYCHAIN_PATH="$RUNNER_TEMP/appstore.keychain-db"
+          KEYCHAIN_PASSWORD="$(uuidgen)"
+
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          import_p12() {  # import_p12 <base64> <password> <label>
+            echo "$1" | base64 --decode > "$RUNNER_TEMP/$3.p12"
+            security import "$RUNNER_TEMP/$3.p12" -P "$2" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+            rm -f "$RUNNER_TEMP/$3.p12"
+          }
+          import_p12 "$DIST_P12" "$DIST_PASSWORD" distribution
+          import_p12 "$INSTALLER_P12" "$INSTALLER_PASSWORD" installer
+
+          # The Apple Distribution certificate chains to the WWDR G3 intermediate.
+          curl -fsSL -o "$RUNNER_TEMP/AppleWWDRCAG3.cer" https://www.apple.com/certificateauthority/AppleWWDRCAG3.cer
+          security import "$RUNNER_TEMP/AppleWWDRCAG3.cer" -k "$KEYCHAIN_PATH" || true
+
+          # Let codesign and productbuild use the keys without a prompt.
+          security set-key-partition-list \
+            -S apple-tool:,apple:,codesign:,productbuild: \
+            -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
+
+          echo "KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "Imported identities:"
+          security find-identity -v "$KEYCHAIN_PATH"
+
+      - name: Install provisioning profile
+        env:
+          PROFILE_BASE64: ${{ secrets.APPSTORE_PROFILE_BASE64 }}
+        run: |
+          PROFILE="$RUNNER_TEMP/appstore.provisionprofile"
+          echo "$PROFILE_BASE64" | base64 --decode > "$PROFILE"
+          security cms -D -i "$PROFILE" > "$RUNNER_TEMP/profile.plist"
+          UUID=$(plutil -extract UUID raw "$RUNNER_TEMP/profile.plist")
+          NAME=$(plutil -extract Name raw "$RUNNER_TEMP/profile.plist")
+          # Xcode 16+ reads the first location; older tools the second.
+          for dir in "$HOME/Library/Developer/Xcode/UserData/Provisioning Profiles" \
+                     "$HOME/Library/MobileDevice/Provisioning Profiles"; do
+            mkdir -p "$dir"
+            cp "$PROFILE" "$dir/$UUID.provisionprofile"
+          done
+          echo "PROFILE_NAME=$NAME" >> "$GITHUB_ENV"
+          echo "Installed profile '$NAME' ($UUID), expires $(plutil -extract ExpirationDate raw "$RUNNER_TEMP/profile.plist")"
+
+      - uses: astral-sh/setup-uv@v10.2.0  # setup-uv publishes no floating major tag
+
+      # Same key as runtime.yml, so a runtime that already passed there is reused.
+      - name: Restore Python runtime
+        uses: actions/cache@v6
+        with:
+          path: build/python-runtime
+          key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py') }}
+
+      - name: Build Python runtime (license guard + smoke test)
+        run: scripts/build-python-runtime.sh
+
+      - name: Archive (Release-AppStore, App Store signing)
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild archive \
+            -project "$PROJECT" \
+            -scheme "$SCHEME" \
+            -configuration Release-AppStore \
+            -archivePath build/AppStore.xcarchive \
+            -destination "generic/platform=macOS" \
+            MARKETING_VERSION="$VERSION" \
+            CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+            DEVELOPMENT_TEAM="$DEVELOPMENT_TEAM" \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="$PROFILE_NAME" \
+            OTHER_CODE_SIGN_FLAGS="--keychain $KEYCHAIN_PATH" \
+            | tee build/archive.log \
+            | grep -E "^Signed |^Python runtime|error:|\*\* ARCHIVE (SUCCEEDED|FAILED)"
+
+      # Stand-in for the app's --runtime-self-test, which arrives with the
+      # toolchain (milestone 4): checks the signing and slicing App Review sees.
+      - name: Check the archived app
+        run: |
+          APP="build/AppStore.xcarchive/Products/Applications/$APP_NAME.app"
+          ents() { codesign -d --entitlements - "$1" 2>/dev/null | grep -oE 'com\.apple\.[a-z.-]+' | sort | tr '\n' ' '; }
+
+          codesign --verify --deep --strict --verbose=1 "$APP"
+          echo "App entitlements: $(ents "$APP")"
+          if ents "$APP" | grep -q get-task-allow; then
+            echo "::error::get-task-allow in a distribution build"; exit 1
+          fi
+          PY_ENTS=$(ents "$APP/Contents/Resources/python/bin/python3.14")
+          if [ "$PY_ENTS" != "com.apple.security.app-sandbox com.apple.security.inherit " ]; then
+            echo "::error::python3.14 must carry exactly app-sandbox + inherit, has: $PY_ENTS"; exit 1
+          fi
+          ARCHS=$(lipo -archs "$APP/Contents/MacOS/$APP_NAME")
+          if [ "$ARCHS" != "arm64" ]; then
+            echo "::error::app binary must be arm64 only, is: $ARCHS"; exit 1
+          fi
+          echo "Version $(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$APP/Contents/Info.plist")" \
+               "($(/usr/libexec/PlistBuddy -c 'Print :CFBundleVersion' "$APP/Contents/Info.plist")), arm64, signatures valid"
+
+      - name: Export and upload to App Store Connect
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8_BASE64: ${{ secrets.ASC_KEY_P8_BASE64 }}
+        run: |
+          KEY_PATH="$RUNNER_TEMP/AuthKey_$ASC_KEY_ID.p8"
+          echo "$ASC_KEY_P8_BASE64" | base64 --decode > "$KEY_PATH"
+
+          cat > build/ExportOptions.plist <<PLIST
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+              <key>method</key>
+              <string>app-store-connect</string>
+              <key>destination</key>
+              <string>upload</string>
+              <key>teamID</key>
+              <string>${DEVELOPMENT_TEAM}</string>
+              <key>signingStyle</key>
+              <string>manual</string>
+              <key>signingCertificate</key>
+              <string>Apple Distribution</string>
+              <key>installerSigningCertificate</key>
+              <string>3rd Party Mac Developer Installer</string>
+              <key>provisioningProfiles</key>
+              <dict>
+                  <key>${BUNDLE_ID}</key>
+                  <string>${PROFILE_NAME}</string>
+              </dict>
+              <key>manageAppVersionAndBuildNumber</key>
+              <false/>
+              <key>uploadSymbols</key>
+              <true/>
+          </dict>
+          </plist>
+          PLIST
+
+          xcodebuild -exportArchive \
+            -archivePath build/AppStore.xcarchive \
+            -exportPath build/export \
+            -exportOptionsPlist build/ExportOptions.plist \
+            -allowProvisioningUpdates \
+            -authenticationKeyPath "$KEY_PATH" \
+            -authenticationKeyID "$ASC_KEY_ID" \
+            -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+          {
+            echo "### Uploaded to App Store Connect"
+            echo "Version **$VERSION**, build **$BUILD_NUMBER**, from \`$REF\` ($(git rev-parse --short HEAD))."
+            echo "It appears in TestFlight once Apple finishes processing (you'll get an email)."
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload archive log on failure
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: appstore-archive-log
+          path: build/archive.log
+          retention-days: 7
+
+      - name: Remove signing material
+        if: always()
+        run: |
+          security delete-keychain "$RUNNER_TEMP/appstore.keychain-db" 2>/dev/null || true
+          rm -f "$RUNNER_TEMP"/AuthKey_*.p8 "$RUNNER_TEMP/appstore.provisionprofile" "$RUNNER_TEMP/profile.plist"
