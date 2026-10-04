@@ -95,7 +95,7 @@ final class ProfileStore {
         gallery: GalleryStore,
         coordinator: GenerationCoordinator,
         paths: ProfilePaths = .live,
-        defaults: UserDefaults = .standard
+        defaults: LegacyDefaults = UserDefaults.standard
     ) {
         self.settings = settings
         self.jobStores = jobStores
@@ -249,7 +249,7 @@ final class ProfileStore {
         guard save(next) else { return ProfileError(lastError ?? "Couldn't save the profile list.") }
         registry = next
         settings.applyLibraryPath(resolved)
-        gallery.activate(thumbnailDirectory: paths.thumbnailDirectory(for: id))
+        gallery.activate(thumbnailDirectory: paths.thumbnailDirectory(for: id), preservingLocks: true)
         gallery.scan(outputDir: resolved)
         refreshLibraryAvailability()
         return nil

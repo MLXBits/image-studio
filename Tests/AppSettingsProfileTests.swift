@@ -54,9 +54,31 @@ struct AppSettingsProfileTests {
 
         settings.activateProfile(contentURL: fileA, libraryPath: "/lib/A")
 
-        let aside = fileA.deletingLastPathComponent().appendingPathComponent("profile.corrupt.json")
         #expect(settings.notepadText == "")
-        #expect(try String(contentsOf: aside, encoding: .utf8) == "not json")
+        #expect(try corruptBackups(beside: fileA) == ["not json"])
         #expect(!FileManager.default.fileExists(atPath: fileA.path))
+    }
+
+    /// A second corruption must not delete the first backup — it may hold the
+    /// only copy of the notes.
+    @Test func earlierCorruptBackupIsKept() throws {
+        let fileA = profileFile()
+        let dir = fileA.deletingLastPathComponent()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        let settings = AppSettings()
+
+        try Data("first".utf8).write(to: fileA)
+        settings.activateProfile(contentURL: fileA, libraryPath: "/lib/A")
+        try Data("second".utf8).write(to: fileA)
+        settings.activateProfile(contentURL: fileA, libraryPath: "/lib/A")
+
+        #expect(try corruptBackups(beside: fileA).sorted() == ["first", "second"])
+    }
+
+    private func corruptBackups(beside file: URL) throws -> [String] {
+        let dir = file.deletingLastPathComponent()
+        return try FileManager.default.contentsOfDirectory(atPath: dir.path)
+            .filter { $0.hasPrefix("profile.corrupt") }
+            .map { try String(contentsOf: dir.appendingPathComponent($0), encoding: .utf8) }
     }
 }

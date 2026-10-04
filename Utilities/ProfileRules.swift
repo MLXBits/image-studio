@@ -84,6 +84,15 @@ enum ProfileRules {
         return nil
     }
 
+    /// Whether a library folder sits on the volume it should. Older builds
+    /// recreated a missing library on the boot disk, so an unplugged drive can
+    /// leave a real `/Volumes/<drive>/…` folder behind; a library under
+    /// /Volumes only counts when the volume it's on is mounted under /Volumes.
+    /// `volumePath` is the mount point of the volume holding `path`.
+    static func isOnExpectedVolume(path: String, volumePath: String) -> Bool {
+        !path.hasPrefix("/Volumes/") || volumePath.hasPrefix("/Volumes/")
+    }
+
     static func nameProblem(
         _ name: String, profiles: [Profile], excluding: UUID?
     ) -> ProfileNameProblem? {

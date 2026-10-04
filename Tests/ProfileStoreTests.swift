@@ -5,13 +5,14 @@ import Testing
 /// Covers removing a profile. Removal acts on the active profile — you remove
 /// the profile you're in — so it switches to the default profile first, then
 /// deletes the removed profile's app data. Its library folder stays on disk.
-struct ProfileStoreTests {
+final class ProfileStoreTests {
+    private let root: URL
     private let paths: ProfilePaths
-    private let defaults: UserDefaults
+    private let defaults = MemoryDefaults()
     private let library: URL
 
     init() throws {
-        let root = FileManager.default.temporaryDirectory
+        root = FileManager.default.temporaryDirectory
             .appendingPathComponent("ProfileStoreTests-\(UUID().uuidString)", isDirectory: true)
         paths = ProfilePaths(
             appSupport: root.appendingPathComponent("AppSupport", isDirectory: true),
@@ -19,7 +20,6 @@ struct ProfileStoreTests {
         )
         library = root.appendingPathComponent("WorkLibrary", isDirectory: true)
         try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
-        defaults = try #require(UserDefaults(suiteName: "ProfileStoreTests-\(UUID().uuidString)"))
     }
 
     private func makeStore() -> ProfileStore {
@@ -72,5 +72,9 @@ struct ProfileStoreTests {
     @Test func anotherProfileCanBeRemovedWhileActive() throws {
         let (store, _) = try storeInWork()
         #expect(store.canRemoveActiveProfile)
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: root)
     }
 }

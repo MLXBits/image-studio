@@ -892,13 +892,19 @@ class AppSettings {
         }
     }
 
-    /// Whether the library folder exists. The root is never created implicitly:
-    /// a path on an unplugged drive would be recreated on the boot disk.
+    /// Whether the library folder exists — on its own drive. The root is never
+    /// created implicitly: a path on an unplugged drive would be recreated on
+    /// the boot disk (as older builds did, which can leave such a folder behind).
     func libraryRootExists() -> Bool {
         var isDir: ObjCBool = false
-        return !outputDir.isEmpty
-            && FileManager.default.fileExists(atPath: outputDir, isDirectory: &isDir)
-            && isDir.boolValue
+        guard !outputDir.isEmpty,
+              FileManager.default.fileExists(atPath: outputDir, isDirectory: &isDir),
+              isDir.boolValue
+        else { return false }
+        // Resolved first: `/Volumes/Macintosh HD` is a link to the boot volume.
+        let root = URL(fileURLWithPath: outputDir).resolvingSymlinksInPath()
+        let volume = try? root.resourceValues(forKeys: [.volumeURLKey]).volume
+        return ProfileRules.isOnExpectedVolume(path: root.path, volumePath: volume?.path ?? "/")
     }
 
     func mfluxBinaryPath() -> String {

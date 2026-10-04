@@ -66,6 +66,17 @@ struct ThumbnailCacheTests {
         #expect(gallery.lockedPaths.isEmpty)
     }
 
+    /// Changing the active profile's folder keeps the same form state, so the
+    /// images attached to it must stay protected from delete/move/rename.
+    @Test func changingTheFolderInPlaceKeepsAttachedImageLocks() {
+        let gallery = GalleryStore()
+        gallery.lockedPaths = ["/lib-a/source.png"]
+
+        gallery.activate(thumbnailDirectory: tempDir(), preservingLocks: true)
+
+        #expect(gallery.lockedPaths == ["/lib-a/source.png"])
+    }
+
     /// A scan of the old library still in flight when the profile changes must
     /// not land its items in the new profile's gallery.
     @Test func lateScanOfThePreviousLibraryIsDiscarded() async throws {

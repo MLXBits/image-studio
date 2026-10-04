@@ -98,6 +98,22 @@ struct ProfileRulesTests {
         #expect(ProfileRules.libraryProblem(path: "/Users/me/New", profiles: [unset], excluding: nil) == nil)
     }
 
+    // MARK: - Mounted volume
+
+    /// Older builds created a missing library folder on the boot disk, so an
+    /// unplugged drive can leave a real `/Volumes/<drive>/…` folder behind. A
+    /// library under /Volumes only counts when its volume is mounted there.
+    @Test(arguments: [
+        ("/Volumes/Archive/Lib", "/Volumes/Archive", true),
+        ("/Volumes/Archive/Lib", "/", false),
+        ("/Volumes/Archive/Lib", "/System/Volumes/Data", false),
+        ("/Users/me/Lib", "/", true),
+        ("/Users/me/Lib", "/System/Volumes/Data", true),
+    ])
+    func libraryUnderVolumesNeedsItsDriveMounted(path: String, volume: String, expected: Bool) {
+        #expect(ProfileRules.isOnExpectedVolume(path: path, volumePath: volume) == expected)
+    }
+
     // MARK: - Name validation
 
     @Test func blankNameIsRefused() {

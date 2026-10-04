@@ -5,20 +5,33 @@ import Testing
 /// Covers the one-time move to profiles and the per-launch cleanup, against a
 /// throwaway App Support folder. Migration runs on the user's real data, so
 /// each crash point must leave something the next launch can recover from.
-struct ProfileBootstrapTests {
+/// In-memory stand-in for the UserDefaults calls migration makes.
+final class MemoryDefaults: LegacyDefaults {
+    var values: [String: [String]] = [:]
+
+    func stringArray(forKey defaultName: String) -> [String]? {
+        values[defaultName]
+    }
+
+    func removeObject(forKey defaultName: String) {
+        values[defaultName] = nil
+    }
+}
+
+final class ProfileBootstrapTests {
     private let fm = FileManager.default
+    private let root: URL
     private let paths: ProfilePaths
-    private let defaults: UserDefaults
+    private let defaults = MemoryDefaults()
 
     init() throws {
-        let root = FileManager.default.temporaryDirectory
+        root = FileManager.default.temporaryDirectory
             .appendingPathComponent("ProfileBootstrapTests-\(UUID().uuidString)", isDirectory: true)
         paths = ProfilePaths(
             appSupport: root.appendingPathComponent("AppSupport", isDirectory: true),
             thumbnailsRoot: root.appendingPathComponent("Thumbnails", isDirectory: true)
         )
         try FileManager.default.createDirectory(at: paths.appSupport, withIntermediateDirectories: true)
-        defaults = try #require(UserDefaults(suiteName: "ProfileBootstrapTests-\(UUID().uuidString)"))
     }
 
     private func write(_ text: String, to url: URL) throws {
@@ -33,7 +46,7 @@ struct ProfileBootstrapTests {
         """, to: paths.appSupport.appendingPathComponent("settings.json"))
         try write("[]", to: paths.appSupport.appendingPathComponent("jobs.json"))
         try write("[]", to: paths.appSupport.appendingPathComponent("krea2-jobs.json"))
-        defaults.set(["Drafts"], forKey: ProfileBootstrap.legacyCollapsedBoardsKey)
+        defaults.values[ProfileBootstrap.legacyCollapsedBoardsKey] = ["Drafts"]
     }
 
     private func migratedRegistry() throws -> ProfileRegistry {
@@ -135,7 +148,7 @@ struct ProfileBootstrapTests {
 
         #expect(!fm.fileExists(atPath: paths.appSupport.appendingPathComponent("jobs.json").path))
         #expect(!fm.fileExists(atPath: paths.appSupport.appendingPathComponent("krea2-jobs.json").path))
-        #expect(defaults.object(forKey: ProfileBootstrap.legacyCollapsedBoardsKey) == nil)
+        #expect(defaults.values[ProfileBootstrap.legacyCollapsedBoardsKey] == nil)
         #expect(!fm.fileExists(atPath: paths.dataDirectory(for: orphanID).path))
         #expect(!fm.fileExists(atPath: paths.thumbnailDirectory(for: orphanID).path))
         #expect(fm.fileExists(atPath: paths.thumbnailDirectory(for: keptThumbs).appendingPathComponent("b.jpg").path))
@@ -149,5 +162,9 @@ struct ProfileBootstrapTests {
 
         #expect(fm.fileExists(atPath: target.appendingPathComponent("abc.jpg").path))
         #expect(!fm.fileExists(atPath: paths.thumbnailsRoot.appendingPathComponent("abc.jpg").path))
+    }
+
+    deinit {
+        try? FileManager.default.removeItem(at: root)
     }
 }

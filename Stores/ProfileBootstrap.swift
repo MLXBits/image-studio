@@ -46,6 +46,15 @@ struct ProfilePaths: Equatable {
     }
 }
 
+/// The two UserDefaults calls migration makes, behind a protocol so tests can
+/// run it without leaving preference files behind.
+protocol LegacyDefaults: AnyObject {
+    func stringArray(forKey defaultName: String) -> [String]?
+    func removeObject(forKey defaultName: String)
+}
+
+extension UserDefaults: LegacyDefaults {}
+
 /// The one-time move from a single library to profiles, plus the cleanup that
 /// runs on every launch.
 ///
@@ -72,7 +81,7 @@ enum ProfileBootstrap {
         "jobs.json", "ideogram4-jobs.json", "krea2-jobs.json", "zimage-jobs.json", "seedvr2-jobs.json",
     ]
 
-    static func loadOrMigrate(paths: ProfilePaths, defaults: UserDefaults) -> Outcome {
+    static func loadOrMigrate(paths: ProfilePaths, defaults: LegacyDefaults) -> Outcome {
         let fm = FileManager.default
         if fm.fileExists(atPath: paths.registry.path) {
             // An unreadable registry is never treated as missing: migrating again
@@ -93,7 +102,7 @@ enum ProfileBootstrap {
         }
     }
 
-    private static func migrate(paths: ProfilePaths, defaults: UserDefaults) throws -> ProfileRegistry {
+    private static func migrate(paths: ProfilePaths, defaults: LegacyDefaults) throws -> ProfileRegistry {
         let fm = FileManager.default
         // Leftovers from a run that crashed before committing.
         try? fm.removeItem(at: paths.profilesRoot)
@@ -142,7 +151,7 @@ enum ProfileBootstrap {
     /// Safe to repeat. Removes what migration copied, and the data and
     /// thumbnail folders of profiles no longer in the registry (finishing a
     /// removal that was interrupted).
-    static func cleanUp(registry: ProfileRegistry, paths: ProfilePaths, defaults: UserDefaults) {
+    static func cleanUp(registry: ProfileRegistry, paths: ProfilePaths, defaults: LegacyDefaults) {
         let fm = FileManager.default
         for name in legacyJobFiles {
             try? fm.removeItem(at: paths.appSupport.appendingPathComponent(name))

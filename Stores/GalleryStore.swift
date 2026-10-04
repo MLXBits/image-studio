@@ -128,14 +128,18 @@ final class GalleryStore {
 
     /// Points the gallery at a profile's thumbnail folder and drops everything
     /// from the previous library. Bumping ``scanGeneration`` discards a scan of
-    /// the old library that is still in flight.
-    func activate(thumbnailDirectory: URL) {
+    /// the old library that is still in flight. `preservingLocks` is for a folder
+    /// change within the same profile: the form state — and so what's attached —
+    /// is unchanged, and ContentView only re-syncs the locks when it appears.
+    func activate(thumbnailDirectory: URL, preservingLocks: Bool = false) {
         self.thumbnailDirectory = thumbnailDirectory
         scanGeneration += 1
         items = []
         boards = []
         selectedBoard = "All"
-        lockedPaths = []
+        if !preservingLocks {
+            lockedPaths = []
+        }
         isScanning = false
         deleteError = nil
         stripError = nil
