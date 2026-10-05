@@ -158,7 +158,8 @@ extension ScenarioGeneratorView {
             outline: session.outline,
             categories: session.categories,
             wildcardMode: false,
-            settings: settings
+            settings: settings,
+            downloads: downloads
         )
     }
 }

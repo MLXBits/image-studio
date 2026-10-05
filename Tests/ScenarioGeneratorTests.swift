@@ -169,4 +169,13 @@ struct ScenarioGeneratorTests {
         Output mode: a single fully-resolved prompt
         """)
     }
+
+    /// The warm driver's loading/loaded events show as "Loading model…" (#18).
+    @Test func modelLoadingEventsReachTheSession() {
+        let session = ScenarioSession()
+        session.generator.handleEvent(["event": "loading"])
+        #expect(session.isLoadingModel)
+        session.generator.handleEvent(["event": "loaded", "seconds": 3.2])
+        #expect(!session.isLoadingModel)
+    }
 }

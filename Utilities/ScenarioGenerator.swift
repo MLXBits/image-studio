@@ -204,6 +204,9 @@ final class ScenarioGenerator {
     }
 
     private(set) var lastLog: String = ""
+    /// Told when the warm driver starts and finishes loading the model, so
+    /// the panel can say "Loading model…" rather than "Generating…".
+    var onModelLoading: ((Bool) -> Void)?
 
     // Persistent warm-LLM driver: kept alive across re-rolls so the model
     // loads once, and torn down (``shutdown()``) when the popover closes. Any
@@ -221,7 +224,8 @@ final class ScenarioGenerator {
         outline: String,
         categories: Set<ScenarioCategory>,
         wildcardMode: Bool,
-        settings: AppSettings
+        settings: AppSettings,
+        downloads: ModelDownloadStore
     ) async throws -> String {
         let config = try ScenarioPromptConfig.load()
         let examples = Self.fewShotExamples(config, wildcardMode: wildcardMode)
@@ -236,15 +240,15 @@ final class ScenarioGenerator {
             )
         }
 
-        let rawModel = settings.gemmaModelPath.isEmpty
-            ? "mlx-community/gemma-3-12b-it-8bit"
-            : settings.gemmaModelPath
+        let modelPath = settings.gemmaModel
         // A local path that doesn't exist would otherwise die deep inside the
         // library with an opaque traceback — catch it here.
-        let modelPath = (rawModel as NSString).expandingTildeInPath
         if modelPath.hasPrefix("/"), !FileManager.default.fileExists(atPath: modelPath) {
             throw GemmaChatRunnerError.modelNotFound(modelPath)
         }
+        // Fetched by the app, not the driver, so closing the panel mid-download
+        // doesn't throw the download away (#18).
+        try await downloads.ensureAvailable(modelPath, settings: settings)
 
         let fullPrompt = GemmaChatRunner.chatPrompt(
             system: config.system,
@@ -398,6 +402,7 @@ final class ScenarioGenerator {
             let error: Error = cancelling ? CancellationError()
                 : ScenarioGeneratorError.emptyReply("Warm LLM driver exited unexpectedly")
             cancelling = false
+            onModelLoading?(false)
             pending?.resume(throwing: error)
             pending = nil
             resolveHandshake(false)
@@ -413,20 +418,27 @@ final class ScenarioGenerator {
         }
     }
 
-    private func handleEvent(_ event: [String: Any]) {
+    /// Internal for tests.
+    func handleEvent(_ event: [String: Any]) {
         switch event["event"] as? String {
         case "ready":
             resolveHandshake(true)
         case "fatal":
             resolveHandshake(false)
+        case "loading":
+            onModelLoading?(true)
+        case "loaded":
+            onModelLoading?(false)
         case "result":
+            onModelLoading?(false)
             pending?.resume(returning: event["text"] as? String ?? "")
             pending = nil
         case "error":
+            onModelLoading?(false)
             pending?.resume(throwing: ScenarioGeneratorError.subprocessFailed(1, event["message"] as? String ?? "error"))
             pending = nil
         default:
-            break // loading/loaded — informational
+            break
         }
     }
 

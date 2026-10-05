@@ -10,6 +10,7 @@ struct IdeogramCaptionEditorView: View {
     let outputHeight: Int
 
     @Environment(AppSettings.self) private var settings
+    @Environment(ModelDownloadStore.self) private var downloads
     @State private var isGenerating: Bool = false
     @State private var generateError: String?
     @State private var generatorTask: Task<Void, Never>?
@@ -267,6 +268,7 @@ struct IdeogramCaptionEditorView: View {
         VStack(alignment: .leading, spacing: 4) {
             Divider()
             Spacer()
+            ModelDownloadStatusRow(model: settings.gemmaModel)
             HStack {
                 Spacer()
                 Button {
@@ -278,7 +280,9 @@ struct IdeogramCaptionEditorView: View {
                         } else {
                             Image(systemName: "sparkles")
                         }
-                        Text(isGenerating ? "Generating…" : "Generate with Gemma")
+                        Text(isGenerating
+                            ? (downloads.active[settings.gemmaModel] != nil ? "Downloading model…" : "Generating…")
+                            : "Generate with Gemma")
                     }
                 }
                 .disabled(
@@ -426,7 +430,7 @@ struct IdeogramCaptionEditorView: View {
         let generator = IdeogramCaptionGenerator()
         generatorTask = Task { @MainActor in
             do {
-                let result = try await generator.generate(from: desc, settings: settings)
+                let result = try await generator.generate(from: desc, settings: settings, downloads: downloads)
                 lastGemmaLog = generator.lastLog
                 caption.highLevelDescription = result.highLevelDescription
                 if let style = result.styleDescription {

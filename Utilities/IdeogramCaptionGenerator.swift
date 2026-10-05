@@ -83,7 +83,9 @@ final class IdeogramCaptionGenerator {
 
     // MARK: - Public
 
-    func generate(from description: String, settings: AppSettings) async throws -> IdeogramCaption {
+    func generate(
+        from description: String, settings: AppSettings, downloads: ModelDownloadStore
+    ) async throws -> IdeogramCaption {
         let config = try IdeogramPromptConfig.load()
         let examples = [
             (config.exampleAInput, config.exampleAOutput),
@@ -107,9 +109,8 @@ final class IdeogramCaptionGenerator {
                 "=== MODEL OUTPUT (remote) ===", rawOutput.isEmpty ? "(no output)" : rawOutput,
             ].joined(separator: "\n\n")
         } else {
-            let modelPath = settings.gemmaModelPath.isEmpty
-                ? "mlx-community/gemma-3-12b-it-8bit"
-                : settings.gemmaModelPath
+            let modelPath = settings.gemmaModel
+            try await downloads.ensureAvailable(modelPath, settings: settings)
             let fullPrompt = GemmaChatRunner.chatPrompt(
                 system: config.system, examples: examples, finalUser: finalUser
             )

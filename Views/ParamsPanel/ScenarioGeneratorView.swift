@@ -12,6 +12,7 @@ final class ScenarioSession {
     var categories: Set<ScenarioCategory> = []
     var wildcardMode: Bool = false
     var isGenerating: Bool = false
+    var isLoadingModel: Bool = false
     var result: String = ""
     var generateError: String?
     var lastGemmaLog: String = ""
@@ -31,6 +32,10 @@ final class ScenarioSession {
     var isBatching: Bool {
         rollTarget > 0
     }
+
+    init() {
+        generator.onModelLoading = { [weak self] loading in self?.isLoadingModel = loading }
+    }
 }
 
 /// Popover that expands a rough outline into a full image prompt via local
@@ -49,6 +54,8 @@ struct ScenarioGeneratorView: View {
 
     /// Internal, not private: the batch-queue half lives in ScenarioBatchQueue.swift.
     @Environment(AppSettings.self) var settings
+    /// Internal, not private: the batch-queue half lives in ScenarioBatchQueue.swift.
+    @Environment(ModelDownloadStore.self) var downloads
 
     @State private var showGemmaLog: Bool = false
 
@@ -206,12 +213,11 @@ struct ScenarioGeneratorView: View {
     /// itself lives in the footer (a single button that also re-rolls).
     @ViewBuilder
     private var generatingRow: some View {
+        ModelDownloadStatusRow(model: settings.gemmaModel)
         if session.isGenerating {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                Text(session.isBatching
-                    ? "Rolling prompt \(min(session.batchPrompts.count + 1, session.rollTarget))/\(session.rollTarget)…"
-                    : "Generating…")
+                Text(statusText)
                     .font(.caption).foregroundStyle(.secondary)
                     .monospacedDigit()
                 Button("Cancel") { session.task?.cancel() }
@@ -221,6 +227,18 @@ struct ScenarioGeneratorView: View {
                 Spacer()
             }
         }
+    }
+
+    private var statusText: String {
+        if downloads.active[settings.gemmaModel] != nil {
+            return "Waiting for the model download…"
+        }
+        if session.isLoadingModel {
+            return "Loading model…"
+        }
+        return session.isBatching
+            ? "Rolling prompt \(min(session.batchPrompts.count + 1, session.rollTarget))/\(session.rollTarget)…"
+            : "Generating…"
     }
 
     private var resultPreview: some View {
@@ -307,7 +325,8 @@ struct ScenarioGeneratorView: View {
                     outline: session.outline,
                     categories: session.categories,
                     wildcardMode: session.wildcardMode,
-                    settings: settings
+                    settings: settings,
+                    downloads: downloads
                 )
                 session.lastGemmaLog = session.generator.lastLog
                 session.result = prompt
@@ -332,12 +351,15 @@ struct ScenarioGeneratorButton: View {
     var onQueue: ([String]) -> Void = { _ in }
 
     @Environment(AppSettings.self) private var settings
+    @Environment(ModelDownloadStore.self) private var downloads
     @State private var session = ScenarioSession()
     @State private var controller = ScenarioPanelController()
 
     var body: some View {
         Button {
-            controller.toggle(session: session, settings: settings, onSelect: onSelect, onQueue: onQueue)
+            controller.toggle(
+                session: session, settings: settings, downloads: downloads, onSelect: onSelect, onQueue: onQueue
+            )
         } label: {
             Image(systemName: "wand.and.stars")
                 .font(.system(size: 10))
@@ -383,6 +405,7 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
     func toggle(
         session: ScenarioSession,
         settings: AppSettings,
+        downloads: ModelDownloadStore,
         onSelect: @escaping (String) -> Void,
         onQueue: @escaping ([String]) -> Void = { _ in }
     ) {
@@ -409,6 +432,7 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
             onClose: { [weak self] in self?.panel?.close() }
         )
         .environment(settings)
+        .environment(downloads)
 
         // A resizable panel with a fixed default size — NOT NSHostingController's
         // `.preferredContentSize` auto-sizing, which resizes the window mid display
