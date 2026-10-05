@@ -87,7 +87,7 @@ struct OutputDirectoryPromptView: View {
                         finishLibraryStep()
                     }
                 }
-                .buttonStyle(.link)
+                .buttonStyle(.bordered)
                 .accessibilityLabel("Skip folder selection")
                 .accessibilityHint(BuildFlavor.isAppStore
                     ? "Saves to Pictures ▸ MLXBits Image Studio"
