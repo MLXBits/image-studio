@@ -102,6 +102,7 @@
 		59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */; };
 		5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */; };
 		5AA9A2C97A8FFFA68E0EB360 /* GalleryMetadataStripping.swift in Sources */ = {isa = PBXBuildFile; fileRef = F812C375B01307E326002869 /* GalleryMetadataStripping.swift */; };
+		5BDC7D0986EE706D4EAD0859 /* TipJarStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 58375178C787708F4AAFF3EE /* TipJarStore.swift */; };
 		5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */; };
 		5D1F115D51D6DA55F3B1EF10 /* OpenAIChatClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90C6D1E633010C5A77C0DBE /* OpenAIChatClientTests.swift */; };
 		61A032484904D260E5FD2534 /* ProfileRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B56DF845B71EA5618C06B80D /* ProfileRulesTests.swift */; };
@@ -188,7 +189,9 @@
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */; };
+		C45315FC4F03EB7604454F1F /* TipJarStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F9A333C3A9565799C169B2 /* TipJarStoreTests.swift */; };
 		C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BEC8C22A135C0CC75CE08 /* LibraryFolderPanel.swift */; };
+		C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */; };
 		C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */; };
 		C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
@@ -331,6 +334,7 @@
 		54319FFDDA384384985FA769 /* AppSettingsProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsProfileTests.swift; sourceTree = "<group>"; };
 		5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionTests.swift; sourceTree = "<group>"; };
 		57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelState.swift; sourceTree = "<group>"; };
+		58375178C787708F4AAFF3EE /* TipJarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarStore.swift; sourceTree = "<group>"; };
 		585B7D9DFD8D0BF3352D6E1C /* TestHost.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TestHost.swift; sourceTree = "<group>"; };
 		5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobRunner.swift; sourceTree = "<group>"; };
 		5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxSemantics.swift; sourceTree = "<group>"; };
@@ -366,6 +370,7 @@
 		75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryStore.swift; sourceTree = "<group>"; };
 		75FBF47724D9699F42B96FD1 /* ClipboardImageMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardImageMonitor.swift; sourceTree = "<group>"; };
 		76C1DDB5C97F9B016DFFF1D1 /* AppMain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppMain.swift; sourceTree = "<group>"; };
+		76F9A333C3A9565799C169B2 /* TipJarStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarStoreTests.swift; sourceTree = "<group>"; };
 		794168A8FCC11CA35BD77BBC /* ComfyUIClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyUIClient.swift; sourceTree = "<group>"; };
 		79628AB5261A09BED858E668 /* scenario_llm_driver.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = scenario_llm_driver.py; sourceTree = "<group>"; };
 		79B73E05AF3B412407752562 /* GenerationEstimateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationEstimateView.swift; sourceTree = "<group>"; };
@@ -410,6 +415,7 @@
 		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
 		AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraRelocateTests.swift; sourceTree = "<group>"; };
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
+		B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeTipStorefront.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyProgressDecodeTests.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
@@ -532,6 +538,7 @@
 			children = (
 				3FFCBAEC556970B3C1F7CA6D /* AsyncGate.swift */,
 				42A12301E41212F054BE2021 /* FakeRuntime.swift */,
+				B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */,
 				23C14BB102192A53167A5699 /* RecordingFileAccess.swift */,
 			);
 			path = Support;
@@ -635,6 +642,7 @@
 				29D3BBBE4093E4979C254751 /* TestHostTests.swift */,
 				061B3DAADC9D8FED58CF64D3 /* ThumbnailCacheTests.swift */,
 				2288F848C8AC536F933F7831 /* TimingModelTests.swift */,
+				76F9A333C3A9565799C169B2 /* TipJarStoreTests.swift */,
 				B53824D8F5CACEF836DDE9FB /* ToolchainMigrationTests.swift */,
 				DE254A77370537174B0B917E /* ToolchainTests.swift */,
 				F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */,
@@ -879,6 +887,7 @@
 				C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */,
 				0CF33CE196ECF9A90F56D142 /* SupportStore.swift */,
 				0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */,
+				58375178C787708F4AAFF3EE /* TipJarStore.swift */,
 				FA542CC2211E134C4BBE819D /* ZImageJobStore.swift */,
 			);
 			path = Stores;
@@ -1199,6 +1208,7 @@
 				80480D0FFF9AFC8967EA1529 /* TestHost.swift in Sources */,
 				4C4DEBC9788F57D3627E47CC /* ThumbnailCache.swift in Sources */,
 				19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */,
+				5BDC7D0986EE706D4EAD0859 /* TipJarStore.swift in Sources */,
 				A117AE1225437493D341FD90 /* Toolchain.swift in Sources */,
 				31DEB5DB5725496310968099 /* ToolchainBanner.swift in Sources */,
 				1AA6EC8D38C7D4E6F1998F56 /* ToolchainMigration.swift in Sources */,
@@ -1231,6 +1241,7 @@
 				3AF0A186931B9DD5DE124DAE /* ComfySeedVR2WorkflowTests.swift in Sources */,
 				3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
+				C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
@@ -1265,6 +1276,7 @@
 				643C629A20B4DAA766D21E50 /* TestHostTests.swift in Sources */,
 				D77D05BAACC993C3C7A778EF /* ThumbnailCacheTests.swift in Sources */,
 				FF394471D26887FC6992C768 /* TimingModelTests.swift in Sources */,
+				C45315FC4F03EB7604454F1F /* TipJarStoreTests.swift in Sources */,
 				8E27695F9C62870A3412DA70 /* ToolchainMigrationTests.swift in Sources */,
 				1FC3BC94E2871CA8911EEFBE /* ToolchainTests.swift in Sources */,
 				3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */,
