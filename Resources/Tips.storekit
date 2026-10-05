@@ -1,13 +1,29 @@
 {
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
   "identifier" : "4C7E9B21",
-  "nonRenewingSubscriptions" : [],
+  "nonRenewingSubscriptions" : [
+
+  ],
   "products" : [
     {
       "displayPrice" : "2.99",
       "familyShareable" : false,
       "internalID" : "6740000001",
       "localizations" : [
-        { "description" : "A small tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Small Tip", "locale" : "en_US" }
+        {
+          "description" : "A small tip. It unlocks nothing; it helps keep Image Studio going.",
+          "displayName" : "Small Tip",
+          "locale" : "en_US"
+        }
       ],
       "productID" : "com.mlxbits.image-studio.appstore.tip.small",
       "referenceName" : "Small Tip",
@@ -18,7 +34,11 @@
       "familyShareable" : false,
       "internalID" : "6740000002",
       "localizations" : [
-        { "description" : "A medium tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Medium Tip", "locale" : "en_US" }
+        {
+          "description" : "A medium tip. It unlocks nothing; it helps keep Image Studio going.",
+          "displayName" : "Medium Tip",
+          "locale" : "en_US"
+        }
       ],
       "productID" : "com.mlxbits.image-studio.appstore.tip.medium",
       "referenceName" : "Medium Tip",
@@ -29,7 +49,11 @@
       "familyShareable" : false,
       "internalID" : "6740000003",
       "localizations" : [
-        { "description" : "A large tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Large Tip", "locale" : "en_US" }
+        {
+          "description" : "A large tip. It unlocks nothing; it helps keep Image Studio going.",
+          "displayName" : "Large Tip",
+          "locale" : "en_US"
+        }
       ],
       "productID" : "com.mlxbits.image-studio.appstore.tip.large",
       "referenceName" : "Large Tip",
@@ -37,11 +61,30 @@
     }
   ],
   "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
     "_failTransactionsEnabled" : false,
     "_locale" : "en_US",
+    "_renewalBillingIssuesEnabled" : false,
     "_storefront" : "USA",
-    "_storeKitErrors" : []
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
   },
-  "subscriptionGroups" : [],
-  "version" : { "major" : 4, "minor" : 0 }
+  "subscriptionBundleGroups" : [
+
+  ],
+  "subscriptionGroups" : [
+
+  ],
+  "subscriptionSuiteGroups" : [
+
+  ],
+  "version" : {
+    "major" : 6,
+    "minor" : 3
+  }
 }
