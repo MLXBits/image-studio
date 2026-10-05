@@ -3042,6 +3042,7 @@ These are spec §7's manual checks for this milestone. The owner runs them in th
 3. **LoRAs:**
    - one from an arbitrary folder, used again after a relaunch;
    - one added while the warm driver is already running (spec risk table);
+   - with the warm driver already running: switch profile, use Change Folder…, and re-grant from the banner, generating after each (the image must save);
    - delete one in Finder: "Access lost" and Locate… appear, and a job using it fails with the spec's message.
 4. **Source images:** img2img from outside the library, then a re-run after relaunch.
 5. **Profiles:**
