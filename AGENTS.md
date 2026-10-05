@@ -226,8 +226,10 @@ This is what four 28pt icon buttons in the dimension row cost the first time.
   Use the raw step value; do not add app-side ETA estimates on top.
 - Secrets go through `Utilities/KeychainHelper.swift`. `.env` holds the Apple
   Team ID for release builds and is gitignored — never commit it or echo it.
-- The app is unsandboxed (`com.apple.security.app-sandbox: false`) to reach
-  user-chosen model directories.
+- The DMG is unsandboxed; the App Store flavor is sandboxed (`Utilities/FileAccess.swift`, spec §4). In both:
+  - **Every open panel** that picks a folder or LoRA goes through `GrantingPanel` (or `LibraryFolderPanel`), so the App Store build keeps access across relaunches.
+  - **Every new source-image entry point** passes its path through `settings.adoptSourceImage(_:)`.
+  - **Anything a job reads from disk** goes in its spec's `accessPaths(job:)`.
 - Do not script bulk reads or edits over the user's image output directory.
   Fix the code and describe the manual cleanup instead.
 

@@ -194,26 +194,31 @@ All of this lives behind one `FileAccess` service. The DMG implementation passes
 
 **Persistent folder grants** (app-scoped security bookmarks):
 
-| Folder | Bookmark stored in | Granted via |
+| Folder | Grant kept in | Granted via |
 |---|---|---|
-| Each profile's library | `Profile.libraryBookmark` (optional field in `profiles.json`) | first-run prompt, New Profile, Change Folder, missing-library banner |
-| Models folder (`HF_HOME`) | global settings | first run, Settings ▸ Models |
-| Custom model directories, Gemma model path, mflux cache dir | their settings | when picked; while unset, each uses its default inside the container |
+| Each profile's library | `grants.json`, by path | first-run prompt, New Profile, Change Folder, missing-library banner |
+| Models folder (`HF_HOME`) | `grants.json`, by path | first run, Settings ▸ Advanced |
+| Custom model directories, Gemma model path, mflux cache dir | `grants.json`, by path | when picked; while unset, each uses its default inside the container |
 
-- **Picker only.** In the App Store build, folder fields are read-only with Browse…, because a typed path carries no grant. This includes the New Profile sheet's library field.
+**How grants are kept (decided in milestone 5).** One store, `grants.json` in App Support, holds every bookmark, keyed by the path it was made for. Bookmarks aren't fields on profiles, LoRAs or settings.
+- **Coverage:** a path is reachable through the deepest grant at or above it. A LoRA downloaded into the models folder, or a source image in the library, needs nothing of its own.
+- **Why one store:** jobs, drafts, saved stacks and settings all keep carrying plain paths.
+- **A folder renamed or moved in Finder isn't followed:** it shows as missing, as in the DMG, until it's chosen again.
+
+- **Picker only.** In the App Store build, folder fields are read-only with Browse…, because a typed path carries no grant. This includes the New Profile sheet's library field. Fields that also take a Hugging Face repo ID (model sources, the Gemma model, the custom model) stay typeable: Browse… grants access, and a typed folder the app can't open shows a hint.
 - **Profile switching.** A profile's library grant starts when the profile activates and stops when it deactivates.
 - **Stale bookmarks** are re-created quietly from the resolved URL.
 - **An unresolvable bookmark** shows the existing missing-library banner, where "Change Folder…" re-grants.
 - **The models grant covers `HF_HOME` itself,** not just `hub/`, so the token file and Hugging Face's other caches are included.
 
 **LoRA files.**
-- **Picked from anywhere:** each library entry gets a file bookmark (`LoraEntry.bookmark`), started for the duration of a job.
+- **Picked from anywhere:** each picked file gets a grant, started for the duration of a job.
 - **Downloaded from Hugging Face:** they live under the models folder and need nothing extra.
 - **File gone:** a LoRA whose bookmark no longer resolves shows a warning with "Locate…". A job using it fails with "Access to <name> was lost — locate the file again."
 
 **Source images** (img2img, edit images, SeedVR2 sources, template images):
 - **Inside the active library:** used in place.
-- **From elsewhere** (open panel or drag and drop): copied into `Profiles/<id>/Inputs/<content-hash>.<ext>` inside the container, and the job references the copy.
+- **From elsewhere** (open panel, drag and drop, or paste): copied into `Profiles/<id>/Inputs/<content-hash>.<ext>` inside the container, and the job references the copy.
 - **Effect:** re-runs and templates keep working after a relaunch. Removing a profile deletes its `Inputs/` with the rest of its data.
 
 **First run (minimal):**
@@ -222,7 +227,7 @@ All of this lives behind one `FileAccess` service. The DMG implementation passes
    - **Skip for Now:** creates `~/Pictures/MLXBits Image Studio`, using the Pictures entitlement, so the default library is visible in Finder.
 2. **Models folder.**
    - **If `~/.cache/huggingface` exists:** the app says "We found your Hugging Face model cache — use it?" and opens the picker on that folder; one click confirms.
-   - **Otherwise:** models live in the app's container, and Settings ▸ Models can move them later.
+   - **Otherwise:** models live in the app's container, and Settings ▸ Advanced can move them later.
 
 **Already in the container, no work needed:** profiles, settings, job history, notepad, thumbnails, timing data, stepwise previews, and the system-prompt files.
 
@@ -328,7 +333,7 @@ It opens with:
   - a bookmark round trip
   - the in-library / outside-library decision and the copy into `Inputs/`
   - removing a profile removes its `Inputs/`
-- **Profile registry:** a `profiles.json` without `libraryBookmark` still loads.
+- **Grant store:** the deepest covering grant wins; a sibling folder sharing a prefix isn't covered; a moved folder isn't followed; a stale bookmark is re-created.
 - **Tip jar:** StoreKitTest with the `.storekit` file: success, cancelled, pending, and finishing an interrupted transaction at launch.
 - **Nudge rule** (a pure function): threshold reached, dismissed, tipped, sheet opened.
 

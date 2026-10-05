@@ -159,6 +159,8 @@ To build the App Store flavor locally, copy `Config/Local.xcconfig.example` to
 container (`~/Library/Containers/com.mlxbits.image-studio.appstore`), so it
 never touches the DMG app's data.
 
+On first run the App Store flavor asks for a library folder (Skip for Now uses Pictures ▸ MLXBits Image Studio) and a models folder, offering `~/.cache/huggingface` when it exists. It keeps access to every folder and LoRA you choose. Images you bring in from outside the library are copied into the profile, so re-runs work after a relaunch.
+
 To change a Python package version, edit `Runtime/requirements.in` and run
 `scripts/lock-python-runtime.sh`. The runtime build refuses GPL-family
 packages; a package without license metadata must be checked by hand and
