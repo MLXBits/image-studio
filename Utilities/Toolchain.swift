@@ -59,6 +59,11 @@ nonisolated struct Toolchain: Equatable, Sendable {
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
         env["MPLCONFIGDIR"] = cachesURL.appendingPathComponent("matplotlib").path
+        // The app collects no data (PRIVACY.md): the hf CLI's PyPI update check
+        // and the Hugging Face libraries' User-Agent usage details stay off.
+        env["HF_HUB_DISABLE_UPDATE_CHECK"] = "1"
+        env["HF_HUB_DISABLE_TELEMETRY"] = "1"
+        env["DO_NOT_TRACK"] = "1"
         return env
     }
 

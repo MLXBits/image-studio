@@ -976,10 +976,6 @@ class AppSettings {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
-        // The app collects no data (PRIVACY.md): no usage pings from the
-        // Hugging Face libraries either.
-        env["HF_HUB_DISABLE_TELEMETRY"] = "1"
-        env["DO_NOT_TRACK"] = "1"
         if !hfHome.isEmpty {
             env["HF_HOME"] = hfHome
         }

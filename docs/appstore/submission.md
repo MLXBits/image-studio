@@ -9,7 +9,9 @@ The owner's checklist, in order. Text to paste lives in [listing.md](listing.md)
 4. **Tips:** Monetization ▸ In-App Purchases ▸ +, three times, Consumable, with the IDs, names, descriptions, review notes and screenshot from listing.md. Prices: $2.99, $4.99, $9.99 (US base; App Store Connect fills other storefronts).
 
 ## The build
-5. **Release:** `git tag v0.17.0 && git push origin v0.17.0` ships the DMG through release.yml. Then `gh workflow run appstore.yml` (no ref: it builds the newest tag) uploads 0.17.0 to TestFlight.
+5. **Release:** after the store-release PR is merged, on an up-to-date `main`: `git tag v0.17.0 && git push origin v0.17.0` ships the DMG through release.yml. When it's done, put the summary above the generated commit list:
+   `gh release view v0.17.0 --json body --jq .body > "$TMPDIR/gen.md" && cat docs/appstore/release-notes-v0.17.0.md "$TMPDIR/gen.md" > "$TMPDIR/body.md" && gh release edit v0.17.0 --notes-file "$TMPDIR/body.md"`
+   Then `gh workflow run appstore.yml` (no ref: it builds the newest tag) uploads 0.17.0 to TestFlight.
 6. **Availability:** Pricing and Availability: Free, all countries except China mainland.
 
 ## TestFlight pass (selphie)
@@ -21,16 +23,18 @@ The owner's checklist, in order. Text to paste lives in [listing.md](listing.md)
 8. **Runtime check:** run `"/Applications/MLXBits Image Studio.app/Contents/MacOS/MLXBits Image Studio" --runtime-self-test` (the TestFlight copy's path may differ, for example "MLXBits Image Studio 2.app"). Expect "Runtime self-test passed".
 
 ## The listing
-9. **App information:** name, subtitle, category, privacy policy URL and support URL from listing.md.
-10. **Version 0.17.0 page:** promotional text, description, keywords, What's New, screenshots, support and marketing URLs, copyright.
-11. **App privacy:** Data Not Collected. Publish it.
+9. **App information:** name, subtitle and category from listing.md.
+10. **Version 0.17.0 page:** promotional text, description, keywords, screenshots, support URL and copyright. Leave the marketing URL empty. What's New isn't offered for a first version.
+11. **App privacy:** the privacy policy URL from listing.md, and Data Not Collected. Publish it.
 12. **Age rating:** answers from listing.md; confirm 18+.
 
 ## Submit
-13. On the version page, select build 0.17.0 and, under In-App Purchases, add all three tips.
-14. Paste the review notes. Sign-in required: no.
-15. **Release:** choose manual release, so you pick the moment after approval.
-16. Click Add for Review, then Submit for Review.
+13. **App Review information:** your contact name, phone and email (required), and sign-in required: no.
+14. **Content rights:** the app downloads third-party model weights from Hugging Face under their own licences; answer Apple's question accordingly.
+15. On the version page, select build 0.17.0 and, under In-App Purchases, add all three tips.
+16. Paste the review notes.
+17. **Release:** choose manual release, so you pick the moment after approval.
+18. Click Add for Review, then Submit for Review.
 
 ## If App Review asks questions
 - **Guideline 2.5.2 (downloaded code):** the review notes' "Bundled code" paragraph. Only weights are downloaded.

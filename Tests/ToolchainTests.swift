@@ -102,6 +102,16 @@ struct ToolchainTests {
         #expect(manifest.version(of: "not-a-package") == nil)
     }
 
+    /// The app collects no data (PRIVACY.md). Every Python process, including
+    /// the probes and the self-test, runs with the Hugging Face tools' PyPI
+    /// update check and User-Agent usage details off.
+    @Test func environmentTurnsOffHuggingFacePhoningHome() {
+        let env = Toolchain.environment(base: [:], cachesURL: URL(fileURLWithPath: "/tmp/caches"))
+        #expect(env["HF_HUB_DISABLE_UPDATE_CHECK"] == "1")
+        #expect(env["HF_HUB_DISABLE_TELEMETRY"] == "1")
+        #expect(env["DO_NOT_TRACK"] == "1")
+    }
+
     @Test func environmentDropsInheritedInterpreterOverrides() {
         let caches = URL(fileURLWithPath: "/tmp/caches")
         let env = Toolchain.environment(

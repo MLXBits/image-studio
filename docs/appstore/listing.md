@@ -19,7 +19,7 @@ Local AI images on your Mac
 - **Category:** Graphics & Design (secondary: none)
 - **Privacy policy URL:** https://github.com/MLXBits/image-studio/blob/main/PRIVACY.md
 - **Support URL:** https://github.com/MLXBits/image-studio/issues
-- **Marketing URL:** https://github.com/MLXBits/image-studio
+- **Marketing URL:** leave empty (the repo page links to other ways of paying)
 - **Copyright:** © 2026 MLXBits
 
 ## Version page
@@ -33,13 +33,13 @@ Generate images with FLUX.2, Krea 2 and Z-Image entirely on your Mac. No account
 ### Keywords (max 100)
 
 ```text
-flux,ai image,image generator,text to image,mlx,lora,offline,local ai,krea,z-image,art,generative
+ai art,image generator,text to image,image editor,mlx,lora,offline,local ai,prompt,generative,photo
 ```
 
 ### Description (max 4000)
 
 ```text
-MLXBits Image Studio turns text into images on your Mac, using Apple's MLX framework and the Apple silicon GPU. Nothing is sent to a server: your prompts and pictures stay on your Mac.
+MLXBits Image Studio turns text into images on your Mac, using Apple's MLX framework and the Apple silicon GPU. Nothing is sent to us: your prompts and pictures stay on your Mac unless you connect a server of your own.
 
 GENERATE
 • FLUX.2 Klein (4B and 9B), Krea 2 and Z-Image Turbo, with quantized versions for Macs with less memory
@@ -68,8 +68,10 @@ REQUIREMENTS
 FREE
 Every feature is free. Optional tips help keep the project going and unlock nothing.
 
-The app can create mature images from your prompts and has no content filter, so it is rated 18+.
+Images are made from your own prompts, on your Mac. The app can create mature images, so it is rated 18+.
 ```
+
+Not shown for the first version; keep for later updates.
 
 ### What's New (max 4000)
 
@@ -79,7 +81,15 @@ First App Store release.
 
 ## In-app purchases
 
-All three are Consumable. Each gets the same review screenshot: the Support window, with tips loaded, over the main window (SFW profile).
+All three are Consumable. Product IDs can't be changed or reused once created, so copy them exactly:
+
+| Reference name | Product ID | Price |
+|---|---|---|
+| Small Tip | `com.mlxbits.image-studio.appstore.tip.small` | $2.99 |
+| Medium Tip | `com.mlxbits.image-studio.appstore.tip.medium` | $4.99 |
+| Large Tip | `com.mlxbits.image-studio.appstore.tip.large` | $9.99 |
+
+Each gets the same review screenshot: the Support window, with tips loaded, over the main window (SFW profile).
 
 ### Small Tip display name (max 30)
 
@@ -131,14 +141,14 @@ A tip to support the developer. It is a consumable that unlocks no features or c
 MLXBits Image Studio generates images on-device with Apple MLX. It needs Apple silicon and at least 16 GB of unified memory.
 
 FIRST IMAGE (about 10 minutes, mostly the download)
-1. On first launch, choose a library folder or click Skip for Now (it uses Pictures ▸ MLXBits Image Studio).
+1. On first launch, choose a library folder and click Done, or click Skip for Now (it uses Pictures ▸ MLXBits Image Studio).
 2. On the models step, click Keep Models in the App (or Continue).
 3. In the model menu at the top left, choose FLUX.2 Klein 4B and set quantization to Q8.
 4. Type a prompt, for example "a red fox in fresh snow, morning light", and click Generate.
 The first run downloads the model weights from Hugging Face, about 8 GB, with progress shown. Later runs take seconds.
 
 BUNDLED CODE (guideline 2.5.2)
-The app ships its own Python 3.14 runtime with the open-source mflux and MLX libraries inside the signed app bundle; every executable is signed and sandboxed with the app. The app downloads only model weights (safetensors data files) from Hugging Face. It never downloads or runs code from outside its bundle.
+The app ships its own Python 3.14 runtime with the open-source mflux and MLX libraries inside the signed app bundle; every executable is signed and sandboxed with the app. The app downloads only model data (weights, configs, tokenizers) from Hugging Face. No downloaded file is imported or executed, and remote code loading is off. It never downloads or runs code from outside its bundle.
 
 NETWORK
 Hugging Face for model weights. Optionally, servers the user sets up on their own network (LM Studio, ComfyUI) or an OpenAI-compatible service, used only when configured in Settings. Nothing is sent to the developer; the app collects no data.
