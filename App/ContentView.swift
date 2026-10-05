@@ -486,6 +486,7 @@ struct ContentView: View {
                     topControlBar
                     ToolchainBanner()
                     MissingLibraryBanner()
+                    SupportNudgeBanner()
                 }
             }
 
