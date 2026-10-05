@@ -109,7 +109,7 @@ struct ModelPickerView: View {
                 }
 
                 if settingsOverride == nil, model != .custom,
-                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir) {
+                   model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir) {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                         .font(.caption)
@@ -237,7 +237,7 @@ struct ModelPickerView: View {
         case ..<0.9: .orange
         default: .red
         }
-        let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir)
+        let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
         // The disk pill is a binary download-state signal — green when cached,
         // neutral "download" otherwise. Size-based warning colors live on the RAM
         // pill only, so a not-yet-downloaded model never looks like a warning.
@@ -300,7 +300,7 @@ struct ModelPickerView: View {
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
             .background(estimate.diskColor.opacity(0.12), in: Capsule())
-        if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize) {
+        if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize, hubDir: settings.hfHubDir) {
             InfoButton(
                 title: estimate.diskInfoTitle,
                 description: estimate.diskInfoBody,

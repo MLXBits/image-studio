@@ -234,19 +234,6 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// Returns true if any quantized variant of this model is fully downloaded in the HuggingFace hub cache.
-    var isOnDisk: Bool {
-        guard self != .custom else { return false }
-        let hubDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub")
-        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return false }
-        let key = rawValue.lowercased()
-        let match = entries.first { $0.lowercased().contains(key) }
-            ?? (!bf16CacheKey.isEmpty ? entries.first { $0.lowercased().contains(bf16CacheKey) } : nil)
-        guard let match else { return false }
-        return Self.isCompleteHFCache(at: hubDir.appendingPathComponent(match))
-    }
-
     /// Local path where mflux-save writes quantized weights for this model + quantize level.
     /// Stored under {MFLUX_CACHE_DIR}/saved/{rawValue}-q{quantize}/.
     func savedModelPath(quantize: Int, in cacheDir: URL) -> URL {
@@ -312,31 +299,32 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
     /// then falling back to the HuggingFace hub cache.
-    func isOnDisk(quantize: Int, savedIn cacheDir: URL) -> Bool {
+    func isOnDisk(quantize: Int, savedIn cacheDir: URL, hubDir: URL) -> Bool {
         // Ideogram Q8/Q4 load pre-quantized weights straight from the HF cache; the
         // legacy mflux-save dir is never used for them and may be stale, so ignore it
         // and report on-disk purely from the published repo's cache.
         if isIdeogram4, quantize > 0, preQuantizedRepoID(quantize: quantize) != nil {
-            return isOnDisk(quantize: quantize)
+            return isOnDisk(quantize: quantize, hubDir: hubDir)
         }
         let savePath = savedModelPath(quantize: quantize, in: cacheDir)
         if Self.hasSavedWeights(at: savePath) {
             return true
         }
-        return isOnDisk(quantize: quantize)
+        return isOnDisk(quantize: quantize, hubDir: hubDir)
     }
 
     /// Returns true for a specific quantize level (0=bf16, 4=q4, 8=q8), only if fully downloaded.
-    func isOnDisk(quantize: Int) -> Bool {
-        guard let url = onDiskURL(quantize: quantize) else { return false }
+    func isOnDisk(quantize: Int, hubDir: URL) -> Bool {
+        guard let url = onDiskURL(quantize: quantize, hubDir: hubDir) else { return false }
         return Self.isCompleteHFCache(at: url)
     }
 
     /// Returns the HF hub cache directory URL for the given quantize level, only if fully downloaded.
-    func onDiskURL(quantize: Int) -> URL? {
+    /// `hubDir` is the models folder's `hub/` (``AppSettings/hfHubDir``): the
+    /// person's chosen HF_HOME, never assumed to be under the home folder,
+    /// which in the App Store build is the app's container.
+    func onDiskURL(quantize: Int, hubDir: URL) -> URL? {
         guard self != .custom else { return nil }
-        let hubDir = FileManager.default.homeDirectoryForCurrentUser
-            .appendingPathComponent(".cache/huggingface/hub")
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
         // A published pre-quantized repo maps directly to its hub cache dir
         // (models--org--name), so match it explicitly rather than by substring.

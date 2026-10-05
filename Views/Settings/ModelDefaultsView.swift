@@ -319,7 +319,7 @@ struct ModelDefaultsView: View {
                     // is a conversion.
                     let usesPreQuant = model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil
                     let verb = !usesPreQuant
-                        && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir) && quantize != 0
+                        && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir) && quantize != 0
                         ? "Converting" : "Downloading"
                     // hf download emits noisy parallel progress bars that don't render
                     // well in a plain log, so poll the on-disk payload for live feedback.
@@ -359,7 +359,9 @@ struct ModelDefaultsView: View {
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = cacheRevision // invalidates view when cache changes on disk
-                let cachedVariants = [0, 4, 8].filter { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir) }
+                let cachedVariants = [0, 4, 8].filter {
+                    model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
+                }
                 ForEach(cachedVariants, id: \.self) { qLevel in
                     HStack(spacing: 3) {
                         Text(qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)")
@@ -379,7 +381,10 @@ struct ModelDefaultsView: View {
                     .foregroundStyle(.green)
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
-                ForEach([0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir) }, id: \.self) { qLevel in
+                ForEach(
+                    [0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir, hubDir: settings.hfHubDir) },
+                    id: \.self
+                ) { qLevel in
                     let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
                     Button("Download \(qLabel)") {
                         startCache(model: model, quantize: qLevel)
@@ -394,7 +399,7 @@ struct ModelDefaultsView: View {
     private func deleteCachedVariant(model: FluxModelVariant, quantize: Int) {
         let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
         try? FileManager.default.removeItem(at: savePath)
-        if let hfURL = model.onDiskURL(quantize: quantize) {
+        if let hfURL = model.onDiskURL(quantize: quantize, hubDir: settings.hfHubDir) {
             try? FileManager.default.removeItem(at: hfURL)
         }
         cacheRevision = UUID()
@@ -521,7 +526,7 @@ struct ModelDefaultsView: View {
             let bf16Saved = model.savedModelPath(quantize: 0, in: settings.effectiveMfluxCacheDir)
             if FluxModelVariant.hasSavedWeights(at: bf16Saved) {
                 args = ["--model", bf16Saved.path, "--quantize", "\(quantize)", "--path", savePath.path]
-            } else if model.isOnDisk(quantize: 0), let bf16Repo = model.bf16HFRepoID {
+            } else if model.isOnDisk(quantize: 0, hubDir: settings.hfHubDir), let bf16Repo = model.bf16HFRepoID {
                 args = ["--model", bf16Repo, "--quantize", "\(quantize)", "--path", savePath.path]
             } else if let preRepo = model.preQuantizedRepoID(quantize: quantize) {
                 args = ["--model", preRepo, "--path", savePath.path]
