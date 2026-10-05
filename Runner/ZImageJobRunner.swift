@@ -34,6 +34,10 @@ enum ZImageRunnerSpec: JobRunnerSpec {
         job.isTurbo ? .zImageTurbo : .zImage
     }
 
+    static func accessPaths(job: ZImageJob) -> [String] {
+        (job.loras.map(\.path) + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
+    }
+
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir — unless a
     /// pre-quantized repo exists (Turbo Q4) or the source is custom/overridden,
     /// all of which load directly.

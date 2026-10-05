@@ -66,6 +66,10 @@ protocol JobRunnerSpec {
 
     /// The tool that generates `job`, run through ``Toolchain``.
     static func tool(job: Job) -> PythonTool
+    /// Local files and folders the job reads (LoRAs, a local model folder,
+    /// source images). FileAccess holds them open while it runs (spec §4).
+    /// Repo IDs and empty fields are left out.
+    static func accessPaths(job: Job) -> [String]
     /// Where a one-time `mflux-save` quantization pass should write, or nil when the
     /// job loads weights directly (BF16, pre-quantized repo, or repo override).
     static func quantSaveDestination(job: Job, settings: AppSettings) -> URL?
@@ -269,13 +273,21 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         // Never create the library root here: a folder on an unplugged drive
         // would be recreated on the boot disk under /Volumes.
-        guard settings.libraryRootExists() else {
-            let reason = settings.outputDir.isEmpty
-                ? "No library folder chosen — choose one in Settings"
-                : "Library folder not found: \(settings.outputDir) — reconnect its drive or choose a folder in Settings"
+        if let reason = settings.libraryStatus.jobFailureReason(path: settings.outputDir) {
             finishJob(job, status: .failed(reason), stepDir: stepDir)
             return
         }
+        // LoRA files, a local model and source images, held for the whole run
+        // (spec §4). A LoRA picked from anywhere fails here, by name, if its
+        // grant is gone.
+        let access: FileAccessLease
+        do {
+            access = try settings.fileAccess.beginAccess(to: Spec.accessPaths(job: job))
+        } catch {
+            finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
+            return
+        }
+        defer { access.end() }
         let isMultiSeed = !job.seeds.isEmpty
         guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
             finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)

@@ -21,6 +21,10 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
         .ideogram4
     }
 
+    static func accessPaths(job: Ideogram4Job) -> [String] {
+        (job.loras.map(\.path) + [job.customModelRepo]).filter(FileAccessPath.isLocal)
+    }
+
     /// Q8/Q4 load pre-quantized MLX weights directly from the published repo —
     /// no one-time mflux-save quantization pass needed for them, nor for a
     /// custom/overridden source that names specific weights.

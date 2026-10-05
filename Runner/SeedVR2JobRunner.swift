@@ -24,6 +24,10 @@ enum SeedVR2RunnerSpec: JobRunnerSpec {
         .seedVR2
     }
 
+    static func accessPaths(job: SeedVR2Job) -> [String] {
+        [job.sourcePath].filter(FileAccessPath.isLocal)
+    }
+
     /// SeedVR2 loads weights directly by builtin name; no one-time save pass.
     static func quantSaveDestination(job _: SeedVR2Job, settings _: AppSettings) -> URL? {
         nil

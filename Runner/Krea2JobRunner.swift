@@ -23,6 +23,10 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         .krea2
     }
 
+    static func accessPaths(job: Krea2Job) -> [String] {
+        (job.loras.map(\.path) + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
+    }
+
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir. Skipped
     /// for a custom or overridden model source — those name a specific repo/path
     /// that carries its own quantization metadata.
