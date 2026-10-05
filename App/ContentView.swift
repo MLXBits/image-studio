@@ -55,6 +55,7 @@ struct ContentView: View {
     /// New / Rename / Remove, as picked from the toolbar's profile menu.
     @State private var profileAction: ProfileAction?
     @State private var showingOutputDirPrompt: Bool = false
+    @AppStorage(ModelsFolderStepView.doneKey) private var modelsFolderStepDone = false
     /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
     @State private var upscaleTarget: UpscaleTarget?
     @State private var params = ParamsPanelState()
@@ -289,14 +290,23 @@ struct ContentView: View {
         return min(preferred, max(Self.minGalleryWidth, stepped))
     }
 
+    /// App Store first run: the models-folder step is still to come (spec §4).
+    private var needsModelsStep: Bool {
+        BuildFlavor.isAppStore && !modelsFolderStepDone
+    }
+
     /// Split into two chains: SwiftUI's type-checker times out on a single modifier
     /// chain this long, so the queue/runner observers live in a second property.
     private var bodyBase: some View {
         mainContent
             .sheet(isPresented: $showingOutputDirPrompt) {
-                OutputDirectoryPromptView(isPresented: $showingOutputDirPrompt)
-                    .environment(settings)
-                    .environment(profiles)
+                OutputDirectoryPromptView(
+                    isPresented: $showingOutputDirPrompt,
+                    includeModelsStep: needsModelsStep,
+                    startAtModelsStep: !settings.outputDir.isEmpty
+                )
+                .environment(settings)
+                .environment(profiles)
             }
             .sheet(item: $boxOverlay) { ctx in
                 boxOverlaySheet(ctx)
@@ -315,9 +325,10 @@ struct ContentView: View {
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 try? ScenarioExamplePrompts.seedIfNeeded()
-                if settings.outputDir.isEmpty {
+                if settings.outputDir.isEmpty || needsModelsStep {
                     showingOutputDirPrompt = true
-                } else {
+                }
+                if !settings.outputDir.isEmpty {
                     gallery.scan(outputDir: settings.outputDir)
                 }
                 gallery.lockedPaths = img2imgLockedPaths

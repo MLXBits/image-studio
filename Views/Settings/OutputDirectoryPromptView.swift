@@ -1,14 +1,31 @@
 import SwiftUI
 
-/// Shown on first launch to let the user choose an output directory
-/// without forcing a location (avoids accidental iCloud sync via ~/Pictures).
+/// Shown on first launch to choose the library folder. Skip for Now uses
+/// `~/MLXBits Image Studio` in the DMG (not iCloud-synced), and Pictures in
+/// the App Store build, whose sandbox may write there. In the App Store build
+/// the models-folder step follows (spec §4).
 struct OutputDirectoryPromptView: View {
     @Environment(AppSettings.self) private var settings
     @Environment(ProfileStore.self) private var profiles
+    @AppStorage(ModelsFolderStepView.doneKey) private var modelsFolderStepDone = false
     @Binding var isPresented: Bool
+    /// App Store first run: follow the library step with the models step.
+    let includeModelsStep: Bool
     @State private var error: String?
+    @State private var showingModelsStep: Bool
 
     var body: some View {
+        if showingModelsStep {
+            ModelsFolderStepView {
+                modelsFolderStepDone = true
+                isPresented = false
+            }
+        } else {
+            libraryStep
+        }
+    }
+
+    private var libraryStep: some View {
         VStack(spacing: 20) {
             Image(systemName: "folder.badge.plus")
                 .font(.system(size: 44))
@@ -19,14 +36,14 @@ struct OutputDirectoryPromptView: View {
                     .font(.headline)
                     .multilineTextAlignment(.center)
 
-                Text(
-                    "Choose any folder you control. Avoid iCloud-synced folders like ~/Pictures"
-                        + " or ~/Documents if you don't want generated images uploaded to iCloud."
-                )
-                .font(.callout)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-                .fixedSize(horizontal: false, vertical: true)
+                Text(BuildFlavor.isAppStore
+                    ? "Choose any folder you control, or skip to save into Pictures ▸ MLXBits Image Studio."
+                    : "Choose any folder you control. Avoid iCloud-synced folders like ~/Pictures"
+                    + " or ~/Documents if you don't want generated images uploaded to iCloud.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .fixedSize(horizontal: false, vertical: true)
             }
 
             VStack(spacing: 10) {
@@ -62,22 +79,23 @@ struct OutputDirectoryPromptView: View {
 
             HStack(spacing: 12) {
                 Button("Skip for Now") {
-                    // Use a safe non-iCloud default so the app is functional
-                    let home = NSHomeDirectory()
                     error = profiles.changeActiveLibrary(
-                        to: "\(home)/MLXBits Image Studio", createIfMissing: true
+                        to: FileAccessPath.defaultLibrary(isAppStore: BuildFlavor.isAppStore, home: FileAccessPath.realHome),
+                        createIfMissing: true
                     )?.message
                     if error == nil {
-                        isPresented = false
+                        finishLibraryStep()
                     }
                 }
                 .buttonStyle(.plain)
                 .foregroundStyle(.secondary)
                 .accessibilityLabel("Skip folder selection")
-                .accessibilityHint("Saves to ~/MLXBits Image Studio — not inside Pictures or Documents")
+                .accessibilityHint(BuildFlavor.isAppStore
+                    ? "Saves to Pictures ▸ MLXBits Image Studio"
+                    : "Saves to ~/MLXBits Image Studio — not inside Pictures or Documents")
 
                 Button("Done") {
-                    isPresented = false
+                    finishLibraryStep()
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(settings.outputDir.isEmpty)
@@ -88,6 +106,12 @@ struct OutputDirectoryPromptView: View {
         .frame(width: 400)
     }
 
+    init(isPresented: Binding<Bool>, includeModelsStep: Bool = false, startAtModelsStep: Bool = false) {
+        _isPresented = isPresented
+        self.includeModelsStep = includeModelsStep
+        _showingModelsStep = State(initialValue: includeModelsStep && startAtModelsStep)
+    }
+
     private func pickFolder() {
         guard let path = LibraryFolderPanel.choose(
             title: "Choose Output Folder",
@@ -96,5 +120,13 @@ struct OutputDirectoryPromptView: View {
             access: profiles.fileAccess
         ) else { return }
         error = profiles.changeActiveLibrary(to: path)?.message
+    }
+
+    private func finishLibraryStep() {
+        if includeModelsStep {
+            showingModelsStep = true
+        } else {
+            isPresented = false
+        }
     }
 }

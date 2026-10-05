@@ -116,6 +116,7 @@
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6BC9348546C9D8D5C0E2A35C /* SandboxFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */; };
+		6D4A9B7B0C1E714BF6E7E65B /* ModelsFolderStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DFA84D78472C9A1FD765C0 /* ModelsFolderStepView.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		702EEE1D7C98FD72E764AEED /* ComfyUIClient+SeedVR2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C45C60EE72D93B2B1A0A0715 /* ComfyUIClient+SeedVR2.swift */; };
 		71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */; };
@@ -130,6 +131,7 @@
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
 		7C60C7BFCDAAF8232B92AB98 /* ProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8528218ED691462B19A8F04 /* ProfileStoreTests.swift */; };
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
+		7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */; };
 		80480D0FFF9AFC8967EA1529 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585B7D9DFD8D0BF3352D6E1C /* TestHost.swift */; };
 		80E42D2368ED6BC8A953D88F /* PythonSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90FE5B8C61F921D061CF2B1 /* PythonSettingsSection.swift */; };
 		82541311FDB24A63CA6E6DA6 /* GrantingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982729D2757379FD575EF161 /* GrantingPanel.swift */; };
@@ -448,6 +450,7 @@
 		F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibrary.swift; sourceTree = "<group>"; };
 		F6B9489D3752E5655C477D9F /* ToolchainMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolchainMigration.swift; sourceTree = "<group>"; };
 		F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrantStoreTests.swift; sourceTree = "<group>"; };
+		F7DFA84D78472C9A1FD765C0 /* ModelsFolderStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelsFolderStepView.swift; sourceTree = "<group>"; };
 		F812C375B01307E326002869 /* GalleryMetadataStripping.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryMetadataStripping.swift; sourceTree = "<group>"; };
 		F8528218ED691462B19A8F04 /* ProfileStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileStoreTests.swift; sourceTree = "<group>"; };
 		F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobHistoryFile.swift; sourceTree = "<group>"; };
@@ -456,6 +459,7 @@
 		FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraRowView.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
 		FE1832089B5311712FEF1286 /* scenario_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = scenario_prompt.md; sourceTree = "<group>"; };
+		FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunPathsTests.swift; sourceTree = "<group>"; };
 		FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobStore.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -581,6 +585,7 @@
 				CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */,
 				05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */,
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
+				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */,
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
@@ -720,6 +725,7 @@
 				72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */,
 				35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */,
 				00F416C559B37939372672BB /* ModelDefaultsView+ZImageForm.swift */,
+				F7DFA84D78472C9A1FD765C0 /* ModelsFolderStepView.swift */,
 				141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */,
 				7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */,
 				A90FE5B8C61F921D061CF2B1 /* PythonSettingsSection.swift */,
@@ -1114,6 +1120,7 @@
 				AA3B15080A95CD480EEFE58E /* ModelDefaultsView.swift in Sources */,
 				8F06B91D903EE9A1417F6084 /* ModelFamily.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
+				6D4A9B7B0C1E714BF6E7E65B /* ModelsFolderStepView.swift in Sources */,
 				4813F8F7952A1288E79F0BAA /* NotepadView.swift in Sources */,
 				499C6F5744EC44732A518B5D /* OpenAIChat.swift in Sources */,
 				EA83B400F4041AFE4F5297BA /* OpenAIChatClient.swift in Sources */,
@@ -1196,6 +1203,7 @@
 				3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
+				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */,
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,

@@ -32,6 +32,13 @@ nonisolated enum FileAccessPath {
         return cache
     }
 
+    /// Where Skip for Now makes the library. The DMG uses the home folder (not
+    /// iCloud-synced). The App Store build uses Pictures: the sandbox may write
+    /// there, and Finder shows it.
+    static func defaultLibrary(isAppStore: Bool, home: String) -> String {
+        isAppStore ? "\(home)/Pictures/MLXBits Image Studio" : "\(home)/MLXBits Image Studio"
+    }
+
     /// Whether this process can open `path` for reading now. The sandbox lets
     /// the app `stat` a folder it has no grant for, but not open it.
     static func isReadable(_ path: String) -> Bool {
