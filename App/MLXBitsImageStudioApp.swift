@@ -1,6 +1,17 @@
 import SwiftUI
 
 struct MLXBitsImageStudioApp: App {
+    /// The support nudge's count: the images every runner saves (spec §5).
+    private static func makeSupport(testHost: Bool, runners: [any LandedImagesReporting]) -> SupportStore {
+        let support = SupportStore(
+            defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
+        )
+        for runner in runners {
+            runner.onImagesLanded = { support.recordImages($0) }
+        }
+        return support
+    }
+
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
     @State private var store: JobStore
@@ -14,13 +25,14 @@ struct MLXBitsImageStudioApp: App {
     @State private var zimageStore: ZImageJobStore
     @State private var zimageRunner: ZImageJobRunner
     @State private var seedVR2Store: SeedVR2JobStore
-    @State private var seedVR2Runner = SeedVR2JobRunner()
+    @State private var seedVR2Runner: SeedVR2JobRunner
     @State private var coordinator: GenerationCoordinator
     @State private var timing = TimingStore()
     @State private var loraLibrary = LoraLibraryStore()
     @State private var updateChecker = UpdateChecker()
     @State private var backendModels = BackendModelStore()
     @State private var modelDownloads = ModelDownloadStore()
+    @State private var support: SupportStore
 
     var body: some Scene {
         WindowGroup {
@@ -135,6 +147,7 @@ struct MLXBitsImageStudioApp: App {
         let ideogram4Runner = Ideogram4JobRunner()
         let krea2Runner = Krea2JobRunner()
         let zimageRunner = ZImageJobRunner()
+        let seedVR2Runner = SeedVR2JobRunner()
         runner.driver = driver
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
@@ -153,6 +166,10 @@ struct MLXBitsImageStudioApp: App {
         _ideogram4Runner = State(initialValue: ideogram4Runner)
         _krea2Runner = State(initialValue: krea2Runner)
         _zimageRunner = State(initialValue: zimageRunner)
+        _seedVR2Runner = State(initialValue: seedVR2Runner)
+        _support = State(initialValue: Self.makeSupport(
+            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, seedVR2Runner]
+        ))
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }

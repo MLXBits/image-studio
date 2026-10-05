@@ -34,6 +34,12 @@ enum RunnerSupport {
         }
     }
 
+    /// Images a completed job saved: each of `outputPaths` for a batch, else
+    /// the single `outputPath`.
+    static func imagesLanded(outputPath: String?, outputPaths: [String]) -> Int {
+        outputPaths.isEmpty ? (outputPath == nil ? 0 : 1) : outputPaths.count
+    }
+
     /// True once a PNG is fully written — detected by the IEND chunk's trailing CRC,
     /// which is only present in a complete file.
     static func isPNGComplete(at path: String) -> Bool {
@@ -282,4 +288,10 @@ final class StepwiseWatcher {
         fileSource = nil
         watchedFile = nil
     }
+}
+
+/// A runner that reports the images each completed job saved (the support
+/// nudge's count, spec §5).
+protocol LandedImagesReporting: AnyObject {
+    var onImagesLanded: ((Int) -> Void)? { get set }
 }

@@ -84,4 +84,14 @@ struct RunnerSupportTests {
     @Test func isPNGCompleteMissingFileIsFalse() {
         #expect(!RunnerSupport.isPNGComplete(at: "/nonexistent/\(UUID().uuidString).png"))
     }
+
+    // MARK: - imagesLanded (support nudge count)
+
+    /// A single image sets only `outputPath`; a batch sets `outputPaths` to
+    /// what actually landed.
+    @Test func imagesLandedCountsWhatTheJobSaved() {
+        #expect(RunnerSupport.imagesLanded(outputPath: "/Lib/a.png", outputPaths: []) == 1)
+        #expect(RunnerSupport.imagesLanded(outputPath: "/Lib/a.png", outputPaths: ["/Lib/a.png", "/Lib/b.png"]) == 2)
+        #expect(RunnerSupport.imagesLanded(outputPath: nil, outputPaths: []) == 0)
+    }
 }

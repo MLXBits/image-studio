@@ -180,6 +180,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     /// Warm-model driver for this family, or nil to always use the CLI
     /// subprocess. Set at app startup (Flux only for now).
     var driver: MfluxDriverController?
+    /// Called with the images each completed job saved.
+    var onImagesLanded: ((Int) -> Void)?
     /// True while a cooperative cancel is pending, so Stop can offer to force
     /// one through. The driver is shared across families, but only the running
     /// one has `driverJobActive` set, so this stays scoped to this runner.
@@ -748,6 +750,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
         try? FileManager.default.removeItem(at: stepDir)
         job.status = status
         job.completedAt = Date()
+        if case .completed = status {
+            onImagesLanded?(RunnerSupport.imagesLanded(outputPath: job.outputPath, outputPaths: job.outputPaths))
+        }
         job.latestStepwisePath = nil
         job.stepTiming = nil
         job.isDenoising = false
@@ -881,3 +886,5 @@ final class JobRunner<Spec: JobRunnerSpec> {
         }
     }
 }
+
+extension JobRunner: LandedImagesReporting {}
