@@ -37,9 +37,9 @@ final class ProfileStore {
 
     private(set) var registry = ProfileRegistry(activeProfileID: UUID(), profiles: [])
     private(set) var phase: Phase = .ready
-    /// The active profile has a folder but it isn't there (drive unplugged,
-    /// folder moved in Finder). Drives the banner in ``ContentView``.
-    private(set) var isLibraryMissing = false
+    /// Whether the active library can take images: drives the banner in
+    /// ``ContentView`` and the Settings library section.
+    private(set) var libraryStatus: LibraryStatus = .unset
     /// Set when saving the profile list fails; shown as an alert.
     var lastError: String?
 
@@ -51,6 +51,8 @@ final class ProfileStore {
     @ObservationIgnored private var observers: [NSObjectProtocol] = []
     /// The profile to delete once the switch away from it completes.
     @ObservationIgnored private var pendingRemoval: UUID?
+    /// Holds the active library's grant (spec §4); see ``restartLibraryLease()``.
+    @ObservationIgnored private var libraryLease: FileAccessLease?
 
     var profiles: [Profile] {
         registry.profiles
@@ -68,6 +70,17 @@ final class ProfileStore {
     /// removing any other profile switches back to it.
     var defaultProfileID: UUID? {
         registry.profiles.first?.id
+    }
+
+    /// The active profile has a folder the app can't use right now: missing, or
+    /// (App Store build) without access.
+    var isLibraryMissing: Bool {
+        libraryStatus == .missing || libraryStatus == .noAccess
+    }
+
+    /// The app's file access, for the views that choose library folders.
+    var fileAccess: any FileAccess {
+        settings.fileAccess
     }
 
     /// Remove acts on the active profile, which means switching away from it,
@@ -150,6 +163,7 @@ final class ProfileStore {
     func completePendingSwitch() {
         guard case let .switching(id) = phase else { return }
         let removing = pendingRemoval
+        let removedLibrary = registry.profiles.first { $0.id == removing }?.libraryPath
         pendingRemoval = nil
         var next = registry
         next.activeProfileID = id
@@ -161,6 +175,9 @@ final class ProfileStore {
             activateCurrentProfile()
             if let removing {
                 deleteData(for: removing)
+                if let removedLibrary, !removedLibrary.isEmpty {
+                    settings.fileAccess.forget(removedLibrary)
+                }
             }
         }
         phase = .ready
@@ -249,6 +266,7 @@ final class ProfileStore {
         guard save(next) else { return ProfileError(lastError ?? "Couldn't save the profile list.") }
         registry = next
         settings.applyLibraryPath(resolved)
+        restartLibraryLease()
         gallery.activate(thumbnailDirectory: paths.thumbnailDirectory(for: id), preservingLocks: true)
         gallery.scan(outputDir: resolved)
         refreshLibraryAvailability()
@@ -271,18 +289,28 @@ final class ProfileStore {
         return nil
     }
 
-    /// Re-checks whether the active library folder is present, rescanning when
-    /// it comes back.
+    /// Re-checks the active library folder, holding its grant while it's there,
+    /// and rescans when it comes back.
     func refreshLibraryAvailability() {
-        let missing = !settings.outputDir.isEmpty && !settings.libraryRootExists()
-        let cameBack = isLibraryMissing && !missing
-        isLibraryMissing = missing
+        restartLibraryLease()
+        let status = settings.libraryStatus
+        let cameBack = isLibraryMissing && status == .available
+        libraryStatus = status
         if cameBack {
             gallery.scan(outputDir: settings.outputDir)
         }
     }
 
     // MARK: - Private
+
+    /// Holds the active library's grant: started when a profile activates (or
+    /// its drive comes back), ended when another takes its place. The new lease
+    /// starts before the old ends.
+    private func restartLibraryLease() {
+        let next = settings.fileAccess.beginAccess(toAvailable: [settings.outputDir])
+        libraryLease?.end()
+        libraryLease = next
+    }
 
     /// The same/inside/contains rules against every other profile, with all
     /// paths symlink-resolved first.

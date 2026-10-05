@@ -13,12 +13,12 @@ struct MissingLibraryBanner: View {
                 Image(systemName: "externaldrive.badge.exclamationmark")
                     .foregroundStyle(.orange)
                     .font(.caption)
-                Text(error ?? "Library folder not found: \(settings.outputDir)")
+                Text(error ?? message)
                     .font(.caption)
                     .foregroundStyle(.secondary)
                     .lineLimit(1)
                     .truncationMode(.middle)
-                    .help("Reconnect the drive it's on, or choose another folder for this profile.")
+                    .help("Reconnect the drive it's on, or choose the folder (again) for this profile.")
                 Spacer()
                 Button("Retry") { profiles.refreshLibraryAvailability() }
                     .buttonStyle(.bordered)
@@ -34,6 +34,12 @@ struct MissingLibraryBanner: View {
             .background(.bar)
             .overlay(alignment: .bottom) { Divider() }
         }
+    }
+
+    private var message: String {
+        profiles.libraryStatus == .noAccess
+            ? "Choose the library folder again to give the app access: \(settings.outputDir)"
+            : "Library folder not found: \(settings.outputDir)"
     }
 
     private func changeFolder() {

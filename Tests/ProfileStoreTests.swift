@@ -22,10 +22,11 @@ final class ProfileStoreTests {
         try FileManager.default.createDirectory(at: library, withIntermediateDirectories: true)
     }
 
-    private func makeStore() -> ProfileStore {
+    private func makeStore(access: RecordingFileAccess = RecordingFileAccess()) -> ProfileStore {
         let settings = AppSettings()
         // Never write the real settings.json from a test.
         settings.suspendPersistence()
+        settings.fileAccess = access
         return ProfileStore(
             settings: settings, jobStores: [], gallery: GalleryStore(),
             coordinator: GenerationCoordinator(), paths: paths, defaults: defaults
@@ -33,8 +34,8 @@ final class ProfileStoreTests {
     }
 
     /// Creates "Work" and switches into it, as New Profile does.
-    private func storeInWork() throws -> (ProfileStore, UUID) {
-        let store = makeStore()
+    private func storeInWork(access: RecordingFileAccess = RecordingFileAccess()) throws -> (ProfileStore, UUID) {
+        let store = makeStore(access: access)
         let id = try store.createProfile(name: "Work", libraryPath: library.path).get()
         store.requestSwitch(to: id)
         store.completePendingSwitch()
@@ -72,6 +73,55 @@ final class ProfileStoreTests {
     @Test func anotherProfileCanBeRemovedWhileActive() throws {
         let (store, _) = try storeInWork()
         #expect(store.canRemoveActiveProfile)
+    }
+
+    /// Spec §4: a profile's library grant starts when the profile activates and
+    /// stops when it deactivates.
+    @Test func theActiveLibraryIsHeldUntilTheProfileSwitchesAway() throws {
+        let access = RecordingFileAccess()
+        let work = ProfileStore.resolvedPath(library.path)
+        let (store, _) = try storeInWork(access: access)
+        #expect(access.isHeld(work))
+
+        try store.requestSwitch(to: #require(store.defaultProfileID))
+        store.completePendingSwitch()
+
+        #expect(!access.isHeld(work))
+    }
+
+    @Test func aLibraryWithoutAccessShowsTheBanner() throws {
+        let access = RecordingFileAccess()
+        access.unreachable = [ProfileStore.resolvedPath(library.path)]
+        let (store, _) = try storeInWork(access: access)
+        #expect(store.libraryStatus == .noAccess)
+        #expect(store.isLibraryMissing)
+    }
+
+    @Test func regainedAccessIsPickedUpOnRefresh() throws {
+        let access = RecordingFileAccess()
+        let work = ProfileStore.resolvedPath(library.path)
+        access.unreachable = [work]
+        let (store, _) = try storeInWork(access: access)
+
+        access.unreachable = []
+        store.refreshLibraryAvailability()
+
+        #expect(store.libraryStatus == .available)
+        #expect(access.isHeld(work))
+    }
+
+    /// The profile's Inputs/ copies live in its data folder, so they go with it.
+    @Test func removingAProfileForgetsItsLibraryAndDeletesItsInputs() throws {
+        let access = RecordingFileAccess()
+        let (store, workID) = try storeInWork(access: access)
+        let inputs = paths.dataDirectory(for: workID).appendingPathComponent("Inputs", isDirectory: true)
+        try FileManager.default.createDirectory(at: inputs, withIntermediateDirectories: true)
+
+        store.removeActiveProfile()
+        store.completePendingSwitch()
+
+        #expect(!FileManager.default.fileExists(atPath: inputs.path))
+        #expect(access.forgotten == [ProfileStore.resolvedPath(library.path)])
     }
 
     deinit {

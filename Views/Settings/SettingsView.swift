@@ -177,6 +177,12 @@ struct SettingsView: View {
                     } else if s.outputDir.isEmpty {
                         Label("No library folder set — images won't be saved.", systemImage: "exclamationmark.triangle.fill")
                             .font(.caption).foregroundStyle(.orange)
+                    } else if profiles.libraryStatus == .noAccess {
+                        Label(
+                            "Choose this folder again with Change… to give the app access.",
+                            systemImage: "lock.fill"
+                        )
+                        .font(.caption).foregroundStyle(.orange)
                     } else if profiles.isLibraryMissing {
                         Label(
                             "This folder isn't there — reconnect its drive or choose another.",
