@@ -161,6 +161,8 @@ never touches the DMG app's data.
 
 On first run the App Store flavor asks for a library folder (Skip for Now uses Pictures ▸ MLXBits Image Studio) and a models folder, offering `~/.cache/huggingface` when it exists. It keeps access to every folder and LoRA you choose. Images you bring in from outside the library are copied into the profile, so re-runs work after a relaunch.
 
+Image Studio is free in both flavors. **Support MLXBits Image Studio…** in the app menu (also in Settings ▸ Advanced) offers optional tips through the App Store in the App Store flavor, and a Ko-fi link in the DMG. Tips unlock nothing. After 50 images the app asks once, and never again.
+
 To change a Python package version, edit `Runtime/requirements.in` and run
 `scripts/lock-python-runtime.sh`. The runtime build refuses GPL-family
 packages; a package without license metadata must be checked by hand and

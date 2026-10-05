@@ -230,6 +230,7 @@ This is what four 28pt icon buttons in the dimension row cost the first time.
   - **Every open panel** that picks a folder or LoRA goes through `GrantingPanel` (or `LibraryFolderPanel`), so the App Store build keeps access across relaunches.
   - **Every new source-image entry point** passes its path through `settings.adoptSourceImage(_:)`.
   - **Anything a job reads from disk** goes in its spec's `accessPaths(job:)`.
+- Support (spec §5): the Support window (`Views/Support/`) shows StoreKit tips in the App Store build and the Ko-fi link in the DMG; the App Store build never shows external donation links (`SupportLinks`). The one-time nudge appears after 50 saved images (`SupportStore`); in DEBUG builds, lower the threshold with the launch argument `-supportNudgeThreshold <n>`. Never call `Product.purchase()` from unit tests: in the hosted test run it shows a real Apple Account sign-in.
 - Do not script bulk reads or edits over the user's image output directory.
   Fix the code and describe the manual cleanup instead.
 
