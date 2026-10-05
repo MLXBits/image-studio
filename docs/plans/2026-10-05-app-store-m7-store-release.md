@@ -30,9 +30,9 @@
 - Available everywhere except China mainland (spec §6 step 4)
 
 **Tips (spec §5, verbatim IDs), all Consumable:**
-- `com.mlxbits.image-studio.appstore.tip.small` ($2.99)
-- `com.mlxbits.image-studio.appstore.tip.medium` ($4.99)
-- `com.mlxbits.image-studio.appstore.tip.large` ($9.99)
+- `com.mlxbits.imagestudio.appstore.tip.small` ($2.99)
+- `com.mlxbits.imagestudio.appstore.tip.medium` ($4.99)
+- `com.mlxbits.imagestudio.appstore.tip.large` ($9.99)
 
 The first tips are submitted together with the app version.
 

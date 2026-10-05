@@ -38,9 +38,9 @@ The owner reviews these before execution. Task 7 writes them into the spec.
 **Platform:** macOS 26.0, arm64. Bundle IDs: DMG `com.mlxbits.image-studio`, App Store `com.mlxbits.image-studio.appstore`.
 
 **Product IDs (verbatim):**
-- `com.mlxbits.image-studio.appstore.tip.small` ($2.99)
-- `com.mlxbits.image-studio.appstore.tip.medium` ($4.99)
-- `com.mlxbits.image-studio.appstore.tip.large` ($9.99)
+- `com.mlxbits.imagestudio.appstore.tip.small` ($2.99)
+- `com.mlxbits.imagestudio.appstore.tip.medium` ($4.99)
+- `com.mlxbits.imagestudio.appstore.tip.large` ($9.99)
 
 Names and prices shown in the app come from StoreKit, never from code.
 
@@ -642,9 +642,9 @@ final class TipJarStore {
     }
 
     static let productIDs = [
-        "com.mlxbits.image-studio.appstore.tip.small",
-        "com.mlxbits.image-studio.appstore.tip.medium",
-        "com.mlxbits.image-studio.appstore.tip.large",
+        "com.mlxbits.imagestudio.appstore.tip.small",
+        "com.mlxbits.imagestudio.appstore.tip.medium",
+        "com.mlxbits.imagestudio.appstore.tip.large",
     ]
 
     private(set) var products: [TipProduct] = []
@@ -751,7 +751,7 @@ git commit -m "Tip jar logic behind a storefront protocol"
       "localizations" : [
         { "description" : "A small tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Small Tip", "locale" : "en_US" }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.small",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.small",
       "referenceName" : "Small Tip",
       "type" : "Consumable"
     },
@@ -762,7 +762,7 @@ git commit -m "Tip jar logic behind a storefront protocol"
       "localizations" : [
         { "description" : "A medium tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Medium Tip", "locale" : "en_US" }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.medium",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.medium",
       "referenceName" : "Medium Tip",
       "type" : "Consumable"
     },
@@ -773,7 +773,7 @@ git commit -m "Tip jar logic behind a storefront protocol"
       "localizations" : [
         { "description" : "A large tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Large Tip", "locale" : "en_US" }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.large",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.large",
       "referenceName" : "Large Tip",
       "type" : "Consumable"
     }

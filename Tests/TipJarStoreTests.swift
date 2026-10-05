@@ -155,4 +155,27 @@ struct TipJarStoreTests {
         jar.clearOutcome()
         #expect(jar.phase == .ready)
     }
+
+    /// The IDs created in App Store Connect, which allows only letters,
+    /// digits, periods and underscores (a hyphenated ID can't exist there).
+    @Test func productIDsMatchAppStoreConnect() {
+        #expect(TipJarStore.productIDs == [
+            "com.mlxbits.imagestudio.appstore.tip.small",
+            "com.mlxbits.imagestudio.appstore.tip.medium",
+            "com.mlxbits.imagestudio.appstore.tip.large",
+        ])
+        #expect(TipJarStore.productIDs.allSatisfy {
+            $0.range(of: #"^[A-Za-z0-9._]+$"#, options: .regularExpression) != nil
+        })
+    }
+
+    /// The local StoreKit configuration sells the same tips the app asks for.
+    @Test func theLocalConfigurationHasTheSameIDs() throws {
+        let url = try #require(Bundle(for: BundleToken.self).url(forResource: "Tips", withExtension: "storekit"))
+        let json = try #require(try JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any])
+        let products = try #require(json["products"] as? [[String: Any]])
+        #expect(Set(products.compactMap { $0["productID"] as? String }) == Set(TipJarStore.productIDs))
+    }
 }
+
+private final class BundleToken {}

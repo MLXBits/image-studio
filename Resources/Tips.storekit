@@ -25,7 +25,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.small",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.small",
       "referenceName" : "Small Tip",
       "type" : "Consumable"
     },
@@ -40,7 +40,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.medium",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.medium",
       "referenceName" : "Medium Tip",
       "type" : "Consumable"
     },
@@ -55,7 +55,7 @@
           "locale" : "en_US"
         }
       ],
-      "productID" : "com.mlxbits.image-studio.appstore.tip.large",
+      "productID" : "com.mlxbits.imagestudio.appstore.tip.large",
       "referenceName" : "Large Tip",
       "type" : "Consumable"
     }

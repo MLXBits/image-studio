@@ -81,13 +81,13 @@ First App Store release.
 
 ## In-app purchases
 
-All three are Consumable. Product IDs can't be changed or reused once created, so copy them exactly:
+All three are Consumable. Product IDs can't be changed or reused once created, and allow no hyphens (`imagestudio`, not `image-studio`), so copy them exactly:
 
 | Reference name | Product ID | Price |
 |---|---|---|
-| Small Tip | `com.mlxbits.image-studio.appstore.tip.small` | $2.99 |
-| Medium Tip | `com.mlxbits.image-studio.appstore.tip.medium` | $4.99 |
-| Large Tip | `com.mlxbits.image-studio.appstore.tip.large` | $9.99 |
+| Small Tip | `com.mlxbits.imagestudio.appstore.tip.small` | $2.99 |
+| Medium Tip | `com.mlxbits.imagestudio.appstore.tip.medium` | $4.99 |
+| Large Tip | `com.mlxbits.imagestudio.appstore.tip.large` | $9.99 |
 
 Each gets the same review screenshot: the Support window, with tips loaded, over the main window (SFW profile).
 

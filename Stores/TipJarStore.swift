@@ -49,9 +49,9 @@ final class TipJarStore {
     }
 
     static let productIDs = [
-        "com.mlxbits.image-studio.appstore.tip.small",
-        "com.mlxbits.image-studio.appstore.tip.medium",
-        "com.mlxbits.image-studio.appstore.tip.large",
+        "com.mlxbits.imagestudio.appstore.tip.small",
+        "com.mlxbits.imagestudio.appstore.tip.medium",
+        "com.mlxbits.imagestudio.appstore.tip.large",
     ]
 
     private(set) var products: [TipProduct] = []

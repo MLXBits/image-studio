@@ -253,9 +253,10 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
 
 **App Store build: StoreKit 2.**
 - **Products:** three consumables:
-  - `com.mlxbits.image-studio.appstore.tip.small` ($2.99)
+  - `com.mlxbits.imagestudio.appstore.tip.small` ($2.99)
   - `…tip.medium` ($4.99)
   - `…tip.large` ($9.99)
+  - Product IDs allow only letters, digits, periods and underscores, so it's `imagestudio`, not the bundle ID's `image-studio` (found when creating them, 2026-10-06).
 - **Prices:** names and local-currency prices are loaded from the store, never hard-coded.
 - **Purchase flow:** purchase, verify, finish, thank-you. Cancelled and pending (Ask to Buy) outcomes are handled quietly.
 - **Interrupted purchases:** a `Transaction.updates` listener started at launch finishes them.
