@@ -7,6 +7,8 @@ final class RecordingFileAccess: FileAccess {
     var unreachable: Set<String> = []
     private(set) var remembered: [String] = []
     private(set) var forgotten: [String] = []
+    /// Every lease start and end, in order: "begin <path>" / "end <path>".
+    private(set) var events: [String] = []
     /// How many unended leases hold each path.
     private var held: [String: Int] = [:]
 
@@ -43,9 +45,15 @@ final class RecordingFileAccess: FileAccess {
 
     private func hold(_ paths: [String]) -> FileAccessLease {
         let kept = paths.filter(FileAccessPath.isLocal)
-        kept.forEach { held[$0, default: 0] += 1 }
+        for item in kept {
+            held[item, default: 0] += 1
+            events.append("begin \(item)")
+        }
         return FileAccessLease { [weak self] in
-            kept.forEach { self?.held[$0, default: 1] -= 1 }
+            for item in kept {
+                self?.held[item, default: 1] -= 1
+                self?.events.append("end \(item)")
+            }
         }
     }
 }

@@ -23,32 +23,49 @@ final class SandboxFileAccess: FileAccess {
 
     private let store: GrantStore
     private let codec: BookmarkCodec
+    /// Whether a path can be read without a grant: the app's container, or
+    /// Pictures. Tests pass `{ _ in false }` to stand in for the sandbox.
+    private let isReadable: (String) -> Bool
     private var started: [String: Started] = [:]
+    /// Grants that failed to start: their bookmark no longer resolves to the
+    /// path it was made for. They stop counting as access until chosen again.
+    private var unusable: Set<String> = []
 
     /// The grants started right now, by the path each was made for. For tests.
     var startedGrantPaths: [String] {
         started.keys.sorted()
     }
 
-    init(storeURL: URL, codec: BookmarkCodec = .securityScoped) {
+    init(
+        storeURL: URL, codec: BookmarkCodec = .securityScoped,
+        isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable
+    ) {
         store = GrantStore(url: storeURL)
         self.codec = codec
+        self.isReadable = isReadable
     }
 
     func remember(_ url: URL) {
         guard let bookmark = try? codec.make(url) else { return }
-        store.set(bookmark, for: FileAccessPath.normalized(url.path))
+        let path = FileAccessPath.normalized(url.path)
+        store.set(bookmark, for: path)
+        unusable.remove(path)
     }
 
     func forget(_ path: String) {
-        store.remove(FileAccessPath.normalized(path))
+        let normalized = FileAccessPath.normalized(path)
+        store.remove(normalized)
+        unusable.remove(normalized)
     }
 
     func canReach(_ path: String) -> Bool {
         guard FileAccessPath.isLocal(path) else { return false }
         let normalized = FileAccessPath.normalized(path)
         guard FileManager.default.fileExists(atPath: normalized) else { return false }
-        return store.grant(covering: normalized) != nil || FileAccessPath.isReadable(normalized)
+        if let grant = store.grant(covering: normalized), !unusable.contains(grant.path) {
+            return true
+        }
+        return isReadable(normalized)
     }
 
     func beginAccess(to paths: [String]) throws -> FileAccessLease {
@@ -90,6 +107,9 @@ final class SandboxFileAccess: FileAccess {
 
     private func start(_ path: String) -> Outcome {
         let normalized = FileAccessPath.normalized(path)
+        // Never resolve a bookmark for a path that isn't there: resolving one on
+        // an offline network share can try to mount it.
+        guard FileManager.default.fileExists(atPath: normalized) else { return .lost }
         if let grant = store.grant(covering: normalized) {
             if started[grant.path] != nil {
                 started[grant.path]?.holders += 1
@@ -103,11 +123,12 @@ final class SandboxFileAccess: FileAccess {
                     store.set(fresh, for: grant.path)
                 }
                 started[grant.path] = Started(url: resolved.url, holders: 1)
+                unusable.remove(grant.path)
                 return .started(grant.path)
             }
+            unusable.insert(grant.path)
         }
-        let reachable = FileManager.default.fileExists(atPath: normalized) && FileAccessPath.isReadable(normalized)
-        return reachable ? .notNeeded : .lost
+        return isReadable(normalized) ? .notNeeded : .lost
     }
 
     private func stop(_ key: String) {

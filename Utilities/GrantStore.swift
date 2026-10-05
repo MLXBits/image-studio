@@ -17,7 +17,8 @@ struct BookmarkCodec {
         resolve: { data in
             var isStale = false
             let url = try URL(
-                resolvingBookmarkData: data, options: .withSecurityScope, relativeTo: nil, bookmarkDataIsStale: &isStale
+                resolvingBookmarkData: data, options: [.withSecurityScope, .withoutMounting, .withoutUI],
+                relativeTo: nil, bookmarkDataIsStale: &isStale
             )
             return (url, isStale)
         }

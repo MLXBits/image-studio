@@ -19,8 +19,12 @@ final class FileAccessTests {
         try Data("weights".utf8).write(to: lora)
     }
 
-    private func sandbox(codec: BookmarkCodec = .securityScoped) -> SandboxFileAccess {
-        SandboxFileAccess(storeURL: root.appendingPathComponent("grants.json"), codec: codec)
+    /// `isReadable` stands in for the sandbox: pass `{ _ in false }` to deny
+    /// every read that no grant covers, as the App Store build does.
+    private func sandbox(
+        codec: BookmarkCodec = .securityScoped, isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable
+    ) -> SandboxFileAccess {
+        SandboxFileAccess(storeURL: root.appendingPathComponent("grants.json"), codec: codec, isReadable: isReadable)
     }
 
     @Test func theDMGPassesEverythingThrough() throws {
@@ -113,6 +117,41 @@ final class FileAccessTests {
         let lease = try access.beginAccess(to: [lora.path])
         #expect(access.startedGrantPaths.isEmpty)
         lease.end()
+    }
+
+    /// A grant whose bookmark no longer resolves (spec §4: "An unresolvable
+    /// bookmark shows the existing missing-library banner") stops counting as
+    /// access once it has failed to start, so the banner and Locate… appear.
+    @Test func aGrantThatFailsToStartIsNoLongerTrusted() {
+        let real = BookmarkCodec.securityScoped
+        let unresolvable = BookmarkCodec(make: real.make) { _ in throw CocoaError(.fileReadCorruptFile) }
+        let access = sandbox(codec: unresolvable) { _ in false }
+        access.remember(folder)
+        #expect(access.canReach(lora.path))
+
+        access.beginAccess(toAvailable: [folder.path]).end()
+
+        #expect(!access.canReach(lora.path))
+        access.remember(folder) // choosing it again gives it another chance
+        #expect(access.canReach(lora.path))
+    }
+
+    /// A path that isn't there is never resolved: resolving a bookmark to an
+    /// offline network share can try to mount it on the main thread.
+    @Test func aMissingPathIsNotResolved() throws {
+        var resolved = 0
+        let real = BookmarkCodec.securityScoped
+        let codec = BookmarkCodec(make: real.make) { data in
+            resolved += 1
+            return try real.resolve(data)
+        }
+        let access = sandbox(codec: codec)
+        access.remember(lora)
+        try FileManager.default.removeItem(at: lora)
+        #expect(throws: FileAccessError.self) {
+            try access.beginAccess(to: [lora.path])
+        }
+        #expect(resolved == 0)
     }
 
     deinit {

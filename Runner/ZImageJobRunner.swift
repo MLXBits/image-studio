@@ -34,8 +34,10 @@ enum ZImageRunnerSpec: JobRunnerSpec {
         job.isTurbo ? .zImageTurbo : .zImage
     }
 
+    /// Exactly what the run reads: enabled LoRAs of this family, the model folder, and its image.
     static func accessPaths(job: ZImageJob) -> [String] {
-        (job.loras.map(\.path) + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .zimage }.map(\.path)
+        return (loras + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
     }
 
     /// Q8/Q4: one-time mflux-save quantization pass into the cache dir — unless a

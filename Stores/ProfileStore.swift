@@ -292,6 +292,12 @@ final class ProfileStore {
     /// Re-checks the active library folder, holding its grant while it's there,
     /// and rescans when it comes back.
     func refreshLibraryAvailability() {
+        // A library that was missing gets its grant started afresh: one started
+        // before its drive was unplugged doesn't carry over to the remount.
+        if isLibraryMissing {
+            libraryLease?.end()
+            libraryLease = nil
+        }
         restartLibraryLease()
         let status = settings.libraryStatus
         let cameBack = isLibraryMissing && status == .available

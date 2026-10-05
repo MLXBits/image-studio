@@ -110,6 +110,26 @@ final class ProfileStoreTests {
         #expect(access.isHeld(work))
     }
 
+    /// A library whose drive comes back gets its grant started afresh: the old
+    /// lease ends before the new one begins, so a grant started before the
+    /// unplug isn't carried over to the remount.
+    @Test func aLibraryThatComesBackGetsAFreshGrant() throws {
+        let access = RecordingFileAccess()
+        let work = ProfileStore.resolvedPath(library.path)
+        let (store, _) = try storeInWork(access: access)
+        let unplugged = root.appendingPathComponent("Unplugged", isDirectory: true)
+        try FileManager.default.moveItem(at: library, to: unplugged)
+        store.refreshLibraryAvailability()
+        #expect(store.libraryStatus == .missing)
+
+        try FileManager.default.moveItem(at: unplugged, to: library)
+        let before = access.events.count
+        store.refreshLibraryAvailability()
+
+        #expect(store.libraryStatus == .available)
+        #expect(Array(access.events[before...]) == ["end \(work)", "begin \(work)"])
+    }
+
     /// The profile's Inputs/ copies live in its data folder, so they go with it.
     @Test func removingAProfileForgetsItsLibraryAndDeletesItsInputs() throws {
         let access = RecordingFileAccess()
