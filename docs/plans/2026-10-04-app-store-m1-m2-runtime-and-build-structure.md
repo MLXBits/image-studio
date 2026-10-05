@@ -121,7 +121,7 @@ Failure modes the spec implies but ordinary tests won't hit, most likely first. 
 - [ ] **Step 1: Create the branch**
 
 ```bash
-cd "/Users/paul/Git/MLXBits Image Studio"
+cd "$(git rev-parse --show-toplevel)"
 git switch docs/app-store-spec
 git switch -c feature/app-store-runtime
 mkdir -p scripts/tests

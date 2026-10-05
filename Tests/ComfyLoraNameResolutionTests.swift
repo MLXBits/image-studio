@@ -20,12 +20,12 @@ struct ComfyLoraNameResolutionTests {
 
     @Test func absoluteLocalPathReducesToBasename() {
         // A hand-entered local macOS file has no meaning on the server; its basename is the best submission value.
-        #expect(resolverServerLoraName("/Users/paul/Downloads/krea2-realism-V2.safetensors") == "krea2-realism-V2.safetensors")
+        #expect(resolverServerLoraName("/Users/me/Downloads/krea2-realism-V2.safetensors") == "krea2-realism-V2.safetensors")
     }
 
     @Test func absoluteLocalPathWithSubfolderStillReducesToBasename() {
         // Even a local path with subdirectories yields only the final component, matching how mflux named it.
-        #expect(resolverServerLoraName("/Users/paul/Loras/krea2/Krea2-realism-V2.safetensors") == "Krea2-realism-V2.safetensors")
+        #expect(resolverServerLoraName("/Users/me/Loras/krea2/Krea2-realism-V2.safetensors") == "Krea2-realism-V2.safetensors")
     }
 
     @Test func emptyStringPassesThrough() {

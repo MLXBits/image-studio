@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** submit the App Store build for review as v0.17.0, with the three tips, a privacy policy, a complete listing and reviewer notes, after a TestFlight pass on selphie.
+**Goal:** submit the App Store build for review as v0.17.0, with the three tips, a privacy policy, a complete listing and reviewer notes, after a TestFlight pass on a second Mac.
 
 **Architecture:** most of the spec's milestone 7 already exists. `appstore.yml` uploads to TestFlight (milestones 3–6), and the Info.plist keys and arm64-only build are in `project.yml`. What's left is:
 - **In the repo:** `PRIVACY.md`, a listing-and-review pack in `docs/appstore/` with a length checker, and the submission checklist.
@@ -86,7 +86,7 @@ The first tips are submitted together with the app version.
 Run:
 
 ```bash
-cd "/Users/paul/Git/MLXBits Image Studio"
+cd "$(git rev-parse --show-toplevel)"
 grep -rn -E 'URLSession|URLRequest|"https?://' --include='*.swift' App Models Runner Stores Utilities Views | grep -v '^Tests' | cut -c1-160
 grep -n -E 'requests\.|urllib|huggingface_hub|http' Resources/*.py | cut -c1-160
 ```
@@ -526,7 +526,7 @@ The owner's checklist, in order. Text to paste lives in [listing.md](listing.md)
 5. **Release:** `git tag v0.17.0 && git push origin v0.17.0` ships the DMG through release.yml. Then `gh workflow run appstore.yml` (no ref: it builds the newest tag) uploads 0.17.0 to TestFlight.
 6. **Availability:** Pricing and Availability: Free, all countries except China mainland.
 
-## TestFlight pass (selphie)
+## TestFlight pass (a second Mac)
 7. Install 0.17.0 from TestFlight and check:
    - first run: library and models steps
    - one FLUX.2 Klein 4B Q8 image

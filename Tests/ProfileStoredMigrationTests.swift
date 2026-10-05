@@ -12,7 +12,7 @@ struct ProfileStoredMigrationTests {
     {
       "mfluxBinaryDir": "/opt/mflux/bin",
       "outputDir": "/Users/me/Pictures/MLXBits",
-      "comfyURL": "http://quistis:8188",
+      "comfyURL": "http://comfy-host:8188",
       "defaultBoard": "Portraits",
       "notepadText": "# ideas\\n- fox in snow",
       "lastPrompt": "a red fox",

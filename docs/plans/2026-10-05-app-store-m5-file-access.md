@@ -3057,7 +3057,7 @@ These are spec §7's manual checks for this milestone. The owner runs them in th
    - a Settings ▸ Models download into the models folder;
    - a model source override chosen with Browse…;
    - a typed folder path shows the lock hint.
-8. **The upgrade path from TestFlight 0.16.0** (selphie): the models step appears, and the library banner's Change Folder… re-grants the old library.
+8. **The upgrade path from TestFlight 0.16.0** (on a second Mac): the models step appears, and the library banner's Change Folder… re-grants the old library.
 
 The DMG regression check is a DMG Debug build, launched only when the owner's own copy isn't running:
 - Browse… fields still type-and-browse;

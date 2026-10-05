@@ -71,9 +71,9 @@ Names and prices shown in the app come from StoreKit, never from code.
 **Every new type compiles in both flavors; `BuildFlavor.isAppStore` only selects** (spec §7).
 
 **Commands:**
-- Focused tests: `xcodebuild -workspace /Users/paul/MLXBits.xcworkspace -scheme 'MLXBits Image Studio' -derivedDataPath "$TMPDIR/image-studio-m6-derived" test BUNDLE_PYTHON_RUNTIME=NO '-only-testing:MLXBits Image StudioTests/<Suite>'`
+- Focused tests: `xcodebuild -workspace ~/MLXBits.xcworkspace -scheme 'MLXBits Image Studio' -derivedDataPath "$TMPDIR/image-studio-m6-derived" test BUNDLE_PYTHON_RUNTIME=NO '-only-testing:MLXBits Image StudioTests/<Suite>'`
 - Full suite: the same without `-only-testing`.
-- App Store compile: `xcodebuild -workspace /Users/paul/MLXBits.xcworkspace -scheme 'MLXBits Image Studio (App Store)' -configuration Debug-AppStore -derivedDataPath "$TMPDIR/image-studio-m6-derived" build BUNDLE_PYTHON_RUNTIME=NO CODE_SIGNING_ALLOWED=NO`
+- App Store compile: `xcodebuild -workspace ~/MLXBits.xcworkspace -scheme 'MLXBits Image Studio (App Store)' -configuration Debug-AppStore -derivedDataPath "$TMPDIR/image-studio-m6-derived" build BUNDLE_PYTHON_RUNTIME=NO CODE_SIGNING_ALLOWED=NO`
 - Lint gates (CI's): `swiftformat --lint --config .swiftformat .` and `swiftlint lint --config .swiftlint.yml --baseline .swiftlint-baseline.json --strict`
 - After adding or removing files: `xcodegen generate`. Both scheme files are tracked; check `git diff` on them and keep only intended changes.
 

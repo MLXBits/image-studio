@@ -14,7 +14,7 @@ The owner's checklist, in order. Text to paste lives in [listing.md](listing.md)
    Then `gh workflow run appstore.yml` (no ref: it builds the newest tag) uploads 0.17.0 to TestFlight.
 6. **Availability:** Pricing and Availability: Free, all countries except China mainland.
 
-## TestFlight pass (selphie)
+## TestFlight pass (a second Mac)
 7. Install 0.17.0 from TestFlight and check:
    - first run: library and models steps
    - one FLUX.2 Klein 4B Q8 image
