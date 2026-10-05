@@ -485,7 +485,7 @@ struct ParamsPanelView: View {
         }
         .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
             guard let path = paths.first else { return }
-            params.imagePath = path
+            params.imagePath = settings.adoptSourceImage(path)
             params.adoptResolvedPromptForImg2Img(at: path)
         }
         .dropHighlight(isImageDropTargeted)
@@ -590,7 +590,7 @@ struct ParamsPanelView: View {
             isTargeted: $isEditDropTargeted,
             allowsMultiple: true
         ) { paths in
-            for path in paths where !params.editImagePaths.contains(path) {
+            for path in paths.map({ settings.adoptSourceImage($0) }) where !params.editImagePaths.contains(path) {
                 params.editImagePaths.append(path)
             }
         }
@@ -673,7 +673,7 @@ struct ParamsPanelView: View {
 
     private func pasteImage() {
         if let path = imagePathFromPasteboard(tempPrefix: "pasted-image") {
-            params.imagePath = path
+            params.imagePath = settings.adoptSourceImage(path)
         }
     }
 
@@ -686,7 +686,7 @@ struct ParamsPanelView: View {
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if Self.imageExtensions.contains(ext) {
-                params.imagePath = url.path
+                params.imagePath = settings.adoptSourceImage(url.path)
             }
         }
     }
@@ -729,14 +729,15 @@ struct ParamsPanelView: View {
         panel.startInLibrary(settings.outputDir)
         if panel.runModal() == .OK {
             let valid = panel.urls.filter { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
-            for url in valid where !params.editImagePaths.contains(url.path) {
-                params.editImagePaths.append(url.path)
+            for path in valid.map({ settings.adoptSourceImage($0.path) }) where !params.editImagePaths.contains(path) {
+                params.editImagePaths.append(path)
             }
         }
     }
 
     private func pasteEditImage() {
-        guard let path = imagePathFromPasteboard(tempPrefix: "pasted-edit") else { return }
+        guard let pasted = imagePathFromPasteboard(tempPrefix: "pasted-edit") else { return }
+        let path = settings.adoptSourceImage(pasted)
         if !params.editImagePaths.contains(path) {
             params.editImagePaths.append(path)
         }

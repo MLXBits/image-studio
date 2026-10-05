@@ -303,7 +303,7 @@ struct Krea2ParamsPanelView: View {
         }
         .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
             guard let path = paths.first else { return }
-            params.imagePath = path
+            params.imagePath = settings.adoptSourceImage(path)
             params.adoptResolvedPromptForImg2Img(at: path)
         }
         .dropHighlight(isImageDropTargeted)
@@ -316,7 +316,7 @@ struct Krea2ParamsPanelView: View {
         // Prefer a file URL so we keep the original file on disk.
         if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
            let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
-            params.imagePath = url.path
+            params.imagePath = settings.adoptSourceImage(url.path)
             return
         }
         // Fall back to raw image data — save to a temp PNG.
@@ -327,7 +327,7 @@ struct Krea2ParamsPanelView: View {
               let rep = NSBitmapImageRep(data: tiff),
               let png = rep.representation(using: .png, properties: [:]) else { return }
         try? png.write(to: tmp)
-        params.imagePath = tmp.path
+        params.imagePath = settings.adoptSourceImage(tmp.path)
     }
 
     private func browseImage() {
@@ -338,7 +338,7 @@ struct Krea2ParamsPanelView: View {
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if Self.imageExtensions.contains(ext) {
-                params.imagePath = url.path
+                params.imagePath = settings.adoptSourceImage(url.path)
             }
         }
     }

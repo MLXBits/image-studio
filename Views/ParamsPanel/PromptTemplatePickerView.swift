@@ -233,6 +233,7 @@ struct TemplateEditSheet: View {
     let libraryPath: String
     let onSave: (PromptTemplate) -> Void
 
+    @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
 
     @State private var name: String
@@ -426,7 +427,7 @@ struct TemplateEditSheet: View {
         if panel.runModal() == .OK, let url = panel.url {
             let ext = url.pathExtension.lowercased()
             if ["png", "jpg", "jpeg", "webp"].contains(ext) {
-                exampleImagePath = url.path
+                exampleImagePath = settings.adoptSourceImage(url.path)
             }
         }
     }
