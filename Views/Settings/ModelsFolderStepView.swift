@@ -39,8 +39,7 @@ struct ModelsFolderStepView: View {
 
             HStack(spacing: 12) {
                 Button(existingCache == nil ? "Continue" : "Keep Models in the App") { onDone() }
-                    .buttonStyle(.plain)
-                    .foregroundStyle(.secondary)
+                    .buttonStyle(.link)
                 Button(existingCache == nil ? "Choose Folder…" : "Use It…") { choose() }
                     .buttonStyle(.borderedProminent)
                     .keyboardShortcut(.defaultAction)
