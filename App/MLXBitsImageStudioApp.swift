@@ -103,6 +103,9 @@ struct MLXBitsImageStudioApp: App {
         if testHost {
             settings.suspendPersistence()
         }
+        // The models folder and other folder settings stay reachable all
+        // session (spec §4). didSet doesn't run for init's own assignments.
+        settings.refreshSessionAccess()
         let store = JobStore()
         let gallery = GalleryStore()
         let ideogram4Store = Ideogram4JobStore()

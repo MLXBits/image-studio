@@ -229,7 +229,10 @@ class AppSettings {
     }
 
     var hfHome: String {
-        didSet { save() }
+        didSet {
+            save()
+            refreshSessionAccess()
+        }
     }
 
     /// The Hugging Face hub cache directory (`$HF_HOME/hub`, or the default under ~/.cache).
@@ -242,7 +245,10 @@ class AppSettings {
     }
 
     var mfluxCacheDir: String {
-        didSet { save() }
+        didSet {
+            save()
+            refreshSessionAccess()
+        }
     }
 
     var hfOffline: Bool {
@@ -312,12 +318,18 @@ class AppSettings {
 
     /// HF repo ID or local path for the Gemma model used to generate captions.
     var gemmaModelPath: String {
-        didSet { save() }
+        didSet {
+            save()
+            refreshSessionAccess()
+        }
     }
 
     /// Optional HF repo ID or local path override for the Ideogram 4 model.
     var ideogram4ModelRepoOverride: String? {
-        didSet { save() }
+        didSet {
+            save()
+            refreshSessionAccess()
+        }
     }
 
     var lastIdeogramPreset: Ideogram4Preset? {
@@ -540,7 +552,10 @@ class AppSettings {
 
     // MARK: - Per-model overrides, keyed by `FluxModelVariant.rawValue`.
     var modelDefaults: [String: ModelDefaults] {
-        didSet { save() }
+        didSet {
+            save()
+            refreshSessionAccess()
+        }
     }
 
     /// User-created prompt templates (built-ins live in `BuiltInTemplates.all`).
@@ -559,6 +574,13 @@ class AppSettings {
 
     @ObservationIgnored private let saveDebouncer = Debouncer()
 
+    /// How the app reaches folders and files outside its own (spec §4): paths
+    /// pass through in the DMG; the App Store build keeps security-scoped
+    /// grants. Settable so tests can swap in a recording one.
+    @ObservationIgnored var fileAccess: any FileAccess = FileAccessFactory.make()
+    /// Holds the folder settings' grants for the session; see ``refreshSessionAccess()``.
+    @ObservationIgnored var sessionLease: FileAccessLease?
+
     // MARK: - Per-profile persistence
 
     /// Gallery boards the user collapsed in the active profile's library.
@@ -569,7 +591,7 @@ class AppSettings {
     /// The active profile's `profile.json`; `nil` until a profile is activated.
     /// The debounced save reads it when it runs, which is why activation flushes
     /// before swapping it.
-    @ObservationIgnored private var profileFileURL: URL?
+    @ObservationIgnored private(set) var profileFileURL: URL?
     @ObservationIgnored private let profileSaveDebouncer = Debouncer()
     /// Set while a profile's fields are being loaded, so the `didSet` observers
     /// don't write the half-loaded state straight back.
