@@ -341,18 +341,10 @@ struct ContentView: View {
             .onChange(of: settings.openAIBaseURL) { _, _ in backendModels.restart() }
             .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
             .task(id: isAnyStoreRunning) { backendModels.localRunInFlight = isAnyStoreRunning }
-            .onChange(of: loraLibrary.allDefaultLoras) { _, updated in
-                let notesByPath = Dictionary(uniqueKeysWithValues: updated.compactMap { e -> (String, String)? in
-                    e.notes.isEmpty ? nil : (e.path, e.notes)
-                })
-                for i in params.loras.indices {
-                    if let note = notesByPath[params.loras[i].path] {
-                        params.loras[i].notes = note
-                    }
-                }
-                let currentPaths = Set(params.loras.map(\.path))
-                for entry in updated where !currentPaths.contains(entry.path) && entry.modelFamily == .flux {
-                    params.loras.append(entry)
+            .onChange(of: loraLibrary.allDefaultLoras) { old, updated in
+                let flux = LoraLibraryStore.followingDefaults(params.loras, from: old, to: updated)
+                if flux != params.loras {
+                    params.loras = flux
                 }
                 ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
                 krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }

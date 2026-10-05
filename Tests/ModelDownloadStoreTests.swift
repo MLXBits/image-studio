@@ -64,14 +64,52 @@ struct ModelDownloadStoreTests {
         #expect(attempts == 2)
     }
 
-    @Test func aFailedFetchWithACachedCopyStillRuns() async throws {
+    /// A cached snapshot with `files` in it, under a new HF home.
+    private func cachedSnapshot(_ files: [String: String]) throws -> AppSettings {
         let home = FakeRuntime.tempDirectory("ModelDownloadStoreTests")
         let snapshot = home.appendingPathComponent("hub/models--org--model/snapshots/abc", isDirectory: true)
         try FileManager.default.createDirectory(at: snapshot, withIntermediateDirectories: true)
+        for (name, contents) in files {
+            try Data(contents.utf8).write(to: snapshot.appendingPathComponent(name))
+        }
         let s = settings()
         s.hfHome = home.path
+        return s
+    }
+
+    @Test func aFailedFetchWithACachedCopyStillRuns() async throws {
+        let s = try cachedSnapshot([
+            "config.json": "{}",
+            "model.safetensors.index.json": #"{"weight_map": {"a": "model-1.safetensors", "b": "model-2.safetensors"}}"#,
+            "model-1.safetensors": "", "model-2.safetensors": "",
+        ])
         let store = ModelDownloadStore { _, _ in throw URLError(.notConnectedToInternet) }
         try await store.ensureAvailable("org/model", settings: s)
+    }
+
+    /// An interrupted download leaves a snapshot without all its weights:
+    /// the fetch's error is reported, and the next run tries again.
+    @Test func aFailedFetchWithAPartialCopyIsReported() async throws {
+        let s = try cachedSnapshot([
+            "config.json": "{}",
+            "model.safetensors.index.json": #"{"weight_map": {"a": "model-1.safetensors", "b": "model-2.safetensors"}}"#,
+            "model-1.safetensors": "",
+        ])
+        let store = ModelDownloadStore { _, _ in throw URLError(.notConnectedToInternet) }
+        await #expect(throws: URLError.self) { try await store.ensureAvailable("org/model", settings: s) }
+    }
+
+    /// After the models folder changes, a repo fetched into the old folder is
+    /// fetched again into the new one.
+    @Test func aNewModelsFolderFetchesTheRepoAgain() async throws {
+        var fetchedInto: [URL] = []
+        let store = ModelDownloadStore { _, settings in fetchedInto.append(settings.hfHubDir) }
+        let s = settings()
+        s.hfHome = "/tmp/hf-a"
+        try await store.ensureAvailable("org/model", settings: s)
+        s.hfHome = "/tmp/hf-b"
+        try await store.ensureAvailable("org/model", settings: s)
+        #expect(fetchedInto.map(\.path) == ["/tmp/hf-a/hub", "/tmp/hf-b/hub"])
     }
 
     @Test func progressReadsAsSizeAndTime() {

@@ -27,6 +27,13 @@ final class ModelDownloadStore {
         var bytesOnDisk: Int64 = 0
     }
 
+    /// A fetch is of one repo into one cache folder: after the models folder
+    /// changes, a repo fetched into the old one is fetched again.
+    private struct Key: Hashable {
+        let repo: String
+        let hubDir: URL
+    }
+
     /// `hf download <repo>` through the bundled toolchain, in a process of its own.
     private static let hfDownload: Fetch = { repo, settings in
         let hf = try settings.toolchain.command(.hf)
@@ -83,21 +90,38 @@ final class ModelDownloadStore {
         return entries.reduce(0) { $0 + Int64((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
     }
 
-    /// Whether a snapshot of the repo is already cached, so a failed fetch
-    /// (offline, Hub down) can still run it.
-    static func hasSnapshot(repo: String, hubDir: URL) -> Bool {
+    /// Whether a complete snapshot of the repo is already cached, so a failed
+    /// fetch (offline, Hub down) can still run it. An interrupted download
+    /// leaves a snapshot without all its weights, which doesn't count.
+    static func hasCachedWeights(repo: String, hubDir: URL) -> Bool {
         let snapshots = cacheFolder(repo: repo, hubDir: hubDir).appendingPathComponent("snapshots", isDirectory: true)
-        return !((try? FileManager.default.contentsOfDirectory(atPath: snapshots.path)) ?? []).isEmpty
+        let revisions = (try? FileManager.default.contentsOfDirectory(at: snapshots, includingPropertiesForKeys: nil)) ?? []
+        return revisions.contains(where: hasWeights)
+    }
+
+    /// Every shard the snapshot's index lists, or a `.safetensors` file when
+    /// there's no index. `fileExists` follows hf's links, so a link to a blob
+    /// that never landed doesn't count.
+    private static func hasWeights(_ snapshot: URL) -> Bool {
+        let present = ((try? FileManager.default.contentsOfDirectory(atPath: snapshot.path)) ?? [])
+            .filter { FileManager.default.fileExists(atPath: snapshot.appendingPathComponent($0).path) }
+        let index = snapshot.appendingPathComponent("model.safetensors.index.json")
+        if let data = try? Data(contentsOf: index),
+           let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+           let shards = json["weight_map"] as? [String: String] {
+            return Set(shards.values).isSubset(of: present)
+        }
+        return present.contains { $0.hasSuffix(".safetensors") }
     }
 
     /// Repos downloading now, with how much has landed.
     private(set) var active: [String: Download] = [:]
 
     @ObservationIgnored private let fetch: Fetch
-    @ObservationIgnored private var tasks: [String: Task<Void, Never>] = [:]
-    @ObservationIgnored private var failures: [String: Error] = [:]
+    @ObservationIgnored private var tasks: [Key: Task<Void, Never>] = [:]
+    @ObservationIgnored private var failures: [Key: Error] = [:]
     /// Repos fetched this launch, which aren't fetched again.
-    @ObservationIgnored private var ready: Set<String> = []
+    @ObservationIgnored private var ready: Set<Key> = []
 
     init(fetch: Fetch? = nil) {
         self.fetch = fetch ?? Self.hfDownload
@@ -108,47 +132,50 @@ final class ModelDownloadStore {
     /// starts the download, or joins one in progress, and waits. Cancelling the
     /// caller ends the wait; the download carries on.
     func ensureAvailable(_ model: String, settings: AppSettings) async throws {
-        guard Self.needsFetch(model, offline: settings.hfOffline), !ready.contains(model) else { return }
-        if tasks[model] == nil {
-            start(model, settings: settings)
+        let key = Key(repo: model, hubDir: settings.hfHubDir)
+        guard Self.needsFetch(model, offline: settings.hfOffline), !ready.contains(key) else { return }
+        if tasks[key] == nil {
+            start(key, settings: settings)
         }
-        while tasks[model] != nil {
+        while tasks[key] != nil {
             try await Task.sleep(for: .milliseconds(200))
         }
-        if let error = failures[model] {
+        if let error = failures[key] {
             throw error
         }
     }
 
     /// Stops a download (the status row's Stop button).
     func cancel(_ repo: String) {
-        tasks[repo]?.cancel()
+        for (key, task) in tasks where key.repo == repo {
+            task.cancel()
+        }
     }
 
-    private func start(_ repo: String, settings: AppSettings) {
-        failures[repo] = nil
+    private func start(_ key: Key, settings: AppSettings) {
+        let (repo, hubDir) = (key.repo, key.hubDir)
+        failures[key] = nil
         active[repo] = Download(startedAt: Date())
-        let hubDir = settings.hfHubDir
         let poll = Task { [weak self] in
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(1))
                 self?.active[repo]?.bytesOnDisk = Self.bytesOnDisk(repo: repo, hubDir: hubDir)
             }
         }
-        tasks[repo] = Task { [weak self] in
+        tasks[key] = Task { [weak self] in
             do {
                 try await self?.fetch(repo, settings)
-                self?.ready.insert(repo)
+                self?.ready.insert(key)
             } catch {
-                if !(error is CancellationError), Self.hasSnapshot(repo: repo, hubDir: hubDir) {
-                    self?.ready.insert(repo)
+                if !(error is CancellationError), Self.hasCachedWeights(repo: repo, hubDir: hubDir) {
+                    self?.ready.insert(key)
                 } else {
-                    self?.failures[repo] = error
+                    self?.failures[key] = error
                 }
             }
             poll.cancel()
             self?.active[repo] = nil
-            self?.tasks[repo] = nil
+            self?.tasks[key] = nil
         }
     }
 }
