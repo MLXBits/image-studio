@@ -33,6 +33,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var backendModels = BackendModelStore()
     @State private var modelDownloads = ModelDownloadStore()
     @State private var support: SupportStore
+    @State private var tipJar: TipJarStore
 
     var body: some Scene {
         WindowGroup {
@@ -57,6 +58,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(updateChecker)
                 .environment(backendModels)
                 .environment(modelDownloads)
+                .environment(support)
                 .frame(minWidth: 900, minHeight: 600)
                 // Launch-time update check; drives the toolbar badge when a newer
                 // GitHub release exists. Coalesced so multiple windows check once.
@@ -91,7 +93,16 @@ struct MLXBitsImageStudioApp: App {
                 .environment(gallery)
                 .environment(driverController)
                 .environment(loraLibrary)
+                .environment(support)
         }
+
+        Window("Support MLXBits Image Studio", id: SupportView.windowID) {
+            SupportView()
+                .environment(support)
+                .environment(tipJar)
+        }
+        .windowResizability(.contentSize)
+        .defaultPosition(.center)
     }
 
     /// The main window's content for the current profile phase. ContentView is
@@ -167,9 +178,17 @@ struct MLXBitsImageStudioApp: App {
         _krea2Runner = State(initialValue: krea2Runner)
         _zimageRunner = State(initialValue: zimageRunner)
         _seedVR2Runner = State(initialValue: seedVR2Runner)
-        _support = State(initialValue: Self.makeSupport(
+        let support = Self.makeSupport(
             testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, seedVR2Runner]
-        ))
+        )
+        _support = State(initialValue: support)
+        let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }
+        // Tips interrupted last launch, or approved later, are finished as
+        // soon as the app starts (spec §5).
+        if BuildFlavor.isAppStore, !testHost {
+            tipJar.startFinishingTransactions()
+        }
+        _tipJar = State(initialValue: tipJar)
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }
@@ -186,6 +205,9 @@ struct AboutCommands: Commands {
         CommandGroup(replacing: .appInfo) {
             Button("About MLXBits Image Studio") {
                 openWindow(id: Self.windowID)
+            }
+            Button("Support MLXBits Image Studio…") {
+                openWindow(id: SupportView.windowID)
             }
         }
     }

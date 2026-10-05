@@ -27,6 +27,7 @@ struct SettingsView: View {
     @Environment(ProfileStore.self) private var profiles
     @Environment(GalleryStore.self) private var gallery
     @Environment(MfluxDriverController.self) private var driverController
+    @Environment(\.openWindow) private var openWindow
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
     @State private var loraFamily: ModelFamily = .flux
@@ -344,6 +345,12 @@ struct SettingsView: View {
                     Slider(value: $s.logFontSize, in: 10 ... 18)
                         .onChange(of: s.logFontSize) { _, v in s.logFontSize = round(v) }
                     Text("\(Int(s.logFontSize))pt").monospacedDigit().frame(width: 35)
+                }
+            }
+
+            Section("Support") {
+                LabeledContent("Every feature is free.") {
+                    Button("Support MLXBits Image Studio…") { openWindow(id: SupportView.windowID) }
                 }
             }
         }
