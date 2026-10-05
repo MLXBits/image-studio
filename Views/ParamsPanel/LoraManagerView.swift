@@ -19,6 +19,7 @@ struct LoraManagerView: View {
     @State private var showingPicker: Bool = false
     @State private var newPath: String = ""
     @State private var editingID: UUID?
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         if alwaysExpanded {
@@ -103,6 +104,8 @@ struct LoraManagerView: View {
                     canMoveDown: index < loras.count - 1,
                     onMoveUp: { move(from: index, to: index - 1) },
                     onMoveDown: { move(from: index, to: index + 1) },
+                    isLost: FileAccessPath.isLocal(lora.path) && !settings.fileAccess.canReach(lora.path),
+                    onLocate: { locate(lora.id) },
                     onDelete: { remove(id: lora.id) }
                 )
             }
@@ -222,13 +225,10 @@ struct LoraManagerView: View {
     }
 
     private func browseLocalFile() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = []
-        panel.allowsOtherFileTypes = true
-        panel.title = "Select LoRA"
-        panel.message = "Choose a .safetensors LoRA file"
-        if panel.runModal() == .OK, let url = panel.url {
-            newPath = url.path
+        if let path = GrantingPanel.chooseFile(
+            title: "Select LoRA", message: "Choose a .safetensors LoRA file", access: settings.fileAccess
+        ) {
+            newPath = path
         }
     }
 
@@ -236,87 +236,23 @@ struct LoraManagerView: View {
         loras.removeAll { $0.id == id }
     }
 
+    /// Points this generation's LoRA at the file again, and its library entry with it.
+    private func locate(_ id: UUID) {
+        guard let index = loras.firstIndex(where: { $0.id == id }) else { return }
+        let old = URL(fileURLWithPath: loras[index].path)
+        guard let path = GrantingPanel.chooseFile(
+            title: "Locate LoRA", message: "Choose \(old.lastPathComponent) again.",
+            startingAt: old.deletingLastPathComponent(), access: settings.fileAccess
+        ) else { return }
+        if let entry = library?.libraryEntry(path: old.path) {
+            library?.relocate(entry.id, to: path)
+        }
+        loras[index].path = path
+    }
+
     private func move(from: Int, to: Int) {
         guard to >= 0, to < loras.count else { return }
         loras.swapAt(from, to)
-    }
-}
-
-private struct LoraRowView: View {
-    @Binding var lora: LoraEntry
-    let name: String
-    var showNotes: Bool = false
-    var showDelete: Bool = true
-    var canMoveUp: Bool = false
-    var canMoveDown: Bool = false
-    var onMoveUp: () -> Void = {}
-    var onMoveDown: () -> Void = {}
-    let onDelete: () -> Void
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Toggle("", isOn: $lora.enabled)
-                    .toggleStyle(.switch)
-                    .labelsHidden()
-                    .scaleEffect(0.7)
-                    .frame(width: 32, height: 20)
-                Text(name)
-                    .font(.caption)
-                    .lineLimit(1)
-                    .truncationMode(.middle)
-                    .help(lora.path)
-                    .padding(.leading, 8)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                if showDelete {
-                    Button { onMoveUp() } label: {
-                        Image(systemName: "chevron.up").font(.caption)
-                    }
-                    .buttonStyle(.iconButtonCompact)
-                    .foregroundStyle(.secondary)
-                    .disabled(!canMoveUp)
-                    .help("Move up")
-                    Button { onMoveDown() } label: {
-                        Image(systemName: "chevron.down").font(.caption)
-                    }
-                    .buttonStyle(.iconButtonCompact)
-                    .foregroundStyle(.secondary)
-                    .disabled(!canMoveDown)
-                    .help("Move down")
-                    Button { onDelete() } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .foregroundStyle(.red)
-                    }
-                    .buttonStyle(.iconButtonCompact)
-                }
-            }
-            HStack(spacing: 6) {
-                Slider(value: $lora.strength, in: -1 ... 1)
-                TextField("", value: $lora.strength, format: .number.precision(.fractionLength(2)))
-                    .multilineTextAlignment(.trailing)
-                    .frame(width: 48)
-                    .textFieldStyle(.roundedBorder)
-            }
-            if showNotes {
-                TextField("Notes (trigger words, recommended strength…)", text: $lora.notes)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption)
-            } else if !lora.notes.isEmpty {
-                Text(lora.notes)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .textSelection(.enabled)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-        .padding(8)
-        .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
-        .onChange(of: lora.strength) { _, v in
-            let rounded = round(v / 0.05) * 0.05
-            if abs(v - rounded) > 1e-10 {
-                lora.strength = rounded
-            }
-        }
     }
 }
 

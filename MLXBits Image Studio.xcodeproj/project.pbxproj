@@ -27,6 +27,7 @@
 		10BE80CF2FF911AAA0DE2A8E /* ProfileRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C27A5CF90BAB6C6953325E2 /* ProfileRules.swift */; };
 		15C9FB8C83845AA4C5806F9A /* PromptLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
+		1692B1A4B63301919B9B815C /* LoraRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */; };
 		16DC20A31C83D44C009AA770 /* WildcardExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989B03F4B6A6D224348122FD /* WildcardExpander.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		19E69BBEE5CB27A8DDA5B253 /* TimingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */; };
@@ -41,6 +42,7 @@
 		1F26CDAACBDAC72CD1F21C44 /* DimensionConstraints.swift in Sources */ = {isa = PBXBuildFile; fileRef = B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */; };
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		1FC3BC94E2871CA8911EEFBE /* ToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE254A77370537174B0B917E /* ToolchainTests.swift */; };
+		2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */; };
 		24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */; };
 		2471B94524D33EBA00254C01 /* run_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = D49F253E7F154C0A4D4D3FBE /* run_tool.py */; };
 		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
@@ -390,6 +392,7 @@
 		AADB0159980B7D99BDE55C34 /* InsetTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InsetTextEditor.swift; sourceTree = "<group>"; };
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
+		AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraRelocateTests.swift; sourceTree = "<group>"; };
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyProgressDecodeTests.swift; sourceTree = "<group>"; };
@@ -450,6 +453,7 @@
 		F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobHistoryFile.swift; sourceTree = "<group>"; };
 		F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpanderTests.swift; sourceTree = "<group>"; };
 		FA542CC2211E134C4BBE819D /* ZImageJobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJobStore.swift; sourceTree = "<group>"; };
+		FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraRowView.swift; sourceTree = "<group>"; };
 		FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParser.swift; sourceTree = "<group>"; };
 		FE1832089B5311712FEF1286 /* scenario_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = scenario_prompt.md; sourceTree = "<group>"; };
 		FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobStore.swift; sourceTree = "<group>"; };
@@ -584,6 +588,7 @@
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
+				AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */,
 				E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */,
 				83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */,
 				15867BF96F3C6A4258A837A4 /* ModelAvailabilityTests.swift */,
@@ -630,6 +635,7 @@
 				96B20E83673119F893B43BBB /* FolderComboBox.swift */,
 				79B73E05AF3B412407752562 /* GenerationEstimateView.swift */,
 				E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */,
+				FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */,
 				DF06B9D6A24A54D4EB22F6EA /* ModelPickerView.swift */,
 				3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */,
 				8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */,
@@ -1092,6 +1098,7 @@
 				71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */,
 				E2E41732CD031DA45C3E19BA /* LoraLibraryStore.swift in Sources */,
 				17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */,
+				1692B1A4B63301919B9B815C /* LoraRowView.swift in Sources */,
 				932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */,
 				0CD5F4DB195D8D25AB8BB891 /* MetadataSidecar.swift in Sources */,
 				ABFF054FBF9A11E27D9D53CF /* MfluxDriverController.swift in Sources */,
@@ -1196,6 +1203,7 @@
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
+				2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */,
 				0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */,
 				B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */,
 				CF29E56985F1E02CF7241BD7 /* ModelAvailabilityTests.swift in Sources */,

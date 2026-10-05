@@ -109,6 +109,7 @@ struct LoraLibraryEditorView: View {
         .sheet(item: $editing) { entry in
             LibraryLoraEditSheet(draft: entry, family: family)
                 .environment(libraryStore)
+                .environment(settings)
         }
     }
 
@@ -150,6 +151,16 @@ struct LoraLibraryEditorView: View {
                         .foregroundStyle(.secondary)
                         .lineLimit(1)
                 }
+                if isLost(entry) {
+                    HStack(spacing: 6) {
+                        Label("Access lost", systemImage: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundStyle(.orange)
+                        Button("Locate…") { locate(entry) }
+                            .buttonStyle(.link)
+                            .font(.caption2)
+                    }
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("Edit") { editing = entry }
@@ -164,12 +175,29 @@ struct LoraLibraryEditorView: View {
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
     }
+
+    /// A local LoRA file the app can't open any more: deleted, moved, or (App
+    /// Store build) its grant gone. Never true in the DMG, or for server LoRAs.
+    private func isLost(_ entry: LibraryLora) -> Bool {
+        !entry.isServerLoRA && FileAccessPath.isLocal(entry.path) && !settings.fileAccess.canReach(entry.path)
+    }
+
+    private func locate(_ entry: LibraryLora) {
+        let old = URL(fileURLWithPath: entry.path)
+        if let path = GrantingPanel.chooseFile(
+            title: "Locate LoRA", message: "Choose \(old.lastPathComponent) again.",
+            startingAt: old.deletingLastPathComponent(), access: settings.fileAccess
+        ) {
+            libraryStore.relocate(entry.id, to: path)
+        }
+    }
 }
 
 private struct LibraryLoraEditSheet: View {
     @State private var draft: LibraryLora
     let family: ModelFamily
     @Environment(LoraLibraryStore.self) private var libraryStore
+    @Environment(AppSettings.self) private var settings
     @Environment(\.dismiss) private var dismiss
     @State private var tagsText: String
 
@@ -264,13 +292,10 @@ private struct LibraryLoraEditSheet: View {
     }
 
     private func browse() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = []
-        panel.allowsOtherFileTypes = true
-        panel.title = "Select LoRA"
-        panel.message = "Choose a .safetensors LoRA file"
-        if panel.runModal() == .OK, let url = panel.url {
-            draft.path = url.path
+        if let path = GrantingPanel.chooseFile(
+            title: "Select LoRA", message: "Choose a .safetensors LoRA file", access: settings.fileAccess
+        ) {
+            draft.path = path
         }
     }
 }

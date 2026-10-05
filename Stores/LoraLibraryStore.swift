@@ -17,6 +17,25 @@ final class LoraLibraryStore {
     private static let fileURL: URL =
         AppSettings.appSupportURL.appendingPathComponent("lora-library.json")
 
+    /// `library` and `stacks` with entry `id` moved to `newPath` (Locate…), and
+    /// every stack LoRA that used its old path following it.
+    static func relocating(
+        _ id: UUID, to newPath: String, library: [LibraryLora], stacks: [LoraStack]
+    ) -> (library: [LibraryLora], stacks: [LoraStack]) {
+        guard let index = library.firstIndex(where: { $0.id == id }) else { return (library, stacks) }
+        let oldPath = library[index].path
+        var library = library
+        library[index].path = newPath
+        let stacks = stacks.map { stack in
+            var stack = stack
+            for i in stack.loras.indices where stack.loras[i].path == oldPath {
+                stack.loras[i].path = newPath
+            }
+            return stack
+        }
+        return (library, stacks)
+    }
+
     var library: [LibraryLora] {
         didSet { save() }
     }
@@ -132,6 +151,12 @@ final class LoraLibraryStore {
         } else {
             library.append(entry)
         }
+    }
+
+    func relocate(_ id: UUID, to newPath: String) {
+        let next = Self.relocating(id, to: newPath, library: library, stacks: stacks)
+        library = next.library
+        stacks = next.stacks
     }
 
     func deleteLibrary(id: UUID) {
