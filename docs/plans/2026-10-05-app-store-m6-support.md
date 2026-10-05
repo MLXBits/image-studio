@@ -86,7 +86,7 @@ Names and prices shown in the app come from StoreKit, never from code.
 1. **Tips not set up in App Store Connect yet** (TestFlight before milestone 7), or offline: products come back empty or throw. Expect "Tips can't be loaded right now." with Try Again, never an empty window. Pinned in Task 3 (`emptyOrFailedLoadShowsUnavailable`).
 2. **A double click on a tip button** must start one purchase, not two. Pinned in Task 3 (`aSecondPurchaseWhileOneRunsIsIgnored`).
 3. **A tip that completes after the window closed, or after a relaunch** (Ask to Buy approved later, interrupted purchase) must still finish the transaction and stop the nudge. Pinned in Task 3 (`aTransactionFinishedLaterCountsAsTipped`) and Task 4 (`anInterruptedTipIsFinishedLater`).
-4. **Tipping again:** a second tip, of the same or another size, right after the first must go through and be thanked again. Pinned in Task 3 (`aPersonCanTipAgain`) and Task 4 (`theSameTipCanBeBoughtTwice`).
+4. **Tipping again:** a second tip, of the same or another size, right after the first must go through and be thanked again. Pinned in Task 3 (`aPersonCanTipAgain`). (Task 4's `theSameTipCanBeBoughtTwice` was dropped in execution: see the ledger.)
 5. **A batch where only some images landed** counts the images saved, not the ones requested. Pinned in Task 2 (`imagesLandedCountsWhatTheJobSaved`).
 
 ---

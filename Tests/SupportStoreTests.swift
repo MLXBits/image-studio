@@ -5,8 +5,8 @@ import Testing
 /// The one-time support nudge (spec §5): after 50 images, unless it was
 /// dismissed, the Support window was opened, or a tip was made.
 struct SupportStoreTests {
-    private func defaults() -> UserDefaults {
-        UserDefaults(suiteName: "SupportStoreTests-\(UUID().uuidString)") ?? .standard
+    private func defaults() -> MemorySupportDefaults {
+        MemorySupportDefaults()
     }
 
     @Test func theRuleNeedsTheThresholdAndNothingElse() {

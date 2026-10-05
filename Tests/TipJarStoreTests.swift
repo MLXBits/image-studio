@@ -1,5 +1,6 @@
 import Foundation
 @testable import MLXBits_Image_Studio
+import StoreKit
 import Testing
 
 /// The App Store tip jar (spec §5): three consumable tips that unlock nothing.
@@ -117,5 +118,41 @@ struct TipJarStoreTests {
             await Task.yield()
         }
         #expect(tipped == 1)
+    }
+
+    /// Dismissing the Apple Account sign-in throws rather than returning
+    /// `.userCancelled`. It's still a cancel, so nothing is shown.
+    @Test func aThrownCancelIsQuiet() async {
+        let fake = FakeTipStorefront()
+        fake.outcome = .failure(StoreKitError.userCancelled)
+        let jar = store(fake)
+        await jar.load()
+        await jar.purchase(TipJarStore.productIDs[0])
+        #expect(jar.phase == .ready)
+    }
+
+    /// Ask to Buy approved while the window is open: the waiting caption
+    /// becomes the thank-you.
+    @Test func anApprovedTipThanksInPlace() async {
+        let fake = FakeTipStorefront()
+        fake.outcome = .success(.pending)
+        let jar = store(fake)
+        await jar.load()
+        await jar.purchase(TipJarStore.productIDs[0])
+        jar.startFinishingTransactions()
+        fake.finished.continuation.yield()
+        for _ in 0 ..< 100 where jar.phase == .pending {
+            await Task.yield()
+        }
+        #expect(jar.phase == .thanked)
+    }
+
+    /// Reopening the window starts without the last outcome's caption.
+    @Test func reopeningClearsTheLastOutcome() async {
+        let jar = store(FakeTipStorefront())
+        await jar.load()
+        await jar.purchase(TipJarStore.productIDs[0])
+        jar.clearOutcome()
+        #expect(jar.phase == .ready)
     }
 }

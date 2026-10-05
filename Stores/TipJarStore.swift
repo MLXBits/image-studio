@@ -1,4 +1,5 @@
 import Foundation
+import StoreKit
 
 /// One tip as the store sells it: name and local price come from the store,
 /// never from code (spec §5).
@@ -97,8 +98,20 @@ final class TipJarStore {
             case .cancelled:
                 phase = .ready
             }
+        } catch StoreKitError.userCancelled {
+            // Dismissing the Apple Account sign-in throws instead of returning
+            // .userCancelled; a cancel shows nothing either way.
+            phase = .ready
         } catch {
             phase = .failed
+        }
+    }
+
+    /// The window reopened: start without the last outcome's caption.
+    func clearOutcome() {
+        switch phase {
+        case .thanked, .pending, .failed: phase = .ready
+        default: break
         }
     }
 
@@ -106,9 +119,13 @@ final class TipJarStore {
     func startFinishingTransactions() {
         guard finishing == nil else { return }
         let finished = storefront.finishedTransactions(for: Set(Self.productIDs))
-        finishing = Task { [onTipped] in
+        finishing = Task { [weak self, onTipped] in
             for await _ in finished {
                 onTipped()
+                // Ask to Buy approved while the window shows "waiting".
+                if self?.phase == .pending {
+                    self?.phase = .thanked
+                }
             }
         }
     }

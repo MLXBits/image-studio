@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */; };
 		00F2210387FEB24BAD1737E8 /* SupportStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CF33CE196ECF9A90F56D142 /* SupportStore.swift */; };
+		00FD283854E179B260A8ADFF /* MemorySupportDefaults.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAAE3A2E2B51979C0542345 /* MemorySupportDefaults.swift */; };
 		013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */; };
 		02D8D41604DC3742D5AF6F3B /* BBoxKeyCatcher.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FF15C1E147BEBBF910FCDEB /* BBoxKeyCatcher.swift */; };
 		02F1FD138C93997026C79E86 /* JobHistoryFile.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */; };
@@ -322,6 +323,7 @@
 		3BDDE1401FD0193DEFF24C1C /* ModelCacheLocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCacheLocationTests.swift; sourceTree = "<group>"; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplatePickerView.swift; sourceTree = "<group>"; };
+		3DAAE3A2E2B51979C0542345 /* MemorySupportDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemorySupportDefaults.swift; sourceTree = "<group>"; };
 		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
 		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
 		3FF15C1E147BEBBF910FCDEB /* BBoxKeyCatcher.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxKeyCatcher.swift; sourceTree = "<group>"; };
@@ -559,6 +561,7 @@
 				3FFCBAEC556970B3C1F7CA6D /* AsyncGate.swift */,
 				42A12301E41212F054BE2021 /* FakeRuntime.swift */,
 				B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */,
+				3DAAE3A2E2B51979C0542345 /* MemorySupportDefaults.swift */,
 				23C14BB102192A53167A5699 /* RecordingFileAccess.swift */,
 			);
 			path = Support;
@@ -1302,6 +1305,7 @@
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
 				2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */,
+				00FD283854E179B260A8ADFF /* MemorySupportDefaults.swift in Sources */,
 				0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */,
 				B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */,
 				CF29E56985F1E02CF7241BD7 /* ModelAvailabilityTests.swift in Sources */,

@@ -51,6 +51,9 @@ struct TipJarSection: View {
                 }
             }
         }
-        .task { await tipJar.load() }
+        .task {
+            tipJar.clearOutcome()
+            await tipJar.load()
+        }
     }
 }

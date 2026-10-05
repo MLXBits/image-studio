@@ -247,7 +247,7 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
 - **What:** a dismissable card under the top bar, styled like the existing banners:
   > Image Studio is free and built in spare time. If it's useful to you, a tip helps cover the costs to build and maintain it. We appreciate anything you can provide.
 - **Buttons:** **Leave a Tip…** and **No Thanks**. Either one retires the nudge for good.
-- **Never shown** if the Support sheet was already opened or a tip was made.
+- **Never shown** if the Support window was already opened or a tip was made.
 - A debug-only override lowers the threshold for testing: the launch argument `-supportNudgeThreshold <n>`.
 - Counting starts with the build that adds it; past queue history isn't counted (decided in milestone 6).
 
@@ -282,7 +282,7 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
    - macOS app, name "MLXBits Image Studio". Do this early: it reserves the name.
    - Category Graphics & Design, price Free.
    - Available everywhere except China mainland, where generative-AI apps need a government license.
-5. Create the three consumable **in-app purchases**, each with a description and a review screenshot of the Support sheet. The first in-app purchases must be submitted together with an app version.
+5. Create the three consumable **in-app purchases**, each with a description and a review screenshot of the Support window. The first in-app purchases must be submitted together with an app version.
 6. Create an **App Store Connect API key** (App Manager role).
 7. Add **repo secrets**:
    - `APPSTORE_DIST_CERT_P12_BASE64` / `_PASSWORD`
@@ -341,7 +341,7 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
   - against a fake storefront: success, cancelled, pending, failed, repeat tips, a double click, and a failed product load;
   - StoreKitTest with the `.storekit` file: loading the three tips, and finishing an interrupted transaction.
   - No unit test calls `Product.purchase()`: in the hosted test run it reaches the real App Store and shows an Apple Account sign-in (found in milestone 6). The real purchase is checked by hand in the App Store scheme with `Tips.storekit`.
-- **Nudge rule** (a pure function): threshold reached, dismissed, tipped, sheet opened.
+- **Nudge rule** (a pure function): threshold reached, dismissed, tipped, window opened.
 
 **CI:**
 - **Runtime job:** builds the runtime (cached), runs the license guard, and smoke-tests every tool name through `run_tool.py`.
@@ -402,7 +402,7 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
    - delete the installers
    - release a DMG on the bundled runtime, so beta testers exercise it
 5. **App Store file access:** `FileAccess`, bookmarks, `Inputs/` import, picker-only fields, the first-run models step, the `~/Pictures` default.
-6. **Support:** Support sheet, nudge, StoreKit tip jar, Ko-fi button (DMG), hidden GitHub button.
+6. **Support:** Support window, nudge, StoreKit tip jar, Ko-fi button (DMG), hidden GitHub button.
 7. **Store release:**
    - `appstore.yml`, Info.plist keys, `PRIVACY.md`
    - reviewer notes and listing assets

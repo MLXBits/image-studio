@@ -1,5 +1,16 @@
 import Foundation
 
+/// The `UserDefaults` calls the support state makes, so tests can keep it in
+/// memory: the test host isn't sandboxed, and every suite it opens leaves a
+/// file in ~/Library/Preferences.
+nonisolated protocol SupportDefaults: AnyObject {
+    func integer(forKey defaultName: String) -> Int
+    func bool(forKey defaultName: String) -> Bool
+    func set(_ value: Any?, forKey defaultName: String)
+}
+
+extension UserDefaults: SupportDefaults {}
+
 /// What the support nudge needs to know, app-global rather than per profile
 /// (spec §5): images generated, and whether the nudge was dismissed, the
 /// Support window opened or a tip made.
@@ -16,7 +27,7 @@ final class SupportStore {
     private(set) var nudgeRetired: Bool
     private(set) var windowOpened: Bool
     private(set) var hasTipped: Bool
-    @ObservationIgnored let defaults: UserDefaults
+    @ObservationIgnored let defaults: any SupportDefaults
     @ObservationIgnored private let threshold: Int
 
     var showsNudge: Bool {
@@ -26,7 +37,7 @@ final class SupportStore {
         )
     }
 
-    init(defaults: UserDefaults, threshold: Int = SupportNudge.configuredThreshold()) {
+    init(defaults: any SupportDefaults, threshold: Int = SupportNudge.configuredThreshold()) {
         self.defaults = defaults
         self.threshold = threshold
         imagesGenerated = defaults.integer(forKey: Key.imagesGenerated)

@@ -14,7 +14,7 @@ nonisolated enum SupportNudge {
 
     /// 50, or in DEBUG builds the launch argument `-supportNudgeThreshold <n>`
     /// (it lands in the arguments domain of `UserDefaults.standard`).
-    static func configuredThreshold(arguments: UserDefaults = .standard) -> Int {
+    static func configuredThreshold(arguments: any SupportDefaults = UserDefaults.standard) -> Int {
         #if DEBUG
             let override = arguments.integer(forKey: "supportNudgeThreshold")
             if override > 0 {
