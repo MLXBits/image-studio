@@ -234,6 +234,8 @@ project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
 For naming conventions, the per-family file layout, and a step-by-step recipe
 for adding a model family, see [AGENTS.md](AGENTS.md).
 
+Submitting a version: see [docs/appstore/submission.md](docs/appstore/submission.md).
+
 ### Working with an AI coding agent
 
 [AGENTS.md](AGENTS.md) is the canonical orientation file, read by Cursor,

@@ -407,3 +407,4 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
    - `appstore.yml`, Info.plist keys, `PRIVACY.md`
    - reviewer notes and listing assets
    - TestFlight pass, then submission
+   - Listing, reviewer notes, tips and the submission checklist: `docs/appstore/`.
