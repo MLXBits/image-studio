@@ -160,6 +160,8 @@ targets:
     platform: macOS
     sources:
       - Tests
+      - path: Resources/Tips.storekit
+        buildPhase: resources
     dependencies:
       - target: MLXBits Image Studio
     settings:
@@ -186,6 +188,7 @@ schemes:
         MLXBits Image Studio: all
     run:
       config: Debug-AppStore
+      storeKitConfiguration: Resources/Tips.storekit
     analyze:
       config: Debug-AppStore
     profile:

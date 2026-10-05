@@ -1,0 +1,47 @@
+{
+  "identifier" : "4C7E9B21",
+  "nonRenewingSubscriptions" : [],
+  "products" : [
+    {
+      "displayPrice" : "2.99",
+      "familyShareable" : false,
+      "internalID" : "6740000001",
+      "localizations" : [
+        { "description" : "A small tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Small Tip", "locale" : "en_US" }
+      ],
+      "productID" : "com.mlxbits.image-studio.appstore.tip.small",
+      "referenceName" : "Small Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "4.99",
+      "familyShareable" : false,
+      "internalID" : "6740000002",
+      "localizations" : [
+        { "description" : "A medium tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Medium Tip", "locale" : "en_US" }
+      ],
+      "productID" : "com.mlxbits.image-studio.appstore.tip.medium",
+      "referenceName" : "Medium Tip",
+      "type" : "Consumable"
+    },
+    {
+      "displayPrice" : "9.99",
+      "familyShareable" : false,
+      "internalID" : "6740000003",
+      "localizations" : [
+        { "description" : "A large tip. It unlocks nothing; it helps keep Image Studio going.", "displayName" : "Large Tip", "locale" : "en_US" }
+      ],
+      "productID" : "com.mlxbits.image-studio.appstore.tip.large",
+      "referenceName" : "Large Tip",
+      "type" : "Consumable"
+    }
+  ],
+  "settings" : {
+    "_failTransactionsEnabled" : false,
+    "_locale" : "en_US",
+    "_storefront" : "USA",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [],
+  "version" : { "major" : 4, "minor" : 0 }
+}
