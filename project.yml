@@ -180,6 +180,9 @@ schemes:
       gatherCoverageData: true
     run:
       config: Debug
+      # MLX's Gather kernel trips Metal API Validation, which Xcode turns on by
+      # default and the Python driver inherits: the debug layer aborts it.
+      enableGPUValidationMode: disabled
   # The App Store flavor. Choosing this scheme is choosing the flavor; tests
   # run under the main scheme only.
   MLXBits Image Studio (App Store):
@@ -188,6 +191,8 @@ schemes:
         MLXBits Image Studio: all
     run:
       config: Debug-AppStore
+      # As above: Metal API Validation aborts the Python driver in MLX.
+      enableGPUValidationMode: disabled
     analyze:
       config: Debug-AppStore
     profile:
