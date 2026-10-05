@@ -163,6 +163,8 @@ On first run the App Store flavor asks for a library folder (Skip for Now uses P
 
 Image Studio is free in both flavors. **Support MLXBits Image Studio…** in the app menu (also in Settings ▸ Advanced) offers optional tips through the App Store in the App Store flavor, and a Ko-fi link in the DMG. Tips unlock nothing. After 50 images the app asks once, and never again.
 
+The app collects no data: see the [privacy policy](PRIVACY.md).
+
 To change a Python package version, edit `Runtime/requirements.in` and run
 `scripts/lock-python-runtime.sh`. The runtime build refuses GPL-family
 packages; a package without license metadata must be checked by hand and

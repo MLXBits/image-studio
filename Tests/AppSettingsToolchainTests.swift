@@ -23,4 +23,14 @@ struct AppSettingsToolchainTests {
         #expect(env["PYTHONDONTWRITEBYTECODE"] == "1")
         #expect(env["MPLCONFIGDIR"]?.hasSuffix("/matplotlib") == true)
     }
+
+    /// The app collects no data (PRIVACY.md), so the Hugging Face libraries'
+    /// own usage pings are off in every child process.
+    @Test func childProcessesSendNoTelemetry() {
+        let settings = AppSettings()
+        settings.suspendPersistence()
+        let env = settings.buildEnvironment()
+        #expect(env["HF_HUB_DISABLE_TELEMETRY"] == "1")
+        #expect(env["DO_NOT_TRACK"] == "1")
+    }
 }
