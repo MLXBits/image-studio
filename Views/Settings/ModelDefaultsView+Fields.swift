@@ -88,34 +88,37 @@ extension ModelDefaultsView {
                 settings.updateDefaults(d, for: model)
             }
         )
-        return LabeledContent("Model source") {
-            HStack(spacing: 6) {
-                if current != nil {
-                    resetButton {
-                        var d = settings.defaults(for: model)
-                        d.modelRepoOverride = nil
-                        settings.updateDefaults(d, for: model)
+        return VStack(alignment: .trailing, spacing: 2) {
+            LabeledContent("Model source") {
+                HStack(spacing: 6) {
+                    if current != nil {
+                        resetButton {
+                            var d = settings.defaults(for: model)
+                            d.modelRepoOverride = nil
+                            settings.updateDefaults(d, for: model)
+                        }
                     }
+                    TextField("org/repo or /path/to/weights", text: bound)
+                        .textFieldStyle(.roundedBorder)
+                        .labelsHidden()
+                        .font(.caption)
+                        .onSubmit {
+                            let trimmed = bound.wrappedValue.trimmingCharacters(in: .whitespaces)
+                            bound.wrappedValue = trimmed
+                        }
+                    Button("Browse…") { browseModelDir(binding: bound) }
+                        .controlSize(.small)
+                    InfoButton(
+                        title: "Model source override",
+                        description: "HF repo ID (e.g. mlx-community/flux2-klein-9b-8bit) " +
+                            "or absolute local path. When set, replaces the mflux default for this model. " +
+                            "The --quantize flag is not passed — the repo's own weight metadata is used."
+                    )
                 }
-                TextField("org/repo or /path/to/weights", text: bound)
-                    .textFieldStyle(.roundedBorder)
-                    .labelsHidden()
-                    .font(.caption)
-                    .onSubmit {
-                        let trimmed = bound.wrappedValue.trimmingCharacters(in: .whitespaces)
-                        bound.wrappedValue = trimmed
-                    }
-                Button("Browse…") { browseModelDir(binding: bound) }
-                    .controlSize(.small)
-                InfoButton(
-                    title: "Model source override",
-                    description: "HF repo ID (e.g. mlx-community/flux2-klein-9b-8bit) " +
-                        "or absolute local path. When set, replaces the mflux default for this model. " +
-                        "The --quantize flag is not passed — the repo's own weight metadata is used."
-                )
             }
+            .accessibilityLabel("Model source override for \(model.displayName)")
+            GrantHint(path: current ?? "")
         }
-        .accessibilityLabel("Model source override for \(model.displayName)")
     }
 
     func lowRamToggle(model: FluxModelVariant, current: Bool?) -> some View {
@@ -198,12 +201,8 @@ extension ModelDefaultsView {
     }
 
     func browseModelDir(binding: Binding<String>) {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.title = "Select Model Directory"
-        if panel.runModal() == .OK, let url = panel.url {
-            binding.wrappedValue = url.path
+        if let path = GrantingPanel.chooseFolder(title: "Select Model Directory", access: settings.fileAccess) {
+            binding.wrappedValue = path
         }
     }
 

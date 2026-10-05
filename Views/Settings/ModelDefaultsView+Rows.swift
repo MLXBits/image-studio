@@ -57,16 +57,19 @@ struct ModelSourceField: View {
     let browseAction: () -> Void
 
     var body: some View {
-        LabeledContent("Model source") {
-            HStack(spacing: 6) {
-                TextField(placeholder, text: $repo)
-                    .textFieldStyle(.roundedBorder)
-                    .font(.caption)
-                    .onSubmit { repo = repo.trimmingCharacters(in: .whitespaces) }
-                Button("Browse…", action: browseAction)
-                    .controlSize(.small)
-                InfoButton(title: infoTitle, description: infoDescription)
+        VStack(alignment: .trailing, spacing: 2) {
+            LabeledContent("Model source") {
+                HStack(spacing: 6) {
+                    TextField(placeholder, text: $repo)
+                        .textFieldStyle(.roundedBorder)
+                        .font(.caption)
+                        .onSubmit { repo = repo.trimmingCharacters(in: .whitespaces) }
+                    Button("Browse…", action: browseAction)
+                        .controlSize(.small)
+                    InfoButton(title: infoTitle, description: infoDescription)
+                }
             }
+            GrantHint(path: repo)
         }
     }
 }

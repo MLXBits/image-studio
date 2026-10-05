@@ -5,21 +5,18 @@ import AppKit
 enum LibraryFolderPanel {
     /// Runs the panel and returns the chosen folder's path, or `nil` on cancel.
     /// `near` opens the panel beside that folder rather than wherever the last
-    /// panel was, which could be inside another profile's library.
-    static func choose(title: String, message: String? = nil, near path: String? = nil) -> String? {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.allowsMultipleSelection = false
-        panel.title = title
-        panel.prompt = "Choose"
-        if let message {
-            panel.message = message
-        }
+    /// panel was, which could be inside another profile's library. The choice
+    /// is remembered through `access`.
+    static func choose(
+        title: String, message: String? = nil, near path: String? = nil, access: any FileAccess
+    ) -> String? {
         let start = path.flatMap { $0.isEmpty ? nil : URL(fileURLWithPath: $0).deletingLastPathComponent() }
-        panel.directoryURL = start ?? FileManager.default.homeDirectoryForCurrentUser
-        return panel.runModal() == .OK ? panel.url?.path : nil
+        return GrantingPanel.chooseFolder(
+            title: title,
+            message: message,
+            startingAt: start ?? URL(fileURLWithPath: FileAccessPath.realHome, isDirectory: true),
+            access: access
+        )
     }
 }
 

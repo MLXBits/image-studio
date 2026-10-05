@@ -92,7 +92,8 @@ struct OutputDirectoryPromptView: View {
         guard let path = LibraryFolderPanel.choose(
             title: "Choose Output Folder",
             message: "Generated images will be saved here. Avoid iCloud-synced folders unless you want cloud backup.",
-            near: settings.outputDir
+            near: settings.outputDir,
+            access: profiles.fileAccess
         ) else { return }
         error = profiles.changeActiveLibrary(to: path)?.message
     }

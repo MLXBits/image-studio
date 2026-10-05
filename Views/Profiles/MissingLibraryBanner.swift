@@ -45,7 +45,9 @@ struct MissingLibraryBanner: View {
     private func changeFolder() {
         guard let path = LibraryFolderPanel.choose(
             title: "Choose Library Folder",
-            message: "Images for “\(profiles.activeProfile?.name ?? "")” will be saved here."
+            message: "Images for “\(profiles.activeProfile?.name ?? "")” will be saved here.",
+            near: settings.outputDir,
+            access: profiles.fileAccess
         ) else { return }
         error = profiles.changeActiveLibrary(to: path)?.message
     }

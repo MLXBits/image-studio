@@ -277,27 +277,7 @@ struct SettingsView: View {
                 .padding(.vertical, 2)
                 .onAppear { hfTokenDraft = settings.hfToken }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        TextField("", text: $s.hfHome)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Browse…") { browseHFHome() }
-                    }
-                    Text("Where HuggingFace caches downloaded model files. Default: ~/.cache/huggingface")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        TextField("", text: $s.mfluxCacheDir)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Browse…") { browseMfluxCacheDir() }
-                    }
-                    Text("Where mflux stores converted weight files. Default: ~/Library/Caches/mflux")
-                        .font(.caption).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
+                StorageSettingsRows()
 
                 Toggle("Offline mode (HF_HUB_OFFLINE=1)", isOn: $s.hfOffline)
             }
@@ -425,30 +405,9 @@ struct SettingsView: View {
         guard let path = LibraryFolderPanel.choose(
             title: "Choose Library Folder",
             message: "Images for “\(profiles.activeProfile?.name ?? "")” will be saved here.",
-            near: settings.outputDir
+            near: settings.outputDir,
+            access: profiles.fileAccess
         ) else { return }
         libraryError = profiles.changeActiveLibrary(to: path)?.message
-    }
-
-    private func browseHFHome() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.title = "Choose HuggingFace Cache Directory"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.hfHome = url.path
-        }
-    }
-
-    private func browseMfluxCacheDir() {
-        let panel = NSOpenPanel()
-        panel.canChooseDirectories = true
-        panel.canChooseFiles = false
-        panel.canCreateDirectories = true
-        panel.title = "Choose mflux Cache Directory"
-        if panel.runModal() == .OK, let url = panel.url {
-            settings.mfluxCacheDir = url.path
-        }
     }
 }

@@ -22,6 +22,16 @@ nonisolated enum FileAccessPath {
         path.hasPrefix("/") || path.hasPrefix("~")
     }
 
+    /// `~/.cache/huggingface` in the person's real home, when it exists. The
+    /// sandbox can `stat` it without a grant, though not list it.
+    static func existingHuggingFaceCache(home: String = realHome) -> URL? {
+        let cache = URL(fileURLWithPath: home, isDirectory: true).appendingPathComponent(".cache/huggingface", isDirectory: true)
+        var isDirectory: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: cache.path, isDirectory: &isDirectory), isDirectory.boolValue
+        else { return nil }
+        return cache
+    }
+
     /// Whether this process can open `path` for reading now. The sandbox lets
     /// the app `stat` a folder it has no grant for, but not open it.
     static func isReadable(_ path: String) -> Bool {

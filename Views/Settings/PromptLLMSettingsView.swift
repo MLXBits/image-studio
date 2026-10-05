@@ -55,11 +55,21 @@ struct PromptLLMSettingsView: View {
         @Bindable var s = settings
         let manifest = RuntimeManifest.bundled
         VStack(alignment: .leading, spacing: 4) {
-            TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
-                .textFieldStyle(.roundedBorder)
+            HStack {
+                TextField("mlx-community/gemma-3-12b-it-4bit", text: $s.gemmaModelPath)
+                    .textFieldStyle(.roundedBorder)
+                Button("Browse…") {
+                    if let path = GrantingPanel.chooseFolder(
+                        title: "Choose Gemma Model Folder", access: settings.fileAccess
+                    ) {
+                        settings.gemmaModelPath = path
+                    }
+                }
+            }
             Text("HF repo ID or local path for the Gemma model.")
                 .font(.caption).foregroundStyle(.secondary)
                 .fixedSize(horizontal: false, vertical: true)
+            GrantHint(path: s.gemmaModelPath)
         }
         .padding(.vertical, 2)
 

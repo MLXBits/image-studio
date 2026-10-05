@@ -65,11 +65,10 @@ struct ProfileEditorSheet: View {
 
             if isCreate {
                 field("Library folder") {
-                    HStack {
-                        TextField("/path/to/folder", text: $libraryPath)
-                            .textFieldStyle(.roundedBorder)
-                        Button("Browse…") { browse() }
-                    }
+                    PathField(
+                        placeholder: BuildFlavor.isAppStore ? "No folder chosen" : "/path/to/folder",
+                        path: $libraryPath
+                    ) { browse() }
                     problem(libraryPath.isEmpty ? nil : libraryProblem)
                 }
                 if let reason = profiles.switchBlockReason {
@@ -124,7 +123,8 @@ struct ProfileEditorSheet: View {
         if let path = LibraryFolderPanel.choose(
             title: "Choose Library Folder",
             message: "Images for this profile will be saved here. Pick or create an empty folder.",
-            near: profiles.activeProfile?.libraryPath
+            near: profiles.activeProfile?.libraryPath,
+            access: profiles.fileAccess
         ) {
             libraryPath = path
         }

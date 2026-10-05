@@ -171,11 +171,25 @@ struct ModelPickerView: View {
     }
 
     private var customRepoField: some View {
-        TextField("org/repo or /path/to/model", text: $customModelRepo)
-            .textFieldStyle(.roundedBorder)
-            .font(.caption)
-            .frame(width: 220)
-            .accessibilityLabel("Custom model repo or path")
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 4) {
+                TextField("org/repo or /path/to/model", text: $customModelRepo)
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                    .frame(width: 196)
+                    .accessibilityLabel("Custom model repo or path")
+                Button {
+                    chooseCustomFolder()
+                } label: {
+                    Image(systemName: "folder").font(.caption)
+                }
+                .buttonStyle(.iconButtonCompact)
+                .frame(width: 20)
+                .help("Choose a local model folder")
+                .accessibilityLabel("Choose a local model folder")
+            }
+            GrantHint(path: customModelRepo, remedy: "Choose it with the folder button to give access.")
+        }
     }
 
     private var customTargetRow: some View {
@@ -254,6 +268,12 @@ struct ModelPickerView: View {
     /// than being silently dropped (reads as a bug) or left selectable (fails at
     /// spawn time). mflux adds CLIs between releases and the app installs it
     /// unpinned, so this varies per install.
+    private func chooseCustomFolder() {
+        if let path = GrantingPanel.chooseFolder(title: "Choose Model Folder", access: settings.fileAccess) {
+            customModelRepo = path
+        }
+    }
+
     private func modelPickerRow(_ v: FluxModelVariant) -> some View {
         let available = settings.supportsModel(v)
         return Text(available || model == v ? v.displayName : "\(v.displayName) — not in this mflux install")
