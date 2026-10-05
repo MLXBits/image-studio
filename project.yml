@@ -188,7 +188,6 @@ schemes:
         MLXBits Image Studio: all
     run:
       config: Debug-AppStore
-      storeKitConfiguration: Resources/Tips.storekit
     analyze:
       config: Debug-AppStore
     profile:

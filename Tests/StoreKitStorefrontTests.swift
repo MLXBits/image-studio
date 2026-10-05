@@ -11,7 +11,9 @@ import Testing
 /// to the real App Store and shows an Apple Account sign-in. Purchase
 /// outcomes are covered by `TipJarStoreTests` (fake storefront) and the
 /// manual run of the App Store scheme with `Tips.storekit`.
-@Suite(.serialized)
+/// Off on CI (`STOREKIT_TESTS=0`): unsigned test runs aren't entitled to
+/// StoreKitTest.
+@Suite(.serialized, .enabled(if: ProcessInfo.processInfo.environment["STOREKIT_TESTS"] != "0"))
 struct StoreKitStorefrontTests {
     private final class BundleToken {}
 

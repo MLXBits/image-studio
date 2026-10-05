@@ -74,6 +74,10 @@ jobs:
       # CODE_SIGNING_ALLOWED=NO on purpose: CI runners carry only the Developer ID cert - no
       # Mac Development identity exists for automatic signing, and pure-logic tests need none.
       - name: Test (Debug)
+        # StoreKitTest needs a signed host (unsigned runs fail with
+        # .notEntitled); its suite runs locally. TEST_RUNNER_ reaches the host.
+        env:
+          TEST_RUNNER_STOREKIT_TESTS: "0"
         run: |
           xcodebuild test \
             -project "$PROJECT" \

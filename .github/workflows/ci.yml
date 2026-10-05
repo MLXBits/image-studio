@@ -72,6 +72,10 @@ jobs:
       # runners carry no Mac Development identity and these are pure-logic
       # tests. Deliberately not -quiet: this log is the analyzer step's input.
       - name: Test (Debug)
+        # StoreKitTest needs a signed host (unsigned runs fail with
+        # .notEntitled); its suite runs locally. TEST_RUNNER_ reaches the host.
+        env:
+          TEST_RUNNER_STOREKIT_TESTS: "0"
         run: |
           set -o pipefail
           mkdir -p build
