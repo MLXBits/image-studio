@@ -280,3 +280,31 @@ class MachOTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+def build_dylib(tmp: Path, name: str, calls: str) -> Path:
+    """A tiny dylib that calls `calls` (left undefined, resolved at load time)."""
+    src = tmp / f"{name}.c"
+    src.write_text(f"extern void {calls}(void);\nvoid entry(void) {{ {calls}(); }}\n")
+    out = tmp / f"{name}.dylib"
+    subprocess.run(["clang", "-dynamiclib", "-undefined", "dynamic_lookup", "-o", str(out), str(src)], check=True)
+    return out
+
+
+class PrivateSymbolTests(unittest.TestCase):
+    """App Review rejected 0.17.0 (354.7) for these imports (pyarrow, scipy)."""
+
+    def test_a_binary_importing_a_listed_symbol_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            build_dylib(tmp, "bad", "sgemm")
+            build_dylib(tmp, "good", "cblas_sgemm")
+            problems = rt.private_symbol_uses(tmp, {"_sgemm", "_CCCryptorGCMSetIV"})
+            self.assertEqual(problems, ["bad.dylib imports _sgemm"])
+
+    def test_the_denylist_file_has_apples_list(self):
+        listed = rt.load_symbols(ROOT / "Runtime" / "private-symbols.txt")
+        self.assertIn("_CCCryptorGCMSetIV", listed)
+        self.assertIn("_sgemm", listed)
+        self.assertIn("_xerbla_array__", listed)
+        self.assertEqual(len(listed), 46)

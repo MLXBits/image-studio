@@ -27,6 +27,7 @@ import json
 import platform
 import re
 import struct
+import subprocess
 import sys
 from dataclasses import dataclass
 from email.parser import BytesParser
@@ -215,6 +216,22 @@ def macho_files(root: Path) -> list[tuple[str, Path]]:
     return found
 
 
+def load_symbols(path: Path) -> set[str]:
+    """One symbol per line; blank lines and # comments ignored."""
+    lines = (line.strip() for line in path.read_text().splitlines())
+    return {line for line in lines if line and not line.startswith("#")}
+
+
+def private_symbol_uses(root: Path, denylist: set[str]) -> list[str]:
+    """Every bundled binary that imports a symbol App Review rejects."""
+    problems = []
+    for _, path in macho_files(root):
+        out = subprocess.run(["nm", "-u", str(path)], capture_output=True, text=True).stdout.split()
+        for symbol in sorted(denylist.intersection(out)):
+            problems.append(f"{path.relative_to(root)} imports {symbol}")
+    return problems
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -231,6 +248,9 @@ def main(argv: list[str]) -> int:
     for p in (p_ack, p_manifest):
         p.add_argument("--overrides", type=Path, required=True)
         p.add_argument("--python-version", default=platform.python_version())
+    p_apis = sub.add_parser("apis")
+    p_apis.add_argument("prefix", type=Path)
+    p_apis.add_argument("--denylist", type=Path, required=True)
     p_macho = sub.add_parser("macho")
     p_macho.add_argument("root", type=Path)
     args = parser.parse_args(argv)
@@ -239,6 +259,11 @@ def main(argv: list[str]) -> int:
         problems = guard(args.prefix, args.overrides)
         for line in problems:
             print(f"license guard: {line}", file=sys.stderr)
+        return 1 if problems else 0
+    if args.command == "apis":
+        problems = private_symbol_uses(args.prefix, load_symbols(args.denylist))
+        for line in problems:
+            print(f"App Store API check: {line}", file=sys.stderr)
         return 1 if problems else 0
     if args.command == "acknowledgements":
         args.out.write_text(acknowledgements(args.prefix, args.python_version, load_overrides(args.overrides)))

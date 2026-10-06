@@ -3,3 +3,13 @@
 # imports cv2: mflux uses it only for ControlNet/OpenPose/HED, mlx-vlm only for
 # video input. A marker that can never match drops the requirement.
 opencv-python ; sys_platform == "never"
+
+# Remove mlx-vlm's datasets and mlx-audio requirements. App Review rejected
+# 0.17.0 for private API imports in what they pull in: pyarrow (via datasets)
+# uses CommonCrypto's GCM SPI, and scipy (via mlx-audio) imports Accelerate's
+# bare BLAS/LAPACK symbols. Image Studio runs neither path: mlx-vlm imports
+# datasets only for training and evals, and mlx_audio lazily, to read audio
+# input. Runtime/private-symbols.txt keeps them from coming back.
+datasets ; sys_platform == "never"
+mlx-audio ; sys_platform == "never"
+

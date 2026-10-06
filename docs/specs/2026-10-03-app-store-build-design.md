@@ -384,6 +384,7 @@ It's a small window like About, not a sheet: Settings is a separate window, and 
 | A bookmark grant started after the warm driver launched doesn't reach it | manual check 3 | Start LoRA grants before spawning the driver, or restart the driver when a new grant starts |
 | torch fails under hardened runtime in the signed DMG | post-signing smoke test | Add the narrowest hardened-runtime exception the failure names, to `python3.14` only |
 | App name already taken | creating the record (setup step 4) | Choose a store name; the bundle name can stay |
+| A bundled library imports symbols App Review treats as private (happened: 0.17.0 rejected for pyarrow's CommonCrypto GCM SPI and scipy's bare BLAS/LAPACK) | App Review's automated scan; now the runtime build's API check against `Runtime/private-symbols.txt` | Drop the dependency through `Runtime/overrides.txt` if nothing Image Studio runs imports it, as for `datasets` and `mlx-audio` |
 | App Review rejects | review | Reviewer notes, the guideline 2.5.2 explanation, Draw Things precedent (18+); answer questions and resubmit |
 
 ## Milestones (input to the implementation plan)

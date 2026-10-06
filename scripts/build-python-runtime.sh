@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/build/python-runtime"
 PREFIX="$OUT/python"
 
-INPUTS="Runtime/python.lock Runtime/requirements.lock Runtime/license-overrides.json Runtime/tools.txt
+INPUTS="Runtime/python.lock Runtime/requirements.lock Runtime/license-overrides.json Runtime/private-symbols.txt Runtime/tools.txt
 scripts/build-python-runtime.sh scripts/runtime_tools.py Resources/run_tool.py"
 KEY=$(cd "$ROOT" && for f in $INPUTS; do cat "$f"; done | shasum -a 256 | cut -c1-16)
 
@@ -82,6 +82,9 @@ echo "→ License guard"
 "$PY" "$TOOLS" acknowledgements "$PREFIX" "$PREFIX/Acknowledgements.txt" --overrides "$OVERRIDES"
 "$PY" "$TOOLS" manifest "$PREFIX" "$ROOT/Runtime/requirements.lock" "$PREFIX/runtime-manifest.json" \
   --overrides "$OVERRIDES"
+
+echo "→ App Store API check"
+"$PY" "$TOOLS" apis "$PREFIX" --denylist "$ROOT/Runtime/private-symbols.txt"
 
 echo "→ Smoke test"
 "$PY" -c "import mflux, mlx.core, mlx_lm, mlx_vlm, torch"

@@ -1,0 +1,50 @@
+# Symbols App Review rejected as non-public or deprecated APIs (0.17.0, build
+# 354.7, 2026-10-06). The runtime build fails if any bundled binary imports one.
+# CommonCrypto's GCM SPI (pyarrow's libarrow), and Accelerate's bare BLAS and
+# LAPACK exports (scipy); the public forms are cblas_* and the documented LAPACK.
+_CCCryptorGCMAddAAD
+_CCCryptorGCMFinalize
+_CCCryptorGCMSetIV
+_caxpy
+_ccopy
+_cgemm
+_cgemv
+_cswap
+_ctrsm
+_ctrsv
+_dasum
+_daxpy
+_dcabs1_
+_dcopy
+_dgemm
+_dgemv
+_dnrm2
+_dswap
+_dtrsm
+_dtrsv
+_dzasum
+_dznrm2
+_icamax
+_idamax
+_isamax
+_izamax
+_lsame_
+_sasum
+_saxpy
+_scasum
+_scnrm2
+_scopy
+_sgemm
+_sgemv
+_snrm2
+_sswap
+_strsm
+_strsv
+_xerbla_array__
+_zaxpy
+_zcopy
+_zgemm
+_zgemv
+_zswap
+_ztrsm
+_ztrsv
