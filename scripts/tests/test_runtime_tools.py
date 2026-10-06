@@ -302,6 +302,15 @@ class PrivateSymbolTests(unittest.TestCase):
             problems = rt.private_symbol_uses(tmp, {"_sgemm", "_CCCryptorGCMSetIV"})
             self.assertEqual(problems, ["bad.dylib imports _sgemm"])
 
+    def test_a_binary_nm_cannot_read_fails_the_check(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            # A Mach-O header (64-bit dylib) with nothing valid after it.
+            (tmp / "broken.dylib").write_bytes(rt.MH_MAGIC_64 + bytes(8) + (6).to_bytes(4, "little") + bytes(64))
+            problems = rt.private_symbol_uses(tmp, {"_sgemm"})
+            self.assertEqual(len(problems), 1)
+            self.assertTrue(problems[0].startswith("broken.dylib could not be scanned"), problems[0])
+
     def test_the_denylist_file_has_apples_list(self):
         listed = rt.load_symbols(ROOT / "Runtime" / "private-symbols.txt")
         self.assertIn("_CCCryptorGCMSetIV", listed)

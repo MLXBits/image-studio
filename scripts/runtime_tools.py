@@ -226,8 +226,13 @@ def private_symbol_uses(root: Path, denylist: set[str]) -> list[str]:
     """Every bundled binary that imports a symbol App Review rejects."""
     problems = []
     for _, path in macho_files(root):
-        out = subprocess.run(["nm", "-u", str(path)], capture_output=True, text=True).stdout.split()
-        for symbol in sorted(denylist.intersection(out)):
+        result = subprocess.run(["nm", "-u", str(path)], capture_output=True, text=True)
+        if result.returncode != 0:
+            # An unreadable binary is a failure, never a pass: it was not checked.
+            detail = result.stderr.strip().splitlines()[:1] or ["nm failed"]
+            problems.append(f"{path.relative_to(root)} could not be scanned: {detail[0]}")
+            continue
+        for symbol in sorted(denylist.intersection(result.stdout.split())):
             problems.append(f"{path.relative_to(root)} imports {symbol}")
     return problems
 
