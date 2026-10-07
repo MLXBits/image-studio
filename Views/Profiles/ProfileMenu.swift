@@ -56,8 +56,10 @@ struct ProfileMenu: View {
             }
         } label: {
             Label(profiles.activeProfile?.name ?? "Profile", systemImage: "person.crop.circle")
-                .labelStyle(.titleAndIcon)
         }
+        // On the Menu, not the label: linked against the macOS 26 SDK, the
+        // toolbar's icon-only style overrides a style set inside the label.
+        .labelStyle(.titleAndIcon)
         .help("Switch profile — each has its own library, notepad, prompt history and queue")
     }
 }
