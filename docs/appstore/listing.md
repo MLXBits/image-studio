@@ -176,13 +176,20 @@ Answer honestly; these are the expected answers. The app is already set to 18+.
 
 ## Screenshots
 
-- **Size:** 2880×1800 (or 2560×1600), Mac. Up to 10; the first three matter most.
-- **Profile:** SFW, with a clean prompt box and gallery.
+- **Size:** 2880×1800, Mac. Up to 10; the first three matter most.
+- **Profile:** SFW. Fill the gallery with varied, striking images (1024 px or larger, Klein 9B or Krea 2) first, keep a showcase image selected and a real prompt in the box.
+- **Framing:** capture the window (⇧⌘4, then Space, then click the window), then frame it with a headline:
 
-1. The main window: a finished image, the params panel and a full gallery.
-2. Step-by-step preview mid-generation.
-3. The gallery's compare view or boards with ratings.
-4. The LoRA manager with a stack.
-5. The Scenario Generator writing prompts.
+  `swift scripts/frame_screenshot.swift --title "…" --subtitle "…" --theme violet --out 1.png capture.png`
+
+  Two captures (before, after) overlap on a diagonal. Themes: violet, blue, teal, sunset, graphite.
+
+| # | Capture | Title | Subtitle | Theme |
+|---|---|---|---|---|
+| 1 | Main window, a finished showcase image, full gallery | Make images on your Mac. | Private and on-device. No account, no subscription. | violet |
+| 2 | Before and after an Edit (e.g. the panda, then "give the panda a little top hat") | Edit with a sentence. | Describe the change. Keep everything else. | blue |
+| 3 | Mid-generation, step preview and progress bar | Watch every image take shape. | See each step as it renders. | teal |
+| 4 | Gallery with boards, ratings and flags, or the compare view | Your library, organized. | Boards, ratings and side-by-side compare. | sunset |
+| 5 | Scenario Generator writing prompts | Better prompts, written on-device. | A local AI writes and varies prompts for you. | graphite |
 
 No links to other ways of paying in any shot.
