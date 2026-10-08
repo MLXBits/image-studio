@@ -139,7 +139,7 @@ jobs:
         uses: actions/cache/restore@v6
         with:
           path: build/python-runtime
-          key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py') }}
+          key: python-runtime-${{ hashFiles('Runtime/**', 'scripts/build-python-runtime.sh', 'scripts/runtime_tools.py', 'Resources/run_tool.py', 'Resources/hf_cache_probe.py') }}
 
       - name: Build Python runtime (license guard + smoke test)
         run: scripts/build-python-runtime.sh

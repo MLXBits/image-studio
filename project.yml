@@ -61,6 +61,8 @@ targets:
         buildPhase: resources
       - path: Resources/krea2_scenario_prompt_example.md
         buildPhase: resources
+      - path: Resources/hf_cache_probe.py
+        buildPhase: resources
       - path: Resources/mflux_driver.py
         buildPhase: resources
       - path: Resources/run_tool.py

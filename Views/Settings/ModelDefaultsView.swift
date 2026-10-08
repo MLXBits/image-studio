@@ -64,6 +64,11 @@ struct ModelDefaultsView: View {
                 loraLibrary.catalogServerLoras(names: names)
             }
         }
+        // Ask mflux which models are downloaded (#19) on open, after each
+        // download or deletion, and when the models folder moves.
+        .task(id: "\(cacheRevision) \(settings.hfHubDir.path)") {
+            await HFCacheVerdictStore.shared.refresh(settings: settings)
+        }
         .onChange(of: selection) { _, _ in
             cachePhase = .idle
             cacheLog = ""
@@ -429,12 +434,7 @@ struct ModelDefaultsView: View {
     private func downloadedSuffix(model: FluxModelVariant, quantize: Int) -> String {
         guard model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil else { return "" }
         let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
-        let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
-        let blobs = settings.hfHubDir.appendingPathComponent(cacheName).appendingPathComponent("blobs")
-        guard let entries = try? FileManager.default.contentsOfDirectory(
-            at: blobs, includingPropertiesForKeys: [.fileSizeKey]
-        ) else { return "" }
-        let bytes = entries.reduce(0) { $0 + ((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        let bytes = ModelDownloadStore.bytesOnDisk(repo: repo, hubDir: settings.hfHubDir)
         guard bytes > 0 else { return "" }
         let gb = Double(bytes) / 1_073_741_824
         let total = model.approximateSizeGB(quantize: quantize)

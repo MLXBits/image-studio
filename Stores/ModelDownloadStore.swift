@@ -92,9 +92,19 @@ final class ModelDownloadStore {
 
     /// Bytes in the repo's blobs folder, `.incomplete` files included.
     static func bytesOnDisk(repo: String, hubDir: URL) -> Int64 {
-        let blobs = cacheFolder(repo: repo, hubDir: hubDir).appendingPathComponent("blobs", isDirectory: true)
-        let entries = (try? FileManager.default.contentsOfDirectory(at: blobs, includingPropertiesForKeys: [.fileSizeKey])) ?? []
-        return entries.reduce(0) { $0 + Int64((try? $1.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        blobBytes(in: cacheFolder(repo: repo, hubDir: hubDir))
+    }
+
+    /// Bytes in a `models--…` folder's `blobs/`, following links (#19).
+    /// huggingface_hub 2.x keeps each file once in a store shared by all repos
+    /// and links it from here, and a link's own size is a few bytes.
+    nonisolated static func blobBytes(in repoFolder: URL) -> Int64 {
+        let blobs = repoFolder.appendingPathComponent("blobs", isDirectory: true)
+        let entries = (try? FileManager.default.contentsOfDirectory(at: blobs, includingPropertiesForKeys: nil)) ?? []
+        return entries.reduce(0) { total, entry in
+            let size = try? entry.resolvingSymlinksInPath().resourceValues(forKeys: [.fileSizeKey]).fileSize
+            return total + Int64(size ?? 0)
+        }
     }
 
     /// Whether a complete snapshot of the repo is already cached, so a failed

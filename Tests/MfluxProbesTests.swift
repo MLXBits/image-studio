@@ -24,6 +24,18 @@ struct MfluxProbesTests {
         #expect(MfluxProbes.mfluxVersion(python: python) == "0.21.0")
     }
 
+    /// The cache probe gets the hub folder and one `family=repo` per request,
+    /// and its JSON comes back keyed by repo.
+    @Test func cacheCompletenessAsksAboutEachRepo() throws {
+        let url = FakeRuntime.tempDirectory("probe").appendingPathComponent("python")
+        try FakeRuntime.writeExecutable("#!/bin/sh\nprintf '{\"%s %s\": true, \"%s\": false}' \"$3\" \"$4\" \"$5\"\n", to: url)
+        let verdicts = MfluxProbes.hfCacheCompleteness(
+            python: url.path, script: URL(fileURLWithPath: "/probe.py"), hubDir: URL(fileURLWithPath: "/hub"),
+            requests: [("flux.2", "org/a"), ("krea2", "org/b")]
+        )
+        #expect(verdicts == ["/hub flux.2=org/a": true, "krea2=org/b": false])
+    }
+
     @Test func noInterpreterMeansUnsupported() {
         #expect(!MfluxProbes.supportsBaseModel(python: nil))
         #expect(!MfluxProbes.supportsPidDecode(python: nil))

@@ -29,23 +29,24 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         allModels.filter { model in model.generateTool.map(toolchain.hasTool) ?? true }
     }
 
-    /// Returns true if the HF hub model directory is fully downloaded: no in-flight
-    /// `.incomplete` blobs, and a real multi-GB weight payload (not a metadata-only
-    /// partial where only configs/tokenizer came down — e.g. a gated repo whose LFS
-    /// weights were blocked, which leaves no `.incomplete` marker).
-    static func isCompleteHFCache(at dirURL: URL) -> Bool {
+    /// Returns true if the HF hub model directory is fully downloaded. mflux's own
+    /// answer decides when there is a current one (``HFCacheVerdictStore``, #19).
+    /// Until then, a quick check: no in-flight `.incomplete` blobs, and a real
+    /// multi-GB weight payload (not a metadata-only partial where only
+    /// configs/tokenizer came down — e.g. a gated repo whose LFS weights were
+    /// blocked, which leaves no `.incomplete` marker).
+    static func isCompleteHFCache(at dirURL: URL, verdicts: HFCacheVerdictStore = .shared) -> Bool {
+        if let complete = verdicts.isComplete(dirURL) {
+            return complete
+        }
         let blobsURL = dirURL.appendingPathComponent("blobs")
-        guard let blobs = try? FileManager.default.contentsOfDirectory(
-            at: blobsURL, includingPropertiesForKeys: [.fileSizeKey]
-        ), !blobs.isEmpty else { return false }
-        if blobs.contains(where: { $0.lastPathComponent.hasSuffix(".incomplete") }) {
+        guard let blobs = try? FileManager.default.contentsOfDirectory(atPath: blobsURL.path),
+              !blobs.isEmpty else { return false }
+        if blobs.contains(where: { $0.hasSuffix(".incomplete") }) {
             return false
         }
-        let totalBytes = blobs.reduce(0) { sum, url in
-            sum + ((try? url.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
-        }
         // Every supported model's weights are multiple GB; a config-only partial is ~tens of MB.
-        return totalBytes > 1_073_741_824
+        return ModelDownloadStore.blobBytes(in: dirURL) > 1_073_741_824
     }
 
     /// Returns true if mflux-saved weights already exist at the given path.
@@ -324,15 +325,20 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// person's chosen HF_HOME, never assumed to be under the home folder,
     /// which in the App Store build is the app's container.
     func onDiskURL(quantize: Int, hubDir: URL) -> URL? {
+        guard let url = hubCacheFolder(quantize: quantize, hubDir: hubDir) else { return nil }
+        return Self.isCompleteHFCache(at: url) ? url : nil
+    }
+
+    /// The HF hub cache directory the given quantize level downloads into, when
+    /// it exists, complete or not.
+    func hubCacheFolder(quantize: Int, hubDir: URL) -> URL? {
         guard self != .custom else { return nil }
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
         // A published pre-quantized repo maps directly to its hub cache dir
         // (models--org--name), so match it explicitly rather than by substring.
         if quantize > 0, let repo = preQuantizedRepoID(quantize: quantize) {
             let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
-            guard entries.contains(cacheName) else { return nil }
-            let url = hubDir.appendingPathComponent(cacheName)
-            return Self.isCompleteHFCache(at: url) ? url : nil
+            return entries.contains(cacheName) ? hubDir.appendingPathComponent(cacheName) : nil
         }
         let match: String?
         switch quantize {
@@ -346,8 +352,6 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             guard !bf16CacheKey.isEmpty else { return nil }
             match = entries.first { $0.lowercased().contains(bf16CacheKey) }
         }
-        guard let match else { return nil }
-        let url = hubDir.appendingPathComponent(match)
-        return Self.isCompleteHFCache(at: url) ? url : nil
+        return match.map { hubDir.appendingPathComponent($0) }
     }
 }

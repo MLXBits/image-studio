@@ -29,6 +29,7 @@
 		0F280E349F7241B82C9D7EC7 /* DriverProtocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */; };
 		1015DBB3CE3250DAF1ED5749 /* RecordingFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23C14BB102192A53167A5699 /* RecordingFileAccess.swift */; };
 		10BE80CF2FF911AAA0DE2A8E /* ProfileRules.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C27A5CF90BAB6C6953325E2 /* ProfileRules.swift */; };
+		14B9F6B2CD8933F99D6FA52D /* HFCacheVerdictStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */; };
 		15C9FB8C83845AA4C5806F9A /* PromptLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		1692B1A4B63301919B9B815C /* LoraRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */; };
@@ -48,6 +49,7 @@
 		1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */; };
 		1FC3BC94E2871CA8911EEFBE /* ToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE254A77370537174B0B917E /* ToolchainTests.swift */; };
 		2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */; };
+		22CA77DD79FAF7EE547EA6CF /* HFCacheVerdictStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */; };
 		24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */; };
 		2471B94524D33EBA00254C01 /* run_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = D49F253E7F154C0A4D4D3FBE /* run_tool.py */; };
 		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
@@ -134,6 +136,7 @@
 		71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */; };
 		7393F86702BDE4B778BE0555 /* GrantStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74271FE93FEB78B95F9C92E7 /* GrantStore.swift */; };
 		7403E3D96480125AF43574E4 /* ProfileScopedJobStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3A688F02CE22044E67E770 /* ProfileScopedJobStoreTests.swift */; };
+		74FA8B79781FBCD201E98044 /* hf_cache_probe.py in Resources */ = {isa = PBXBuildFile; fileRef = 1A8EBD8FF5006FB024DFE21C /* hf_cache_probe.py */; };
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */; };
 		7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C1DDB5C97F9B016DFFF1D1 /* AppMain.swift */; };
@@ -295,6 +298,7 @@
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsToolchainTests.swift; sourceTree = "<group>"; };
 		184D74615C4C4AD52CD2F287 /* RuntimeSelfTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeSelfTestTests.swift; sourceTree = "<group>"; };
+		1A8EBD8FF5006FB024DFE21C /* hf_cache_probe.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = hf_cache_probe.py; sourceTree = "<group>"; };
 		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1B27E9DF7057F99605191072 /* Tips.storekit */ = {isa = PBXFileReference; path = Tips.storekit; sourceTree = "<group>"; };
 		1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SectionCard.swift; sourceTree = "<group>"; };
@@ -317,6 +321,7 @@
 		2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2Job.swift; sourceTree = "<group>"; };
 		2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupportTests.swift; sourceTree = "<group>"; };
 		318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Forms.swift"; sourceTree = "<group>"; };
+		32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStore.swift; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		32928AD081B6EF992C7BF1B1 /* ProfileBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrap.swift; sourceTree = "<group>"; };
 		33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmDriverEligibilityTests.swift; sourceTree = "<group>"; };
@@ -486,6 +491,7 @@
 		E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverControllerTests.swift; sourceTree = "<group>"; };
+		E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStoreTests.swift; sourceTree = "<group>"; };
 		E9A0FCCEEF7103CD4889BEF8 /* Toolchain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolchain.swift; sourceTree = "<group>"; };
 		EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxFileAccess.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
@@ -641,6 +647,7 @@
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */,
+				E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */,
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
@@ -764,6 +771,7 @@
 		AB119E2514CE274AB18259A7 /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				1A8EBD8FF5006FB024DFE21C /* hf_cache_probe.py */,
 				C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */,
 				6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */,
 				729F046BC0201746ADC15A2C /* mflux_driver.py */,
@@ -919,6 +927,7 @@
 				038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */,
 				F812C375B01307E326002869 /* GalleryMetadataStripping.swift */,
 				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
+				32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */,
 				FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */,
 				F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */,
 				8DF8DCD6AFA207134C719360 /* JobStore.swift */,
@@ -1020,6 +1029,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				33125733D3597F7D7B7D8367 /* Assets.xcassets in Resources */,
+				74FA8B79781FBCD201E98044 /* hf_cache_probe.py in Resources */,
 				5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */,
 				FA8C9AA718CA49C3BBB57095 /* krea2_scenario_prompt_example.md in Resources */,
 				84A3C53B8CDD7E7DE9A6E9B2 /* mflux_driver.py in Resources */,
@@ -1154,6 +1164,7 @@
 				0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */,
 				7393F86702BDE4B778BE0555 /* GrantStore.swift in Sources */,
 				82541311FDB24A63CA6E6DA6 /* GrantingPanel.swift in Sources */,
+				14B9F6B2CD8933F99D6FA52D /* HFCacheVerdictStore.swift in Sources */,
 				3461F0A77AE564C88AA9B423 /* IconButtonStyle.swift in Sources */,
 				65E93BDC06E71759215E9C61 /* Ideogram4Job.swift in Sources */,
 				1F93BC153012C85DB80B983C /* Ideogram4JobRunner.swift in Sources */,
@@ -1306,6 +1317,7 @@
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */,
+				22CA77DD79FAF7EE547EA6CF /* HFCacheVerdictStoreTests.swift in Sources */,
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,

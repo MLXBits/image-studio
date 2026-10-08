@@ -98,14 +98,36 @@ nonisolated enum MfluxProbes {
         }
     }
 
+    /// Which requested repos mflux would load from the Hugging Face cache at `hubDir`
+    /// without downloading (#19), keyed by repo ID. Each request names the
+    /// ``ModelFamily/id`` whose loader decides. Asks `script` (the bundled
+    /// `hf_cache_probe.py`), which calls mflux's own completeness check, so it
+    /// follows the links of huggingface_hub 2.x caches and knows which files each
+    /// family loads. Not cached: the answer changes as downloads land. Nil when
+    /// the probe fails; repos it can't answer for are left out.
+    static func hfCacheCompleteness(
+        python: String?, script: URL, hubDir: URL, requests: [(family: String, repo: String)]
+    ) -> [String: Bool]? {
+        guard let python, !requests.isEmpty else { return nil }
+        let arguments = [script.path, "--hub", hubDir.path] + requests.map { "\($0.family)=\($0.repo)" }
+        guard let out = runProbe(python: python, arguments: arguments),
+              let data = out.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([String: Bool].self, from: data)
+    }
+
     /// Runs `python -c code` with the toolchain environment and returns its
     /// trimmed stdout, or nil when the process cannot start, writes nothing, or
     /// outlives `timeout`. Some callers wait on the main actor (the Flux argument
     /// builder), so a wedged interpreter must not hold them indefinitely.
     static func runProbe(python: String, code: String, timeout: TimeInterval = 30) -> String? {
+        runProbe(python: python, arguments: ["-c", code], timeout: timeout)
+    }
+
+    /// Runs `python arguments…`, as ``runProbe(python:code:timeout:)``.
+    static func runProbe(python: String, arguments: [String], timeout: TimeInterval = 30) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: python)
-        proc.arguments = ["-c", code]
+        proc.arguments = arguments
         proc.environment = Toolchain.environment(
             base: ProcessInfo.processInfo.environment, cachesURL: Toolchain.cachesURL
         )

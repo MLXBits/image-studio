@@ -15,7 +15,7 @@ OUT="$ROOT/build/python-runtime"
 PREFIX="$OUT/python"
 
 INPUTS="Runtime/python.lock Runtime/requirements.lock Runtime/license-overrides.json Runtime/private-symbols.txt Runtime/tools.txt
-scripts/build-python-runtime.sh scripts/runtime_tools.py Resources/run_tool.py"
+scripts/build-python-runtime.sh scripts/runtime_tools.py Resources/run_tool.py Resources/hf_cache_probe.py"
 KEY=$(cd "$ROOT" && for f in $INPUTS; do cat "$f"; done | shasum -a 256 | cut -c1-16)
 
 lock_value() { sed -n "s/^$1=//p" "$ROOT/Runtime/python.lock"; }
@@ -95,6 +95,9 @@ grep -vE '^[[:space:]]*(#|$)' "$ROOT/Runtime/tools.txt" | while read -r tool; do
     exit 1
   fi
 done
+# The app's "downloaded" check calls a private mflux method (#19); a bump that
+# renames it must fail here, not quietly leave the app on its size heuristic.
+"$PY" "$ROOT/Resources/hf_cache_probe.py" --check
 
 echo "→ $(du -sh "$PREFIX" | cut -f1) in $PREFIX"
 echo "$KEY" >"$OUT/cache-key"

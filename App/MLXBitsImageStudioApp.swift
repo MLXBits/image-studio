@@ -189,10 +189,15 @@ struct MLXBitsImageStudioApp: App {
             tipJar.startFinishingTransactions()
         }
         _tipJar = State(initialValue: tipJar)
-        // Partial downloads nothing will resume (#18), off the main thread.
+        // Partial downloads nothing will resume (#18), off the main thread. Then
+        // ask mflux which models are downloaded (#19): the sweep changes the
+        // folders it asks about, which would make its answers stale at once.
         if !testHost {
             let hubDir = settings.hfHubDir
-            Task.detached(priority: .utility) { ModelDownloadStore.removeAbandonedPartials(hubDir: hubDir) }
+            Task {
+                await Task.detached(priority: .utility) { ModelDownloadStore.removeAbandonedPartials(hubDir: hubDir) }.value
+                await HFCacheVerdictStore.shared.refresh(settings: settings)
+            }
         }
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
