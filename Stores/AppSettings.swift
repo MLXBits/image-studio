@@ -409,6 +409,14 @@ class AppSettings {
         didSet { save() }
     }
 
+    /// The ComfyUI server the app is actually using: the trimmed ``comfyURL`` while at least one family routes
+    /// to it, else `nil`. A configured URL with every family on mflux is a server we don't talk to.
+    var activeComfyURL: String? {
+        let url = comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !url.isEmpty, comfyBackendEnabled.values.contains(true) else { return nil }
+        return url
+    }
+
     /// Last-used Z-Image form, restored on next launch.
     var lastZImage: ZImageFormState? {
         didSet { saveProfile() }

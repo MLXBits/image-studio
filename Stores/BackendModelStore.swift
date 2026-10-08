@@ -97,12 +97,13 @@ final class BackendModelStore {
     /// mid-flight doesn't leave two loops racing each other into the same state variables.
     func restart() {
         pollTask?.cancel()
-        let comfyConfigured = !(settings?.comfyURL.trimmed().isEmpty ?? true)
-        let lmConfigured = settings?.llmBackend == .remote && !(settings?.openAIBaseURL.trimmed().isEmpty ?? true)
-        guard comfyConfigured || lmConfigured else { return }
         // Settings changed → the previous reading no longer describes this server; clear it so we don't show a
-        // stale size until the next successful poll overwrites it with fresh occupancy figures.
+        // stale size until the next successful poll overwrites it with fresh occupancy figures. Cleared before the
+        // guard so switching the last family off ComfyUI hides the pill even when nothing else is polled.
         comfy = ComfyStatus()
+        let comfyActive = settings?.activeComfyURL != nil
+        let lmConfigured = settings?.llmBackend == .remote && !(settings?.openAIBaseURL.trimmed().isEmpty ?? true)
+        guard comfyActive || lmConfigured else { return }
         pollTask = Task { [weak self] in
             while !Task.isCancelled {
                 await self?.pollOnce()
@@ -119,11 +120,10 @@ final class BackendModelStore {
     // MARK: - Polling internals
 
     private func pollOnce() async {
-        let comfyURL = settings?.comfyURL.trimmed() ?? ""
-        if !comfyURL.isEmpty {
+        if let comfyURL = settings?.activeComfyURL {
             await pollComfy(url: comfyURL)
         } else {
-            // No backend configured — drop the reading so a stale pill from a previous URL doesn't linger.
+            // No family routes to ComfyUI — drop the reading so a stale pill from a previous URL doesn't linger.
             comfy = ComfyStatus()
         }
 
@@ -217,7 +217,7 @@ final class BackendModelStore {
     /// VRAM recovery is what actually clears the pill; this just fires the request and marks the brief
     /// "Freeing…" window so a fast user can't double-click into two in-flight frees.
     func ejectComfy() {
-        guard let url = settings?.comfyURL.trimmed(), !url.isEmpty else { return }
+        guard let url = settings?.activeComfyURL else { return }
         guard !isComfyEjecting else { return }
         isComfyEjecting = true
         Task { [weak self] in

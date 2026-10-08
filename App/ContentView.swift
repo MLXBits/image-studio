@@ -338,6 +338,7 @@ struct ContentView: View {
             }
             .onAppear { backendModels.attach(settings) }
             .onChange(of: settings.comfyURL) { _, _ in backendModels.restart() }
+            .onChange(of: settings.comfyBackendEnabled) { _, _ in backendModels.restart() }
             .onChange(of: settings.openAIBaseURL) { _, _ in backendModels.restart() }
             .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
             .task(id: isAnyStoreRunning) { backendModels.localRunInFlight = isAnyStoreRunning }
@@ -1605,10 +1606,11 @@ struct ContentView: View {
 
     /// ComfyUI residency pill: shows "Resident · ~X GB" when VRAM is meaningfully below the idle baseline,
     /// or just "ComfyUI" (no size) while the server is reachable but the baseline hasn't locked yet. Eject
-    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident.
+    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident. Hidden while no family
+    /// routes to ComfyUI, even if a poll that was in flight when routing changed reports the server reachable.
     @ViewBuilder
     private func comfyBackendPill() -> some View {
-        if backendModels.comfy.reachable {
+        if settings.activeComfyURL != nil && backendModels.comfy.reachable {
             let gb = backendModels.comfyResidentGB
             HStack(spacing: 6) {
                 Image(systemName: "server.rack")
