@@ -458,6 +458,11 @@ struct ModelDefaultsView: View {
         await Task.detached(priority: .utility) {
             ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: hubDir)
         }.value
+        // Cancelled during the sweep, with no process yet for Cancel to stop.
+        guard !userCancelledCache else {
+            cachePhase = .idle
+            return
+        }
 
         let process = Process()
         process.executableURL = hf.executableURL

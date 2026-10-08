@@ -38,6 +38,7 @@ final class ModelDownloadStore {
     private static let hfDownload: Fetch = { repo, settings in
         let hubDir = settings.hfHubDir
         await Task.detached(priority: .utility) { removeAbandonedPartials(repo: repo, hubDir: hubDir) }.value
+        try Task.checkCancellation()
         let hf = try settings.toolchain.command(.hf)
         let process = Process()
         process.executableURL = hf.executableURL
