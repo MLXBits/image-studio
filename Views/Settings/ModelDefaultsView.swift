@@ -454,7 +454,10 @@ struct ModelDefaultsView: View {
             return
         }
         cacheLog = "▸ Downloading \(repo) into the Hugging Face cache…\n"
-        ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: settings.hfHubDir)
+        let hubDir = settings.hfHubDir
+        await Task.detached(priority: .utility) {
+            ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: hubDir)
+        }.value
 
         let process = Process()
         process.executableURL = hf.executableURL

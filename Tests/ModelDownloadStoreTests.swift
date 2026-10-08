@@ -196,11 +196,15 @@ struct ModelDownloadStoreTests {
 
     /// A tool that ignores SIGINT is terminated once the grace period is up.
     @Test func aToolIgnoringTheInterruptIsTerminated() async throws {
+        // The marker lands once the trap is set; SIGINT before that would kill the shell.
+        let ready = FakeRuntime.tempDirectory("ModelDownloadStoreTests").appendingPathExtension("ready")
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/bin/sh")
-        process.arguments = ["-c", "trap '' INT; exec sleep 30"]
+        process.arguments = ["-c", "trap '' INT; touch \"$0\"; exec sleep 30", ready.path]
         try process.run()
-        try await Task.sleep(for: .milliseconds(200))
+        while !FileManager.default.fileExists(atPath: ready.path) {
+            try await Task.sleep(for: .milliseconds(20))
+        }
 
         process.stopGracefully(grace: .milliseconds(300))
         process.waitUntilExit()

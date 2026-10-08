@@ -36,7 +36,8 @@ final class ModelDownloadStore {
 
     /// `hf download <repo>` through the bundled toolchain, in a process of its own.
     private static let hfDownload: Fetch = { repo, settings in
-        removeAbandonedPartials(repo: repo, hubDir: settings.hfHubDir)
+        let hubDir = settings.hfHubDir
+        await Task.detached(priority: .utility) { removeAbandonedPartials(repo: repo, hubDir: hubDir) }.value
         let hf = try settings.toolchain.command(.hf)
         let process = Process()
         process.executableURL = hf.executableURL
@@ -58,6 +59,10 @@ final class ModelDownloadStore {
                 process.terminationHandler = { continuation.resume(returning: $0.terminationStatus) }
                 do {
                     try process.run()
+                    // Cancelled before the launch: onCancel found nothing to stop.
+                    if Task.isCancelled {
+                        process.stopGracefully()
+                    }
                 } catch {
                     process.terminationHandler = nil
                     continuation.resume(throwing: error)
