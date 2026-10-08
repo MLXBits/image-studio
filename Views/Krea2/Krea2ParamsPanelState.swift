@@ -54,6 +54,9 @@ final class Krea2ParamsPanelState {
     var seed: Int = -1
     var batchSeeds: [Int] = []
     var quantize: Int = 8
+    /// Lives in Settings → Models → Krea 2, not the panel; ContentView pulls the
+    /// current value at submit so live edits apply to the next run.
+    var lowRam: Bool = false
     var loras: [LoraEntry] = []
     var imagePath: String = ""
     var imageStrength: Double = 0.75
@@ -175,6 +178,7 @@ final class Krea2ParamsPanelState {
             steps: steps,
             guidance: guidance,
             quantize: quantize,
+            lowRam: lowRam,
             loras: loras,
             imagePath: imagePath,
             imageStrength: imageStrength,

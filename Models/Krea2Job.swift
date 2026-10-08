@@ -28,6 +28,9 @@ final class Krea2Job: Identifiable {
     var steps: Int
     var guidance: Double
     var quantize: Int
+    /// Stream transformer blocks from disk (`--low-ram`) to cut peak memory.
+    /// Always runs on the one-shot CLI — a warm-resident model defeats it.
+    var lowRam: Bool
     var loras: [LoraEntry]
     /// Optional init image for img2img. Empty string = pure text-to-image.
     var imagePath: String
@@ -90,6 +93,7 @@ final class Krea2Job: Identifiable {
         steps: Int = 8,
         guidance: Double = 1.0,
         quantize: Int = 8,
+        lowRam: Bool = false,
         loras: [LoraEntry] = [],
         imagePath: String = "",
         imageStrength: Double = 0.75,
@@ -109,6 +113,7 @@ final class Krea2Job: Identifiable {
         self.steps = steps
         self.guidance = guidance
         self.quantize = quantize
+        self.lowRam = lowRam
         self.loras = loras
         self.imagePath = imagePath
         self.imageStrength = imageStrength
@@ -126,7 +131,7 @@ final class Krea2Job: Identifiable {
 extension Krea2Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, customModelRepo, prompt, negativePrompt
-        case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
+        case width, height, seed, seeds, steps, guidance, quantize, lowRam, loras, imagePath, imageStrength, board
         case status, log, outputPath, resolvedSeed, thumbnailData
         case pidDecode, pidDegradeSigma
         case currentStep, totalSteps, createdAt, startedAt, completedAt
@@ -146,6 +151,7 @@ extension Krea2Job: Codable {
             steps: (try? c.decode(Int.self, forKey: .steps)) ?? 8,
             guidance: (try? c.decode(Double.self, forKey: .guidance)) ?? 1.0,
             quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 8,
+            lowRam: (try? c.decode(Bool.self, forKey: .lowRam)) ?? false,
             loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
             imagePath: (try? c.decode(String.self, forKey: .imagePath)) ?? "",
             imageStrength: (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75,
@@ -178,6 +184,7 @@ extension Krea2Job: Codable {
         try c.encode(steps, forKey: .steps)
         try c.encode(guidance, forKey: .guidance)
         try c.encode(quantize, forKey: .quantize)
+        try c.encode(lowRam, forKey: .lowRam)
         try c.encode(loras, forKey: .loras)
         try c.encode(imagePath, forKey: .imagePath)
         try c.encode(imageStrength, forKey: .imageStrength)

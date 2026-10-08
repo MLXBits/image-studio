@@ -70,6 +70,7 @@
 		340DB1CAC8473EB87E9F33DE /* ProfileMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = 62C50312EB5DFD6269A2059F /* ProfileMenu.swift */; };
 		3461F0A77AE564C88AA9B423 /* IconButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F160B133D562A1B4415BEF /* IconButtonStyle.swift */; };
 		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
+		37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		39FB05E51886E08ECB5A2CDA /* ZImageJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */; };
 		3AF0A186931B9DD5DE124DAE /* ComfySeedVR2WorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */; };
@@ -417,6 +418,7 @@
 		97CCCF9C84722B5E96AF25F4 /* ProfileEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileEditorSheet.swift; sourceTree = "<group>"; };
 		982729D2757379FD575EF161 /* GrantingPanel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrantingPanel.swift; sourceTree = "<group>"; };
 		985F3C0FD2619F10E9F451D5 /* OpenAIChatClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChatClient.swift; sourceTree = "<group>"; };
+		9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2LowRamTests.swift; sourceTree = "<group>"; };
 		989B03F4B6A6D224348122FD /* WildcardExpander.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WildcardExpander.swift; sourceTree = "<group>"; };
 		98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunnerRunTests.swift; sourceTree = "<group>"; };
 		9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGenerator.swift; sourceTree = "<group>"; };
@@ -642,6 +644,7 @@
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
+				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
 				AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */,
@@ -1306,6 +1309,7 @@
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
+				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
 				2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */,

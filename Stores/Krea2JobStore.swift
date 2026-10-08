@@ -42,6 +42,7 @@ final class Krea2JobStore: ProfileScopedJobStore {
                 steps: batchJob.steps,
                 guidance: batchJob.guidance,
                 quantize: batchJob.quantize,
+                lowRam: batchJob.lowRam,
                 loras: batchJob.loras,
                 board: batchJob.board,
                 createdAt: batchJob.createdAt

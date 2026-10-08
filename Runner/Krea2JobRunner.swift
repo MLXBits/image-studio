@@ -53,8 +53,8 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         TimingStore.modelKey("krea2", customRepo: job.customModelRepo)
     }
 
-    static func timingLowRam(job _: Krea2Job) -> Bool {
-        false
+    static func timingLowRam(job: Krea2Job) -> Bool {
+        job.lowRam
     }
 
     static func writeMetadata(job: Krea2Job, seed: Int, startedAt: Date?, generatedAt: Date, path: String) {
@@ -97,9 +97,12 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         return (FluxModelVariant.krea2.mfluxModelID, job.quantize)
     }
 
-    /// Driver eligibility + request. Every Krea 2 job qualifies (no edit or
-    /// low-RAM modes); model resolution mirrors buildArgs.
+    /// Driver eligibility + request. Low-RAM jobs stream blocks from disk and
+    /// stay on the one-shot CLI (keeping the model resident defeats them); every
+    /// other job qualifies. Model resolution mirrors buildArgs.
     static func driverRequest(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
+        guard !job.lowRam else { return nil }
+
         let (model, quantizeArg) = resolveModel(job: job, settings: settings)
 
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }
@@ -217,6 +220,9 @@ enum Krea2RunnerSpec: JobRunnerSpec {
             args += ["--lora-scales"] + enabledLoras.map { String(format: "%.2f", $0.strength) }
         }
 
+        if job.lowRam {
+            args.append("--low-ram")
+        }
         if settings.mlxCacheLimitGB > 0 {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }

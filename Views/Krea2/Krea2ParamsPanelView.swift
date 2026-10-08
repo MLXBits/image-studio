@@ -24,11 +24,12 @@ struct Krea2ParamsPanelView: View {
         params.guidance != 1.0
     }
 
-    /// Learned-time estimate for the current Krea 2 configuration.
+    /// Learned-time estimate for the current Krea 2 configuration. Low-RAM is a
+    /// Settings value, so it is read live rather than from the panel state.
     private var estimate: TimingStore.Estimate? {
         timing.estimate(
             model: "krea2",
-            quantize: params.quantize, lowRam: false,
+            quantize: params.quantize, lowRam: settings.resolvedDefaults(for: .krea2).lowRam,
             steps: params.steps,
             megapixels: Double(params.width * params.height) / 1_000_000
         )

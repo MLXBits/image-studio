@@ -1438,6 +1438,8 @@ struct ContentView: View {
         // itself, not be flattened to the family it happens to load as.
         settings.lastModel = params.model == .custom ? .custom : .krea2
         settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
+        // Low-RAM lives in Settings → Models → Krea 2; pull it so live edits apply to this run.
+        krea2Params.lowRam = settings.resolvedDefaults(for: .krea2).lowRam
         if scenarioPrompts == nil {
             settings.recordPromptUse(krea2Params.prompt)
         }

@@ -129,6 +129,7 @@ nonisolated struct Krea2Metadata: Codable {
             width: job.width,
             height: job.height,
             quantize: job.quantize,
+            lowRam: job.lowRam ? true : nil,
             loras: job.loras.isEmpty ? nil : job.loras,
             imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
             imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
@@ -152,6 +153,9 @@ nonisolated struct Krea2Metadata: Codable {
     var width: Int
     var height: Int
     var quantize: Int
+    /// Whether the run streamed blocks with `--low-ram`. Written only when true,
+    /// so sidecars from before the field and default runs stay unchanged.
+    var lowRam: Bool?
     var loras: [LoraEntry]?
     var imagePath: String?
     var imageStrength: Double?
