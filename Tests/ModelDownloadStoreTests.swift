@@ -112,6 +112,102 @@ struct ModelDownloadStoreTests {
         #expect(fetchedInto.map(\.path) == ["/tmp/hf-a/hub", "/tmp/hf-b/hub"])
     }
 
+    /// A hub cache with one repo's blobs folder holding `blobs`, and the
+    /// repo's folder under `.locks`.
+    private func hubWithBlobs(_ blobs: [String], repoFolder: String = "models--org--model") throws -> URL {
+        let hub = FakeRuntime.tempDirectory("ModelDownloadStoreTests").appendingPathComponent("hub", isDirectory: true)
+        let blobsDir = hub.appendingPathComponent("\(repoFolder)/blobs", isDirectory: true)
+        try FileManager.default.createDirectory(at: blobsDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(
+            at: hub.appendingPathComponent(".locks/\(repoFolder)", isDirectory: true), withIntermediateDirectories: true
+        )
+        for name in blobs {
+            try Data("partial".utf8).write(to: blobsDir.appendingPathComponent(name))
+        }
+        return hub
+    }
+
+    private func blobs(in hub: URL, repoFolder: String = "models--org--model") -> Set<String> {
+        let blobsDir = hub.appendingPathComponent("\(repoFolder)/blobs")
+        return Set((try? FileManager.default.contentsOfDirectory(atPath: blobsDir.path)) ?? [])
+    }
+
+    /// hf names each attempt's partial `<etag>.<random>.incomplete` and never
+    /// resumes one, so a partial nobody is writing is dead weight.
+    @Test func abandonedPartialsAreRemoved() throws {
+        let hub = try hubWithBlobs(["aaa.1234abcd.incomplete", "bbb.incomplete", "ccc"])
+        // An unlocked lock file for aaa; none at all for bbb.
+        FileManager.default.createFile(atPath: hub.appendingPathComponent(".locks/models--org--model/aaa.lock").path, contents: nil)
+
+        ModelDownloadStore.removeAbandonedPartials(repo: "org/model", hubDir: hub)
+
+        #expect(blobs(in: hub) == ["ccc"])
+    }
+
+    /// hf holds the blob's lock while it downloads, so a locked partial is live.
+    @Test func aPartialBeingDownloadedIsKept() throws {
+        let hub = try hubWithBlobs(["aaa.1234abcd.incomplete", "bbb.5678abcd.incomplete"])
+        let lock = hub.appendingPathComponent(".locks/models--org--model/aaa.lock").path
+        let fd = open(lock, O_RDWR | O_CREAT, 0o644)
+        defer { close(fd) }
+        #expect(flock(fd, LOCK_EX | LOCK_NB) == 0)
+
+        ModelDownloadStore.removeAbandonedPartials(repo: "org/model", hubDir: hub)
+
+        #expect(blobs(in: hub) == ["aaa.1234abcd.incomplete"])
+    }
+
+    /// The launch sweep covers every repo in the cache, not just Gemma.
+    @Test func theLaunchSweepCoversEveryRepo() throws {
+        let hub = try hubWithBlobs(["aaa.1234abcd.incomplete", "aaa"])
+        try FileManager.default.createDirectory(
+            at: hub.appendingPathComponent("models--other--repo/blobs"), withIntermediateDirectories: true
+        )
+        try Data().write(to: hub.appendingPathComponent("models--other--repo/blobs/ddd.9999abcd.incomplete"))
+
+        ModelDownloadStore.removeAbandonedPartials(hubDir: hub)
+
+        #expect(blobs(in: hub) == ["aaa"])
+        #expect(blobs(in: hub, repoFolder: "models--other--repo").isEmpty)
+        #expect(FileManager.default.fileExists(atPath: hub.appendingPathComponent(".locks/models--org--model").path))
+    }
+
+    @Test func aMissingCacheIsLeftAlone() {
+        let hub = FakeRuntime.tempDirectory("ModelDownloadStoreTests").appendingPathComponent("hub")
+        ModelDownloadStore.removeAbandonedPartials(hubDir: hub)
+        ModelDownloadStore.removeAbandonedPartials(repo: "org/model", hubDir: hub)
+        #expect(!FileManager.default.fileExists(atPath: hub.path))
+    }
+
+    /// Stopping a tool sends SIGINT, so Python's cleanup runs (hf deletes its
+    /// partial); SIGTERM would kill it before that.
+    @Test func stoppingAToolInterruptsIt() throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sleep")
+        process.arguments = ["30"]
+        try process.run()
+
+        process.stopGracefully(grace: .seconds(5))
+        process.waitUntilExit()
+
+        #expect(process.terminationReason == .uncaughtSignal)
+        #expect(process.terminationStatus == SIGINT)
+    }
+
+    /// A tool that ignores SIGINT is terminated once the grace period is up.
+    @Test func aToolIgnoringTheInterruptIsTerminated() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/sh")
+        process.arguments = ["-c", "trap '' INT; exec sleep 30"]
+        try process.run()
+        try await Task.sleep(for: .milliseconds(200))
+
+        process.stopGracefully(grace: .milliseconds(300))
+        process.waitUntilExit()
+
+        #expect(process.terminationStatus == SIGTERM)
+    }
+
     @Test func progressReadsAsSizeAndTime() {
         let start = Date(timeIntervalSince1970: 0)
         #expect(ModelDownloadStatusRow.describe(bytes: 2_254_857_830, since: start, now: start.addingTimeInterval(65))

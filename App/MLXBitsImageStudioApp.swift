@@ -189,6 +189,11 @@ struct MLXBitsImageStudioApp: App {
             tipJar.startFinishingTransactions()
         }
         _tipJar = State(initialValue: tipJar)
+        // Partial downloads nothing will resume (#18), off the main thread.
+        if !testHost {
+            let hubDir = settings.hfHubDir
+            Task.detached(priority: .utility) { ModelDownloadStore.removeAbandonedPartials(hubDir: hubDir) }
+        }
         // Fold any pre-library default-LoRA list into LibraryLora.isDefault flags.
         loraLibrary.migrateLegacyDefaults(from: settings)
     }

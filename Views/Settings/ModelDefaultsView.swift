@@ -67,7 +67,8 @@ struct ModelDefaultsView: View {
         .onChange(of: selection) { _, _ in
             cachePhase = .idle
             cacheLog = ""
-            cacheProcess?.terminate()
+            userCancelledCache = true
+            cacheProcess?.stopGracefully()
             cacheProcess = nil
         }
         .onChange(of: settings.comfyURL) { _, newURL in
@@ -334,7 +335,7 @@ struct ModelDefaultsView: View {
                     Spacer()
                     Button("Cancel") {
                         userCancelledCache = true
-                        cacheProcess?.terminate()
+                        cacheProcess?.stopGracefully()
                     }
                     .buttonStyle(.bordered).controlSize(.small)
                 }
@@ -453,6 +454,7 @@ struct ModelDefaultsView: View {
             return
         }
         cacheLog = "▸ Downloading \(repo) into the Hugging Face cache…\n"
+        ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: settings.hfHubDir)
 
         let process = Process()
         process.executableURL = hf.executableURL
@@ -465,8 +467,11 @@ struct ModelDefaultsView: View {
             cacheLog += "\n✓ Cached \(repo)."
             cachePhase = .done
             cacheRevision = UUID()
+        } else if userCancelledCache {
+            // Stopped with SIGINT, hf exits with status 1 ("Aborted!").
+            cachePhase = .idle
         } else if process.terminationReason == .uncaughtSignal {
-            cachePhase = userCancelledCache ? .idle : .failed("Download interrupted. Check the log below.")
+            cachePhase = .failed("Download interrupted. Check the log below.")
         } else {
             cachePhase = .failed("hf exited with status \(process.terminationStatus). Check the log below.")
         }
@@ -553,7 +558,7 @@ struct ModelDefaultsView: View {
             cacheLog += "\nSaved to: \(savePath.path)\nFiles: \(savedFiles.isEmpty ? "(none found)" : savedFiles.joined(separator: ", "))"
             cachePhase = .done
             cacheRevision = UUID()
-        } else if process.terminationReason == .uncaughtSignal {
+        } else if process.terminationReason == .uncaughtSignal || userCancelledCache {
             try? FileManager.default.removeItem(at: savePath)
             if userCancelledCache {
                 cachePhase = .idle

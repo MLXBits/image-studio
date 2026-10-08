@@ -36,6 +36,7 @@ final class ModelDownloadStore {
 
     /// `hf download <repo>` through the bundled toolchain, in a process of its own.
     private static let hfDownload: Fetch = { repo, settings in
+        removeAbandonedPartials(repo: repo, hubDir: settings.hfHubDir)
         let hf = try settings.toolchain.command(.hf)
         let process = Process()
         process.executableURL = hf.executableURL
@@ -63,7 +64,7 @@ final class ModelDownloadStore {
                 }
             }
         } onCancel: {
-            process.terminate()
+            process.stopGracefully()
         }
         try Task.checkCancellation()
         guard status == 0 else {
@@ -79,7 +80,7 @@ final class ModelDownloadStore {
     }
 
     /// `models--org--name` under the hub cache.
-    static func cacheFolder(repo: String, hubDir: URL) -> URL {
+    nonisolated static func cacheFolder(repo: String, hubDir: URL) -> URL {
         hubDir.appendingPathComponent("models--" + repo.replacingOccurrences(of: "/", with: "--"), isDirectory: true)
     }
 
@@ -112,6 +113,56 @@ final class ModelDownloadStore {
             return Set(shards.values).isSubset(of: present)
         }
         return present.contains { $0.hasSuffix(".safetensors") }
+    }
+
+    /// Deletes the repo's `.incomplete` files that no download is writing.
+    /// hf names each attempt's partial `<etag>.<random>.incomplete`, so a retry
+    /// never resumes one, and a download killed before Python could clean up
+    /// leaves it behind. hf holds `.locks/<repo folder>/<etag>.lock` while it
+    /// downloads that blob, so a partial whose lock is free is abandoned.
+    /// (`hf cache prune` deletes live partials too, and old revisions.)
+    nonisolated static func removeAbandonedPartials(repo: String, hubDir: URL) {
+        removeAbandonedPartials(in: cacheFolder(repo: repo, hubDir: hubDir), hubDir: hubDir)
+    }
+
+    /// The same, for every repo in the cache: partials from a force quit, a
+    /// crash, or an mflux run that fetched its own weights.
+    nonisolated static func removeAbandonedPartials(hubDir: URL) {
+        let repos = (try? FileManager.default.contentsOfDirectory(
+            at: hubDir, includingPropertiesForKeys: nil, options: .skipsHiddenFiles
+        )) ?? []
+        for repo in repos {
+            removeAbandonedPartials(in: repo, hubDir: hubDir)
+        }
+    }
+
+    nonisolated private static func removeAbandonedPartials(in repoFolder: URL, hubDir: URL) {
+        let blobs = repoFolder.appendingPathComponent("blobs", isDirectory: true)
+        let locks = hubDir.appendingPathComponent(".locks/\(repoFolder.lastPathComponent)", isDirectory: true)
+        let partials = ((try? FileManager.default.contentsOfDirectory(at: blobs, includingPropertiesForKeys: nil)) ?? [])
+            .filter { $0.pathExtension == "incomplete" }
+        for partial in partials {
+            let etag = partial.lastPathComponent.prefix { $0 != "." }
+            whileHoldingFreeLock(locks.appendingPathComponent("\(etag).lock")) {
+                try? FileManager.default.removeItem(at: partial)
+            }
+        }
+    }
+
+    /// Runs `body` holding `lock`'s flock, when no other process holds it. A
+    /// missing lock file is free; one we can't open is not.
+    nonisolated private static func whileHoldingFreeLock(_ lock: URL, _ body: () -> Void) {
+        let fd = open(lock.path, O_RDONLY)
+        guard fd >= 0 else {
+            if errno == ENOENT {
+                body()
+            }
+            return
+        }
+        defer { close(fd) }
+        guard flock(fd, LOCK_EX | LOCK_NB) == 0 else { return }
+        body()
+        flock(fd, LOCK_UN)
     }
 
     /// Repos downloading now, with how much has landed.
@@ -176,6 +227,21 @@ final class ModelDownloadStore {
             poll.cancel()
             self?.active[repo] = nil
             self?.tasks[key] = nil
+        }
+    }
+}
+
+extension Process {
+    /// Stops a Python tool so its cleanup runs: SIGINT first (hf then deletes
+    /// its partial download; SIGTERM would kill it before that), then SIGTERM
+    /// if it's still running after `grace`.
+    nonisolated func stopGracefully(grace: Duration = .seconds(5)) {
+        guard isRunning else { return }
+        interrupt()
+        DispatchQueue.global().asyncAfter(deadline: .now() + grace / .seconds(1)) { [self] in
+            if isRunning {
+                terminate()
+            }
         }
     }
 }
