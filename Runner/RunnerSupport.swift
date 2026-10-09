@@ -8,6 +8,14 @@ import Foundation
 /// building thumbnails — so that plumbing lives here once rather than being
 /// copied per runner.
 enum RunnerSupport {
+    /// The INFO lines mflux logs for every image it saves. From mflux 0.21 they print
+    /// for each stepwise preview too, and land after tqdm's newline-less bar, so the
+    /// next update can't rewind over it.
+    private static let saveLogMarkers = [
+        "INFO: Image saved successfully at: ",
+        "INFO: Metadata embedded successfully at: ",
+    ]
+
     /// Wires `process` to a single pipe for combined stdout+stderr and returns an
     /// `AsyncStream` yielding decoded output chunks. The caller is responsible for
     /// tracking the process (e.g. for cancellation).
@@ -174,10 +182,19 @@ enum RunnerSupport {
 
     /// Appends `chunk` to `log`, honoring carriage returns by rewinding to the start of
     /// the current line — matching how a terminal renders tqdm progress bars.
-    static func appendLog(_ chunk: String, to log: String) -> String {
+    ///
+    /// With `stepwiseDir`, mflux's save lines for files inside it are dropped: the app
+    /// shows those previews itself. The final image's save lines are kept.
+    static func appendLog(_ chunk: String, to log: String, stepwiseDir: String? = nil) -> String {
+        let stepwisePrefix = stepwiseDir.map { $0.hasSuffix("/") ? $0 : $0 + "/" }
         var result = log
         for char in chunk {
-            if char == "\r" {
+            if char == "\n", let stepwisePrefix,
+               let start = stepwiseSaveLineStart(in: result, stepwisePrefix: stepwisePrefix) {
+                // Drop the line, newline included, so the bar it trailed stays the
+                // current line and the next \r overwrites it.
+                result.removeSubrange(start...)
+            } else if char == "\r" {
                 // Trim the current line in place rather than re-slicing the whole
                 // string — tqdm emits \r many times per second on a growing log.
                 if let nl = result.lastIndex(of: "\n") {
@@ -190,6 +207,20 @@ enum RunnerSupport {
             }
         }
         return result
+    }
+
+    /// Where a stepwise-preview save line starts within the current (unterminated)
+    /// line of `log`, or nil if that line isn't one. The marker can follow a tqdm bar.
+    private static func stepwiseSaveLineStart(in log: String, stepwisePrefix: String) -> String.Index? {
+        let lineStart = log.lastIndex(of: "\n").map { log.index(after: $0) } ?? log.startIndex
+        let line = log[lineStart...]
+        for marker in saveLogMarkers {
+            if let range = line.range(of: marker, options: .backwards),
+               line[range.upperBound...].hasPrefix(stepwisePrefix) {
+                return range.lowerBound
+            }
+        }
+        return nil
     }
 
     /// The last `maxLines` lines of `log`. Per-chunk parsing (progress bars, status

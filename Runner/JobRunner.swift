@@ -424,7 +424,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var denoiseEndTime: Date?
 
         for await chunk in stream {
-            job.log = RunnerSupport.appendLog(chunk, to: job.log)
+            job.log = RunnerSupport.appendLog(chunk, to: job.log, stepwiseDir: stepDir.path)
             if let progress = JobProgressParser.parseStep(from: RunnerSupport.logTail(job.log)),
                Spec.acceptsProgressTotal(progress.total, job: job) {
                 if !seenFirstStep {
@@ -554,7 +554,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         job.statusLine = warmAtStart ? "\(Spec.encodingLabel)…" : "Loading model…"
         driver.onLog = { [weak job] chunk in
             guard let job else { return }
-            job.log = RunnerSupport.appendLog(chunk, to: job.log)
+            job.log = RunnerSupport.appendLog(chunk, to: job.log, stepwiseDir: stepDir.path)
             // Drive the visible step and ETA straight from tqdm — the exact line the CLI
             // prints — so the numbers match it precisely. The structured `progress` events
             // run slightly ahead of tqdm and carry no timing, so they are used only for

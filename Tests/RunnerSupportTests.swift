@@ -3,6 +3,8 @@ import Foundation
 import Testing
 
 struct RunnerSupportTests {
+    private static let stepDir = "/Caches/stepwise/job"
+
     // MARK: - appendLog (carriage-return handling)
 
     @Test func appendLogPlainText() {
@@ -18,6 +20,37 @@ struct RunnerSupportTests {
     @Test func appendLogCarriageReturnKeepsPriorLines() {
         // \r rewinds only to the start of the last line, preserving completed lines.
         #expect(RunnerSupport.appendLog("line1\nold\rnew", to: "") == "line1\nnew")
+    }
+
+    // MARK: - appendLog (stepwise save lines, issue #23)
+
+    @Test func appendLogDropsStepwiseSaveLinesSoTheBarRewinds() {
+        let chunk = "\r  0%|          | 0/4 [00:00<?, ?it/s]"
+            + "INFO: Image saved successfully at: \(Self.stepDir)/seed_1_step1of4.png\n"
+            + "INFO: Metadata embedded successfully at: \(Self.stepDir)/seed_1_step1of4.png\n"
+            + "\r 25%|██▌       | 1/4 [00:04<00:13,  4.42s/it]"
+        let log = RunnerSupport.appendLog(chunk, to: "▸ Loading model...\n", stepwiseDir: Self.stepDir)
+        #expect(log == "▸ Loading model...\n 25%|██▌       | 1/4 [00:04<00:13,  4.42s/it]")
+    }
+
+    @Test func appendLogDropsStepwiseSaveLineSplitAcrossChunks() {
+        var log = RunnerSupport.appendLog("bar INFO: Image saved succ", to: "", stepwiseDir: Self.stepDir)
+        log = RunnerSupport.appendLog("essfully at: \(Self.stepDir)/seed_1_composite.png", to: log, stepwiseDir: Self.stepDir)
+        log = RunnerSupport.appendLog("\n", to: log, stepwiseDir: Self.stepDir)
+        #expect(log == "bar ")
+    }
+
+    @Test func appendLogKeepsFinalImageAndOtherLines() {
+        let chunk = "INFO: Image saved successfully at: /Pictures/out.png\n"
+            + "INFO: Metadata embedded successfully at: /Pictures/out.png\n"
+            + "WARNING: something in \(Self.stepDir)/x.png\n"
+            + "INFO: Image saved successfully at: \(Self.stepDir)-other/x.png\n"
+        #expect(RunnerSupport.appendLog(chunk, to: "", stepwiseDir: Self.stepDir) == chunk)
+    }
+
+    @Test func appendLogWithoutStepwiseDirKeepsSaveLines() {
+        let chunk = "INFO: Image saved successfully at: \(Self.stepDir)/seed_1_step1of4.png\n"
+        #expect(RunnerSupport.appendLog(chunk, to: "") == chunk)
     }
 
     // MARK: - insertBeforeLastLine
