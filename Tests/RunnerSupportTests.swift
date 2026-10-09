@@ -69,6 +69,17 @@ struct RunnerSupportTests {
         #expect(RunnerSupport.insertBeforeLastLine("abc", text: "X") == "Xabc")
     }
 
+    // MARK: - crashReason (#32)
+
+    @Test func crashReasonNamesTheSignal() {
+        #expect(RunnerSupport.crashReason("The generation process", signal: SIGABRT)
+            == "The generation process crashed (signal 6: Abort trap). Check the log.")
+        #expect(RunnerSupport.crashReason("mflux-save", signal: SIGKILL)
+            == "mflux-save crashed (signal 9: Killed). Check the log.")
+        #expect(RunnerSupport.crashReason("The warm driver", signal: SIGSEGV)
+            == "The warm driver crashed (signal 11: Segmentation fault). Check the log.")
+    }
+
     // MARK: - formatDuration
 
     @Test func formatDurationSubMinute() {

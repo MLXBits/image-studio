@@ -193,6 +193,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     private var runTask: Task<Void, Never>?
     private var currentProcess: Process?
+    /// The process ``cancel()`` stopped while it was still running. A signal
+    /// exit is a cancel only for that process; any other crashed (#32).
+    private var stoppedProcess: Process?
     private var driverJobActive = false
     /// Client of the active remote ComfyUI run — non-nil only while ``runViaComfyUI(_:)`` is executing. Stop routes through it because
     /// there is no local process to signal; the server must be asked (via /interrupt) and our own task made to observe cancellation.
@@ -245,7 +248,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
             return
         }
         guard driverJobActive else {
-            currentProcess?.terminate()
+            // A process that already exited (a crash still being read out) isn't stopped by this.
+            if let process = currentProcess, process.isRunning {
+                stoppedProcess = process
+                process.terminate()
+            }
             return
         }
         // Cooperative while the driver is mid-denoise: it aborts at the next
@@ -263,6 +270,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func run(_ job: Job, settings: AppSettings, timing: TimingStore) async {
         activeJob = job
+        stoppedProcess = nil
         job.status = .running
         job.startedAt = Date()
         job.log = ""
@@ -523,8 +531,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 lastCompletedOutputPath = outputTemplate
             }
             finishJob(job, status: .completed, stepDir: stepDir)
-        } else if process.terminationReason == .uncaughtSignal {
+        } else if process.terminationReason == .uncaughtSignal, stoppedProcess === process {
             finishJob(job, status: .cancelled, stepDir: stepDir)
+        } else if process.terminationReason == .uncaughtSignal {
+            let reason = RunnerSupport.crashReason("The generation process", signal: process.terminationStatus)
+            job.log += "⚠️  \(reason)\n"
+            finishJob(job, status: .failed(reason), stepDir: stepDir)
         } else {
             let lastLine = job.log.components(separatedBy: "\n")
                 .last { !$0.trimmingCharacters(in: .whitespaces).isEmpty } ?? "Unknown error"
@@ -725,6 +737,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
         }
         if process.terminationReason == .uncaughtSignal {
             try? FileManager.default.removeItem(at: savePath)
+            guard stoppedProcess === process else {
+                job.log += "⚠️  \(RunnerSupport.crashReason("mflux-save", signal: process.terminationStatus))\n"
+                return .failed
+            }
             return .cancelled
         }
         job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
