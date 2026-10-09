@@ -296,6 +296,7 @@ final class GalleryNSCollectionView: NSCollectionView {
         }
     }
 
+    /// Listed in `KeyboardShortcutCatalog.gallery`, at the end of this file.
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 123, 124: // Left / Right — keep horizontal navigation within the board
@@ -1055,4 +1056,19 @@ struct GallerySection {
     var visibleItems: [GalleryItem] {
         isExpanded ? items : []
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let gallery = Section("Gallery", [
+        Entry("Move between images (← and → stay within a board)", ["←"], ["→"], ["↑"], ["↓"]),
+        Entry("Flag as pick, then move to the next image", ["P"]),
+        Entry("Reject, then move to the next image", ["X"]),
+        Entry("Remove the flag", ["U"]),
+        Entry("Set the star rating", ["0–5"]),
+        Entry("Compare", ["C"]),
+        Entry("Delete the selection", ["⌫"], ["⌦"]),
+        Entry("Delete the selection without asking", ["⇧", "⌫"], ["⇧", "⌦"]),
+        Entry("Delete all rejected images", deleteRejected),
+        Entry("Clear the selection", ["⎋"]),
+    ])
 }

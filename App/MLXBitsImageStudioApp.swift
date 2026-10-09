@@ -70,6 +70,7 @@ struct MLXBitsImageStudioApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             AboutCommands()
+            KeyboardShortcutsCommands()
             CommandGroup(after: .help) {
                 // The bundled runtime's third-party notices (spec §2).
                 Button("Acknowledgements") {
@@ -80,6 +81,11 @@ struct MLXBitsImageStudioApp: App {
                 .disabled(settings.toolchain.acknowledgementsURL == nil)
             }
         }
+
+        Window("Keyboard Shortcuts", id: KeyboardShortcutsView.windowID) {
+            KeyboardShortcutsView()
+        }
+        .defaultSize(width: 500, height: 620)
 
         Window("About MLXBits Image Studio", id: AboutCommands.windowID) {
             AboutView()

@@ -42,6 +42,7 @@ struct PreviewPaneView: View {
     var escapeEnabled: Bool = false
 
     @State private var escapeMonitor: Any?
+    @State private var hostWindow = WindowRef()
 
     /// Escape should dismiss the preview whenever the ✕ would: any non-running active job
     /// or a selected gallery item. (The running state has no ✕ and is dismissed via Cancel.)
@@ -231,6 +232,7 @@ struct PreviewPaneView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(Color(nsColor: .windowBackgroundColor))
+        .background { WindowAccessor { hostWindow.window = $0 } }
         .onAppear {
             if escapeActive {
                 installEscapeMonitor()
@@ -292,7 +294,7 @@ struct PreviewPaneView: View {
             Text("Ready to generate")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            Text("Write a prompt and press ⌘↵")
+            Text("Write a prompt and press \(KeyboardShortcutCatalog.generate.symbols)")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
         }
@@ -594,8 +596,10 @@ struct PreviewPaneView: View {
     /// from an in-progress edit or a system panel (e.g. the color picker).
     private func installEscapeMonitor() {
         guard escapeMonitor == nil else { return }
+        let host = hostWindow
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard event.keyCode == 53 else { return event } // Escape
+            // Escape, in this window only.
+            guard event.keyCode == 53, host.owns(event) else { return event }
             if NSApp.keyWindow is NSPanel {
                 return event
             }

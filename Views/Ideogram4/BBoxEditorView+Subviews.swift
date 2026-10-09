@@ -267,7 +267,7 @@ extension BBoxEditorView {
                 Spacer()
                 Button("Add") { commitCreate() }
                     .disabled(newElementDesc.trimmingCharacters(in: .whitespaces).isEmpty)
-                    .keyboardShortcut(.return)
+                    .keyboardShortcut(KeyboardShortcutCatalog.addBox)
             }
         }
         .padding()
@@ -319,4 +319,9 @@ extension BBoxEditorView {
             .clipShape(RoundedRectangle(cornerRadius: IconButtonMetrics.cornerRadius))
             .iconMenuLabel()
     }
+}
+
+extension KeyboardShortcutCatalog {
+    /// `.keyboardShortcut(.return)` defaults to ⌘, so Add has always been ⌘↵.
+    static let addBox = Binding(key: .return, modifiers: .command)
 }

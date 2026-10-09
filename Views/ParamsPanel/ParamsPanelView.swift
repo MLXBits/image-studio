@@ -444,9 +444,9 @@ struct ParamsPanelView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
-                        .keyboardShortcut("v", modifiers: .command)
+                        .keyboardShortcut(KeyboardShortcutCatalog.pasteImage)
                         .accessibilityLabel("Paste image from clipboard")
-                        .help("Paste image from clipboard (⌘V)")
+                        .help("Paste image from clipboard (\(KeyboardShortcutCatalog.pasteImage.symbols))")
                     }
                 }
             } else {
@@ -579,9 +579,9 @@ struct ParamsPanelView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
-                    .keyboardShortcut("v", modifiers: .command)
+                    .keyboardShortcut(KeyboardShortcutCatalog.pasteImage)
                     .accessibilityLabel("Paste image from clipboard")
-                    .help("Paste image from clipboard (⌘V)")
+                    .help("Paste image from clipboard (\(KeyboardShortcutCatalog.pasteImage.symbols))")
                 }
             }
         }
@@ -794,4 +794,8 @@ private struct ThumbnailHoverPreview: ViewModifier {
                 }
             }
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let pasteImage = Binding(key: "v", modifiers: .command)
 }

@@ -139,7 +139,7 @@ struct SettingsView: View {
                             }
                         }
                     }
-                    Text("⌘⌥↵ generates this many images at once.")
+                    Text("\(KeyboardShortcutCatalog.generateBatch.symbols) generates this many images at once.")
                         .font(.caption).foregroundStyle(.secondary)
                 } header: {
                     Text("Iteration")

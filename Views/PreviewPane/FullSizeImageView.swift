@@ -27,6 +27,7 @@ struct FullSizeImageView: View {
 
     @State private var keyMonitor: Any?
     @State private var scrollMonitor: Any?
+    @State private var hostWindow = WindowRef()
     @State private var chromeVisible: Bool = true
     @State private var hideTask: Task<Void, Never>?
     @State private var scale: CGFloat = 1
@@ -140,6 +141,7 @@ struct FullSizeImageView: View {
                 showChrome()
             }
         }
+        .background { WindowAccessor { hostWindow.window = $0 } }
         .onAppear {
             installKeyMonitor()
             installScrollMonitor()
@@ -273,8 +275,10 @@ struct FullSizeImageView: View {
 
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
+        let host = hostWindow
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handleKey(event)
+            guard host.owns(event) else { return event }
+            return handleKey(event)
         }
     }
 
@@ -282,6 +286,7 @@ struct FullSizeImageView: View {
     /// through the gallery (not the grid's row-aware 2D navigation), so the right
     /// arrow advances past a row's edge to the next image. Culling keys mirror the
     /// grid: p/x/u flag, 0–5 rate, with pick/reject auto-advancing to the next image.
+    /// Listed in `KeyboardShortcutCatalog.fullSizeView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         if event.keyCode == 53 { // Escape
             onDismiss()
@@ -380,4 +385,16 @@ struct FullSizeImageView: View {
         guard containerFrame.contains(point) else { return nil }
         return point
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let fullSizeView = Section("Full-Size View", [
+        Entry("Previous image", ["←"]),
+        Entry("Next image", ["→"]),
+        Entry("Flag as pick, then show the next image", ["P"]),
+        Entry("Reject, then show the next image", ["X"]),
+        Entry("Remove the flag", ["U"]),
+        Entry("Set the star rating", ["0–5"]),
+        Entry("Close", ["⎋"]),
+    ])
 }
