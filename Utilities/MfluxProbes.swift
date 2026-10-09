@@ -11,6 +11,9 @@ nonisolated enum MfluxProbes {
     private final class ProbeCache<Value: Sendable>: @unchecked Sendable {
         private let lock = NSLock()
         private var results: [String: Value] = [:]
+        /// Bumped by ``remove(_:)``. A probe already running when its key is
+        /// removed returns its answer but doesn't cache it.
+        private var generations: [String: Int] = [:]
 
         func value(for key: String, compute: () -> Value) -> Value {
             lock.lock()
@@ -18,10 +21,13 @@ nonisolated enum MfluxProbes {
                 lock.unlock()
                 return hit
             }
+            let generation = generations[key, default: 0]
             lock.unlock()
             let computed = compute()
             lock.lock()
-            results[key] = computed
+            if generations[key, default: 0] == generation {
+                results[key] = computed
+            }
             lock.unlock()
             return computed
         }
@@ -29,6 +35,7 @@ nonisolated enum MfluxProbes {
         func remove(_ key: String) {
             lock.lock()
             results[key] = nil
+            generations[key, default: 0] += 1
             lock.unlock()
         }
     }

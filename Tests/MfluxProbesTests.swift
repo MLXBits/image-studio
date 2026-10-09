@@ -38,6 +38,26 @@ struct MfluxProbesTests {
         #expect(MfluxProbes.mfluxVersion(python: python.path) == "0.21.0")
     }
 
+    /// A probe that was already running when its answer was forgotten mustn't
+    /// put that old answer back in the cache.
+    @Test func aProbeRunningAcrossForgetDoesNotCacheItsAnswer() async throws {
+        let dir = FakeRuntime.tempDirectory("probe")
+        let answer = dir.appendingPathComponent("version")
+        let python = dir.appendingPathComponent("python")
+        // Reads the answer at once, then answers 0.6 s later.
+        try FakeRuntime.writeExecutable(
+            "#!/bin/sh\nv=$(cat '\(answer.path)')\nsleep 0.6\nprintf '%s' \"$v\"\n", to: python
+        )
+        try Data("0.20.0".utf8).write(to: answer)
+        let path = python.path
+        let running = Task.detached { MfluxProbes.mfluxVersion(python: path) }
+        try await Task.sleep(nanoseconds: 200_000_000)
+        try Data("0.21.0".utf8).write(to: answer)
+        MfluxProbes.forget(python: path)
+        #expect(await running.value == "0.20.0")
+        #expect(MfluxProbes.mfluxVersion(python: path) == "0.21.0")
+    }
+
     /// The cache probe gets the hub folder and one `family=repo` per request,
     /// and its JSON comes back keyed by repo.
     @Test func cacheCompletenessAsksAboutEachRepo() throws {
