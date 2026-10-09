@@ -102,6 +102,12 @@ final class ViewerFullScreenController {
 /// search field mustn't flag images or close the viewer.
 final class WindowRef {
     weak var window: NSWindow?
+
+    /// Whether `event` is this view's to handle. Until the window is known,
+    /// every event is, as before the check existed.
+    func owns(_ event: NSEvent) -> Bool {
+        window.map { event.window === $0 } ?? true
+    }
 }
 
 /// Hands the hosting `NSWindow` back once the view is planted in one.

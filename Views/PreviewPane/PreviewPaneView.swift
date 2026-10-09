@@ -596,9 +596,10 @@ struct PreviewPaneView: View {
     /// from an in-progress edit or a system panel (e.g. the color picker).
     private func installEscapeMonitor() {
         guard escapeMonitor == nil else { return }
+        let host = hostWindow
         escapeMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
             // Escape, in this window only.
-            guard event.keyCode == 53, event.window === hostWindow.window else { return event }
+            guard event.keyCode == 53, host.owns(event) else { return event }
             if NSApp.keyWindow is NSPanel {
                 return event
             }

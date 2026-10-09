@@ -275,8 +275,10 @@ struct FullSizeImageView: View {
 
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
+        let host = hostWindow
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handleKey(event)
+            guard host.owns(event) else { return event }
+            return handleKey(event)
         }
     }
 
@@ -286,7 +288,6 @@ struct FullSizeImageView: View {
     /// grid: p/x/u flag, 0–5 rate, with pick/reject auto-advancing to the next image.
     /// Listed in `KeyboardShortcutCatalog.fullSizeView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
-        guard event.window === hostWindow.window else { return event }
         if event.keyCode == 53 { // Escape
             onDismiss()
             return nil // consume — prevents system from exiting tiled/zoomed window state

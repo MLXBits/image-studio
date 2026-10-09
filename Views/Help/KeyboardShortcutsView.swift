@@ -4,7 +4,7 @@ extension KeyboardShortcutCatalog {
     static let showShortcuts = Binding(key: "/", modifiers: .command)
 
     static let general = Section("General", [
-        Entry("Keyboard Shortcuts", showShortcuts),
+        Entry("Show or hide this list", showShortcuts),
         Entry("Settings", ["⌘", ","]),
     ])
 }
@@ -35,7 +35,9 @@ struct KeyboardShortcutsView: View {
     /// Whether the window is on screen, so ⌘/ can close it again.
     private(set) static var isOpen = false
 
+    @Environment(\.dismissWindow) private var dismissWindow
     @State private var query = ""
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         let sections = KeyboardShortcutCatalog.filtered(query)
@@ -59,9 +61,21 @@ struct KeyboardShortcutsView: View {
                 }
             }
             .searchable(text: $query, placement: .toolbar, prompt: "Search shortcuts")
+            .searchFocused($searchFocused)
+        }
+        // Escape closes the window, as ⌘/ does.
+        .background {
+            Button("") { dismissWindow(id: Self.windowID) }
+                .keyboardShortcut(.cancelAction)
+                .hidden()
+                .accessibilityHidden(true)
         }
         .frame(minWidth: 420, idealWidth: 500, minHeight: 360, idealHeight: 620)
-        .onAppear { Self.isOpen = true }
+        .onAppear {
+            Self.isOpen = true
+            // Typing goes straight into the search.
+            searchFocused = true
+        }
         .onDisappear { Self.isOpen = false }
     }
 }

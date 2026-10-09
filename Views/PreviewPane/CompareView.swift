@@ -311,14 +311,15 @@ struct CompareView: View {
 
     private func installKeyMonitor() {
         guard keyMonitor == nil else { return }
+        let host = hostWindow
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            handleKey(event)
+            guard host.owns(event) else { return event }
+            return handleKey(event)
         }
     }
 
     /// Listed in `KeyboardShortcutCatalog.compareView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
-        guard event.window === hostWindow.window else { return event }
         switch event.keyCode {
         case 53: onDismiss(); return nil // Escape
         case 123: if canCycle {
