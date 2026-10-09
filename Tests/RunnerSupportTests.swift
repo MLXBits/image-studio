@@ -34,10 +34,16 @@ struct RunnerSupportTests {
     }
 
     @Test func appendLogDropsStepwiseSaveLineSplitAcrossChunks() {
-        var log = RunnerSupport.appendLog("bar INFO: Image saved succ", to: "", stepwiseDir: Self.stepDir)
+        let bar = " 50%|█████     | 2/4 [00:08<00:08,  4.40s/it]"
+        var log = RunnerSupport.appendLog(bar + "INFO: Image saved succ", to: "", stepwiseDir: Self.stepDir)
         log = RunnerSupport.appendLog("essfully at: \(Self.stepDir)/seed_1_composite.png", to: log, stepwiseDir: Self.stepDir)
         log = RunnerSupport.appendLog("\n", to: log, stepwiseDir: Self.stepDir)
-        #expect(log == "bar ")
+        #expect(log == bar)
+    }
+
+    @Test func appendLogKeepsAWarningThatQuotesAStepwiseSaveLine() {
+        let chunk = "WARNING: unexpected INFO: Image saved successfully at: \(Self.stepDir)/x.png\n"
+        #expect(RunnerSupport.appendLog(chunk, to: "", stepwiseDir: Self.stepDir) == chunk)
     }
 
     @Test func appendLogKeepsFinalImageAndOtherLines() {

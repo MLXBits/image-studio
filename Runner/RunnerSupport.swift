@@ -210,13 +210,16 @@ enum RunnerSupport {
     }
 
     /// Where a stepwise-preview save line starts within the current (unterminated)
-    /// line of `log`, or nil if that line isn't one. The marker can follow a tqdm bar.
+    /// line of `log`, or nil if that line isn't one. The marker must start the line or
+    /// directly follow a tqdm bar, so a warning that quotes a save line is kept whole.
     private static func stepwiseSaveLineStart(in log: String, stepwisePrefix: String) -> String.Index? {
         let lineStart = log.lastIndex(of: "\n").map { log.index(after: $0) } ?? log.startIndex
         let line = log[lineStart...]
         for marker in saveLogMarkers {
-            if let range = line.range(of: marker, options: .backwards),
-               line[range.upperBound...].hasPrefix(stepwisePrefix) {
+            guard let range = line.range(of: marker, options: .backwards),
+                  line[range.upperBound...].hasPrefix(stepwisePrefix) else { continue }
+            let before = String(line[..<range.lowerBound])
+            if before.isEmpty || (before.hasSuffix("]") && JobProgressParser.parseStep(from: before) != nil) {
                 return range.lowerBound
             }
         }
