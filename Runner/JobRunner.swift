@@ -383,7 +383,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let process = Process()
         process.executableURL = command.executableURL
         process.arguments = command.arguments + args
-        process.environment = settings.buildEnvironment()
+        process.environment = settings.buildEnvironment(interpreter: command.executable)
 
         currentProcess = process
         let stream = RunnerSupport.outputStream(for: process)
@@ -682,7 +682,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let process = Process()
         process.executableURL = save.executableURL
         process.arguments = save.arguments + args
-        process.environment = settings.buildEnvironment()
+        process.environment = settings.buildEnvironment(interpreter: save.executable)
 
         currentProcess = process
         let stream = RunnerSupport.outputStream(for: process)

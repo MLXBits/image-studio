@@ -978,7 +978,7 @@ class AppSettings {
         return FileManager.default.fileExists(atPath: snapshots.path)
     }
 
-    func buildEnvironment() -> [String: String] {
+    func buildEnvironment(interpreter: String? = nil) -> [String: String] {
         let home = NSHomeDirectory()
         var env = ProcessInfo.processInfo.environment
         env["PATH"] = "\(home)/.local/bin:/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin"
@@ -994,6 +994,6 @@ class AppSettings {
         if !hfToken.isEmpty {
             env["HF_TOKEN"] = hfToken
         }
-        return Toolchain.environment(base: env, cachesURL: Toolchain.cachesURL)
+        return toolchain.environment(base: env, interpreter: interpreter)
     }
 }

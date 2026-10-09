@@ -555,7 +555,7 @@ struct ModelDefaultsView: View {
         let process = Process()
         process.executableURL = save.executableURL
         process.arguments = save.arguments + args
-        process.environment = settings.buildEnvironment()
+        process.environment = settings.buildEnvironment(interpreter: save.executable)
 
         guard await runStreamingToCacheLog(process) else { return }
 

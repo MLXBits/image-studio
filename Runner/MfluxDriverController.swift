@@ -157,7 +157,7 @@ final class MfluxDriverController {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: python)
         proc.arguments = [script.path]
-        proc.environment = settings.buildEnvironment()
+        proc.environment = settings.buildEnvironment(interpreter: python)
 
         let stdinPipe = Pipe()
         let stdoutPipe = Pipe()
