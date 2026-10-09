@@ -118,16 +118,35 @@ struct ToolchainTests {
             base: [
                 "PYTHONHOME": "/elsewhere", "PYTHONPATH": "/elsewhere/lib",
                 "__PYVENV_LAUNCHER__": "/elsewhere/bin/python", "HF_HOME": "/models",
+                "PYTHONWARNINGS": "error", "PYTHONOPTIMIZE": "2", "PYTHONINSPECT": "1",
+                "PYTHONPLATLIBDIR": "lib64",
             ],
             cachesURL: caches
         )
         #expect(env["PYTHONHOME"] == nil)
         #expect(env["PYTHONPATH"] == nil)
+        #expect(env["PYTHONWARNINGS"] == nil)
+        #expect(env["PYTHONOPTIMIZE"] == nil)
+        #expect(env["PYTHONINSPECT"] == nil)
+        #expect(env["PYTHONPLATLIBDIR"] == nil)
         #expect(env["__PYVENV_LAUNCHER__"] == nil)
         #expect(env["HF_HOME"] == "/models")
         #expect(env["PYTHONNOUSERSITE"] == "1")
         #expect(env["PYTHONDONTWRITEBYTECODE"] == "1")
         #expect(env["PYTHONUNBUFFERED"] == "1")
         #expect(env["MPLCONFIGDIR"] == "/tmp/caches/matplotlib")
+    }
+
+    /// No bytecode goes into the signed bundle, but a Custom Python (a dev
+    /// venv) keeps its bytecode cache rather than recompiling every run.
+    @Test func onlyTheBundledInterpreterSkipsBytecode() throws {
+        let runtime = try FakeRuntime()
+        let custom = try customVenv()
+        let toolchain = runtime.toolchain(customPython: custom)
+        let inherited = ["PYTHONDONTWRITEBYTECODE": "1"]
+        #expect(toolchain.environment(base: [:], interpreter: runtime.python.path)["PYTHONDONTWRITEBYTECODE"] == "1")
+        #expect(toolchain.environment(base: [:], interpreter: nil)["PYTHONDONTWRITEBYTECODE"] == "1")
+        #expect(toolchain.environment(base: inherited, interpreter: custom)["PYTHONDONTWRITEBYTECODE"] == nil)
+        #expect(toolchain.environment(base: [:], interpreter: custom)["PYTHONNOUSERSITE"] == "1")
     }
 }

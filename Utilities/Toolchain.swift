@@ -47,14 +47,11 @@ nonisolated struct Toolchain: Equatable, Sendable {
 
     /// The child-process environment (spec §3): no user site-packages, no
     /// bytecode written into the signed bundle, matplotlib's cache in Caches,
-    /// and none of the inherited variables that would point the interpreter
-    /// at another installation. An app launched from a Terminal inherits the
-    /// shell's.
+    /// and no inherited `PYTHON*` variable (`PYTHONHOME`, `PYTHONWARNINGS=error`,
+    /// `PYTHONOPTIMIZE`, …) or `__PYVENV_LAUNCHER__`. An app launched from a
+    /// Terminal inherits the shell's; one launched by `open` or launchd doesn't.
     static func environment(base: [String: String], cachesURL: URL) -> [String: String] {
-        var env = base
-        for key in ["PYTHONHOME", "PYTHONPATH", "__PYVENV_LAUNCHER__"] {
-            env[key] = nil
-        }
+        var env = base.filter { !$0.key.hasPrefix("PYTHON") && $0.key != "__PYVENV_LAUNCHER__" }
         env["PYTHONNOUSERSITE"] = "1"
         env["PYTHONDONTWRITEBYTECODE"] = "1"
         env["PYTHONUNBUFFERED"] = "1"
@@ -137,6 +134,17 @@ nonisolated struct Toolchain: Equatable, Sendable {
 
     func interpreter(for tool: PythonTool) throws -> String {
         try tool.isMflux ? mfluxInterpreter() : bundledInterpreter()
+    }
+
+    /// ``environment(base:cachesURL:)`` for a process run by `interpreter`.
+    /// `PYTHONDONTWRITEBYTECODE` protects the signed bundle, so a Custom Python
+    /// (a dev venv) writes bytecode as usual instead of recompiling every run.
+    func environment(base: [String: String], interpreter: String?) -> [String: String] {
+        var env = Self.environment(base: base, cachesURL: Self.cachesURL)
+        if let interpreter, interpreter != bundledPython {
+            env["PYTHONDONTWRITEBYTECODE"] = nil
+        }
+        return env
     }
 
     func command(_ tool: PythonTool) throws -> ToolCommand {
