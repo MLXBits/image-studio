@@ -125,8 +125,7 @@ struct ScenarioGeneratorView: View {
         .padding(.vertical, 8)
     }
 
-    /// One row when it fits, else Edit System Prompt… above the actions, so a narrow
-    /// panel (min 380pt) never squeezes a button label onto two lines.
+    /// One row when it fits, else Edit System Prompt… above the actions; no label wraps.
     private var footer: some View {
         ViewThatFits(in: .horizontal) {
             HStack {
@@ -148,6 +147,7 @@ struct ScenarioGeneratorView: View {
             NSWorkspace.shared.open(ScenarioPromptConfig.userConfigURL)
         }
         .buttonStyle(.plain)
+        .fixedSize()
         .focusEffectDisabled()
         .font(.caption)
         .foregroundStyle(.secondary)
