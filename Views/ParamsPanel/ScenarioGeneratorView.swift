@@ -125,30 +125,48 @@ struct ScenarioGeneratorView: View {
         .padding(.vertical, 8)
     }
 
+    /// One row when it fits, else Edit System Prompt… above the actions, so a narrow
+    /// panel (min 380pt) never squeezes a button label onto two lines.
     private var footer: some View {
-        HStack {
-            Button("Edit System Prompt…") {
-                try? ScenarioPromptConfig.seedIfNeeded()
-                NSWorkspace.shared.open(ScenarioPromptConfig.userConfigURL)
+        ViewThatFits(in: .horizontal) {
+            HStack {
+                editSystemPromptButton
+                footerActions
             }
-            .buttonStyle(.plain)
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .help("The editable prompt file governs what the model will write")
-            Spacer()
-            Button("Generate") { startGenerate() }
-                .disabled(session.isGenerating || session.outline.trimmingCharacters(in: .whitespaces).isEmpty)
-            queueControl
-            Button("Use") {
-                onSelect(session.result)
-                onClose()
+            VStack(alignment: .leading, spacing: 8) {
+                editSystemPromptButton
+                HStack { footerActions }
             }
-            .keyboardShortcut(.return, modifiers: [])
-            .buttonStyle(.borderedProminent)
-            .disabled(session.result.isEmpty)
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
+    }
+
+    private var editSystemPromptButton: some View {
+        Button("Edit System Prompt…") {
+            try? ScenarioPromptConfig.seedIfNeeded()
+            NSWorkspace.shared.open(ScenarioPromptConfig.userConfigURL)
+        }
+        .buttonStyle(.plain)
+        .focusEffectDisabled()
+        .font(.caption)
+        .foregroundStyle(.secondary)
+        .help("The editable prompt file governs what the model will write")
+    }
+
+    /// Right-aligned by its leading Spacer, in either footer layout.
+    @ViewBuilder private var footerActions: some View {
+        Spacer()
+        Button("Generate") { startGenerate() }
+            .disabled(session.isGenerating || session.outline.trimmingCharacters(in: .whitespaces).isEmpty)
+        queueControl
+        Button("Use") {
+            onSelect(session.result)
+            onClose()
+        }
+        .keyboardShortcut(.return, modifiers: [])
+        .buttonStyle(.borderedProminent)
+        .disabled(session.result.isEmpty)
     }
 
     // MARK: - Content sections

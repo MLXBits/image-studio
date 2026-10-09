@@ -77,6 +77,9 @@ extension ScenarioGeneratorView {
         .foregroundStyle(.white)
         .background(RoundedRectangle(cornerRadius: 5).fill(Color.accentColor))
         .opacity(enabled ? 1.0 : 0.5)
+        // Never narrower than "Queue N" on one line: a tight footer HStack squeezes
+        // this plain label first and wraps it, even when its ideal width fits.
+        .fixedSize()
         .focusEffectDisabled()
         .help(held > 0
             ? "Queue the \(held) prompt\(held == 1 ? "" : "s") already rolled"
