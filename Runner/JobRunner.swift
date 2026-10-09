@@ -343,6 +343,19 @@ final class JobRunner<Spec: JobRunnerSpec> {
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
             return
         }
+        // A Custom Python has only the launchers its mflux installed. Edit mode and
+        // SeedVR2 aren't gated by availableModels, so say which one is missing here
+        // rather than let run_tool exit 127 with "no installed tool".
+        guard settings.toolchain.hasTool(tool) else {
+            let message = "The Custom Python's mflux has no \(tool.rawValue). "
+                + "Update mflux there, or use the bundled Python (Settings → Advanced)."
+            job.log += "⚠️  \(message)\n"
+            finishJob(job, status: .failed(message), stepDir: stepDir)
+            return
+        }
+        if command.executable != settings.toolchain.bundledPython {
+            job.log += "▸ Python: \(command.executable)\n"
+        }
 
         // One-time mflux-save quantization pass, so every subsequent load skips
         // in-memory quantization. The spec decides whether the job needs it.
