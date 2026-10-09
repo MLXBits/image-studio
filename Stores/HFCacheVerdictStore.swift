@@ -8,8 +8,8 @@ import Foundation
 /// family's loader asks for. A refresh asks mflux itself, through the bundled
 /// `hf_cache_probe.py`, about every built-in model's folder in the cache, and
 /// the quick check defers to the answers. An answer holds while its folder's
-/// `blobs/` is unchanged; after a download or a cleanup there, the quick check
-/// decides again until the next refresh.
+/// `blobs/` and `snapshots/` are unchanged; after a download or a cleanup
+/// there, the quick check decides again until the next refresh.
 ///
 /// Refreshed at launch, and by Settings ▸ Models when it opens and after each
 /// download or deletion. Views read it through `isOnDisk`, so they redraw
@@ -26,8 +26,8 @@ final class HFCacheVerdictStore {
 
     nonisolated private struct Verdict: Sendable {
         let complete: Bool
-        /// `blobs/`'s modification date when mflux was asked.
-        let blobsModified: Date?
+        /// The folder's ``stamp(_:)`` when mflux was asked.
+        let stamp: [String: Date]
     }
 
     static let shared = HFCacheVerdictStore()
@@ -61,19 +61,37 @@ final class HFCacheVerdictStore {
         folder.standardizedFileURL.path
     }
 
-    nonisolated private static func blobsModified(_ folder: URL) -> Date? {
-        let blobs = folder.appendingPathComponent("blobs", isDirectory: true)
-        return try? blobs.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate
+    /// The modification dates of what mflux's answer rests on: `blobs/`, and
+    /// every folder under `snapshots/`, where hf links each revision's files.
+    /// Adding or removing a blob or a link changes its parent folder's date.
+    /// (mflux never reads `refs/`.)
+    nonisolated private static func stamp(_ folder: URL) -> [String: Date] {
+        let keys: Set<URLResourceKey> = [.isDirectoryKey, .contentModificationDateKey]
+        let snapshots = folder.appendingPathComponent("snapshots", isDirectory: true)
+        var dates: [String: Date] = [:]
+        var folders = [folder.appendingPathComponent("blobs", isDirectory: true), snapshots]
+        let walk = FileManager.default.enumerator(at: snapshots, includingPropertiesForKeys: Array(keys))
+        while let url = walk?.nextObject() as? URL {
+            if (try? url.resourceValues(forKeys: keys))?.isDirectory == true {
+                folders.append(url)
+            }
+        }
+        for url in folders {
+            if let date = try? url.resourceValues(forKeys: keys).contentModificationDate {
+                dates[url.path] = date
+            }
+        }
+        return dates
     }
 
     /// Keyed by the folder's standardized path.
     private var verdicts: [String: Verdict] = [:]
 
     /// mflux's answer for the cache folder `folder`, or nil when there is none
-    /// or its `blobs/` changed since.
+    /// or its `blobs/` or `snapshots/` changed since.
     func isComplete(_ folder: URL) -> Bool? {
         guard let verdict = verdicts[Self.key(folder)],
-              verdict.blobsModified == Self.blobsModified(folder) else { return nil }
+              verdict.stamp == Self.stamp(folder) else { return nil }
         return verdict.complete
     }
 
@@ -89,13 +107,13 @@ final class HFCacheVerdictStore {
         let requests = Self.requests(hubDir: hubDir)
         guard let python, !requests.isEmpty else { return }
         let answers = await Task.detached(priority: .utility) {
-            // Dated before asking, so a download that lands meanwhile makes the answer stale.
-            let dates = requests.map { Self.blobsModified($0.folder) }
+            // Stamped before asking, so a download that lands meanwhile makes the answer stale.
+            let stamps = requests.map { Self.stamp($0.folder) }
             let complete = MfluxProbes.hfCacheCompleteness(
                 python: python, script: script, hubDir: hubDir, requests: requests.map { ($0.family, $0.repo) }
             ) ?? [:]
-            return zip(requests, dates).compactMap { request, date in
-                complete[request.repo].map { (Self.key(request.folder), Verdict(complete: $0, blobsModified: date)) }
+            return zip(requests, stamps).compactMap { request, stamp in
+                complete[request.repo].map { (Self.key(request.folder), Verdict(complete: $0, stamp: stamp)) }
             }
         }.value
         for (key, verdict) in answers {

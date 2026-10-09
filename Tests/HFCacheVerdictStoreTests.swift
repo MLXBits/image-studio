@@ -88,6 +88,19 @@ struct HFCacheVerdictStoreTests {
         #expect(FluxModelVariant.isCompleteHFCache(at: folder, verdicts: store))
     }
 
+    /// hf links a file into the snapshot after its blob lands, and a new
+    /// revision can link blobs already there: neither touches `blobs/`.
+    @Test func anAnswerLapsesWhenASnapshotChanges() async throws {
+        try writeWeights(to: blobs.appendingPathComponent("weights"))
+        let vae = folder.appendingPathComponent("snapshots/rev1/vae", isDirectory: true)
+        try FileManager.default.createDirectory(at: vae, withIntermediateDirectories: true)
+        let store = HFCacheVerdictStore()
+        try await refresh(store, printing: #"{"\#(repo)": false}"#)
+        #expect(store.isComplete(folder) == false)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSinceNow: 60)], ofItemAtPath: vae.path)
+        #expect(store.isComplete(folder) == nil)
+    }
+
     @Test func aFailedProbeLeavesTheQuickCheck() async throws {
         try writeWeights(to: blobs.appendingPathComponent("weights"))
         let store = HFCacheVerdictStore()
