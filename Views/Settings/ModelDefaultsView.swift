@@ -1,16 +1,11 @@
-// swiftlint:disable file_length
 import SwiftUI
 
 /// Per-model settings form. Shows inside the Settings "Models" tab.
 ///
 /// The form bodies live in `ModelDefaultsView+Forms` and the reusable field
 /// builders in `ModelDefaultsView+Fields`; both reach `settings` (internal here)
-/// and the shared helpers. Caching state stays private to this file.
+/// and the shared helpers. Downloads belong to ``WeightDownloadStore``.
 struct ModelDefaultsView: View {
-    private enum CachePhase: Equatable {
-        case idle, running, done, failed(String)
-    }
-
     /// Sidebar selection: a generative FLUX/Ideogram/Krea model, or the SeedVR2
     /// upscaler (which isn't a ``FluxModelVariant`` and has no weight-cache rows).
     enum Selection: Hashable {
@@ -20,6 +15,7 @@ struct ModelDefaultsView: View {
 
     @Environment(AppSettings.self) var settings
     @Environment(LoraLibraryStore.self) private var loraLibrary
+    @Environment(WeightDownloadStore.self) private var weightDownloads
     @State private var selection: Selection = .model(.builtIn[0])
 
     /// The selected FLUX model, or the first built-in as a placeholder while the
@@ -31,12 +27,8 @@ struct ModelDefaultsView: View {
         return .builtIn[0]
     }
 
-    @State private var cachePhase: CachePhase = .idle
-    @State private var cacheLog: String = ""
-    @State private var cacheProcess: Process?
+    /// Changes when weights are deleted here; downloads bump the store's revision.
     @State private var cacheRevision = UUID()
-    @State private var userCancelledCache = false
-    @State private var cacheStartedAt: Date?
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
     /// Discovered ComfyUI model lists, bound to the Krea 2 and SeedVR2 forms. Refreshed when a server URL is set.
     @State private var comfyModels = ComfyModelStore()
@@ -66,15 +58,14 @@ struct ModelDefaultsView: View {
         }
         // Ask mflux which models are downloaded (#19) on open, after each
         // download or deletion, and when the models folder moves.
-        .task(id: "\(cacheRevision) \(settings.hfHubDir.path)") {
+        .task(id: "\(cacheRevision) \(weightDownloads.revision) \(settings.hfHubDir.path)") {
             await HFCacheVerdictStore.shared.refresh(settings: settings)
         }
-        .onChange(of: selection) { _, _ in
-            cachePhase = .idle
-            cacheLog = ""
-            userCancelledCache = true
-            cacheProcess?.stopGracefully()
-            cacheProcess = nil
+        // Leaving a page clears its finished row and log; a download keeps going (#27).
+        .onChange(of: selection) { old, _ in
+            if case let .model(model) = old {
+                weightDownloads.dismiss(model)
+            }
         }
         .onChange(of: settings.comfyURL) { _, newURL in
             let trimmed = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -260,10 +251,10 @@ struct ModelDefaultsView: View {
                 }
             }
 
-            cacheStatusRow(model: selectedModel, quantize: quantize)
+            cacheStatusRow(model: selectedModel)
 
-            if cachePhase != .idle {
-                cacheLogView
+            if let run = weightDownloads.runs[selectedModel] {
+                cacheLogView(run)
             }
 
             if selectedModel.isIdeogram4 {
@@ -296,10 +287,10 @@ struct ModelDefaultsView: View {
 
     // MARK: - Cache log
 
-    private var cacheLogView: some View {
+    private func cacheLogView(_ run: WeightDownloadStore.Run) -> some View {
         ScrollViewReader { proxy in
             ScrollView {
-                Text(cacheLog.isEmpty ? "Starting…" : cacheLog)
+                Text(run.log.isEmpty ? "Starting…" : run.log)
                     .font(.system(size: 10, design: .monospaced))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(6)
@@ -308,44 +299,17 @@ struct ModelDefaultsView: View {
             }
             .frame(height: 120)
             .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
-            .onChange(of: cacheLog) { _, _ in proxy.scrollTo("cacheLogEnd") }
+            .onChange(of: run.log) { _, _ in proxy.scrollTo("cacheLogEnd") }
             .onAppear { proxy.scrollTo("cacheLogEnd") }
         }
     }
 
     @ViewBuilder
-    private func cacheStatusRow(model: FluxModelVariant, quantize: Int) -> some View {
-        switch cachePhase {
+    private func cacheStatusRow(model: FluxModelVariant) -> some View {
+        switch weightDownloads.runs[model]?.phase {
         case .running:
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    ProgressView().controlSize(.small)
-                    // A model with a pre-quantized repo (Ideogram, Z-Image Turbo Q4)
-                    // just downloads it; only an mflux-save pass from a local BF16 base
-                    // is a conversion.
-                    let usesPreQuant = model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil
-                    let verb = !usesPreQuant
-                        && model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir) && quantize != 0
-                        ? "Converting" : "Downloading"
-                    // hf download emits noisy parallel progress bars that don't render
-                    // well in a plain log, so poll the on-disk payload for live feedback.
-                    TimelineView(.periodic(from: cacheStartedAt ?? Date(), by: 1)) { ctx in
-                        let elapsed = Int(ctx.date.timeIntervalSince(cacheStartedAt ?? ctx.date))
-                        let mm = elapsed / 60
-                        let ss = elapsed % 60
-                        let time = "\(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s"
-                        Text("\(verb)… \(time)\(downloadedSuffix(model: model, quantize: quantize))")
-                            .font(.caption).foregroundStyle(.secondary)
-                    }
-                    Spacer()
-                    Button("Cancel") {
-                        userCancelledCache = true
-                        cacheProcess?.stopGracefully()
-                    }
-                    .buttonStyle(.bordered).controlSize(.small)
-                }
-                Text("You can close Settings — this continues in the background.")
-                    .font(.caption2).foregroundStyle(.tertiary)
+            if let run = weightDownloads.runs[model] {
+                runningRow(run)
             }
 
         case let .failed(message):
@@ -353,18 +317,22 @@ struct ModelDefaultsView: View {
                 HStack(spacing: 8) {
                     Label("Failed", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption).foregroundStyle(.red)
-                    Button("Retry") { startCache(model: model, quantize: quantize) }
-                        .buttonStyle(.bordered).controlSize(.small)
+                    Button("Retry") {
+                        if let run = weightDownloads.runs[model] {
+                            weightDownloads.start(model: model, quantize: run.quantize, settings: settings)
+                        }
+                    }
+                    .buttonStyle(.bordered).controlSize(.small)
                     Spacer()
                 }
                 Text(message)
                     .font(.caption2).foregroundStyle(.red.opacity(0.8))
             }
 
-        case .idle, .done:
+        case nil, .done:
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
-                let _ = cacheRevision // invalidates view when cache changes on disk
+                let _ = (cacheRevision, weightDownloads.revision) // invalidates view when cache changes on disk
                 let cachedVariants = [0, 4, 8].filter {
                     model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
                 }
@@ -393,7 +361,7 @@ struct ModelDefaultsView: View {
                 ) { qLevel in
                     let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
                     Button("Download \(qLabel)") {
-                        startCache(model: model, quantize: qLevel)
+                        weightDownloads.start(model: model, quantize: qLevel, settings: settings)
                     }
                     .buttonStyle(.bordered).controlSize(.small)
                 }
@@ -411,207 +379,46 @@ struct ModelDefaultsView: View {
         cacheRevision = UUID()
     }
 
-    // MARK: - Model caching
-
-    private func startCache(model: FluxModelVariant, quantize: Int) {
-        cachePhase = .running
-        cacheLog = ""
-        cacheStartedAt = Date()
-        userCancelledCache = false
-        // Models with a published pre-quantized repo (Ideogram, Z-Image Turbo Q4)
-        // load those weights straight from the HF cache, so a plain `hf download`
-        // of that repo is all that's needed — no mflux-save quantize pass (which
-        // would also leave a redundant full-precision copy on disk).
-        if model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil {
-            Task { await runPreQuantizedDownload(model: model, quantize: quantize) }
-        } else {
-            Task { await runMfluxSave(model: model, quantize: quantize) }
+    private func runningRow(_ run: WeightDownloadStore.Run) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 8) {
+                ProgressView().controlSize(.small)
+                // Only an mflux-save pass from base weights already on disk is a
+                // conversion; a pass that fetches them downloads first.
+                let converting: Bool = {
+                    guard case .save = run.plan, run.quantize != 0 else { return false }
+                    return run.model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
+                }()
+                let verb = converting ? "Converting" : "Downloading"
+                // hf download emits noisy parallel progress bars that don't render
+                // well in a plain log, so poll the on-disk payload for live feedback.
+                TimelineView(.periodic(from: run.startedAt, by: 1)) { ctx in
+                    let elapsed = Int(ctx.date.timeIntervalSince(run.startedAt))
+                    let mm = elapsed / 60
+                    let ss = elapsed % 60
+                    let time = "\(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s"
+                    Text("\(verb)… \(time)\(downloadedSuffix(run))")
+                        .font(.caption).foregroundStyle(.secondary)
+                }
+                Spacer()
+                Button("Cancel") { weightDownloads.cancel(run.model) }
+                    .buttonStyle(.bordered).controlSize(.small)
+            }
+            Text("You can close Settings — this continues in the background.")
+                .font(.caption2).foregroundStyle(.tertiary)
         }
     }
 
-    /// " · 4.4 / 27 GB" while an Ideogram repo is downloading, polled from the blobs
-    /// dir (includes in-flight `.incomplete` files). Empty for other models / no bytes yet.
-    private func downloadedSuffix(model: FluxModelVariant, quantize: Int) -> String {
-        guard model.isIdeogram4 || model.preQuantizedRepoID(quantize: quantize) != nil else { return "" }
-        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
-        let bytes = ModelDownloadStore.bytesOnDisk(repo: repo, hubDir: settings.hfHubDir)
+    /// " · 4.4 / 27 GB" while the run's download is landing, polled from its blobs
+    /// dir (includes in-flight `.incomplete` files). Empty when it downloads nothing
+    /// or no bytes have landed yet.
+    private func downloadedSuffix(_ run: WeightDownloadStore.Run) -> String {
+        guard let target = WeightDownloadStore.progressTarget(of: run, hubDir: settings.hfHubDir) else { return "" }
+        let bytes = ModelDownloadStore.blobBytes(in: target.folder)
         guard bytes > 0 else { return "" }
         let gb = Double(bytes) / 1_073_741_824
-        let total = model.approximateSizeGB(quantize: quantize)
-        return total > 0
-            ? " · \(String(format: "%.1f", gb)) / \(String(format: "%.0f", total)) GB"
+        return target.totalGB > 0
+            ? " · \(String(format: "%.1f", gb)) / \(String(format: "%.0f", target.totalGB)) GB"
             : " · \(String(format: "%.1f", gb)) GB"
-    }
-
-    private func runPreQuantizedDownload(model: FluxModelVariant, quantize: Int) async {
-        let repo = model.preQuantizedRepoID(quantize: quantize) ?? "ideogram-ai/ideogram-4-fp8"
-        // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
-        let hf: ToolCommand
-        do {
-            hf = try settings.toolchain.command(.hf)
-        } catch {
-            cachePhase = .failed(error.localizedDescription)
-            return
-        }
-        cacheLog = "▸ Downloading \(repo) into the Hugging Face cache…\n"
-        let hubDir = settings.hfHubDir
-        await Task.detached(priority: .utility) {
-            ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: hubDir)
-        }.value
-        // Cancelled during the sweep, with no process yet for Cancel to stop.
-        guard !userCancelledCache else {
-            cachePhase = .idle
-            return
-        }
-
-        let process = Process()
-        process.executableURL = hf.executableURL
-        process.arguments = hf.arguments + ["download", repo]
-        process.environment = settings.buildEnvironment()
-
-        guard await runStreamingToCacheLog(process) else { return }
-
-        if process.terminationStatus == 0 {
-            cacheLog += "\n✓ Cached \(repo)."
-            cachePhase = .done
-            cacheRevision = UUID()
-        } else if userCancelledCache {
-            // Stopped with SIGINT, hf exits with status 1 ("Aborted!").
-            cachePhase = .idle
-        } else if process.terminationReason == .uncaughtSignal {
-            cachePhase = .failed("Download interrupted. Check the log below.")
-        } else {
-            cachePhase = .failed("hf exited with status \(process.terminationStatus). Check the log below.")
-        }
-    }
-
-    /// Runs `process` with combined stdout/stderr streamed line-by-line into cacheLog.
-    /// Returns false (and sets cachePhase = .failed) if the process couldn't be launched;
-    /// otherwise returns after exit so the caller can inspect terminationStatus/reason.
-    private func runStreamingToCacheLog(_ process: Process) async -> Bool {
-        cacheProcess = process
-        let pipe = Pipe()
-        process.standardOutput = pipe
-        process.standardError = pipe
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
-        do { try process.run() } catch {
-            cacheProcess = nil
-            cachePhase = .failed(error.localizedDescription)
-            return false
-        }
-        for await chunk in stream {
-            cacheLog = appendCacheLog(chunk, to: cacheLog)
-        }
-        process.waitUntilExit()
-        cacheProcess = nil
-        return true
-    }
-
-    private func runMfluxSave(model: FluxModelVariant, quantize: Int) async {
-        let save: ToolCommand
-        do {
-            save = try settings.toolchain.command(.save)
-        } catch {
-            cachePhase = .failed(error.localizedDescription)
-            return
-        }
-        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
-        try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
-
-        var args: [String]
-        if quantize != 0 {
-            // Prefer local BF16 as source (no download needed); fall back to pre-quantized repo or HF ID.
-            let bf16Saved = model.savedModelPath(quantize: 0, in: settings.effectiveMfluxCacheDir)
-            if FluxModelVariant.hasSavedWeights(at: bf16Saved) {
-                args = ["--model", bf16Saved.path, "--quantize", "\(quantize)", "--path", savePath.path]
-            } else if model.isOnDisk(quantize: 0, hubDir: settings.hfHubDir), let bf16Repo = model.bf16HFRepoID {
-                args = ["--model", bf16Repo, "--quantize", "\(quantize)", "--path", savePath.path]
-            } else if let preRepo = model.preQuantizedRepoID(quantize: quantize) {
-                args = ["--model", preRepo, "--path", savePath.path]
-            } else {
-                args = ["--model", model.mfluxModelID, "--quantize", "\(quantize)", "--path", savePath.path]
-            }
-        } else if let preRepo = model.preQuantizedRepoID(quantize: quantize) {
-            args = ["--model", preRepo, "--path", savePath.path]
-        } else {
-            args = ["--model", model.mfluxModelID, "--path", savePath.path]
-        }
-
-        let process = Process()
-        process.executableURL = save.executableURL
-        process.arguments = save.arguments + args
-        process.environment = settings.buildEnvironment(interpreter: save.executable)
-
-        guard await runStreamingToCacheLog(process) else { return }
-
-        if process.terminationStatus == 0 {
-            let savedFiles = (try? FileManager.default.contentsOfDirectory(
-                at: savePath, includingPropertiesForKeys: nil
-            ))?.map(\.lastPathComponent) ?? []
-            cacheLog += "\nSaved to: \(savePath.path)\nFiles: \(savedFiles.isEmpty ? "(none found)" : savedFiles.joined(separator: ", "))"
-            cachePhase = .done
-            cacheRevision = UUID()
-        } else if process.terminationReason == .uncaughtSignal || userCancelledCache {
-            try? FileManager.default.removeItem(at: savePath)
-            if userCancelledCache {
-                cachePhase = .idle
-            } else {
-                cachePhase = .failed("Process crashed (signal \(process.terminationStatus)). Check the log below.")
-            }
-        } else {
-            cachePhase = .failed("mflux-save exited with status \(process.terminationStatus). Check the log below.")
-        }
-    }
-
-    private func appendCacheLog(_ chunk: String, to log: String) -> String {
-        var result = log
-        var idx = chunk.startIndex
-        while idx < chunk.endIndex {
-            let char = chunk[idx]
-            idx = chunk.index(after: idx)
-            if char == "\u{1B}" {
-                // ESC — consume the full CSI sequence \x1b[<params><letter>
-                guard idx < chunk.endIndex, chunk[idx] == "[" else { continue }
-                idx = chunk.index(after: idx)
-                while idx < chunk.endIndex && !chunk[idx].isLetter {
-                    idx = chunk.index(after: idx)
-                }
-                guard idx < chunk.endIndex else { continue }
-                let cmd = chunk[idx]
-                idx = chunk.index(after: idx)
-                if cmd == "A" {
-                    // Cursor up: remove current line and the \n above it, moving to end of previous line
-                    if let nl = result.lastIndex(of: "\n") {
-                        result = String(result[result.startIndex ..< nl])
-                    } else {
-                        result = ""
-                    }
-                }
-            } else if char == "\r" {
-                if let nl = result.lastIndex(of: "\n") {
-                    result = String(result[...nl])
-                } else {
-                    result = ""
-                }
-            } else {
-                result.append(char)
-            }
-        }
-        return result
     }
 }

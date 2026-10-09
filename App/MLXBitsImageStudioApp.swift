@@ -32,6 +32,8 @@ struct MLXBitsImageStudioApp: App {
     @State private var updateChecker = UpdateChecker()
     @State private var backendModels = BackendModelStore()
     @State private var modelDownloads = ModelDownloadStore()
+    /// Settings ▸ Models downloads, which outlive the Settings window (#27).
+    @State private var weightDownloads = WeightDownloadStore()
     @State private var support: SupportStore
     @State private var tipJar: TipJarStore
 
@@ -94,6 +96,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(driverController)
                 .environment(loraLibrary)
                 .environment(support)
+                .environment(weightDownloads)
         }
 
         Window("Support MLXBits Image Studio", id: SupportView.windowID) {
