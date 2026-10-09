@@ -683,7 +683,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     // MARK: - mflux-save for quantized weights
 
     private func runSave(job: Job, savePath: URL, settings: AppSettings) async -> SaveResult {
-        guard let save = try? settings.toolchain.command(.save) else {
+        // A Custom Python may lack the mflux-save launcher; quantize in memory instead.
+        guard settings.toolchain.hasTool(.save), let save = try? settings.toolchain.command(.save) else {
             job.log += "⚠️  mflux-save unavailable — falling back to in-memory quantization.\n"
             return .success // non-fatal: generate will quantize in-memory instead
         }
