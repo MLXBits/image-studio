@@ -27,6 +27,7 @@ struct FullSizeImageView: View {
 
     @State private var keyMonitor: Any?
     @State private var scrollMonitor: Any?
+    @State private var hostWindow = WindowRef()
     @State private var chromeVisible: Bool = true
     @State private var hideTask: Task<Void, Never>?
     @State private var scale: CGFloat = 1
@@ -140,6 +141,7 @@ struct FullSizeImageView: View {
                 showChrome()
             }
         }
+        .background { WindowAccessor { hostWindow.window = $0 } }
         .onAppear {
             installKeyMonitor()
             installScrollMonitor()
@@ -284,6 +286,7 @@ struct FullSizeImageView: View {
     /// grid: p/x/u flag, 0–5 rate, with pick/reject auto-advancing to the next image.
     /// Listed in `KeyboardShortcutCatalog.fullSizeView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
+        guard event.window === hostWindow.window else { return event }
         if event.keyCode == 53 { // Escape
             onDismiss()
             return nil // consume — prevents system from exiting tiled/zoomed window state

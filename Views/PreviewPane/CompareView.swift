@@ -38,6 +38,7 @@ struct CompareView: View {
     @State private var selectFrame: CGRect = .zero
     @State private var keyMonitor: Any?
     @State private var scrollMonitor: Any?
+    @State private var hostWindow = WindowRef()
 
     private var canCycle: Bool {
         candidateCount > 1
@@ -69,6 +70,7 @@ struct CompareView: View {
             }
             .padding(12)
         }
+        .background { WindowAccessor { hostWindow.window = $0 } }
         .onAppear {
             loadSelect()
             loadCandidate()
@@ -316,6 +318,7 @@ struct CompareView: View {
 
     /// Listed in `KeyboardShortcutCatalog.compareView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
+        guard event.window === hostWindow.window else { return event }
         switch event.keyCode {
         case 53: onDismiss(); return nil // Escape
         case 123: if canCycle {

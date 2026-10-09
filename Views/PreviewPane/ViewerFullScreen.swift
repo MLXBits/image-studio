@@ -96,6 +96,14 @@ final class ViewerFullScreenController {
 
 // MARK: - Window accessor
 
+/// A view's window, held weakly. A local key monitor sees every window's keys,
+/// so one that belongs to a view checks `event.window` against this and lets
+/// other windows' keys through: typing in Settings or the Keyboard Shortcuts
+/// search field mustn't flag images or close the viewer.
+final class WindowRef {
+    weak var window: NSWindow?
+}
+
 /// Hands the hosting `NSWindow` back once the view is planted in one.
 struct WindowAccessor: NSViewRepresentable {
     let onResolve: (NSWindow) -> Void
