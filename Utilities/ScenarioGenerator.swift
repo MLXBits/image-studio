@@ -231,7 +231,7 @@ final class ScenarioGenerator {
         let examples = Self.fewShotExamples(config, wildcardMode: wildcardMode)
         let finalUser = Self.buildUserTurn(outline: outline, categories: categories, wildcardMode: wildcardMode)
 
-        // Remote OpenAI-compatible endpoint: skip the uv/mlx_lm plumbing entirely
+        // Remote OpenAI-compatible endpoint: skip the local mlx_lm plumbing entirely
         // and let the shared reply extractor clean the assistant text (it's a
         // no-op on already-clean, separator-free output).
         if settings.llmBackend == .remote {

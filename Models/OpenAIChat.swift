@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Backend selection
 
 /// Which engine serves the prompt-writing LLM features (Scenario Generator and
-/// Ideogram 4 captions): local Gemma via `uv`/`mlx_lm`, or a remote
+/// Ideogram 4 captions): local Gemma via the bundled `mlx_lm`, or a remote
 /// OpenAI-compatible HTTP endpoint (e.g. LM Studio).
 enum LLMBackendKind: String, Codable, CaseIterable, Identifiable {
     case local

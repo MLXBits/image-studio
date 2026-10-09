@@ -73,14 +73,14 @@ enum GemmaChatRunner {
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
-    /// Strips leading `uv` status lines (e.g. "Installed 70 packages in
-    /// 124ms", "Resolved …", package `+ pkg==ver` lines) from a reply. uv
-    /// prints these to stderr, which the one-shot runner merges into stdout;
-    /// on the `mlx_vlm.generate --no-verbose` path there are no `==========`
-    /// separators for ``replyRegion`` to bound the reply, so they land at the
-    /// top of the extracted prompt. Only leading lines are removed, so a
-    /// prompt that legitimately mentions such words later is untouched. Kept
-    /// for remote and older outputs; the bundled runtime prints none.
+    /// Strips leading package-manager status lines (e.g. "Installed 70
+    /// packages in 124ms", "Resolved …", package `+ pkg==ver` lines) from a
+    /// reply. Builds before 0.16 ran Gemma through `uv`, which printed these to
+    /// stderr, merged into stdout; on the `mlx_vlm.generate --no-verbose` path
+    /// no `==========` separators bound the reply for ``replyRegion``. Only
+    /// leading lines are removed, so a prompt that mentions such words later is
+    /// untouched. Kept for remote and older outputs; the bundled runtime prints
+    /// none.
     nonisolated static func stripToolPreamble(from text: String) -> String {
         let pattern =
             "^(Resolved|Prepared|Installed|Downloaded|Uninstalled|Audited|Built|Building|Updated|Bytecode compiled)\\b.*$"

@@ -2,7 +2,7 @@
 
 A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
 
-> **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) is installed automatically on first launch.
+> **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) ships inside the app; nothing is installed on first launch.
 
 ---
 
@@ -225,7 +225,7 @@ Models/        Job models, model catalog, LoRA entries, prompt history/templates
 Runner/        Generic JobRunner<Spec> engine, per-family runner specs, warm-driver controller
 Stores/        @Observable state — AppSettings, per-family job stores, GalleryStore, TimingStore
 Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4, Krea2, ZImage)
-Utilities/     KeychainHelper, MetadataSidecar, progress parser, caption/scenario LLMs, installers
+Utilities/     KeychainHelper, MetadataSidecar, progress parser, caption/scenario LLMs, the Python toolchain
 Tests/         Swift Testing unit tests
 Resources/     Info.plist, entitlements, bundled Python drivers
 project.yml    XcodeGen source of truth (never edit .xcodeproj directly)

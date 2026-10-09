@@ -517,7 +517,7 @@ class AppSettings {
     // MARK: - Prompt-writing LLM backend
 
     /// Which engine serves the Scenario Generator and Ideogram 4 captions:
-    /// local Gemma via `uv`/`mlx_lm`, or a remote OpenAI-compatible endpoint.
+    /// local Gemma via the bundled `mlx_lm`, or a remote OpenAI-compatible endpoint.
     var llmBackend: LLMBackendKind {
         didSet { save() }
     }

@@ -2,7 +2,7 @@ import SwiftUI
 
 /// The "Prompt LLM" settings section, shared by both Gemma-powered features —
 /// Ideogram 4 caption generation and the Scenario Generator (Flux/Krea 2 prompt
-/// panels). Chooses between running Gemma locally (via `uv`/`mlx_lm`) and an
+/// panels). Chooses between running Gemma locally (the bundled `mlx_lm`) and an
 /// OpenAI-compatible HTTP endpoint (e.g. LM Studio), and lets the user test the
 /// endpoint and pick a model from the list it serves (loaded automatically). Rendered inside the Advanced tab's `Form`.
 struct PromptLLMSettingsView: View {

@@ -4,7 +4,7 @@ import Testing
 
 /// Covers the two pure parsing helpers that clean up Gemma's raw output. These
 /// carry the most edge-case logic in the caption pipeline and run without the
-/// `uv`/`mlx_lm` subprocess.
+/// `mlx_lm` subprocess.
 @MainActor
 struct IdeogramCaptionGeneratorTests {
     private let gen = IdeogramCaptionGenerator()
