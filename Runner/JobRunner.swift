@@ -470,8 +470,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
                     )
                 }
                 guard !verified.isEmpty else {
-                    let dir = (outputTemplate as NSString).deletingLastPathComponent
-                    let reason = RunnerSupport.noImageReason(log: job.log, destination: dir)
+                    let reason = RunnerSupport.noImageReason(
+                        log: job.log, destination: batchPaths.first?.path ?? outputTemplate
+                    )
                     job.log += "⚠️  \(reason)\n"
                     finishJob(job, status: .failed(reason), stepDir: stepDir)
                     return
