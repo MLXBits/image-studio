@@ -466,7 +466,8 @@ struct GenerationGalleryView: View {
                     .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 5))
                 }
                 .buttonStyle(.plain).foregroundStyle(.red)
-                .help("Delete all \(rejectCount) rejected image\(rejectCount == 1 ? "" : "s") (⌘⌫)")
+                .help("Delete all \(rejectCount) rejected image\(rejectCount == 1 ? "" : "s")"
+                    + " (\(KeyboardShortcutCatalog.deleteRejected.symbols))")
             }
         }
         .padding(.horizontal, 8)
@@ -598,7 +599,7 @@ struct GenerationGalleryView: View {
     /// delete-to-start-of-line whenever no rejects exist.
     private var deleteRejectsShortcut: some View {
         Button("") { deleteAllRejects() }
-            .keyboardShortcut(.delete, modifiers: .command)
+            .keyboardShortcut(KeyboardShortcutCatalog.deleteRejected)
             .disabled(rejectCount == 0)
             .hidden()
             .accessibilityHidden(true)
@@ -942,4 +943,9 @@ private struct AdaptiveLabelStyle: LabelStyle {
             }
         }
     }
+}
+
+extension KeyboardShortcutCatalog {
+    /// Window-scoped, so it works whichever pane has focus.
+    static let deleteRejected = Binding(key: .delete, modifiers: .command)
 }

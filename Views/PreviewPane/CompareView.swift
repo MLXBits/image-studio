@@ -314,6 +314,7 @@ struct CompareView: View {
         }
     }
 
+    /// Listed in `KeyboardShortcutCatalog.compareView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         switch event.keyCode {
         case 53: onDismiss(); return nil // Escape
@@ -366,4 +367,16 @@ struct CompareView: View {
             scrollMonitor = nil
         }
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let compareView = Section("Compare View", [
+        Entry("Show the previous or next candidate", ["←"], ["→"]),
+        Entry("Make the candidate the select", ["↵"], ["⌤"], ["↑"]),
+        Entry("Flag the candidate as pick", ["P"]),
+        Entry("Reject the candidate", ["X"]),
+        Entry("Remove the candidate's flag", ["U"]),
+        Entry("Set the candidate's star rating", ["0–5"]),
+        Entry("Close", ["⎋"]),
+    ])
 }

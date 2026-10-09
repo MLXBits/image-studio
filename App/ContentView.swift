@@ -607,7 +607,7 @@ struct ContentView: View {
         }
         .background {
             Button("") { showingQueue.toggle() }
-                .keyboardShortcut("k", modifiers: .command)
+                .keyboardShortcut(KeyboardShortcutCatalog.toggleQueue)
                 .hidden()
         }
     }
@@ -810,13 +810,13 @@ struct ContentView: View {
                 }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
-                        Label("Generate  ⌘↵", systemImage: "wand.and.stars")
+                        Label("Generate  \(KeyboardShortcutCatalog.generate.symbols)", systemImage: "wand.and.stars")
                             .padding(.horizontal, 10)
                             .padding(.vertical, 5)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut(.return, modifiers: .command)
+                    .keyboardShortcut(KeyboardShortcutCatalog.generate)
                     .disabled(!canGenerate)
                     // Batch button: auto-generates N random seeds into one warm job.
                     // Shown for whichever family has a random (-1) seed selected.
@@ -844,15 +844,15 @@ struct ContentView: View {
                 .background(RoundedRectangle(cornerRadius: 6).fill(Color.accentColor))
                 .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
-                .help("Generate (⌘↵)")
+                .help("Generate (\(KeyboardShortcutCatalog.generate.symbols))")
 
-                // Batch shortcut (⌘⌥↵). A SwiftUI button — not a static NSEvent
+                // Batch shortcut (⌥⌘↵). A SwiftUI button — not a static NSEvent
                 // monitor — so it always binds to the live, currently-active
                 // ContentView's state. The old static monitor captured the first
                 // window's `self`, so after switching the model family (or in a
                 // second window) it submitted the stale family's last job.
                 Button("") { generate(count: settings.batchShortcutCount) }
-                    .keyboardShortcut(.return, modifiers: [.command, .option])
+                    .keyboardShortcut(KeyboardShortcutCatalog.generateBatch)
                     .disabled(!canGenerate)
                     .hidden()
                     .accessibilityHidden(true)
@@ -866,7 +866,9 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help(isAnyStoreRunning ? "Generating — click to view queue (⌘K)" : "Show queue (⌘K)")
+                .help(isAnyStoreRunning
+                    ? "Generating — click to view queue (\(KeyboardShortcutCatalog.toggleQueue.symbols))"
+                    : "Show queue (\(KeyboardShortcutCatalog.toggleQueue.symbols))")
 
                 fixedSeedPill
             }
@@ -1800,4 +1802,18 @@ struct ContentView: View {
             seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let generate = Binding(key: .return, modifiers: .command)
+    /// Generates `settings.batchShortcutCount` random seeds.
+    static let generateBatch = Binding(key: .return, modifiers: [.command, .option])
+    static let toggleQueue = Binding(key: "k", modifiers: .command)
+
+    static let generating = Section("Generating", [
+        Entry("Generate", generate),
+        Entry("Generate a batch (size set in Settings ▸ Generation)", generateBatch),
+        Entry("Show or hide the queue", toggleQueue),
+        Entry("Paste an image from the clipboard as the input image", pasteImage),
+    ])
 }

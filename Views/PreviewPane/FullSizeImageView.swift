@@ -282,6 +282,7 @@ struct FullSizeImageView: View {
     /// through the gallery (not the grid's row-aware 2D navigation), so the right
     /// arrow advances past a row's edge to the next image. Culling keys mirror the
     /// grid: p/x/u flag, 0–5 rate, with pick/reject auto-advancing to the next image.
+    /// Listed in `KeyboardShortcutCatalog.fullSizeView`, at the end of this file.
     private func handleKey(_ event: NSEvent) -> NSEvent? {
         if event.keyCode == 53 { // Escape
             onDismiss()
@@ -380,4 +381,16 @@ struct FullSizeImageView: View {
         guard containerFrame.contains(point) else { return nil }
         return point
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let fullSizeView = Section("Full-Size View", [
+        Entry("Previous image", ["←"]),
+        Entry("Next image", ["→"]),
+        Entry("Flag as pick, then show the next image", ["P"]),
+        Entry("Reject, then show the next image", ["X"]),
+        Entry("Remove the flag", ["U"]),
+        Entry("Set the star rating", ["0–5"]),
+        Entry("Close", ["⎋"]),
+    ])
 }

@@ -85,6 +85,7 @@
 		3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */; };
 		3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */; };
 		4072F5590CAD03FD0649A6B2 /* PathField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C53E533C3BFD36AF422078B /* PathField.swift */; };
+		4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */; };
 		44C3F1474A3198940C10819A /* ProfileEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CCCF9C84722B5E96AF25F4 /* ProfileEditorSheet.swift */; };
 		45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */; };
 		4745BC108284171AF578F466 /* ModelDownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E77A32B68E5EB388143653 /* ModelDownloadStore.swift */; };
@@ -102,6 +103,7 @@
 		4D8B913A094AAFE181207AB2 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A31CFEFF049480510A99BB2F /* SettingsView.swift */; };
 		4FD42F907391F75AC15E4CA3 /* CompletedImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */; };
 		4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */; };
+		5037139F21C87347EE80DCB4 /* KeyboardShortcutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251E8EE05CBC5999A207C341 /* KeyboardShortcutsView.swift */; };
 		50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */; };
 		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		5187063F7F4407E5A81BAFD8 /* BuildFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E13B8A515FD7C7D6D2D87A5 /* BuildFlavor.swift */; };
@@ -172,6 +174,7 @@
 		99D652606CC5D99F504A7F79 /* Krea2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */; };
 		9A7F55F97428F4DE28CAA1AB /* SeedVR2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */; };
 		9A85F61E40284EC64E989700 /* SourceImageImportTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B5ED9C9945ED26673FBD294B /* SourceImageImportTests.swift */; };
+		9C199D8389B2C3232381B142 /* KeyboardShortcutCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C7D5CB437681D008AB6A05A /* KeyboardShortcutCatalog.swift */; };
 		9EC2273B631927194AF40969 /* ModelCacheLocationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BDDE1401FD0193DEFF24C1C /* ModelCacheLocationTests.swift */; };
 		A117AE1225437493D341FD90 /* Toolchain.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9A0FCCEEF7103CD4889BEF8 /* Toolchain.swift */; };
 		A4A790D52DEA9368EE3E91F6 /* SupportNudge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D5E99B9AEBD37F3DD9DBFA9 /* SupportNudge.swift */; };
@@ -315,6 +318,7 @@
 		230A5E0F0E02CA6ED9B8976C /* StorageSettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageSettingsRows.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
 		23C14BB102192A53167A5699 /* RecordingFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingFileAccess.swift; sourceTree = "<group>"; };
+		251E8EE05CBC5999A207C341 /* KeyboardShortcutsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutsView.swift; sourceTree = "<group>"; };
 		27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobAccessPathsTests.swift; sourceTree = "<group>"; };
 		2887A18E9CCCF56D3F7B3ACB /* MissingLibraryBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MissingLibraryBanner.swift; sourceTree = "<group>"; };
 		28888F940CD2EF3351412415 /* Profile.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Profile.swift; sourceTree = "<group>"; };
@@ -336,6 +340,7 @@
 		3BDDE1401FD0193DEFF24C1C /* ModelCacheLocationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelCacheLocationTests.swift; sourceTree = "<group>"; };
 		3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettings.swift; sourceTree = "<group>"; };
 		3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTemplatePickerView.swift; sourceTree = "<group>"; };
+		3C7D5CB437681D008AB6A05A /* KeyboardShortcutCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutCatalog.swift; sourceTree = "<group>"; };
 		3DAAE3A2E2B51979C0542345 /* MemorySupportDefaults.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemorySupportDefaults.swift; sourceTree = "<group>"; };
 		3E0D1BE1ACA287BD149D4668 /* ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelView.swift; sourceTree = "<group>"; };
 		3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJobRunner.swift; sourceTree = "<group>"; };
@@ -408,6 +413,7 @@
 		7C53E533C3BFD36AF422078B /* PathField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PathField.swift; sourceTree = "<group>"; };
 		7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptLLMSettingsView.swift; sourceTree = "<group>"; };
 		810CDAAAB15FA7881F12035C /* SupportLinks.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportLinks.swift; sourceTree = "<group>"; };
+		82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeyboardShortcutCatalogTests.swift; sourceTree = "<group>"; };
 		83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxProbesTests.swift; sourceTree = "<group>"; };
 		84AE08701FD2D1A4EDA2DFB5 /* ThumbnailCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCache.swift; sourceTree = "<group>"; };
 		85816C5F60D1644A2B0181F8 /* PromptTokenEstimator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimator.swift; sourceTree = "<group>"; };
@@ -573,6 +579,14 @@
 			path = Utilities;
 			sourceTree = "<group>";
 		};
+		3569006F1D6C1B7E2432A3D5 /* Help */ = {
+			isa = PBXGroup;
+			children = (
+				251E8EE05CBC5999A207C341 /* KeyboardShortcutsView.swift */,
+			);
+			path = Help;
+			sourceTree = "<group>";
+		};
 		38813EA5CAE8447346ABD282 /* Support */ = {
 			isa = PBXGroup;
 			children = (
@@ -660,6 +674,7 @@
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
+				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
@@ -855,6 +870,7 @@
 			isa = PBXGroup;
 			children = (
 				DB23B4F3B654A98909C6B6E3 /* Gallery */,
+				3569006F1D6C1B7E2432A3D5 /* Help */,
 				9F055965043A2B57DBE5B81A /* Ideogram4 */,
 				AD60CB7312E59668249A564F /* Krea2 */,
 				72528118E0360DB5F808B0BC /* ParamsPanel */,
@@ -909,6 +925,7 @@
 				2E769B611A03FA4372F553CA /* Ideogram4Job.swift */,
 				915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */,
 				607FDAD831E19BE75C734220 /* IdeogramCaption.swift */,
+				3C7D5CB437681D008AB6A05A /* KeyboardShortcutCatalog.swift */,
 				ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */,
 				DB5B056C022208F02D3ED376 /* LibraryStatus.swift */,
 				B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */,
@@ -1199,6 +1216,8 @@
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
 				F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
+				9C199D8389B2C3232381B142 /* KeyboardShortcutCatalog.swift in Sources */,
+				5037139F21C87347EE80DCB4 /* KeyboardShortcutsView.swift in Sources */,
 				2ED8533D337CC7476CBE8A99 /* KeychainHelper.swift in Sources */,
 				5CAF6B557C0FC1A727F5EFB8 /* Krea2Job.swift in Sources */,
 				50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */,
@@ -1336,6 +1355,7 @@
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
+				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,

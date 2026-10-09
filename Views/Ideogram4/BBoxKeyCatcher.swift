@@ -45,6 +45,7 @@ final class KeyView: NSView {
         true
     }
 
+    /// Listed in `KeyboardShortcutCatalog.layoutEditor`, at the end of this file.
     override func keyDown(with event: NSEvent) {
         switch event.keyCode {
         case 51, 117: onDelete?() // 51 = delete/backspace, 117 = forward delete
@@ -52,4 +53,12 @@ final class KeyView: NSView {
         default: super.keyDown(with: event)
         }
     }
+}
+
+extension KeyboardShortcutCatalog {
+    static let layoutEditor = Section("Ideogram 4 Layout Editor", [
+        Entry("Remove the selected box", ["⌫"], ["⌦"]),
+        Entry("Deselect the box", ["⎋"]),
+        Entry("Add the new box", addBox),
+    ])
 }

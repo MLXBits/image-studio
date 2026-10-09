@@ -292,7 +292,7 @@ struct PreviewPaneView: View {
             Text("Ready to generate")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            Text("Write a prompt and press ⌘↵")
+            Text("Write a prompt and press \(KeyboardShortcutCatalog.generate.symbols)")
                 .font(.callout)
                 .foregroundStyle(.tertiary)
         }
