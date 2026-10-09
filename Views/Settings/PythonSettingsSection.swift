@@ -13,6 +13,13 @@ struct PythonSettingsSection: View {
 
     @Environment(AppSettings.self) private var settings
     @State private var customStatus = CustomStatus.unchecked
+    /// The field's text, committed on Return, on leaving the field or on closing
+    /// Settings. Committing per keystroke rebuilt the toolchain for every
+    /// partial path, flashed "not found" and probed any that was executable.
+    @State private var draft = ""
+    @FocusState private var fieldFocused: Bool
+    /// Bumped on Return and on Browse, so re-picking the same path checks again.
+    @State private var recheck = 0
 
     var body: some View {
         Section("Python") {
@@ -21,7 +28,7 @@ struct PythonSettingsSection: View {
                 customPythonRow
             }
         }
-        .task(id: settings.toolchain.customPython) { await checkCustomPython() }
+        .task(id: "\(settings.toolchain.customPython)#\(recheck)") { await checkCustomPython() }
     }
 
     private var bundledRow: some View {
@@ -44,10 +51,19 @@ struct PythonSettingsSection: View {
             Text("Custom Python (advanced)")
             HStack {
                 // A prompt, not a title: in a grouped Form a title renders as its own label line.
-                TextField("Custom Python", text: $s.customPythonPath, prompt: Text("Bundled (default)"))
+                TextField("Custom Python", text: $draft, prompt: Text("Bundled (default)"))
                     .labelsHidden()
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.leading)
+                    .focused($fieldFocused)
+                    .onSubmit {
+                        commitDraft()
+                        recheck += 1
+                    }
+                    .onChange(of: fieldFocused) { _, focused in
+                        guard !focused else { return }
+                        commitDraft()
+                    }
                 Button("Browse…") { browse() }
                 if !s.customPythonPath.isEmpty {
                     Button("Use Bundled") { s.customPythonPath = "" }
@@ -62,6 +78,9 @@ struct PythonSettingsSection: View {
             customStatusRow
         }
         .padding(.vertical, 2)
+        .onAppear { draft = settings.customPythonPath }
+        .onChange(of: settings.customPythonPath) { _, path in draft = path }
+        .onDisappear { commitDraft() }
     }
 
     @ViewBuilder private var customStatusRow: some View {
@@ -93,6 +112,12 @@ struct PythonSettingsSection: View {
         }
     }
 
+    private func commitDraft() {
+        if draft != settings.customPythonPath {
+            settings.customPythonPath = draft
+        }
+    }
+
     private func checkCustomPython() async {
         let toolchain = settings.toolchain
         let python = toolchain.customPython
@@ -101,7 +126,12 @@ struct PythonSettingsSection: View {
             return
         }
         customStatus = .checking
-        let version = await Task.detached(priority: .utility) { MfluxProbes.mfluxVersion(python: python) }.value
+        // Asked afresh, not from the launch's cache: mflux may have been installed
+        // there since, and re-picking the path is how to say so.
+        let version = await Task.detached(priority: .utility) {
+            MfluxProbes.forget(python: python)
+            return MfluxProbes.mfluxVersion(python: python)
+        }.value
         // The path changed while the probe ran: a newer check owns the status.
         guard !Task.isCancelled else { return }
         customStatus = version.map(CustomStatus.found) ?? .noMflux
@@ -119,6 +149,7 @@ struct PythonSettingsSection: View {
         panel.resolvesAliases = false
         if panel.runModal() == .OK, let url = panel.url {
             settings.customPythonPath = url.path
+            recheck += 1
         }
     }
 }
