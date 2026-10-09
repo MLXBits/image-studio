@@ -24,6 +24,20 @@ struct MfluxProbesTests {
         #expect(MfluxProbes.mfluxVersion(python: python) == "0.21.0")
     }
 
+    /// "No mflux" is cached for the launch, so installing mflux into that Python
+    /// shows only once Settings forgets the answer and asks again.
+    @Test func forgettingAnInterpreterAsksItAgain() throws {
+        let dir = FakeRuntime.tempDirectory("probe")
+        let answer = dir.appendingPathComponent("version")
+        let python = dir.appendingPathComponent("python")
+        try FakeRuntime.writeExecutable("#!/bin/sh\ncat '\(answer.path)' 2>/dev/null\n", to: python)
+        #expect(MfluxProbes.mfluxVersion(python: python.path) == nil)
+        try Data("0.21.0".utf8).write(to: answer)
+        #expect(MfluxProbes.mfluxVersion(python: python.path) == nil)
+        MfluxProbes.forget(python: python.path)
+        #expect(MfluxProbes.mfluxVersion(python: python.path) == "0.21.0")
+    }
+
     /// The cache probe gets the hub folder and one `family=repo` per request,
     /// and its JSON comes back keyed by repo.
     @Test func cacheCompletenessAsksAboutEachRepo() throws {

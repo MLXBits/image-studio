@@ -25,11 +25,25 @@ nonisolated enum MfluxProbes {
             lock.unlock()
             return computed
         }
+
+        func remove(_ key: String) {
+            lock.lock()
+            results[key] = nil
+            lock.unlock()
+        }
     }
 
     private static let pidDecodeCache = ProbeCache<Bool>()
     private static let versionCache = ProbeCache<String?>()
     private static let baseModelCache = ProbeCache<Bool>()
+
+    /// Drops every cached answer for `python`, so the next probes ask it again:
+    /// mflux may have been installed or upgraded there since.
+    static func forget(python: String) {
+        versionCache.remove(python)
+        pidDecodeCache.remove(python)
+        baseModelCache.remove(python)
+    }
 
     /// The version of the `mflux` package importable by `python`, or nil when it
     /// cannot be determined. Asks the interpreter rather than reading a
