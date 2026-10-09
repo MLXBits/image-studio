@@ -52,6 +52,17 @@ enum RunnerSupport {
         return tail.count == 4 && tail[0] == 0xAE && tail[1] == 0x42 && tail[2] == 0x60 && tail[3] == 0x82
     }
 
+    /// Why a run that exited cleanly left no image at `destination`. mflux logs a
+    /// failed save and still exits 0 (mflux-community/mflux#830), so its last
+    /// `ERROR:` line is the reason when there is one.
+    static func noImageReason(log: String, destination: String) -> String {
+        let lastError = log.components(separatedBy: "\n").reversed().lazy
+            .compactMap { line in line.range(of: "ERROR:").map { line[$0.upperBound...] } }
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .first { !$0.isEmpty }
+        return lastError ?? "mflux reported success but wrote no image to \(destination)"
+    }
+
     /// Center-crops the image at `path` to a square JPEG thumbnail. Decodes via
     /// ImageIO's downscaling path (no full-resolution decode) and is nonisolated so
     /// batches can be generated off the main actor.

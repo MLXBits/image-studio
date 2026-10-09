@@ -94,4 +94,29 @@ struct RunnerSupportTests {
         #expect(RunnerSupport.imagesLanded(outputPath: "/Lib/a.png", outputPaths: ["/Lib/a.png", "/Lib/b.png"]) == 2)
         #expect(RunnerSupport.imagesLanded(outputPath: nil, outputPaths: []) == 0)
     }
+
+    // MARK: - noImageReason (exit 0 without an image)
+
+    /// mflux logs a failed save and exits 0; the job fails with that error.
+    @Test func noImageReasonUsesTheLastErrorLine() {
+        let log = """
+        ERROR: first problem
+        100%|██████████| 4/4
+        ERROR: Error saving image: [Errno 1] Operation not permitted: '/Lib/a.png'
+        ▸ Decoding image...
+        """
+        #expect(RunnerSupport.noImageReason(log: log, destination: "/Lib/a.png")
+            == "Error saving image: [Errno 1] Operation not permitted: '/Lib/a.png'")
+    }
+
+    @Test func noImageReasonFindsAPrefixedErrorLine() {
+        let log = "12:00:01 ERROR: Error saving image: [Errno 28] No space left on device\n"
+        #expect(RunnerSupport.noImageReason(log: log, destination: "/Lib/a.png")
+            == "Error saving image: [Errno 28] No space left on device")
+    }
+
+    @Test func noImageReasonNamesThePathWhenNothingWasLogged() {
+        #expect(RunnerSupport.noImageReason(log: "▸ Decoding image...\n", destination: "/Lib/a.png")
+            == "mflux reported success but wrote no image to /Lib/a.png")
+    }
 }

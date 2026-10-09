@@ -158,6 +158,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
         var denoiseEnd: Date?
         var lastImageAt: Date?
         var landed: [(seed: Int, path: String)] = []
+        /// Paths the driver reported but that hold no complete PNG (a failed save).
+        var missing: [String] = []
     }
 
     /// A resolved remote target when this job's family is pointed at a ComfyUI server (non-empty URL + required model files), else nil.
@@ -467,6 +469,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
                         startedAt: job.startedAt ?? Date(), generatedAt: Date(), path: path
                     )
                 }
+                guard !verified.isEmpty else {
+                    let dir = (outputTemplate as NSString).deletingLastPathComponent
+                    let reason = RunnerSupport.noImageReason(log: job.log, destination: dir)
+                    job.log += "⚠️  \(reason)\n"
+                    finishJob(job, status: .failed(reason), stepDir: stepDir)
+                    return
+                }
                 let paths = verified.map(\.path)
                 job.outputPaths = paths
                 job.outputThumbnails = await RunnerSupport.makeThumbnails(for: paths)
@@ -484,6 +493,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
                 job.log += "▸ Saved \(verified.count) images  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
             } else {
+                guard RunnerSupport.isPNGComplete(at: outputTemplate) else {
+                    let reason = RunnerSupport.noImageReason(log: job.log, destination: outputTemplate)
+                    job.log += "⚠️  \(reason)\n"
+                    finishJob(job, status: .failed(reason), stepDir: stepDir)
+                    return
+                }
                 job.outputPath = outputTemplate
                 job.log += "▸ Saved to: \(outputTemplate)  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
                 job.thumbnailData = RunnerSupport.loadThumbnail(at: outputTemplate)
@@ -577,6 +592,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         case "image":
             guard let seed = event.seed, let path = event.path else { return }
+            // mflux swallows a failed save, so the event alone doesn't mean the file landed.
+            guard RunnerSupport.isPNGComplete(at: path) else {
+                progress.missing.append(path)
+                return
+            }
             let generatedAt = Date()
             Spec.writeMetadata(
                 job: job, seed: seed,
@@ -619,7 +639,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         let paths = progress.landed.map(\.path)
         guard !paths.isEmpty else {
-            finishJob(job, status: .failed("Driver reported success but no images landed"), stepDir: stepDir)
+            // Built here, not at the event: mflux's ERROR line comes on stderr and
+            // can arrive after the image event on stdout.
+            let reason = RunnerSupport.noImageReason(
+                log: job.log, destination: progress.missing.first ?? "the library folder"
+            )
+            job.log += "⚠️  \(reason)\n"
+            finishJob(job, status: .failed(reason), stepDir: stepDir)
             return
         }
         if job.seeds.isEmpty {
