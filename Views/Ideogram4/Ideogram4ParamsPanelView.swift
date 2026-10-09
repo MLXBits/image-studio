@@ -95,7 +95,7 @@ struct Ideogram4ParamsPanelView: View {
                 }
             )
 
-            // HF token warning — every Ideogram variant (FP8 + the MLXBits Q8/Q4
+            // HF token warning — every Ideogram variant (FP8 + the mflux-community Q8/Q4
             // repos) is gated, so a token is required unless a model-source override
             // points elsewhere. Low RAM and strict validation live in Settings.
             if (settings.ideogram4ModelRepoOverride ?? "").isEmpty,

@@ -243,11 +243,10 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
 
     /// Returns the HuggingFace repo URL for this model + quantize combination, if known.
     /// Used to link users directly to the gated repo so they can accept terms.
+    /// Ideogram 4 has no `bf16HFRepoID`, so its FP8 page is the fallback.
     func hfRepoURL(quantize: Int) -> URL? {
-        if self == .ideogram4 {
-            return URL(string: "https://huggingface.co/ideogram-ai/ideogram-4-fp8")
-        }
-        let repoID = preQuantizedRepoID(quantize: quantize) ?? bf16HFRepoID
+        let fallback = self == .ideogram4 ? "ideogram-ai/ideogram-4-fp8" : bf16HFRepoID
+        let repoID = preQuantizedRepoID(quantize: quantize) ?? fallback
         return repoID.flatMap { URL(string: "https://huggingface.co/\($0)") }
     }
 
@@ -258,8 +257,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         switch (self, quantize) {
         case (.flux2Klein9B, 8): "mlx-community/flux2-klein-9b-8bit"
         case (.flux2Klein4B, 8): "mlx-community/flux2-klein-4b-8bit"
-        case (.ideogram4, 8): "MLXBits/ideogram-4-mlx-q8"
-        case (.ideogram4, 4): "MLXBits/ideogram-4-mlx-q4"
+        case (.ideogram4, 8): "mflux-community/ideogram-4-mflux-q8"
+        case (.ideogram4, 4): "mflux-community/ideogram-4-mflux-q4"
         case (.zimageTurbo, 4): "filipstrand/Z-Image-Turbo-mflux-4bit"
         default: nil
         }
@@ -271,8 +270,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     func approximateSizeGB(quantize: Int) -> Double {
         if self == .ideogram4 {
             switch quantize {
-            case 4: return 15
-            case 8: return 27
+            case 4: return 14
+            case 8: return 26
             default: return 28
             }
         }

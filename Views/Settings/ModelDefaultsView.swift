@@ -268,14 +268,14 @@ struct ModelDefaultsView: View {
 
             if selectedModel.isIdeogram4 {
                 // Single string literal (no `+`) so the markdown links render and stay
-                // clickable. FP8 is Ideogram's gated repo; Q8/Q4 are the MLXBits MLX
-                // conversions, each gated on their own card.
+                // clickable. FP8 is Ideogram's gated repo; Q8/Q4 are the mflux-community
+                // mflux-save conversions, each gated on their own card.
                 Text("""
                 Gated — accept access on each source repo, then set your HF token in \
                 Settings → Advanced. \
                 FP8: [ideogram-ai/ideogram-4-fp8](https://huggingface.co/ideogram-ai/ideogram-4-fp8). \
-                Q8: [MLXBits/ideogram-4-mlx-q8](https://huggingface.co/MLXBits/ideogram-4-mlx-q8). \
-                Q4: [MLXBits/ideogram-4-mlx-q4](https://huggingface.co/MLXBits/ideogram-4-mlx-q4).
+                Q8: [mflux-community/ideogram-4-mflux-q8](https://huggingface.co/mflux-community/ideogram-4-mflux-q8). \
+                Q4: [mflux-community/ideogram-4-mflux-q4](https://huggingface.co/mflux-community/ideogram-4-mflux-q4).
                 """)
                 .font(.caption)
                 .foregroundStyle(.tertiary)

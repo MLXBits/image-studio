@@ -400,7 +400,7 @@ struct PreviewPaneView: View {
                 Text("Generation failed")
                     .font(.headline)
                 Spacer()
-                if isGatedRepo, let url = FluxModelVariant.ideogram4.hfRepoURL(quantize: 0) {
+                if isGatedRepo, let url = FluxModelVariant.ideogram4.hfRepoURL(quantize: job.quantize) {
                     Link("Accept Terms", destination: url)
                         .font(.caption)
                 }

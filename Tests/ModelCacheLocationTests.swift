@@ -35,4 +35,22 @@ struct ModelCacheLocationTests {
         try FileManager.default.createDirectory(at: hub, withIntermediateDirectories: true)
         #expect(FluxModelVariant.flux2Klein9B.onDiskURL(quantize: 8, hubDir: hub) == nil)
     }
+
+    /// Ideogram Q8/Q4 come from the mflux-community mflux-save checkpoints. The
+    /// older MLXBits repos use a layout mflux rejects, so a leftover copy of one
+    /// must not count as downloaded.
+    @Test func ideogramQ8IsOnDiskOnlyFromTheMfluxCommunityRepo() throws {
+        let noSaves = root.appendingPathComponent("mflux", isDirectory: true)
+        try cache("MLXBits/ideogram-4-mlx-q8")
+        #expect(!FluxModelVariant.ideogram4.isOnDisk(quantize: 8, savedIn: noSaves, hubDir: hub))
+        try cache("mflux-community/ideogram-4-mflux-q8")
+        #expect(FluxModelVariant.ideogram4.isOnDisk(quantize: 8, savedIn: noSaves, hubDir: hub))
+    }
+
+    @Test func ideogramTermsLinkFollowsThePrecision() {
+        let link = { FluxModelVariant.ideogram4.hfRepoURL(quantize: $0)?.absoluteString }
+        #expect(link(0) == "https://huggingface.co/ideogram-ai/ideogram-4-fp8")
+        #expect(link(8) == "https://huggingface.co/mflux-community/ideogram-4-mflux-q8")
+        #expect(link(4) == "https://huggingface.co/mflux-community/ideogram-4-mflux-q4")
+    }
 }

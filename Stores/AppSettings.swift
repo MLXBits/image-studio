@@ -961,7 +961,7 @@ class AppSettings {
     func ideogram4ModelOnDisk(quantize: Int) -> Bool {
         let hfBase = hfHubDir
         if quantize > 0 {
-            // Q8/Q4 ship as published MLX repos and load straight from the hub cache.
+            // Q8/Q4 ship as published mflux-save repos and load straight from the hub cache.
             // The legacy mflux-save dir is never used for them (and may be stale), so
             // a present pre-quantized repo is the only signal we trust.
             if let repo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: quantize) {

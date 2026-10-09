@@ -27,7 +27,7 @@ enum Ideogram4RunnerSpec: JobRunnerSpec {
         return (loras + [job.customModelRepo]).filter(FileAccessPath.isLocal)
     }
 
-    /// Q8/Q4 load pre-quantized MLX weights directly from the published repo —
+    /// Q8/Q4 load pre-quantized mflux-save weights directly from the published repo —
     /// no one-time mflux-save quantization pass needed for them, nor for a
     /// custom/overridden source that names specific weights.
     static func quantSaveDestination(job: Ideogram4Job, settings: AppSettings) -> URL? {
