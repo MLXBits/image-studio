@@ -124,6 +124,11 @@ final class ProfileStore {
         case let .loaded(loaded):
             registry = loaded
             ProfileBootstrap.cleanUp(registry: loaded, paths: paths, defaults: defaults)
+            // Saved now, not at the next settings change: until then the migration
+            // re-runs each launch, and a launch without the checkout drops it.
+            if settings.customPythonMigrationUnsaved {
+                settings.persistGlobalNow()
+            }
             let root = paths.thumbnailsRoot
             Task.detached(priority: .utility) { ProfileBootstrap.removeLooseThumbnails(in: root) }
         case let .migrated(migrated):

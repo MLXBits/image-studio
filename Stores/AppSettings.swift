@@ -605,6 +605,9 @@ class AppSettings {
     /// Set when the profile registry can't be read: nothing is written until the
     /// user fixes or removes it, so no data is overwritten while it's unreadable.
     @ObservationIgnored private var persistenceSuspended = false
+    /// The Custom Python came from the legacy `mfluxBinaryDir` this launch and isn't
+    /// saved yet. ``ProfileStore`` saves it, so the migration runs only once.
+    @ObservationIgnored private(set) var customPythonMigrationUnsaved = false
 
     /// All templates: built-ins first, then user customs.
     var allTemplates: [PromptTemplate] {
@@ -631,7 +634,7 @@ class AppSettings {
         let s = Self.loadStored()
         let model = s.defaultModel ?? .flux2Klein9B
 
-        customPythonPath = Self.customPython(migrating: s)
+        customPythonPath = Self.customPython(migrating: s); customPythonMigrationUnsaved = s.customPython == nil && s.mfluxBinaryDir != nil
         // Per-profile fields start empty; ProfileStore activates a profile right
         // after init, which loads them from that profile's profile.json.
         outputDir = ""
@@ -829,8 +832,8 @@ class AppSettings {
         saveDebouncer.schedule { [weak self] in self?.saveNow() }
     }
 
-    /// Writes settings.json now. Used once after migration, so the moved
-    /// per-profile keys are dropped from the global file straight away.
+    /// Writes settings.json now. Used after a migration, so moved per-profile keys
+    /// and the migrated Custom Python are saved straight away.
     func persistGlobalNow() {
         guard !persistenceSuspended else { return }
         saveDebouncer.flush()
@@ -955,27 +958,6 @@ class AppSettings {
         let root = URL(fileURLWithPath: outputDir).resolvingSymlinksInPath()
         let volume = try? root.resourceValues(forKeys: [.volumeURLKey]).volume
         return ProfileRules.isOnExpectedVolume(path: root.path, volumePath: volume?.path ?? "/")
-    }
-
-    /// Returns true when Ideogram 4 model weights are already cached locally.
-    func ideogram4ModelOnDisk(quantize: Int) -> Bool {
-        let hfBase = hfHubDir
-        if quantize > 0 {
-            // Q8/Q4 ship as published mflux-save repos and load straight from the hub cache.
-            // The legacy mflux-save dir is never used for them (and may be stale), so
-            // a present pre-quantized repo is the only signal we trust.
-            if let repo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: quantize) {
-                let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
-                let snapshots = hfBase.appendingPathComponent(cacheName + "/snapshots")
-                return FileManager.default.fileExists(atPath: snapshots.path)
-            }
-            let savedPath = effectiveMfluxCacheDir
-                .appendingPathComponent("saved/ideogram4-q\(quantize)", isDirectory: true)
-            return FluxModelVariant.hasSavedWeights(at: savedPath)
-        }
-        // Check HF hub cache for the FP8 base checkpoint.
-        let snapshots = hfBase.appendingPathComponent("models--ideogram-ai--ideogram-4-fp8/snapshots")
-        return FileManager.default.fileExists(atPath: snapshots.path)
     }
 
     func buildEnvironment(interpreter: String? = nil) -> [String: String] {

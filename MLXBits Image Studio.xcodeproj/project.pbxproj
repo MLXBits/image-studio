@@ -211,6 +211,7 @@
 		C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
 		CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9474B6243420062519AB6BA /* ParamsPanelState.swift */; };
+		CDE3ED1509016EE4CBD8501B /* AppSettings+ModelCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31D1B6601E2D504919DAD2AE /* AppSettings+ModelCache.swift */; };
 		CE720A2FCD4D53E50CBDF11D /* LoraBaseModelHeuristic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4BE8D8821D022789E6524216 /* LoraBaseModelHeuristic.swift */; };
 		CF29E56985F1E02CF7241BD7 /* ModelAvailabilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15867BF96F3C6A4258A837A4 /* ModelAvailabilityTests.swift */; };
 		CF596B2952ECED2CB446B1FE /* FileAccessPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89BFE2281C9D0F3F494471F9 /* FileAccessPath.swift */; };
@@ -322,6 +323,7 @@
 		2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2Job.swift; sourceTree = "<group>"; };
 		2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerSupportTests.swift; sourceTree = "<group>"; };
 		318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Forms.swift"; sourceTree = "<group>"; };
+		31D1B6601E2D504919DAD2AE /* AppSettings+ModelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+ModelCache.swift"; sourceTree = "<group>"; };
 		32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStore.swift; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
 		32928AD081B6EF992C7BF1B1 /* ProfileBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrap.swift; sourceTree = "<group>"; };
@@ -925,6 +927,7 @@
 			children = (
 				3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */,
 				165A1374AC984C7A2597FA6B /* AppSettings+FileAccess.swift */,
+				31D1B6601E2D504919DAD2AE /* AppSettings+ModelCache.swift */,
 				16689FCDD956958978D337D9 /* AppSettings+ProfileStored.swift */,
 				BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */,
 				038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */,
@@ -1121,6 +1124,7 @@
 				DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */,
 				7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */,
 				A5DA058778AC0E6C6FAB56D6 /* AppSettings+FileAccess.swift in Sources */,
+				CDE3ED1509016EE4CBD8501B /* AppSettings+ModelCache.swift in Sources */,
 				911A9B2C112DF441D647EB8A /* AppSettings+ProfileStored.swift in Sources */,
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
 				C29B7E8637CDABB049D8D3C2 /* AspectDirective.swift in Sources */,
