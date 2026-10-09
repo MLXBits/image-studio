@@ -249,7 +249,9 @@ final class MfluxDriverController {
             finishRun?(.cancelled)
         } else {
             availability = .unavailable("Driver process died mid-job")
-            finishRun?(.failed("Warm driver process died"))
+            finishRun?(.failed(proc.terminationReason == .uncaughtSignal
+                    ? RunnerSupport.crashReason("The warm driver", signal: proc.terminationStatus)
+                    : "Warm driver process died (exit status \(proc.terminationStatus))"))
         }
     }
 

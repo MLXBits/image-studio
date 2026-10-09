@@ -226,6 +226,15 @@ enum RunnerSupport {
         return nil
     }
 
+    /// Why a job failed when its process died from a signal the app didn't
+    /// send (#32), e.g. "The generation process crashed (signal 6: Abort trap)."
+    nonisolated static func crashReason(_ process: String, signal: Int32) -> String {
+        // macOS ends the description with the number: "Abort trap: 6".
+        let name = String(cString: strsignal(signal))
+            .replacingOccurrences(of: #":\s*\d+$"#, with: "", options: .regularExpression)
+        return "\(process) crashed (signal \(signal): \(name)). Check the log."
+    }
+
     /// The last `maxLines` lines of `log`. Per-chunk parsing (progress bars, status
     /// lines) only ever needs the tail; scanning the whole log per chunk is O(n²)
     /// over a run.
