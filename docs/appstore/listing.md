@@ -1,6 +1,6 @@
 # App Store listing — MLXBits Image Studio
 
-Paste each block into App Store Connect as is. `python3 scripts/check_appstore_listing.py` checks every length; run it after any edit.
+Paste each block into App Store Connect as is. Keep "Mac" out of the name, subtitle and marketing copy (App Review, guideline 5.2.5); the requirements line may name it. `python3 scripts/check_appstore_listing.py` checks every length; run it after any edit.
 
 ## App information
 
@@ -13,12 +13,12 @@ MLXBits Image Studio
 ### Subtitle (max 30)
 
 ```text
-Local AI images on your Mac
+Private, on-device AI images
 ```
 
 - **Category:** Graphics & Design (secondary: none)
 - **Privacy policy URL:** https://github.com/MLXBits/image-studio/blob/main/PRIVACY.md
-- **Support URL:** https://github.com/MLXBits/image-studio/issues
+- **Support URL:** https://mlxbits.github.io/image-studio/support/ (App Review rejected the GitHub issues list under guideline 1.5)
 - **Marketing URL:** leave empty (the repo page links to other ways of paying)
 - **Copyright:** © 2026 MLXBits
 
@@ -27,7 +27,7 @@ Local AI images on your Mac
 ### Promotional text (max 170)
 
 ```text
-Generate images with FLUX.2, Krea 2 and Z-Image entirely on your Mac. No account, no cloud, no subscription. Every feature is free.
+Generate images with FLUX.2, Krea 2 and Z-Image entirely on-device. No account, no cloud, no subscription. Every feature is free.
 ```
 
 ### Keywords (max 100)
@@ -39,7 +39,7 @@ ai art,image generator,text to image,image editor,mlx,lora,offline,local ai,prom
 ### Description (max 4000)
 
 ```text
-MLXBits Image Studio turns text into images on your Mac, using Apple's MLX framework and the Apple silicon GPU. Nothing is sent to us: your prompts and pictures stay on your Mac unless you connect a server of your own.
+MLXBits Image Studio turns text into images on your computer, using Apple's MLX framework and the Apple silicon GPU. Nothing is sent to us: your prompts and pictures stay on your computer unless you connect a server of your own.
 
 GENERATE
 • FLUX.2 Klein (4B and 9B), Krea 2 and Z-Image Turbo, with quantized versions for Macs with less memory
@@ -68,7 +68,7 @@ REQUIREMENTS
 FREE
 Every feature is free. Optional tips help keep the project going and unlock nothing.
 
-Images are made from your own prompts, on your Mac. The app can create mature images, so it is rated 18+.
+Images are made from your own prompts, on your computer. The app can create mature images, so it is rated 18+.
 ```
 
 Not shown for the first version; keep for later updates.

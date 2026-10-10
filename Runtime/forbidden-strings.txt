@@ -1,0 +1,6 @@
+# Strings App Review's scanner rejects anywhere in the bundle, even unused.
+# The runtime build fails if any bundled file contains one.
+# itms-services: CPython lists it in urllib.parse.uses_netloc (rejected under
+# 2.5.2, 0.17.2, 2026-10-10). CPython's --with-app-store-compliance removes it;
+# build-python-runtime.sh does the same.
+itms-services

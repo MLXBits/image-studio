@@ -237,6 +237,38 @@ def private_symbol_uses(root: Path, denylist: set[str]) -> list[str]:
     return problems
 
 
+def without_itms_services(text: str) -> str:
+    """urllib/parse.py without its "itms-services" scheme entry, as CPython's
+    --with-app-store-compliance build leaves it."""
+    return re.sub(r",\s*'itms-services'", "", text)
+
+
+def app_store_compliance(prefix: Path) -> list[Path]:
+    """Applies without_itms_services to the stdlib's urllib/parse.py. Returns the files changed."""
+    changed = []
+    for parse in prefix.glob("lib/python3*/urllib/parse.py"):
+        text = parse.read_text()
+        patched = without_itms_services(text)
+        if patched != text:
+            parse.write_text(patched)
+            changed.append(parse)
+    return changed
+
+
+def forbidden_string_uses(root: Path, strings: set[str]) -> list[str]:
+    """Every bundled file that contains a string App Review's scanner rejects."""
+    needles = {s: s.encode() for s in strings}
+    problems = []
+    for path in sorted(root.rglob("*")):
+        if path.is_symlink() or not path.is_file():
+            continue
+        data = path.read_bytes()
+        for name, needle in sorted(needles.items()):
+            if needle in data:
+                problems.append(f"{path.relative_to(root)} contains {name}")
+    return problems
+
+
 def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     sub = parser.add_subparsers(dest="command", required=True)
@@ -256,6 +288,9 @@ def main(argv: list[str]) -> int:
     p_apis = sub.add_parser("apis")
     p_apis.add_argument("prefix", type=Path)
     p_apis.add_argument("--denylist", type=Path, required=True)
+    p_apis.add_argument("--forbidden-strings", type=Path)
+    p_compliance = sub.add_parser("app-store-compliance")
+    p_compliance.add_argument("prefix", type=Path)
     p_macho = sub.add_parser("macho")
     p_macho.add_argument("root", type=Path)
     args = parser.parse_args(argv)
@@ -267,9 +302,15 @@ def main(argv: list[str]) -> int:
         return 1 if problems else 0
     if args.command == "apis":
         problems = private_symbol_uses(args.prefix, load_symbols(args.denylist))
+        if args.forbidden_strings:
+            problems += forbidden_string_uses(args.prefix, load_symbols(args.forbidden_strings))
         for line in problems:
             print(f"App Store API check: {line}", file=sys.stderr)
         return 1 if problems else 0
+    if args.command == "app-store-compliance":
+        for path in app_store_compliance(args.prefix):
+            print(f"app store compliance: patched {path.relative_to(args.prefix)}")
+        return 0
     if args.command == "acknowledgements":
         args.out.write_text(acknowledgements(args.prefix, args.python_version, load_overrides(args.overrides)))
         return 0

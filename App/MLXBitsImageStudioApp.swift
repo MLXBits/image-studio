@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct MLXBitsImageStudioApp: App {
+    static let mainWindowID = "main"
+
     /// The support nudge's count: the images every runner saves (spec §5).
     private static func makeSupport(testHost: Bool, runners: [any LandedImagesReporting]) -> SupportStore {
         let support = SupportStore(
@@ -12,6 +14,7 @@ struct MLXBitsImageStudioApp: App {
         return support
     }
 
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
     @State private var store: JobStore
@@ -38,7 +41,9 @@ struct MLXBitsImageStudioApp: App {
     @State private var tipJar: TipJarStore
 
     var body: some Scene {
-        WindowGroup {
+        // One main window, as a `Window` scene: macOS lists it in the Window
+        // menu, so it can be reopened after it's closed (App Review, guideline 4).
+        Window("MLXBits Image Studio", id: Self.mainWindowID) {
             profileContent
                 .environment(profiles)
                 .environment(settings)
@@ -63,7 +68,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(support)
                 .frame(minWidth: 900, minHeight: 600)
                 // Launch-time update check; drives the toolbar badge when a newer
-                // GitHub release exists. Coalesced so multiple windows check once.
+                // GitHub release exists. Coalesced, so reopening the window checks once.
                 .task { await updateChecker.check() }
         }
         .windowResizability(.contentMinSize)
