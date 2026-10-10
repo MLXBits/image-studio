@@ -14,6 +14,7 @@ struct MLXBitsImageStudioApp: App {
         return support
     }
 
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
     @State private var store: JobStore

@@ -142,6 +142,7 @@
 		761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */; };
 		76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */; };
 		7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C1DDB5C97F9B016DFFF1D1 /* AppMain.swift */; };
+		7883B20D9BF52E3DC9B5C005 /* AppDelegateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACAD8AEF0C40407E8B5D4AE /* AppDelegateTests.swift */; };
 		79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */; };
 		7A4295660278E9FD1D06E5DC /* BBoxEditorView+Subviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */; };
 		7B00953DA812E388BDA9E2B5 /* RuntimeSelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874CD195F06DAABC0E167B4D /* RuntimeSelfTest.swift */; };
@@ -253,6 +254,7 @@
 		F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07C86B92053779C5988498B /* JobRunner.swift */; };
 		F746EF59CF755C513993BBC9 /* ClipboardImageMonitor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75FBF47724D9699F42B96FD1 /* ClipboardImageMonitor.swift */; };
 		F93392996A4F3521EE07554F /* IdeogramElementCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FD144A29CF391319E64E65A /* IdeogramElementCard.swift */; };
+		FA29AEEB00D982A7EA7EF2BF /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A4582D2C62E4D086CBB7454 /* AppDelegate.swift */; };
 		FA4F045A3562D02ADD46F383 /* ImageMetadataInfo.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */; };
 		FA8C9AA718CA49C3BBB57095 /* krea2_scenario_prompt_example.md in Resources */ = {isa = PBXBuildFile; fileRef = 6EAF1C67E02A6EFACEB795A8 /* krea2_scenario_prompt_example.md */; };
 		FD3DB28C1C740FD6A090E796 /* Ideogram4JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */; };
@@ -423,6 +425,7 @@
 		86F98F9F31228EFCA1201025 /* DimensionSliderRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionSliderRow.swift; sourceTree = "<group>"; };
 		874CD195F06DAABC0E167B4D /* RuntimeSelfTest.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeSelfTest.swift; sourceTree = "<group>"; };
 		89BFE2281C9D0F3F494471F9 /* FileAccessPath.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileAccessPath.swift; sourceTree = "<group>"; };
+		8A4582D2C62E4D086CBB7454 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistoryPickerView.swift; sourceTree = "<group>"; };
 		8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataInfo.swift; sourceTree = "<group>"; };
 		8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidDecodeToggleView.swift; sourceTree = "<group>"; };
@@ -471,6 +474,7 @@
 		B8267201457AFA5F9183A5C3 /* QueueDrawerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QueueDrawerView.swift; sourceTree = "<group>"; };
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
+		BACAD8AEF0C40407E8B5D4AE /* AppDelegateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegateTests.swift; sourceTree = "<group>"; };
 		BEBC098467186F40B0AA4214 /* ProfileBootstrapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrapTests.swift; sourceTree = "<group>"; };
 		BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendModelStore.swift; sourceTree = "<group>"; };
 		C0B5BFEBA9C4AF4FD5E73B01 /* ToolchainBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolchainBanner.swift; sourceTree = "<group>"; };
@@ -654,6 +658,7 @@
 			isa = PBXGroup;
 			children = (
 				95FC2236DBB40DCAD4559F0A /* ActiveComfyURLTests.swift */,
+				BACAD8AEF0C40407E8B5D4AE /* AppDelegateTests.swift */,
 				A93B92F3B08608D1A080C83D /* AppSettingsFileAccessTests.swift */,
 				54319FFDDA384384985FA769 /* AppSettingsProfileTests.swift */,
 				17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */,
@@ -897,6 +902,7 @@
 		E8F1DFE8F60EE409FB230CA2 /* App */ = {
 			isa = PBXGroup;
 			children = (
+				8A4582D2C62E4D086CBB7454 /* AppDelegate.swift */,
 				76C1DDB5C97F9B016DFFF1D1 /* AppMain.swift */,
 				174F374D4B5F7A05666D31B3 /* Assets.xcassets */,
 				0DFB6BA799C59DAA55470EC3 /* ContentView.swift */,
@@ -1145,6 +1151,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */,
+				FA29AEEB00D982A7EA7EF2BF /* AppDelegate.swift in Sources */,
 				7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */,
 				A5DA058778AC0E6C6FAB56D6 /* AppSettings+FileAccess.swift in Sources */,
 				CDE3ED1509016EE4CBD8501B /* AppSettings+ModelCache.swift in Sources */,
@@ -1332,6 +1339,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				329C116A2B16F0E180ACE36F /* ActiveComfyURLTests.swift in Sources */,
+				7883B20D9BF52E3DC9B5C005 /* AppDelegateTests.swift in Sources */,
 				FDB88C21CBB9FDADB13E66B4 /* AppSettingsFileAccessTests.swift in Sources */,
 				551DEB915D184838A51E5A50 /* AppSettingsProfileTests.swift in Sources */,
 				C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */,
