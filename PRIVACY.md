@@ -19,7 +19,7 @@ Donation links in the DMG version open in your browser, where those sites' terms
 
 ## Your files
 
-Images, prompts, notepad, history and settings are stored on your Mac, in the folders you choose and in the app's own storage. Deleting the app's data or your library folder removes them; the developer has no copy.
+Images, prompts, notepad, history and settings are stored on your computer, in the folders you choose and in the app's own storage. Deleting the app's data or your library folder removes them; the developer has no copy.
 
 ## Children
 
@@ -27,4 +27,4 @@ The app can generate mature images from prompts and is rated 18+ on the App Stor
 
 ## Changes and contact
 
-Changes to this policy are made in this file, and its history is public. Questions: open an issue at https://github.com/MLXBits/image-studio/issues.
+Changes to this policy are made in this file, and its history is public. Questions: email feedback@mlxbits.net, or see the [support page](https://mlxbits.github.io/image-studio/support/).

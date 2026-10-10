@@ -24,7 +24,7 @@ The owner's checklist, in order. Text to paste lives in [listing.md](listing.md)
 
 ## The listing
 9. **App information:** name, subtitle and category from listing.md.
-10. **Version 0.17.0 page:** promotional text, description, keywords, screenshots, support URL and copyright. Leave the marketing URL empty. What's New isn't offered for a first version.
+10. **Version 0.17.0 page:** promotional text, description, keywords, screenshots, support URL (the support page, not GitHub issues) and copyright. Leave the marketing URL empty. What's New isn't offered for a first version.
 11. **App privacy:** the privacy policy URL from listing.md, and Data Not Collected. Publish it.
 12. **Age rating:** answers from listing.md; confirm 18+.
 

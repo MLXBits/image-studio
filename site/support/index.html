@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MLXBits Image Studio Support</title>
+<meta name="description" content="Help, answers and contact for MLXBits Image Studio, the on-device AI image generator for macOS.">
+<link rel="stylesheet" href="../style.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>MLXBits Image Studio Support</h1>
+    <p class="lede">Help for the on-device AI image generator for macOS. Can't find your answer? Email <a href="mailto:feedback@mlxbits.net">feedback@mlxbits.net</a>. We usually reply within a few days.</p>
+  </header>
+
+  <nav aria-label="On this page">
+    <a href="#start">Getting started</a>
+    <a href="#faq">Questions</a>
+    <a href="#trouble">Troubleshooting</a>
+    <a href="#contact">Contact</a>
+  </nav>
+
+  <section id="start">
+    <h2>Getting started</h2>
+    <ol>
+      <li><strong>Choose a library folder.</strong> On first launch, pick where your images are saved, or click <em>Skip for Now</em> to use Pictures ▸ MLXBits Image Studio.</li>
+      <li><strong>Choose where models are stored.</strong> If you already have a Hugging Face model folder, the app offers to use it so nothing downloads twice. Otherwise click <em>Keep Models in the App</em>.</li>
+      <li><strong>Pick a model.</strong> In the model menu at the top left, choose <em>FLUX.2 Klein 4B</em> and set quality to <em>Q8</em>. It's the smallest download, about 8 GB.</li>
+      <li><strong>Generate.</strong> Type a prompt, for example “a red fox in fresh snow, morning light”, and click <em>Generate</em> (⌘↵). The first run downloads the model, with progress shown; later images take seconds.</li>
+    </ol>
+  </section>
+
+  <section id="faq">
+    <h2>Questions</h2>
+
+    <h3>What do I need?</h3>
+    <p>A Mac with Apple silicon (M1 or later) running macOS 26, and at least 16 GB of memory. The larger models work best with 32 GB or more. Each model needs disk space too, from about 8 GB for the smallest to over 30 GB for the largest.</p>
+
+    <h3>Is it really free?</h3>
+    <p>Yes. Every feature is free, with no account or subscription. Optional tips in the Support window help keep the project going; they unlock nothing.</p>
+
+    <h3>Does anything leave my computer?</h3>
+    <p>No. Images are generated on your Mac, and your prompts and pictures stay there. The app only goes online to download models from Hugging Face, and to reach servers you set up yourself (such as LM Studio or ComfyUI). It collects no data; see the <a href="https://github.com/MLXBits/image-studio/blob/main/PRIVACY.md">privacy policy</a>.</p>
+
+    <h3>Where are my images saved?</h3>
+    <p>In the library folder you chose on first launch. You can see it, change it, or reveal it in Finder from Settings. Each profile can have its own library.</p>
+
+    <h3>Where are models stored, and can I reuse ones I already have?</h3>
+    <p>Settings ▸ Advanced shows the models folder. Point it at an existing Hugging Face folder to reuse models you've already downloaded.</p>
+
+    <h3>I closed the main window. How do I get it back?</h3>
+    <p>Choose <em>Window ▸ MLXBits Image Studio</em>.</p>
+
+    <h3>Which keyboard shortcuts are there?</h3>
+    <p>Choose <em>Help ▸ Keyboard Shortcuts</em> for the full list, including the gallery's culling keys: P to pick, X to reject, 0–5 to rate.</p>
+
+    <h3>Why is the app rated 18+?</h3>
+    <p>It makes images from whatever you describe, on your own computer, and can create mature images on request.</p>
+  </section>
+
+  <section id="trouble">
+    <h2>Troubleshooting</h2>
+
+    <h3>A model download is slow or stopped</h3>
+    <p>Models are large, so the first download can take a while. Check your internet connection and free disk space. If it stops, press <em>Stop</em> and start the generation again. An interrupted file downloads again from the start, so a steady connection helps.</p>
+
+    <h3>Generation fails or the Mac runs out of memory</h3>
+    <p>Try a smaller model or quality (Q8 or Q4), a smaller image size, and close other memory-hungry apps. The memory badge next to the model menu shows how much each choice needs.</p>
+
+    <h3>The Support window says tips can't be loaded</h3>
+    <p>The App Store couldn't be reached. Check your connection and try again later.</p>
+
+    <h3>Something else went wrong</h3>
+    <p>Open the job's log from the queue, and email us what you tried and what the log says.</p>
+  </section>
+
+  <section id="contact">
+    <h2>Contact</h2>
+    <p>Email <a href="mailto:feedback@mlxbits.net">feedback@mlxbits.net</a> with questions, problems or ideas. Please include your macOS version, your Mac's chip and memory, and the model you used.</p>
+    <p>You can also report bugs on <a href="https://github.com/MLXBits/image-studio/issues">GitHub</a>.</p>
+  </section>
+
+  <footer>© 2026 MLXBits · <a href="https://github.com/MLXBits/image-studio/blob/main/PRIVACY.md">Privacy policy</a></footer>
+</main>
+</body>
+</html>

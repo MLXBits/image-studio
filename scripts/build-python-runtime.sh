@@ -14,7 +14,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT="$ROOT/build/python-runtime"
 PREFIX="$OUT/python"
 
-INPUTS="Runtime/python.lock Runtime/requirements.lock Runtime/license-overrides.json Runtime/private-symbols.txt Runtime/tools.txt
+INPUTS="Runtime/python.lock Runtime/requirements.lock Runtime/license-overrides.json Runtime/private-symbols.txt Runtime/forbidden-strings.txt Runtime/tools.txt
 scripts/build-python-runtime.sh scripts/runtime_tools.py Resources/run_tool.py Resources/hf_cache_probe.py"
 KEY=$(cd "$ROOT" && for f in $INPUTS; do cat "$f"; done | shasum -a 256 | cut -c1-16)
 
@@ -67,6 +67,12 @@ rm -rf "$LIB"/itcl* "$LIB"/libtcl* "$LIB"/tcl9* "$LIB"/tk9* "$LIB"/thread* "$LIB
 # tools through run_tool.py instead.
 find "$PREFIX/bin" -mindepth 1 ! -name "python$MINOR" -exec rm -f {} +
 
+echo "→ App Store compliance"
+# What CPython's --with-app-store-compliance does: drop "itms-services" from
+# urllib.parse, which App Review's scanner rejects (2.5.2). Before bytecode, so
+# the compiled module matches.
+"$PY" "$ROOT/scripts/runtime_tools.py" app-store-compliance "$PREFIX"
+
 echo "→ Bytecode"
 find "$PREFIX" -name __pycache__ -type d -prune -exec rm -rf {} +
 # unchecked-hash: Python never re-validates or rewrites these inside the signed bundle.
@@ -84,7 +90,8 @@ echo "→ License guard"
   --overrides "$OVERRIDES"
 
 echo "→ App Store API check"
-"$PY" "$TOOLS" apis "$PREFIX" --denylist "$ROOT/Runtime/private-symbols.txt"
+"$PY" "$TOOLS" apis "$PREFIX" --denylist "$ROOT/Runtime/private-symbols.txt" \
+  --forbidden-strings "$ROOT/Runtime/forbidden-strings.txt"
 
 echo "→ Smoke test"
 "$PY" -c "import mflux, mlx.core, mlx_lm, mlx_vlm, torch"

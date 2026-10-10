@@ -317,3 +317,35 @@ class PrivateSymbolTests(unittest.TestCase):
         self.assertIn("_sgemm", listed)
         self.assertIn("_xerbla_array__", listed)
         self.assertEqual(len(listed), 46)
+
+
+class AppStoreStringTests(unittest.TestCase):
+    """App Review rejected 0.17.2 under 2.5.2 for "itms-services" in the
+    bundle: CPython lists it in urllib.parse.uses_netloc."""
+
+    PARSE = (
+        "uses_netloc = ['', 'ftp', 'http', 'gopher', 'nntp', 'telnet',\n"
+        "               'imap', 'wais', 'file', 'mms', 'https', 'shttp',\n"
+        "               'snews', 'prospero', 'rtsp', 'rtsps', 'rtspu', 'rsync',\n"
+        "               'svn', 'svn+ssh', 'sftp', 'nfs', 'git', 'git+ssh',\n"
+        "               'ws', 'wss', 'itms-services']\n"
+    )
+
+    def test_the_urllib_entry_is_removed_and_the_rest_kept(self):
+        patched = rt.without_itms_services(self.PARSE)
+        self.assertNotIn("itms-services", patched)
+        self.assertIn("'ws', 'wss']", patched)
+
+    def test_a_file_containing_a_forbidden_string_is_reported(self):
+        with tempfile.TemporaryDirectory() as d:
+            tmp = Path(d)
+            (tmp / "lib").mkdir()
+            (tmp / "lib" / "parse.py").write_text(self.PARSE)
+            (tmp / "lib" / "clean.py").write_text("x = 1\n")
+            (tmp / "lib" / "blob.so").write_bytes(b"\x00\x01itms-services\x00")
+            problems = rt.forbidden_string_uses(tmp, {"itms-services"})
+            self.assertEqual(problems, ["lib/blob.so contains itms-services", "lib/parse.py contains itms-services"])
+
+    def test_the_forbidden_list_has_itms_services(self):
+        self.assertIn("itms-services", rt.load_symbols(ROOT / "Runtime" / "forbidden-strings.txt"))
+
