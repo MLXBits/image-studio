@@ -197,9 +197,9 @@ extension BBoxEditorView {
             } else {
                 ScrollView {
                     VStack(spacing: 8) {
-                        ForEach($elements) { $el in
+                        ForEach(elements) { el in
                             IdeogramElementCard(
-                                element: $el,
+                                element: $elements.element(el),
                                 accentColor: BBoxGeometry.boxColor(
                                     at: elements.firstIndex { $0.id == el.id } ?? 0,
                                     type: el.type

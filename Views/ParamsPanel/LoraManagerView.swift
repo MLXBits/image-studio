@@ -93,10 +93,10 @@ struct LoraManagerView: View {
 
     private var loraList: some View {
         VStack(spacing: 19) {
-            ForEach($loras) { $lora in
+            ForEach(loras) { lora in
                 let index = loras.firstIndex { $0.id == lora.id } ?? 0
                 LoraRowView(
-                    lora: $lora,
+                    lora: $loras.element(lora),
                     name: name(for: lora),
                     showNotes: showNotes,
                     showDelete: rowsEditable,

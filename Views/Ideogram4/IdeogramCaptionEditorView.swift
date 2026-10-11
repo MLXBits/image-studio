@@ -256,8 +256,8 @@ struct IdeogramCaptionEditorView: View {
 
     private var elementList: some View {
         VStack(spacing: 6) {
-            ForEach($caption.compositionalDeconstruction.elements) { $el in
-                IdeogramElementCard(element: $el) {
+            ForEach(caption.compositionalDeconstruction.elements) { el in
+                IdeogramElementCard(element: $caption.compositionalDeconstruction.elements.element(el)) {
                     caption.compositionalDeconstruction.elements.removeAll { $0.id == el.id }
                 }
             }
