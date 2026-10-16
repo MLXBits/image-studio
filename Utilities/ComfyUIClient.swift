@@ -193,10 +193,10 @@ final class ComfyUIClient {
                 if let name = d["name"] as? String, !name.isEmpty {
                     stats.gpuNames.append(name)
                 }
-                /// Read both the driver-level and torch-tracked figures. Driver-level (`vram_free` /
-                /// `vram_total`) is what actually tracks occupancy because ComfyUI loads weights through the
-                /// CUDA driver, not torch's allocator; we keep `torch_vram_free` out of the residency math on
-                /// purpose for exactly that reason (it sits near-zero even with a 30 GB model resident).
+                // Read both the driver-level and torch-tracked figures. Driver-level (`vram_free` /
+                // `vram_total`) is what actually tracks occupancy because ComfyUI loads weights through the
+                // CUDA driver, not torch's allocator; we keep `torch_vram_free` out of the residency math on
+                // purpose for exactly that reason (it sits near-zero even with a 30 GB model resident).
                 func asBytes(_ key: String) -> Int64? {
                     if let v = d[key] as? Int64 {
                         return v
