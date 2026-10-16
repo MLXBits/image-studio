@@ -186,10 +186,10 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
-                    onCopyItem: { item in copyImages(menuTargets(for: item)) },
-                    onCopySelection: {
-                        copyImages(gallery.items.filter { selection.contains($0.id) })
+                    onCopyItem: { item in
+                        copyImages(selection.contains(item.id) ? selectionInGridOrder() : [item])
                     },
+                    onCopySelection: { copyImages(selectionInGridOrder()) },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
                     onCompareKey: { startCompare() },
@@ -886,6 +886,16 @@ struct GenerationGalleryView: View {
             return gallery.items.filter { selection.contains($0.id) }
         }
         return [item]
+    }
+
+    /// The selection in the order the grid shows it: board by board, as
+    /// `gallerySections` lays them out, so a paste lands in the order you see.
+    /// Covers selected images in collapsed boards and ones the filters now hide.
+    private func selectionInGridOrder() -> [GalleryItem] {
+        let byBoard = Dictionary(grouping: gallery.items.filter { selection.contains($0.id) }, by: \.board)
+        let boards = orderedBoards(for: gallery.items)
+        let unlisted = byBoard.keys.filter { !boards.contains($0) }.sorted()
+        return (boards + unlisted).flatMap { byBoard[$0] ?? [] }
     }
 
     private func copyImages(_ items: [GalleryItem]) {
