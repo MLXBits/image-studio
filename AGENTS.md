@@ -30,6 +30,12 @@ among ~139 baselined ones, so they are easy to miss, and CI fails on them under
 `init` or methods. Run both before building, too: the pre-build SwiftFormat pass
 rewrites files and would hide what `--lint` catches.
 
+CI pins **SwiftFormat 0.63.1** and **SwiftLint 0.65.1** (the lint job in
+`.github/workflows/ci.yml`). Check yours with `swiftformat --version` and
+`swiftlint version`: versions disagree on some rules, so a different one can
+pass locally and fail in CI, or the reverse. To bump, lint `main` with the new
+version, then update the version and SHA-256 in `ci.yml` and here together.
+
 If `~/MLXBits.xcworkspace` exists (the multi-Studio workspace: Image Studio,
 Video Studio, LTX Dataset Studio), you **must** build through it — never
 `-project` against the `.xcodeproj`:
