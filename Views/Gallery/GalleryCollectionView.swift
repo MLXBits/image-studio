@@ -417,11 +417,26 @@ final class GalleryNSCollectionView: NSCollectionView {
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
         eventDelegate?.dropPerformed(sender, in: self) ?? false
     }
+
+    /// Edit ▸ Copy (⌘C). The menu's key equivalent fires before `keyDown`, so ⌘C
+    /// arrives here through the responder chain, not as a key event.
+    @objc func copy(_: Any?) {
+        eventDelegate?.copyKeyPressed()
+    }
+}
+
+extension GalleryNSCollectionView: NSMenuItemValidation {
+    func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        guard menuItem.action == #selector(copy(_:)) else { return true }
+        return eventDelegate?.canCopy ?? false
+    }
 }
 
 // MARK: - Event protocol
 
 protocol GalleryCollectionViewEvents: AnyObject {
+    /// Whether Edit ▸ Copy (⌘C) has a selection to copy.
+    var canCopy: Bool { get }
     func singleClick(at path: IndexPath)
     func commandClick(at path: IndexPath)
     func shiftClick(at path: IndexPath)
@@ -432,6 +447,8 @@ protocol GalleryCollectionViewEvents: AnyObject {
     func cullFlagKeyPressed(_ flag: PickFlag?)
     func cullRatingKeyPressed(_ rating: Int)
     func compareKeyPressed()
+    /// Edit ▸ Copy (⌘C) with the grid focused.
+    func copyKeyPressed()
     // Drag destination — view-level so they fire over headers, not only over items
     func dragUpdated(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView)
     func dropPerformed(_ info: NSDraggingInfo, in cv: GalleryNSCollectionView) -> Bool
@@ -449,6 +466,10 @@ struct GalleryCollectionView: NSViewRepresentable {
         var sections: [GallerySection] = []
         var dropTargetBoard: String?
         weak var collectionView: GalleryNSCollectionView?
+
+        var canCopy: Bool {
+            !parent.multiSelectionIds.isEmpty
+        }
 
         init(_ parent: GalleryCollectionView) {
             self.parent = parent
@@ -570,6 +591,10 @@ struct GalleryCollectionView: NSViewRepresentable {
 
         func compareKeyPressed() {
             parent.onCompareKey()
+        }
+
+        func copyKeyPressed() {
+            parent.onCopySelection()
         }
 
         /// Allow selection changes only during keyboard navigation (arrow keys); block on mouse clicks.
@@ -803,12 +828,12 @@ struct GalleryCollectionView: NSViewRepresentable {
         private func buildMenu(for item: GalleryItem) -> NSMenu {
             let menu = NSMenu()
 
-            menu.addItem(menuItem("Copy Image") { [weak self] in
-                guard let img = NSImage(contentsOfFile: item.path) else { return }
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.writeObjects([img])
-                _ = self // suppress capture warning
-            })
+            // Copies the whole selection when the right-clicked item is part of it,
+            // like the other context actions; the title says how many.
+            let selected = parent.multiSelectionIds
+            let copyCount = selected.contains(item.id) ? selected.count : 1
+            let copyTitle = copyCount > 1 ? "Copy \(copyCount) Images" : "Copy Image"
+            menu.addItem(menuItem(copyTitle) { [weak self] in self?.parent.onCopyItem(item) })
 
             menu.addItem(.separator())
             addCullMenuItems(to: menu, for: item)
@@ -879,6 +904,8 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onDeleteImmediate: (GalleryItem) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void
+    var onCopyItem: (GalleryItem) -> Void
+    var onCopySelection: () -> Void
     var onCullFlag: (PickFlag?) -> Void
     var onCullRating: (Int) -> Void
     var onCompareKey: () -> Void
@@ -1066,6 +1093,7 @@ extension KeyboardShortcutCatalog {
         Entry("Remove the flag", ["U"]),
         Entry("Set the star rating", ["0–5"]),
         Entry("Compare", ["C"]),
+        Entry("Copy the selected images", ["⌘", "C"]),
         Entry("Delete the selection", ["⌫"], ["⌦"]),
         Entry("Delete the selection without asking", ["⇧", "⌫"], ["⇧", "⌦"]),
         Entry("Delete all rejected images", deleteRejected),

@@ -186,6 +186,10 @@ struct GenerationGalleryView: View {
                         gallery.deleteItems(toDelete, outputDir: settings.outputDir)
                         clearSelection(nextItem: adjacent)
                     },
+                    onCopyItem: { item in copyImages(menuTargets(for: item)) },
+                    onCopySelection: {
+                        copyImages(gallery.items.filter { selection.contains($0.id) })
+                    },
                     onCullFlag: { flag in cullCurrent(flag: flag) },
                     onCullRating: { rating in cullCurrent(rating: rating) },
                     onCompareKey: { startCompare() },
@@ -882,6 +886,10 @@ struct GenerationGalleryView: View {
             return gallery.items.filter { selection.contains($0.id) }
         }
         return [item]
+    }
+
+    private func copyImages(_ items: [GalleryItem]) {
+        ImagePasteboard.copyImages(atPaths: items.map(\.path))
     }
 
     // MARK: - Compare

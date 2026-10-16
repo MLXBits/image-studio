@@ -105,6 +105,7 @@
 		4FF4419A48598FC6674DE1D6 /* Krea2PreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */; };
 		5037139F21C87347EE80DCB4 /* KeyboardShortcutsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 251E8EE05CBC5999A207C341 /* KeyboardShortcutsView.swift */; };
 		50BB070EE335540D52A03E48 /* Krea2JobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */; };
+		513E46C0C240CF89D450518F /* ImagePasteboardTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 444B5198F2FA32283F0BA8FC /* ImagePasteboardTests.swift */; };
 		517F419A238A38CFD483F7F1 /* IdeogramCaptionEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DADA0C328F3708CF2C7C7456 /* IdeogramCaptionEditorView.swift */; };
 		5187063F7F4407E5A81BAFD8 /* BuildFlavor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E13B8A515FD7C7D6D2D87A5 /* BuildFlavor.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
@@ -211,6 +212,7 @@
 		C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */; };
 		C45315FC4F03EB7604454F1F /* TipJarStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F9A333C3A9565799C169B2 /* TipJarStoreTests.swift */; };
 		C4567389EC4696B14D85DA93 /* WeightDownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17949F8190AF15B8FF337DC5 /* WeightDownloadStore.swift */; };
+		C4868184D5FE8BBD4CA73D13 /* ImagePasteboard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50DCB8CA23D73F1BD0AAF97C /* ImagePasteboard.swift */; };
 		C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C89BEC8C22A135C0CC75CE08 /* LibraryFolderPanel.swift */; };
 		C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */; };
 		C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */; };
@@ -354,6 +356,7 @@
 		42A12301E41212F054BE2021 /* FakeRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeRuntime.swift; sourceTree = "<group>"; };
 		431C403A29EFDB5D3336D11F /* PromptBatchSplitterTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBatchSplitterTests.swift; sourceTree = "<group>"; };
 		4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Ideogram4Form.swift"; sourceTree = "<group>"; };
+		444B5198F2FA32283F0BA8FC /* ImagePasteboardTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePasteboardTests.swift; sourceTree = "<group>"; };
 		444CC52F9371A805017902EA /* StoreKitStorefrontTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitStorefrontTests.swift; sourceTree = "<group>"; };
 		45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunner.swift; sourceTree = "<group>"; };
 		46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryEditorView.swift; sourceTree = "<group>"; };
@@ -364,6 +367,7 @@
 		4D5E99B9AEBD37F3DD9DBFA9 /* SupportNudge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportNudge.swift; sourceTree = "<group>"; };
 		4FC7445FBA2C696BE4141103 /* GalleryRating.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryRating.swift; sourceTree = "<group>"; };
 		502FC77E6C94D5C5CAA181B2 /* BBoxTemplates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxTemplates.swift; sourceTree = "<group>"; };
+		50DCB8CA23D73F1BD0AAF97C /* ImagePasteboard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImagePasteboard.swift; sourceTree = "<group>"; };
 		5272500A8F29CFDE53E23ACB /* PythonTool.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PythonTool.swift; sourceTree = "<group>"; };
 		529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MetadataSidecar.swift; sourceTree = "<group>"; };
 		529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PreviewPaneView.swift; sourceTree = "<group>"; };
@@ -561,6 +565,7 @@
 				45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */,
 				74271FE93FEB78B95F9C92E7 /* GrantStore.swift */,
 				B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */,
+				50DCB8CA23D73F1BD0AAF97C /* ImagePasteboard.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
 				D923D32E0D737D888C711FE7 /* KeychainHelper.swift */,
 				4BE8D8821D022789E6524216 /* LoraBaseModelHeuristic.swift */,
@@ -684,6 +689,7 @@
 				9BC3FBDB50D99DB1D44723A9 /* Ideogram4ModelRouteTests.swift */,
 				2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */,
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
+				444B5198F2FA32283F0BA8FC /* ImagePasteboardTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
@@ -1224,6 +1230,7 @@
 				49BF0B410A6E1BD8CC6F2566 /* ImageDropTarget.swift in Sources */,
 				FA4F045A3562D02ADD46F383 /* ImageMetadataInfo.swift in Sources */,
 				E3AFA2AD37A47559BE6AF63B /* ImageMetadataPanel.swift in Sources */,
+				C4868184D5FE8BBD4CA73D13 /* ImagePasteboard.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
 				66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */,
 				02F1FD138C93997026C79E86 /* JobHistoryFile.swift in Sources */,
@@ -1370,6 +1377,7 @@
 				C1BA5F55DA94E67FFE534F0F /* Ideogram4ModelRouteTests.swift in Sources */,
 				013355367BA5B3C5D12F8263 /* IdeogramCaptionGeneratorTests.swift in Sources */,
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
+				513E46C0C240CF89D450518F /* ImagePasteboardTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
