@@ -349,3 +349,51 @@ class AppStoreStringTests(unittest.TestCase):
     def test_the_forbidden_list_has_itms_services(self):
         self.assertIn("itms-services", rt.load_symbols(ROOT / "Runtime" / "forbidden-strings.txt"))
 
+
+class EmbargoedUrlTests(unittest.TestCase):
+    """App Review rejected the app for a URL to a U.S.-embargoed region (.ir) in
+    networkx 3.7's corona_product docstring."""
+
+    DOCSTRING = (
+        '    [2] A. Faraji, "Corona Product in Graph Theory," Ali Faraji, May 11, 2021.\n'
+        "        https://blog.alifaraji.ir/math/graph-theory/corona-product.html (accessed Dec. 07, 2021).\n"
+    )
+
+    def test_the_ir_url_is_removed_and_the_citation_kept(self):
+        patched = rt.without_embargoed_urls(self.DOCSTRING)
+        self.assertNotIn("alifaraji", patched)
+        self.assertIn("Corona Product in Graph Theory", patched)
+
+    def test_every_embargoed_tld_is_removed(self):
+        for host in ("blog.alifaraji.ir", "example.cu", "mirror.kp", "news.sy"):
+            url = f"https://{host}/a/b.html"
+            patched = rt.without_embargoed_urls(f"see {url} now\n")
+            self.assertNotIn(host, patched, msg=url)
+
+    def test_port_and_uppercase_forms_are_removed(self):
+        self.assertNotIn("example.cu", rt.without_embargoed_urls('x = "http://example.cu:8080/api"\n'))
+        self.assertNotIn("EXAMPLE.CU", rt.without_embargoed_urls("see HTTPS://EXAMPLE.CU/x\n"))
+
+    def test_unrelated_urls_and_labels_are_untouched(self):
+        text = (
+            'see https://docs.python.org/3/license.html and http://example.com/a.b\n'
+            "long labels: https://example.syria/x, https://cure.clinic/y\n"
+            "path segments: https://github.com/org/file.ir and https://a.com/b/cu/z\n"
+        )
+        self.assertEqual(rt.without_embargoed_urls(text), text)
+
+    def test_app_store_compliance_strips_the_url_from_site_packages(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            prefix = make_prefix(Path(tmp))
+            site = rt.site_packages(prefix)
+            (site / "networkx").mkdir()
+            target = site / "networkx" / "product.py"
+            target.write_text('def corona_product(G, H):\n    """Docstring.\n' + self.DOCSTRING + '"""\n')
+            changed = rt.app_store_compliance(prefix)
+            self.assertEqual([p.name for p in changed], ["product.py"])
+            text = target.read_text()
+            self.assertNotIn("alifaraji", text)
+
+    def test_the_forbidden_list_has_the_faraji_domain(self):
+        self.assertIn("blog.alifaraji.ir", rt.load_symbols(ROOT / "Runtime" / "forbidden-strings.txt"))
+

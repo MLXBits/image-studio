@@ -4,3 +4,9 @@
 # 2.5.2, 0.17.2, 2026-10-10). CPython's --with-app-store-compliance removes it;
 # build-python-runtime.sh does the same.
 itms-services
+# blog.alifaraji.ir: networkx 3.7's corona_product docstring cites this Iranian
+# blog (rejected under U.S. sanctions rules, 2026-10). The compliance step strips
+# embargoed-region URLs (.ir/.cu/.kp/.sy hosts) from bundled sources before
+# bytecode; this fails a rebuild if one comes back in any file type the strip
+# can't reach.
+blog.alifaraji.ir

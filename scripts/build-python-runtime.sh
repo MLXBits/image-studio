@@ -69,8 +69,9 @@ find "$PREFIX/bin" -mindepth 1 ! -name "python$MINOR" -exec rm -f {} +
 
 echo "→ App Store compliance"
 # What CPython's --with-app-store-compliance does: drop "itms-services" from
-# urllib.parse, which App Review's scanner rejects (2.5.2). Before bytecode, so
-# the compiled module matches.
+# urllib.parse, which App Review's scanner rejects (2.5.2). It also strips URLs
+# to U.S.-embargoed regions (.ir/.cu/.kp/.sy hosts) that third-party docstrings
+# cite. Before bytecode, so the compiled modules match.
 "$PY" "$ROOT/scripts/runtime_tools.py" app-store-compliance "$PREFIX"
 
 echo "→ Bytecode"

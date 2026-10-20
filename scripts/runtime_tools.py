@@ -243,8 +243,28 @@ def without_itms_services(text: str) -> str:
     return re.sub(r",\s*'itms-services'", "", text)
 
 
+# http(s) URLs whose host ends in an embargoed-country TLD (.ir Iran, .cu Cuba,
+# .kp North Korea, .sy Syria): App Review rejects them anywhere in the bundle
+# under U.S. sanctions rules, even inside docstrings that are never fetched.
+# networkx 3.7's corona_product cites one; stripping by TLD covers any future
+# package citing another embargoed site. The negative lookahead keeps labels
+# like "syria" or "cure" intact: only hosts *ending* in an embargoed TLD match,
+# and a .ir/.cu/... path segment on some other domain is left alone.
+EMBARGOED_URL = re.compile(
+    r"https?://[^\s'\"<>()\[\]/:?#@=]+(?:\.ir|\.cu|\.kp|\.sy)(?![A-Za-z0-9.-])"
+    r"(?::\d+)?[^\s'\"<>()\[\]]*",
+    re.IGNORECASE,
+)
+
+
+def without_embargoed_urls(text: str) -> str:
+    """A source file with URLs to U.S.-embargoed regions removed."""
+    return EMBARGOED_URL.sub("", text)
+
+
 def app_store_compliance(prefix: Path) -> list[Path]:
-    """Applies without_itms_services to the stdlib's urllib/parse.py. Returns the files changed."""
+    """Applies without_itms_services to the stdlib's urllib/parse.py and strips
+    embargoed-region URLs from every bundled .py source. Returns the files changed."""
     changed = []
     for parse in prefix.glob("lib/python3*/urllib/parse.py"):
         text = parse.read_text()
@@ -252,6 +272,16 @@ def app_store_compliance(prefix: Path) -> list[Path]:
         if patched != text:
             parse.write_text(patched)
             changed.append(parse)
+    for libdir in sorted(prefix.glob("lib/python3.*")):
+        for py in sorted(libdir.rglob("*.py")):
+            try:
+                text = py.read_bytes().decode("utf-8")
+            except UnicodeDecodeError:
+                continue  # not a decodable source; the forbidden-string check still scans it byte-wise
+            patched = without_embargoed_urls(text)
+            if patched != text:
+                py.write_text(patched, encoding="utf-8")
+                changed.append(py)
     return changed
 
 
