@@ -195,6 +195,10 @@ schemes:
       config: Debug-AppStore
       # As above: Metal API Validation aborts the Python driver in MLX.
       enableGPUValidationMode: disabled
+      # Tip-jar products resolve against this StoreKit configuration when running
+      # the App Store flavor locally; Xcode rewrites schemes on open, so it must
+      # live here to survive regeneration.
+      storeKitConfiguration: Resources/Tips.storekit
     analyze:
       config: Debug-AppStore
     profile:

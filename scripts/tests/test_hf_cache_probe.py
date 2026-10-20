@@ -38,6 +38,10 @@ class {cls}:
 
 FAMILIES = {
     "flux2/weights/flux2_weight_definition.py": ("Flux2KleinWeightDefinition", "", '["transformer/*.safetensors"]'),
+    # Both FLUX 3 checkpoints share one module (Base subclasses the distilled definition).
+    "flux3/weights/flux3_weight_definition.py": (
+        ["Flux3KleinWeightDefinition", "Flux3KleinBaseWeightDefinition"], "", '["vae/*.safetensors"]'
+    ),
     "ideogram4/weights/ideogram4_weight_definition.py": ("Ideogram4WeightDefinition", "", '["vae/*.safetensors"]'),
     "krea2/weights/krea2_weight_definition.py": (
         "Krea2WeightDefinition", "model_name=None", '["raw.safetensors" if "raw" in model_name.lower() else "turbo.safetensors"]'
@@ -64,7 +68,8 @@ class HFCacheProbeTests(unittest.TestCase):
         models = self.site / "mflux/models"
         files = {"common/resolution/path_resolution.py": PATH_RESOLUTION.format(name=private_name)}
         for path, (cls, param, patterns) in families.items():
-            files[path] = DEFINITION.format(cls=cls, param=param, patterns=patterns)
+            classes = cls if isinstance(cls, list) else [cls]
+            files[path] = "".join(DEFINITION.format(cls=c, param=param, patterns=patterns) for c in classes)
         for path, source in files.items():
             target = models / path
             target.parent.mkdir(parents=True, exist_ok=True)

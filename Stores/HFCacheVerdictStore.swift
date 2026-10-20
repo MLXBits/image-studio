@@ -41,7 +41,7 @@ final class HFCacheVerdictStore {
                 guard let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
                       let repo = repoID(cacheFolder: folder.lastPathComponent),
                       !requests.contains(where: { $0.folder == folder }) else { continue }
-                requests.append(Request(folder: folder, repo: repo, family: model.family.id))
+                requests.append(Request(folder: folder, repo: repo, family: model.probeKey))
             }
         }
         return requests

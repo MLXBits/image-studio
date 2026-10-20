@@ -199,6 +199,7 @@
 		B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */; };
+		B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */; };
 		BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5B056C022208F02D3ED376 /* LibraryStatus.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */; };
@@ -435,6 +436,7 @@
 		8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptHistoryPickerView.swift; sourceTree = "<group>"; };
 		8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataInfo.swift; sourceTree = "<group>"; };
 		8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidDecodeToggleView.swift; sourceTree = "<group>"; };
+		8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flux3ModelRouteTests.swift; sourceTree = "<group>"; };
 		8DB456E628824B578B6A4293 /* Binding+Element.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Binding+Element.swift"; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
@@ -683,6 +685,7 @@
 				05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */,
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
+				8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */,
 				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */,
 				E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */,
@@ -1371,6 +1374,7 @@
 				C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
+				B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */,
 				22CA77DD79FAF7EE547EA6CF /* HFCacheVerdictStoreTests.swift in Sources */,

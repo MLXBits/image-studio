@@ -125,6 +125,22 @@ struct ModelDefaultsView: View {
 
     private var modelList: some View {
         List(selection: $selection) {
+            Section("FLUX 3") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(FluxModelVariant.flux3Klein.displayName).font(.callout)
+                    Text("Distilled · \(FluxModelVariant.flux3Klein.defaultSteps) steps")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.flux3Klein))
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(FluxModelVariant.flux3KleinBase.displayName).font(.callout)
+                    Text("Base · \(FluxModelVariant.flux3KleinBase.defaultSteps) steps")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.flux3KleinBase))
+            }
             Section("FLUX.2") {
                 ForEach(FluxModelVariant.builtIn, id: \.self) { model in
                     VStack(alignment: .leading, spacing: 2) {
@@ -333,7 +349,7 @@ struct ModelDefaultsView: View {
             HStack(spacing: 6) {
                 // swiftlint:disable:next redundant_discardable_let
                 let _ = (cacheRevision, weightDownloads.revision) // invalidates view when cache changes on disk
-                let cachedVariants = [0, 4, 8].filter {
+                let cachedVariants = [0, 8, 4].filter {
                     model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
                 }
                 ForEach(cachedVariants, id: \.self) { qLevel in
@@ -356,7 +372,7 @@ struct ModelDefaultsView: View {
                 }
                 let cacheDir = settings.effectiveMfluxCacheDir
                 ForEach(
-                    [0, 4, 8].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir, hubDir: settings.hfHubDir) },
+                    [0, 8, 4].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir, hubDir: settings.hfHubDir) },
                     id: \.self
                 ) { qLevel in
                     let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"

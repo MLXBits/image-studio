@@ -65,6 +65,13 @@ struct ModelPickerView: View {
                 // highlight; no custom row drawing needed.
                 Menu {
                     Picker("Model", selection: $model) {
+                        // FLUX 3 first — it is the newest model and the one users
+                        // will be looking for. FLUX 3 needs mflux ≥0.23; each row
+                        // dims itself on older runtimes.
+                        ForEach([FluxModelVariant.flux3Klein, .flux3KleinBase], id: \.self) { v in
+                            modelPickerRow(v)
+                        }
+                        Divider()
                         ForEach(FluxModelVariant.builtIn, id: \.self) { v in
                             Text(v.displayName).tag(v)
                         }
