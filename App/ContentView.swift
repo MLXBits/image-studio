@@ -1657,8 +1657,9 @@ struct ContentView: View {
     }
 
     /// LM Studio residency pill: lists each loaded model's short name and (first instance's) context length.
-    /// Eject unloads every resident instance via the native `/api/v1/models/unload`. Hidden entirely when no
-    /// remote LLM backend is configured, or when the server is reachable but speaks no native session API.
+    /// Eject unloads every resident instance (native `/api/v1/models/unload` on LM Studio; `/models/unload`
+    /// on llama.cpp). Hidden entirely when no remote LLM backend is configured, or when the server is
+    /// reachable but speaks no session API at all.
     @ViewBuilder
     private func lmStudioPill() -> some View {
         let entries = backendModels.lmLoadedEntries
