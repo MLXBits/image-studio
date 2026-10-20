@@ -460,6 +460,7 @@ fsspec==2026.6.0 \
     --hash=sha256:f5bac145310fe30e16e1471bd6840b2d990d609e872251d7e674241822abf01a
     # via
     #   huggingface-hub
+    #   mflux
     #   torch
 h11==0.16.0 \
     --hash=sha256:4e35b956cf45792e4caa5885e69fba00bdbc6ffafbfa020300e549b208ee5ff1 \
@@ -920,9 +921,9 @@ mdurl==0.1.2 \
     --hash=sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8 \
     --hash=sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba
     # via markdown-it-py
-mflux==0.21.0 \
-    --hash=sha256:508ac1f0491a204968391eae0d507d77bd54941a1eea37d080ab3e33d53794f6 \
-    --hash=sha256:b2e38fd3cd4e50d497cc226e01555b8fc7856181c9421bde2e043bc53ac12d2e
+mflux==0.23.0 \
+    --hash=sha256:059dbcac2f921cd29df148fb8e765b55ab3dcbe94428b782c36862578942c0b0 \
+    --hash=sha256:cefddbcb7d98fab4f4ddc1e2b706d8f616547f32c9829fdc065c3edd3db86b9a
     # via -r Runtime/requirements.in
 miniaudio==1.71 \
     --hash=sha256:06222d80b057ca4beccb6f97a134c2c2bf646ef7890e1759cfc09db7eecec44d \
