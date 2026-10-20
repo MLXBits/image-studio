@@ -147,6 +147,31 @@ enum OpenAIChatClient {
         }
     }
 
+    // MARK: - Non-native surface memory
+
+    /// Base URLs whose native `/api/v1` surface 404/405'd at least once (llama.cpp's router, plain OpenAI
+    /// proxies, …). In-process only — cleared on app restart — and keyed by the *normalized* base URL, so
+    /// pointing the app at a different backend (different host:port) is never mis-cached. While a base is
+    /// listed here, the poll and eject paths skip the native call instead of re-404ing every cycle.
+    private static let nonNativeSurfaceLock = NSLock()
+    private static var nonNativeSurfaceBases = Set<String>()
+
+    /// True when this base URL's native `/api/v1` surface was already found missing this session.
+    /// Exposed (non-private) for unit testing.
+    static func isKnownNonNativeSurface(_ baseURL: String) -> Bool {
+        nonNativeSurfaceLock.lock()
+        defer { nonNativeSurfaceLock.unlock() }
+        return nonNativeSurfaceBases.contains(normalizedBase(baseURL))
+    }
+
+    /// Records that this base URL has no LM Studio native surface (404/405 on `/api/v1/models`), so later
+    /// polls and ejects against it skip the native call. Exposed (non-private) for unit testing.
+    static func markNonNativeSurface(_ baseURL: String) {
+        nonNativeSurfaceLock.lock()
+        defer { nonNativeSurfaceLock.unlock() }
+        nonNativeSurfaceBases.insert(normalizedBase(baseURL))
+    }
+
     /// Polls the native session endpoint for currently-resident model instances. The base URL is stored as
     /// `…/v1` (the OpenAI path); LM Studio's native API lives at `/api/v1`, so we strip one trailing segment
     /// and re-add it — `http://host:1234/v1` becomes `http://host:1234/api/v1/models`. Servers without the
@@ -154,11 +179,20 @@ enum OpenAIChatClient {
     /// `GET /v1/models` shape when it carries llama.cpp-style residency data (`status.value` per model);
     /// servers with neither surface throw, and callers treat that as "no info", not an error worth surfacing.
     static func fetchSessionStatus(baseURL: String, apiKey: String) async throws -> LMSessionStatus {
+        guard !isKnownNonNativeSurface(baseURL) else {
+            // This base already proved it has no native surface this session — go straight to the standard
+            // OpenAI list instead of re-404ing the native path every poll.
+            return try await fetchOpenAISessionStatus(
+                baseURL: baseURL, apiKey: apiKey,
+                original: OpenAIChatClientError.httpStatus(404, "native surface absent (cached)")
+            )
+        }
         do {
             return try await fetchNativeSessionStatus(baseURL: baseURL, apiKey: apiKey)
         } catch let error as OpenAIChatClientError where isNonNativeSurface(error) {
-            // No LM Studio native surface (llama.cpp router, plain OpenAI proxy, …) — try the
-            // standard OpenAI model list, which llama.cpp augments with residency status.
+            // No LM Studio native surface (llama.cpp router, plain OpenAI proxy, …) — remember it and try
+            // the standard OpenAI model list, which llama.cpp augments with residency status.
+            markNonNativeSurface(baseURL)
             return try await fetchOpenAISessionStatus(baseURL: baseURL, apiKey: apiKey, original: error)
         }
     }
@@ -251,11 +285,18 @@ enum OpenAIChatClient {
     /// eject button: a transient failure just means the next poll still shows it loaded and the user
     /// retries; the store surfaces nothing.
     static func unloadModel(instanceID: String, baseURL: String, apiKey: String) async throws {
+        guard !isKnownNonNativeSurface(baseURL) else {
+            // No native surface this session — llama.cpp's router unloads via `POST /models/unload`
+            // (no /v1 prefix) with a model id, not an instance id.
+            try await unloadLlamaCPPModel(instanceID: instanceID, baseURL: baseURL, apiKey: apiKey)
+            return
+        }
         do {
             try await unloadNativeModel(instanceID: instanceID, baseURL: baseURL, apiKey: apiKey)
         } catch let error as OpenAIChatClientError where isNonNativeSurface(error) {
-            // No LM Studio native surface — llama.cpp's router unloads via `POST /models/unload`
+            // No LM Studio native surface — remember it, then unload via llama.cpp's `POST /models/unload`
             // (no /v1 prefix) with a model id, not an instance id.
+            markNonNativeSurface(baseURL)
             try await unloadLlamaCPPModel(instanceID: instanceID, baseURL: baseURL, apiKey: apiKey)
         }
     }

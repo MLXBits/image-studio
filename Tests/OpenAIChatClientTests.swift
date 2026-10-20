@@ -154,4 +154,17 @@ struct OpenAIChatClientTests {
         #expect(OpenAIChatClient.contextLength(fromArgs: ["--ctx-size"]) == nil)
         #expect(OpenAIChatClient.contextLength(fromArgs: nil) == nil)
     }
+
+    // MARK: - Non-native surface memory
+
+    @Test func nonNativeSurfaceMemoryKeysOnNormalizedBase() {
+        let raw = "http://cache-test.local:9911"
+        #expect(!OpenAIChatClient.isKnownNonNativeSurface(raw))
+        OpenAIChatClient.markNonNativeSurface(raw)
+        // Same host:port under different /v1 suffixes and whitespace hits the same cache entry.
+        #expect(OpenAIChatClient.isKnownNonNativeSurface("http://cache-test.local:9911/v1"))
+        #expect(OpenAIChatClient.isKnownNonNativeSurface("  http://cache-test.local:9911/v1/  "))
+        // A different base is never mis-cached.
+        #expect(!OpenAIChatClient.isKnownNonNativeSurface("http://cache-test.local:9912/v1"))
+    }
 }

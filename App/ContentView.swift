@@ -1692,7 +1692,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.iconButtonCompact)
                 .foregroundStyle(.secondary)
-                .help("Unload all LM Studio models")
+                .help("Unload all models")
             }
             .padding(.horizontal, 8)
             .padding(.vertical, 3)
