@@ -30,6 +30,10 @@ import tempfile
 # app's ModelFamily.id.
 DEFINITIONS = {
     "flux.2": ("mflux.models.flux2.weights.flux2_weight_definition", "Flux2KleinWeightDefinition"),
+    # FLUX 3 rides the `.flux` pipeline but has its own loader, and the two checkpoints
+    # carry different weight sets — so each variant gets a dedicated key (see probeKey).
+    "flux3": ("mflux.models.flux3.weights.flux3_weight_definition", "Flux3KleinWeightDefinition"),
+    "flux3-base": ("mflux.models.flux3.weights.flux3_weight_definition", "Flux3KleinBaseWeightDefinition"),
     "ideogram4": ("mflux.models.ideogram4.weights.ideogram4_weight_definition", "Ideogram4WeightDefinition"),
     "krea2": ("mflux.models.krea2.weights.krea2_weight_definition", "Krea2WeightDefinition"),
     "z-image": ("mflux.models.z_image.weights.z_image_weight_definition", "ZImageWeightDefinition"),

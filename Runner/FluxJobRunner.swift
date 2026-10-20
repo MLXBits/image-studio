@@ -18,7 +18,13 @@ enum FluxRunnerSpec: JobRunnerSpec {
     static let encodingLabel = "Encoding prompt"
 
     static func tool(job: FluxJob) -> PythonTool {
-        job.isEditMode ? .flux2Edit : .flux2
+        // A custom checkpoint runs through whatever family it loads as, so its target's
+        // variant decides — a flux3 fine-tune needs the flux3 CLI.
+        let m = job.model == .custom ? job.customBaseModel : job.model
+        if m.isFlux3 {
+            return job.isEditMode ? .flux3Edit : .flux3
+        }
+        return job.isEditMode ? .flux2Edit : .flux2
     }
 
     /// Exactly what the run reads: enabled Flux LoRAs, the custom folder only
@@ -66,11 +72,16 @@ enum FluxRunnerSpec: JobRunnerSpec {
     }
 
     /// Driver eligibility + request. Edit mode drives a different mflux class,
-    /// low-RAM must stream from disk (one-shot by design), and custom repos
-    /// need `--base-model` semantics the driver doesn't replicate — all three
-    /// fall back to the CLI subprocess.
+    /// low-RAM must stream from disk (one-shot by design), custom repos need
+    /// `--base-model` semantics the driver doesn't replicate, and FLUX 3's
+    /// community repo IDs can't be resolved by the driver at all: its
+    /// `_construct_model` calls `ModelConfig.from_name` with no base-model
+    /// parameter, so a name matching no alias dies with "Cannot infer
+    /// base_model" — and the flux2 branch would load FLUX 3 weights into the
+    /// wrong variant class. All four fall back to the CLI subprocess, which
+    /// passes `--base-model` explicitly (see `modelArgs`).
     static func driverRequest(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
-        guard !job.isEditMode, !job.lowRam, job.model != .custom else { return nil }
+        guard !job.isEditMode, !job.lowRam, job.model != .custom, !job.model.isFlux3 else { return nil }
 
         // Resolve the model argument exactly like buildArgs: override repo →
         // pre-quantized repo → locally saved weights → base repo (+ in-memory
@@ -149,9 +160,13 @@ enum FluxRunnerSpec: JobRunnerSpec {
         return ["--base-model", base.mfluxModelID]
     }
 
-    static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
-        var args: [String] = []
-
+    /// Resolves the `--model` value per job source, in priority order: custom checkpoint,
+    /// user override (HF repo ID or local path), published pre-saved community repo —
+    /// mflux detects stored_q so no quantize flag rides along; FLUX 3 publishes one at
+    /// every precision including BF16, so its gated BFL source is never downloaded by
+    /// the app. Then locally saved weights (mflux-save output), finally the bare
+    /// registry name for in-memory quantization or unquantized builtins.
+    static func modelArgs(job: FluxJob, settings: AppSettings) -> [String] {
         if job.model == .custom {
             // `--model` carries the checkpoint (repo id or local path). `--base-model` names
             // the Flux.2 architecture mflux loads it as — for a fine-tune, `customBaseModel`
@@ -162,33 +177,56 @@ enum FluxRunnerSpec: JobRunnerSpec {
             // code 2, so a stale or unreadable install must not see it — which drops back to
             // that mflux's pre-gate behavior rather than failing here.
             let base = job.customBaseModel.family == .flux ? job.customBaseModel : .flux2Klein9B
-            args += ["--model", job.customModelRepo] + baseModelArgs(base: base, settings: settings)
-        } else if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
-            // User-supplied override (HF repo ID or local path): use as-is.
-            // No --quantize flag — the repo carries its own quantization metadata.
-            args += ["--model", override] + baseModelArgs(base: job.model, settings: settings)
-        } else if job.quantize > 0 {
-            if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
-                // Known mlx-community pre-quantized repo: pass directly, mflux detects stored_q.
-                args += ["--model", preQuantizedRepo] + baseModelArgs(base: job.model, settings: settings)
-            } else {
-                let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-                if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                    // Local mflux-saved weights: pass path directly — mflux detects stored_q,
-                    // but a bare local path carries no architecture, so name it explicitly.
-                    args += ["--model", savedPath.path] + baseModelArgs(base: job.model, settings: settings)
-                } else {
-                    // No saved weights yet (mflux-save may have failed): fall back to in-memory quantization.
-                    args += ["--model", job.model.mfluxModelID]
-                }
+            if base.isFlux3 {
+                // Any runtime with the flux3 CLI is ≥0.23 and accepts --base-model, so pass it
+                // unconditionally: a probe-gated flag dropped on a slow interpreter would leave
+                // mflux guessing the architecture from a name that matches no alias.
+                return ["--model", job.customModelRepo, "--base-model", base.mfluxModelID]
             }
-        } else {
-            // Builtin model with no override or quantization: still pass the registry name —
-            // omitting --model silently falls back to the CLI's default entry.
-            args += ["--model", job.model.mfluxModelID]
+            return ["--model", job.customModelRepo] + baseModelArgs(base: base, settings: settings)
         }
+
+        if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
+            // User-supplied override (HF repo ID or local path): use as-is.
+            return ["--model", override] + baseModelArgs(base: job.model, settings: settings)
+        }
+
+        if let publishedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
+            // Known pre-saved community repo (mlx-community / mflux-community).
+            var args = ["--model", publishedRepo]
+            if let baseKey = job.model.baseModelKey {
+                // FLUX 3's repo name matches no alias mflux can infer from, so the root config
+                // must be named explicitly. Any runtime with the .flux3 tool is ≥0.23 and accepts
+                // --base-model — pass it unconditionally: a probe-gated flag silently dropped on a
+                // slow interpreter would break every generation with "Cannot infer base_model".
+                args += ["--base-model", baseKey]
+            } else {
+                args += baseModelArgs(base: job.model, settings: settings)
+            }
+            return args
+        }
+
+        if job.quantize > 0 {
+            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+            if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                // Local mflux-saved weights: pass path directly — mflux detects stored_q,
+                // but a bare local path carries no architecture, so name it explicitly.
+                return ["--model", savedPath.path] + baseModelArgs(base: job.model, settings: settings)
+            }
+        }
+        // Builtin model with no override or quantization (or mflux-save failed): the
+        // registry name — omitting --model would silently fall back to the CLI's default.
+        return ["--model", job.model.mfluxModelID]
+    }
+
+    static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
+        var args = modelArgs(job: job, settings: settings)
         args += ["--prompt", job.prompt]
-        let supportsNeg = job.model.supportsNegativePrompt
+        // A custom checkpoint inherits its target's capabilities, so judge prompt and
+        // guidance support on the variant that actually runs. FLUX 3 rejects
+        // `--negative-prompt` outright (a hard CLI error), unlike every other target.
+        let effective = job.model == .custom ? job.customBaseModel : job.model
+        let supportsNeg = job.model.supportsNegativePrompt && !(job.model == .custom && effective.isFlux3)
         if supportsNeg, !job.negativePrompt.isEmpty {
             args += ["--negative-prompt", job.negativePrompt]
         }
@@ -197,7 +235,13 @@ enum FluxRunnerSpec: JobRunnerSpec {
             "--width", "\(job.width)",
             "--height", "\(job.height)",
             "--steps", "\(job.steps)",
-            "--guidance", String(format: "%.2f", job.guidance),
+        ]
+        // FLUX 3's distilled checkpoint has no CFG branch and its CLI warns whenever
+        // `--guidance` is supplied — omit it there and let mflux use the model default.
+        if effective.supportsGuidance {
+            args += ["--guidance", String(format: "%.2f", job.guidance)]
+        }
+        args += [
             "--output", ctx.outputFile,
         ]
 
@@ -229,14 +273,20 @@ enum FluxRunnerSpec: JobRunnerSpec {
             if !job.editImagePaths.isEmpty {
                 args += ["--image-paths"] + job.editImagePaths
             }
-        } else if !job.imagePath.isEmpty {
+        } else if !job.imagePath.isEmpty, !effective.isFlux3 {
+            // FLUX 3's txt2img CLI accepts an init image but never reads it — passing one
+            // would silently drop the user's reference. The params panel hides img2img for
+            // this variant; this drops any stale state that survived a model switch.
             args += [
                 "--image-path", job.imagePath,
                 "--image-strength", String(format: "%.2f", job.imageStrength),
             ]
         }
 
-        let enabledLoras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
+        // LoRA entries carry no per-model scope, so a Flux.2 LoRA can remain enabled when
+        // the target is FLUX 3 — its layers don't map onto that architecture. Drop it rather
+        // than hand mflux weights for the wrong model (same treatment as stale img2img state).
+        let enabledLoras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux && !effective.isFlux3 }
         if !enabledLoras.isEmpty {
             args += ["--lora-paths"] + enabledLoras.map(\.path)
             args += ["--lora-scales"] + enabledLoras.map { String(format: "%.2f", $0.strength) }
@@ -244,7 +294,10 @@ enum FluxRunnerSpec: JobRunnerSpec {
 
         args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
 
-        args += pidArgs(pidDecode: job.pidDecode, degradeSigma: job.pidDegradeSigma)
+        // Neither FLUX 3 CLI implements PiD decode; the flag would be silently ignored.
+        if !effective.isFlux3 {
+            args += pidArgs(pidDecode: job.pidDecode, degradeSigma: job.pidDegradeSigma)
+        }
 
         return args
     }
