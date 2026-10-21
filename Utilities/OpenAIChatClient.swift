@@ -259,10 +259,14 @@ enum OpenAIChatClient {
     /// Residency fallback for OpenAI-compatible servers without the LM Studio native surface (404/405 on
     /// `/api/v1/models`): llama.cpp's router answers the standard `GET /v1/models` with a per-model
     /// `status.value` (`"loaded"` / `"unloaded"`) plus the spawn `args`, from which we recover the context
-    /// length (`--ctx-size`). Plain OpenAI servers (no `status` field) decode to "nothing loaded".
+    /// length (`--ctx-size`). Plain OpenAI servers (no `status` field on any entry) return `nil` so the
+    /// caller rethrows and the store keeps its "no session info" behavior.
     /// Exposed (non-private) for unit testing.
     static func sessionStatusFromOpenAIModelList(_ data: Data) -> LMSessionStatus? {
         guard let decoded = try? JSONDecoder().decode(OpenAIModelListResponse.self, from: data) else { return nil }
+        // Plain OpenAI servers have no residency data (no `status` field on any entry) — signal "no
+        // session info" by returning nil so the caller rethrows and the store keeps its fallback.
+        guard decoded.data.contains(where: { $0.status != nil }) else { return nil }
         var loaded: [LMSessionStatus.LoadedModel] = []
         for entry in decoded.data where entry.status?.value == "loaded" {
             let ctx = contextLength(fromArgs: entry.status?.args)

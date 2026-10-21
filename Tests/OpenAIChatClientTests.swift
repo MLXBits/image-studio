@@ -136,12 +136,12 @@ struct OpenAIChatClientTests {
     }
 
     @Test func sessionStatusFromOpenAIModelListIgnoresPlainOpenAIEntries() {
-        // Plain OpenAI server: no `status` field at all → nothing resident.
+        // Plain OpenAI server: no `status` field at all → "no session info" (nil, not an empty status).
         let json = #"""
         {"data":[{"id":"gpt-4o","object":"model"},{"id":"gpt-4o-mini","object":"model"}]}
         """#
         let status = OpenAIChatClient.sessionStatusFromOpenAIModelList(Data(json.utf8))
-        #expect(status?.loaded.isEmpty == true)
+        #expect(status == nil)
     }
 
     @Test func sessionStatusFromOpenAIModelListNilOnUnparseable() {
