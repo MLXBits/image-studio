@@ -109,4 +109,62 @@ struct OpenAIChatClientTests {
         #expect(!OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.httpStatus(500, "response_format")))
         #expect(!OpenAIChatClient.rejectsJSONObject(OpenAIChatClientError.emptyResponse))
     }
+
+    // MARK: - llama.cpp residency fallback
+
+    @Test func sessionStatusFromOpenAIModelListParsesLoadedModels() {
+        let json = """
+        {"data":[
+          {"id":"heretic-27b-q6k","status":{"value":"loaded","args":["--ctx-size","125000","--n-gpu-layers","999"]}},
+          {"id":"qwen3-coder-30b-q4km","status":{"value":"unloaded","args":[]}}
+        ]}
+        """
+        let status = OpenAIChatClient.sessionStatusFromOpenAIModelList(Data(json.utf8))
+        #expect(status?.loaded.count == 1)
+        #expect(status?.loaded.first?.modelKey == "heretic-27b-q6k")
+        #expect(status?.loaded.first?.displayName == nil)
+        #expect(status?.loaded.first?.instances.count == 1)
+        #expect(status?.loaded.first?.instances.first?.contextLength == 125_000)
+    }
+
+    @Test func sessionStatusFromOpenAIModelListEmptyWhenNothingLoaded() {
+        let json = #"""
+        {"data":[{"id":"m1","status":{"value":"unloaded","args":[]}}]}
+        """#
+        let status = OpenAIChatClient.sessionStatusFromOpenAIModelList(Data(json.utf8))
+        #expect(status?.loaded.isEmpty == true)
+    }
+
+    @Test func sessionStatusFromOpenAIModelListIgnoresPlainOpenAIEntries() {
+        // Plain OpenAI server: no `status` field at all → "no session info" (nil, not an empty status).
+        let json = #"""
+        {"data":[{"id":"gpt-4o","object":"model"},{"id":"gpt-4o-mini","object":"model"}]}
+        """#
+        let status = OpenAIChatClient.sessionStatusFromOpenAIModelList(Data(json.utf8))
+        #expect(status == nil)
+    }
+
+    @Test func sessionStatusFromOpenAIModelListNilOnUnparseable() {
+        #expect(OpenAIChatClient.sessionStatusFromOpenAIModelList(Data("not json".utf8)) == nil)
+    }
+
+    @Test func contextLengthFromArgsExtractsCtxSize() {
+        #expect(OpenAIChatClient.contextLength(fromArgs: ["--ctx-size", "125000", "--flash-attn", "on"]) == 125_000)
+        #expect(OpenAIChatClient.contextLength(fromArgs: ["--flash-attn", "on"]) == nil)
+        #expect(OpenAIChatClient.contextLength(fromArgs: ["--ctx-size"]) == nil)
+        #expect(OpenAIChatClient.contextLength(fromArgs: nil) == nil)
+    }
+
+    // MARK: - Non-native surface memory
+
+    @Test func nonNativeSurfaceMemoryKeysOnNormalizedBase() {
+        let raw = "http://cache-test.local:9911"
+        #expect(!OpenAIChatClient.isKnownNonNativeSurface(raw))
+        OpenAIChatClient.markNonNativeSurface(raw)
+        // Same host:port under different /v1 suffixes and whitespace hits the same cache entry.
+        #expect(OpenAIChatClient.isKnownNonNativeSurface("http://cache-test.local:9911/v1"))
+        #expect(OpenAIChatClient.isKnownNonNativeSurface("  http://cache-test.local:9911/v1/  "))
+        // A different base is never mis-cached.
+        #expect(!OpenAIChatClient.isKnownNonNativeSurface("http://cache-test.local:9912/v1"))
+    }
 }

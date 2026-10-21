@@ -92,11 +92,12 @@ struct OpenAIModelsResponse: Decodable {
 
 // MARK: - LM Studio native session status (polling + eject)
 
-/// Snapshot of an OpenAI-compatible server's *loaded* model instances, from the
-/// LM Studio native `GET /api/v1/models` endpoint (the `/v1/*` path only reports ids).
-/// The header pill polls this so a co-resident LM Studio shows which models are holding
-/// memory and how much context each loaded instance is configured for. Non-LM-Studio
-/// servers that lack the native API surface simply never populate it (the poll throws).
+/// Snapshot of an OpenAI-compatible server's *loaded* model instances. Populated from the
+/// LM Studio native `GET /api/v1/models` endpoint (the `/v1/*` path only reports ids), or — when the
+/// native surface 404s — from the standard OpenAI model list's llama.cpp-style `status.value` field.
+/// The header pill polls this so a co-resident server shows which models are holding
+/// memory and how much context each loaded instance is configured for. Servers with no residency
+/// surface at all simply never populate it (the poll throws).
 struct LMSessionStatus: Equatable {
     /// One resident model instance (a model can hold several, e.g. different contexts).
     struct Instance: Equatable {
