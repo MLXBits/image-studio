@@ -21,6 +21,6 @@ struct PythonToolTests {
 
     @Test func onlyMfluxToolsFollowTheCustomPython() {
         #expect(PythonTool.allCases.filter(\.isMflux)
-            == [.flux2, .flux2Edit, .ideogram4, .krea2, .zImage, .zImageTurbo, .seedVR2, .save])
+            == [.flux2, .flux2Edit, .flux3, .flux3Edit, .ideogram4, .krea2, .zImage, .zImageTurbo, .seedVR2, .save])
     }
 }

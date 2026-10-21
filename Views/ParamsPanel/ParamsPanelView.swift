@@ -135,6 +135,15 @@ struct ParamsPanelView: View {
             ) {
                 editImagesSection
             }
+        } else if params.model.isFlux3 {
+            SectionContainerView(
+                title: "Image Input",
+                info: "FLUX 3 Image Klein has no image-to-image mode — reference images are only used in Edit mode."
+            ) {
+                Text("No img2img for FLUX 3. Switch to Edit above to use reference images.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+            }
         } else {
             SectionContainerView(
                 title: "Image Input",
@@ -167,10 +176,13 @@ struct ParamsPanelView: View {
                     constraints: params.model.isFlux ? .flux2 : .legacy,
                     estimate: fluxEstimate
                 )
-                PidDecodeToggleView(
-                    pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
-                    width: params.width, height: params.height, family: .flux
-                )
+                // Neither FLUX 3 CLI implements PiD decode.
+                if !params.model.isFlux3 {
+                    PidDecodeToggleView(
+                        pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
+                        width: params.width, height: params.height, family: .flux
+                    )
+                }
             }
         }
 

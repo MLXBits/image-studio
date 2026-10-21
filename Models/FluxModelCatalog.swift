@@ -5,6 +5,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     case flux2Klein9B = "flux2-klein-9b"
     case flux2KleinBase4B = "flux2-klein-base-4b"
     case flux2KleinBase9B = "flux2-klein-base-9b"
+    case flux3Klein = "flux3-image-klein"
+    case flux3KleinBase = "flux3-image-klein-base"
     case ideogram4
     case krea2
     case zimageTurbo = "z-image-turbo"
@@ -16,9 +18,10 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         [.flux2Klein9B, .flux2Klein4B, .flux2KleinBase9B, .flux2KleinBase4B]
     }
 
-    /// All non-custom models shown in Settings → Models.
+    /// All non-custom models shown in Settings → Models. FLUX 3 first: it is the
+    /// newest model and the one users will be looking for.
     static var allModels: [Self] {
-        builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
+        [.flux3Klein, .flux3KleinBase] + builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
     }
 
     /// Models the `custom` picker entry can load through: every variant the app
@@ -104,12 +107,21 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "Krea 2 Turbo"
         case .zimageTurbo: "Z-Image Turbo"
         case .zimage: "Z-Image"
+        case .flux3Klein: "FLUX.3 Klein"
+        case .flux3KleinBase: "FLUX.3 Klein Base"
         case .custom: "Custom Model"
         }
     }
 
     var isDistilled: Bool {
-        self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo
+        self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo || self == .flux3Klein
+    }
+
+    /// Both FLUX 3 Image Klein variants. They share the `.flux` pipeline but run
+    /// through their own mflux CLI (`mflux-generate-flux3[-edit]`) and have no
+    /// img2img mode — only text-to-image and multi-reference editing.
+    var isFlux3: Bool {
+        self == .flux3Klein || self == .flux3KleinBase
     }
 
     var defaultSteps: Int {
@@ -118,7 +130,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 8 // turbo reference default
         case .zimageTurbo: 9 // mflux z-image-turbo default
         case .zimage: 50 // mflux z-image default
-        default: isDistilled ? 4 : 50
+        case .flux3Klein: 16 // distilled Klein is designed for ~16 steps (mflux default)
+        default: isDistilled ? 4 : 50 // flux3KleinBase lands here at 50, its CFG default
         }
     }
 
@@ -136,6 +149,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         self == .custom || self == .zimage
     }
 
+    /// FLUX 3's distilled checkpoint has no CFG branch; its CLI warns whenever
+    /// `--guidance` is supplied, so the runner omits it for that variant and lets
+    /// mflux use the model's own default. The Base (undistilled) checkpoint takes
+    /// guidance as usual (mflux defaults it to 3.5).
+    var supportsGuidance: Bool {
+        self != .flux3Klein
+    }
+
     /// Soft cap (in estimated tokens) for the prompt field, or `nil` to hide the
     /// counter. FLUX.2 Klein encodes prompts with Qwen at
     /// `max_sequence_length=512`; text beyond that is truncated by the backend
@@ -146,6 +167,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B: 512
         case .krea2: 1024 // krea/Krea-2 qwen3vl tokenizer, max_length=1024
         case .zimageTurbo, .zimage: 512 // Qwen3-4B encoder at max_sequence_length=512
+        case .flux3Klein, .flux3KleinBase: 4096 // mflux ModelConfig max_sequence_length for FLUX 3
         case .ideogram4, .custom: nil
         }
     }
@@ -157,6 +179,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .ideogram4: 28.0 // FP8 checkpoint
         case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
         case .zimageTurbo, .zimage: 20.0 // 6.15B DiT + Qwen3-4B encoder + VAE, bf16
+        case .flux3Klein, .flux3KleinBase: 18.5 // mflux-community BF16 repo (text encoder + transformer + VAE)
         case .custom: 0
         }
     }
@@ -174,6 +197,18 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
+    /// Root-config key to pass via `--base-model` for pre-saved community repos. FLUX 3 repo
+    /// names (`mflux-community/flux-3-image-klein-mflux-q8`) contain no "flux3*" alias substring,
+    /// so mflux's config resolver cannot infer them ("Cannot infer base_model"). Nil when the
+    /// name is self-describing and inference (or a probed `--base-model`) suffices.
+    var baseModelKey: String? {
+        switch self {
+        case .flux3Klein: "flux3-image-klein"
+        case .flux3KleinBase: "flux3-image-klein-base"
+        default: nil
+        }
+    }
+
     /// Which pipeline — runner, params panel, LoRA scope — this variant runs
     /// through. `custom` has no family of its own; ask its target instead (see
     /// ``ParamsPanelState/modelFamily``).
@@ -182,7 +217,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .ideogram4: .ideogram4
         case .krea2: .krea2
         case .zimageTurbo, .zimage: .zimage
-        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B, .custom: .flux
+        case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B,
+             .flux3Klein, .flux3KleinBase, .custom: .flux
         }
     }
 
@@ -196,6 +232,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: .krea2
         case .zimageTurbo: .zImageTurbo
         case .zimage: .zImage
+        case .flux3Klein, .flux3KleinBase: .flux3
         case .custom: nil
         }
     }
@@ -206,6 +243,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     /// BF16/FP8 source repo on HuggingFace (used when no pre-quantized repo exists).
+    /// FLUX 3 points at the ungated mflux-community MLX layout instead of the gated BFL
+    /// source — same weights, re-sharded for direct load, ~4× smaller than the raw repo.
     var bf16HFRepoID: String? {
         switch self {
         case .flux2Klein9B: "mlx-community/flux2-klein-9b-bf16"
@@ -216,6 +255,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea/Krea-2-Turbo"
         case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
         case .zimage: "Tongyi-MAI/Z-Image"
+        case .flux3Klein: "mflux-community/flux-3-image-klein-mflux-bf16"
+        case .flux3KleinBase: "mflux-community/flux-3-image-klein-base-mflux-bf16"
         case .custom: nil
         }
     }
@@ -231,7 +272,22 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea-2-turbo"
         case .zimageTurbo: "z-image-turbo"
         case .zimage: "tongyi-mai--z-image"
+        case .flux3Klein: "flux-3-image-klein"
+        case .flux3KleinBase: "flux-3-image-klein-base"
         case .custom: ""
+        }
+    }
+
+    /// The key ``hf_cache_probe.py``'s weight-definition table uses for this
+    /// variant. Normally the family id — one loader per family decides which
+    /// files make a download complete. FLUX 3 is the exception: it rides the
+    /// `.flux` pipeline but has its own loader (and Base carries different
+    /// weights), so each variant gets a dedicated key.
+    var probeKey: String {
+        switch self {
+        case .flux3Klein: "flux3"
+        case .flux3KleinBase: "flux3-base"
+        default: family.id
         }
     }
 
@@ -250,9 +306,11 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         return repoID.flatMap { URL(string: "https://huggingface.co/\($0)") }
     }
 
-    /// Returns the HF repo ID of a pre-quantized model published by mlx-community, if one is known.
-    /// When present, mflux is passed this repo directly (no --quantize flag) so it loads pre-quantized
-    /// weights without needing the full BF16 model in memory.
+    /// Returns the HF repo ID of a pre-saved model published by mlx-community / mflux-community,
+    /// if one is known. When present, mflux is passed this repo directly (no --quantize flag) so it
+    /// loads pre-quantized weights without needing the full BF16 model in memory. FLUX 3 has a
+    /// published repo at every precision — including BF16 — because its BFL source repos are gated;
+    /// those are ungated mirrors of the same weights, re-sharded in mflux layout with a manifest.
     func preQuantizedRepoID(quantize: Int) -> String? {
         switch (self, quantize) {
         case (.flux2Klein9B, 8): "mlx-community/flux2-klein-9b-8bit"
@@ -260,6 +318,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case (.ideogram4, 8): "mflux-community/ideogram-4-mflux-q8"
         case (.ideogram4, 4): "mflux-community/ideogram-4-mflux-q4"
         case (.zimageTurbo, 4): "filipstrand/Z-Image-Turbo-mflux-4bit"
+        case (.flux3Klein, 0): "mflux-community/flux-3-image-klein-mflux-bf16"
+        case (.flux3Klein, 8): "mflux-community/flux-3-image-klein-mflux-q8"
+        case (.flux3Klein, 4): "mflux-community/flux-3-image-klein-mflux-q4"
+        case (.flux3KleinBase, 0): "mflux-community/flux-3-image-klein-base-mflux-bf16"
+        case (.flux3KleinBase, 8): "mflux-community/flux-3-image-klein-base-mflux-q8"
+        case (.flux3KleinBase, 4): "mflux-community/flux-3-image-klein-base-mflux-q4"
         default: nil
         }
     }
@@ -291,6 +355,15 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             case 4: return 10
             case 8: return 14
             default: return 20
+            }
+        }
+        // FLUX 3 downloads a pre-saved mflux-community repo per precision, so use the
+        // measured sizes of those repos rather than scaling BF16 by a generic factor.
+        if isFlux3 {
+            switch quantize {
+            case 4: return 5.3
+            case 8: return 9.9
+            default: return 18.5
             }
         }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
@@ -333,9 +406,10 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     func hubCacheFolder(quantize: Int, hubDir: URL) -> URL? {
         guard self != .custom else { return nil }
         guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
-        // A published pre-quantized repo maps directly to its hub cache dir
-        // (models--org--name), so match it explicitly rather than by substring.
-        if quantize > 0, let repo = preQuantizedRepoID(quantize: quantize) {
+        // A published pre-saved repo maps directly to its hub cache dir (models--org--name),
+        // so match it explicitly rather than by substring. FLUX 3 uses one at every precision,
+        // and the exact name also keeps Klein from claiming Base's nested folder.
+        if let repo = preQuantizedRepoID(quantize: quantize) {
             let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
             return entries.contains(cacheName) ? hubDir.appendingPathComponent(cacheName) : nil
         }
