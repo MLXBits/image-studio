@@ -228,7 +228,12 @@ jobs:
       - uses: actions/checkout@v7
 
       - name: Install Periphery
-        run: brew install --quiet peripheryapp/periphery/periphery
+        run: |
+          set -euo pipefail
+          curl -fsSL -o /usr/local/bin/periphery \
+            "https://github.com/peripheryapp/periphery/releases/latest/download/periphery"
+          chmod +x /usr/local/bin/periphery
+          periphery --version
 
       # Project, scheme, and retention rules come from .periphery.yml. Without
       # --strict, findings exit 0 and surface as annotations — so a non-zero
