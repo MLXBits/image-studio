@@ -863,8 +863,8 @@ final class ComfyUIClient {
             lastNodeID: inout String?,
             executedNodes: inout [String]
         ) -> LiveProgress? {
-            guard let data else { return nil }
-            guard let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+            guard let data,
+                  let obj = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                   let type = obj["type"] as? String,
                   let dataObj = obj["data"] as? [String: Any] else { return nil }
 

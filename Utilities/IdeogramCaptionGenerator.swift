@@ -410,7 +410,6 @@ func parseCaptionJSON(from json: String) -> IdeogramCaption? {
     // Reuses the same nonisolated instance methods via a throwaway; the generator holds
     // no state that these pure helpers read, so this is zero-cost.
     let gen = IdeogramCaptionGenerator()
-    guard let extracted = gen.extractJSONString(from: json) else { return nil }
-    guard let data = extracted.data(using: .utf8) else { return nil }
+    guard let extracted = gen.extractJSONString(from: json), let data = extracted.data(using: .utf8) else { return nil }
     return try? JSONDecoder().decode(IdeogramCaption.self, from: data)
 }

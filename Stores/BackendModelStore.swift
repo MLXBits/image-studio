@@ -190,8 +190,7 @@ final class BackendModelStore {
     /// Human size of what's currently resident on ComfyUI's GPU above the idle floor. `nil` when nothing is
     /// resident, we haven't yet read both VRAM figures, or we're mid-eject (the number will be wrong anyway for one poll).
     var comfyResidentGB: Double? {
-        guard let occupied = comfy.occupiedBytes else { return nil }
-        guard !isComfyEjecting else { return nil }
+        guard let occupied = comfy.occupiedBytes, !isComfyEjecting else { return nil }
         return Self.residentGB(occupiedBytes: occupied)
     }
 
@@ -217,8 +216,7 @@ final class BackendModelStore {
     /// VRAM recovery is what actually clears the pill; this just fires the request and marks the brief
     /// "Freeing…" window so a fast user can't double-click into two in-flight frees.
     func ejectComfy() {
-        guard let url = settings?.activeComfyURL else { return }
-        guard !isComfyEjecting else { return }
+        guard let url = settings?.activeComfyURL, !isComfyEjecting else { return }
         isComfyEjecting = true
         Task { [weak self] in
             let client = ComfyUIClient(config: .init(baseURL: url))

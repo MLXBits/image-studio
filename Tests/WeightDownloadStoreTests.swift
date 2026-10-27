@@ -128,6 +128,35 @@ struct WeightDownloadStoreTests {
         #expect(WeightDownloadStore.progressTarget(of: run, hubDir: URL(fileURLWithPath: "/")) == nil)
     }
 
+    // MARK: - Deleting
+
+    /// A repo's blobs link into hub/blobs/, the cache-wide shared store, so
+    /// deleting the repo folder by hand left the weights behind for the next
+    /// download to relink. `hf cache rm` sweeps them.
+    @Test func deletingAPublishedRepoGoesThroughHFCacheRm() throws {
+        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
+        let repo = "mflux-community/flux-3-image-klein-mflux-q4"
+        try FileManager.default.createDirectory(
+            at: ModelDownloadStore.cacheFolder(repo: repo, hubDir: hub), withIntermediateDirectories: true
+        )
+        #expect(WeightDownloadStore.removeArgs(model: .flux3Klein, quantize: 4, hubDir: hub)
+            == ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hub.path])
+    }
+
+    @Test func deletingAMatchedHubFolderRemovesItsRepo() throws {
+        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
+        try FileManager.default.createDirectory(
+            at: hub.appendingPathComponent("models--mlx-community--flux2-klein-9b-4bit"), withIntermediateDirectories: true
+        )
+        #expect(WeightDownloadStore.removeArgs(model: .flux2Klein9B, quantize: 4, hubDir: hub)?.prefix(3)
+            == ["cache", "rm", "model/mlx-community/flux2-klein-9b-4bit"])
+    }
+
+    @Test func deletingWithNothingInTheHubCacheRunsNoHF() {
+        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
+        #expect(WeightDownloadStore.removeArgs(model: .flux3Klein, quantize: 4, hubDir: hub) == nil)
+    }
+
     // MARK: - Runs
 
     @Test func aFailedRunKeepsTheLevelItWasStartedFor() async throws {
