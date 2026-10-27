@@ -3,7 +3,7 @@ options:
   bundleIdPrefix: com.mlxbits
   deploymentTarget:
     macOS: "26.0"
-  xcodeVersion: "26.0"
+  xcodeVersion: "27.1"
   createIntermediateGroups: true
   generateEmptyDirectories: true
 
@@ -27,6 +27,13 @@ settings:
     SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
     CODE_SIGN_STYLE: Automatic
     ENABLE_HARDENED_RUNTIME: YES
+    # Xcode 27's recommended settings. Script sandboxing stays off, stated so
+    # Xcode stops offering it: the SwiftFormat/SwiftLint pre-build scripts read
+    # and rewrite the whole source tree, and the runtime embed reads build/.
+    DEAD_CODE_STRIPPING: YES
+    STRING_CATALOG_GENERATE_SYMBOLS: YES
+    ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: YES
+    ENABLE_USER_SCRIPT_SANDBOXING: NO
     MARKETING_VERSION: "0.6.2"
     CURRENT_PROJECT_VERSION: "1"
   configs:
