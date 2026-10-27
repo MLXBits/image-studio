@@ -1,10 +1,11 @@
 # Everything the app runs on the bundled Python. After any change, re-lock:
 #   scripts/lock-python-runtime.sh
 # mflux is pinned exactly: a bump is a deliberate app change (new model families,
-# changed CLI flags) and ships with an app release. 0.23.0 adds FLUX 3 Image Klein
-# (mflux-generate-flux3[-edit]); Z-Image moved to bf16 in 0.22.0 (same-seed output
-# shifts slightly, --float32 restores the old path).
-mflux==0.23.0
+# changed CLI flags) and ships with an app release. 0.24.0 resolves the published
+# mflux-community FLUX 3 repos by name (#909) and requires Pillow 13; 0.23.0 added
+# FLUX 3 Image Klein (mflux-generate-flux3[-edit]); Z-Image moved to bf16 in 0.22.0
+# (same-seed output shifts slightly, --float32 restores the old path).
+mflux==0.24.0
 # Local Gemma for the Scenario Generator and caption tools.
 mlx-lm>=0.31.3
 # Pinned, not a floor. mlx-vlm 0.6.4 regressed gemma4_unified: its
