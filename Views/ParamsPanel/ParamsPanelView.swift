@@ -319,8 +319,7 @@ struct ParamsPanelView: View {
     }
 
     private var resolvedNegativeGhost: String {
-        guard !settings.activeTemplates.isEmpty else { return "" }
-        guard params.model.supportsNegativePrompt else { return "" }
+        guard !settings.activeTemplates.isEmpty, params.model.supportsNegativePrompt else { return "" }
         var resolved = params.negativePrompt
         for template in settings.activeTemplates {
             resolved = template.apply(to: "", negativePrompt: resolved, supportsNegativePrompt: true).negative

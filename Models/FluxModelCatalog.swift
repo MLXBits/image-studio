@@ -404,8 +404,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// The HF hub cache directory the given quantize level downloads into, when
     /// it exists, complete or not.
     func hubCacheFolder(quantize: Int, hubDir: URL) -> URL? {
-        guard self != .custom else { return nil }
-        guard let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
+        guard self != .custom, let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
         // A published pre-saved repo maps directly to its hub cache dir (models--org--name),
         // so match it explicitly rather than by substring. FLUX 3 uses one at every precision,
         // and the exact name also keeps Klein from claiming Base's nested folder.

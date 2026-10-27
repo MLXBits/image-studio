@@ -482,8 +482,8 @@ nonisolated private func scanDirectory(
     var result: [GalleryItem] = []
     for case let url as URL in enumerator {
         let ext = url.pathExtension.lowercased()
-        guard imageExtensions.contains(ext) else { continue }
-        guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+        guard imageExtensions.contains(ext),
+              (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
         let modDate = (try? url.resourceValues(forKeys: [.contentModificationDateKey]))?.contentModificationDate ?? Date.distantPast
 
         let relativePath = String(url.path.dropFirst(root.path.count + 1))
