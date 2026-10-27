@@ -387,12 +387,10 @@ struct ModelDefaultsView: View {
     }
 
     private func deleteCachedVariant(model: FluxModelVariant, quantize: Int) {
-        let savePath = model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir)
-        try? FileManager.default.removeItem(at: savePath)
-        if let hfURL = model.onDiskURL(quantize: quantize, hubDir: settings.hfHubDir) {
-            try? FileManager.default.removeItem(at: hfURL)
+        Task {
+            await weightDownloads.delete(model: model, quantize: quantize, settings: settings)
+            cacheRevision = UUID()
         }
-        cacheRevision = UUID()
     }
 
     private func runningRow(_ run: WeightDownloadStore.Run) -> some View {
