@@ -139,13 +139,16 @@ nonisolated enum MfluxProbes {
     /// Runs `python -c code` with the toolchain environment and returns its
     /// trimmed stdout, or nil when the process cannot start, writes nothing, or
     /// outlives `timeout`. Some callers wait on the main actor (the Flux argument
-    /// builder), so a wedged interpreter must not hold them indefinitely.
-    static func runProbe(python: String, code: String, timeout: TimeInterval = 30) -> String? {
+    /// builder), so a wedged interpreter must not hold them indefinitely. The 60 s
+    /// default clears a cold `import mflux` (~25 s even on idle hardware): a probe
+    /// that times out is cached as "unsupported" for its interpreter, silently
+    /// dropping flags like `--base-model` from every later job in the session.
+    static func runProbe(python: String, code: String, timeout: TimeInterval = 60) -> String? {
         runProbe(python: python, arguments: ["-c", code], timeout: timeout)
     }
 
     /// Runs `python arguments…`, as ``runProbe(python:code:timeout:)``.
-    static func runProbe(python: String, arguments: [String], timeout: TimeInterval = 30) -> String? {
+    static func runProbe(python: String, arguments: [String], timeout: TimeInterval = 60) -> String? {
         let proc = Process()
         proc.executableURL = URL(fileURLWithPath: python)
         proc.arguments = arguments

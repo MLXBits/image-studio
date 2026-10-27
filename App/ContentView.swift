@@ -189,6 +189,10 @@ struct ContentView: View {
             params.loras = loraLibrary.defaultLoras(for: .flux)
             params.isEditMode = false
             params.editImagePaths = []
+            // FLUX 3 has no img2img mode — don't carry a reference image across into it.
+            if m.isFlux3 {
+                params.imagePath = ""
+            }
         }
         // A custom checkpoint runs through whichever family it loads as, so
         // changing that target has to realign the same per-family form state a
@@ -197,6 +201,10 @@ struct ContentView: View {
             guard params.model == .custom else { return }
             driverController.modelPickerChanged(to: target.rawValue)
             _ = adoptFamilyForm(target)
+            // Same as a direct switch: FLUX 3 targets can't take an init image.
+            if target.isFlux3 {
+                params.imagePath = ""
+            }
         }
     }
 

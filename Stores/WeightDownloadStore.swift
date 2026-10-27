@@ -110,6 +110,19 @@ final class WeightDownloadStore {
         }
     }
 
+    /// The `hf cache rm` arguments that delete `model` at `quantize` from the
+    /// hub cache, or nil when it has no folder there. huggingface_hub links a
+    /// repo's blobs into hub/blobs/, a store shared across the whole cache, so
+    /// removing the repo folder by hand leaves the weights behind and the next
+    /// `hf download` relinks them instead of fetching. `hf cache rm` frees them
+    /// once no other repo uses them.
+    static func removeArgs(model: FluxModelVariant, quantize: Int, hubDir: URL) -> [String]? {
+        guard let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
+              let repo = HFCacheVerdictStore.repoID(cacheFolder: folder.lastPathComponent)
+        else { return nil }
+        return ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
+    }
+
     /// Appends tool output to a log the way a terminal shows it: `\r` rewinds
     /// the line, and an ANSI cursor-up removes it (hf's stacked progress bars).
     static func appendLog(_ chunk: String, to log: String) -> String {
@@ -151,7 +164,7 @@ final class WeightDownloadStore {
 
     /// The current run for each model: running, or finished and not yet dismissed.
     private(set) var runs: [FluxModelVariant: Run] = [:]
-    /// Changes whenever a run puts new weights on disk.
+    /// Changes whenever a run puts new weights on disk, or a delete removes them.
     private(set) var revision = UUID()
 
     @ObservationIgnored private let makeProcess: MakeProcess
@@ -187,6 +200,39 @@ final class WeightDownloadStore {
     func dismiss(_ model: FluxModelVariant) {
         if let run = runs[model], run.phase != .running {
             runs[model] = nil
+        }
+    }
+
+    /// Deletes `model`'s weights at `quantize`: its mflux-save folder, and its
+    /// hub cache repo through `hf cache rm` (see ``removeArgs(model:quantize:hubDir:)``).
+    /// If hf can't run, removes the repo folder by hand, as before; `hf cache
+    /// prune` reclaims what that leaves in the shared store.
+    func delete(model: FluxModelVariant, quantize: Int, settings: AppSettings) async {
+        try? FileManager.default.removeItem(at: model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir))
+        let hubDir = settings.hfHubDir
+        if let args = Self.removeArgs(model: model, quantize: quantize, hubDir: hubDir),
+           await !runHF(args, settings: settings),
+           let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir) {
+            try? FileManager.default.removeItem(at: folder)
+        }
+        revision = UUID()
+    }
+
+    /// Runs the bundled `hf` with `args` to completion. True if it exited 0.
+    private func runHF(_ args: [String], settings: AppSettings) async -> Bool {
+        guard let hf = try? settings.toolchain.command(.hf) else { return false }
+        let process = Process()
+        process.executableURL = hf.executableURL
+        process.arguments = hf.arguments + args
+        process.environment = settings.buildEnvironment()
+        process.standardOutput = FileHandle.nullDevice
+        process.standardError = FileHandle.nullDevice
+        return await withCheckedContinuation { continuation in
+            process.terminationHandler = { continuation.resume(returning: $0.terminationStatus == 0) }
+            do { try process.run() } catch {
+                process.terminationHandler = nil
+                continuation.resume(returning: false)
+            }
         }
     }
 

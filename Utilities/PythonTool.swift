@@ -5,6 +5,8 @@
 nonisolated enum PythonTool: String, CaseIterable, Sendable {
     case flux2 = "mflux-generate-flux2"
     case flux2Edit = "mflux-generate-flux2-edit"
+    case flux3 = "mflux-generate-flux3"
+    case flux3Edit = "mflux-generate-flux3-edit"
     case ideogram4 = "mflux-generate-ideogram4"
     case krea2 = "mflux-generate-krea2"
     case zImage = "mflux-generate-z-image"
