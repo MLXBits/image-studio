@@ -1,7 +1,7 @@
 project: MLXBits Image Studio.xcodeproj
+# Periphery 3 scans every target these schemes build (the `targets` key is gone),
+# so code used only by tests counts as used.
 schemes:
-  - MLXBits Image Studio
-targets:
   - MLXBits Image Studio
 # App target (not a library) — flag unused declarations even if `public`.
 retain_public: false

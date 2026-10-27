@@ -227,13 +227,23 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install Periphery
+      # Pinned like SwiftFormat/SwiftLint above. Releases ship only zips (no bare
+      # `periphery` asset), and the binary loads the libIndexStore.dylib beside
+      # it, so unzip both into one directory on PATH.
+      - name: Install Periphery (pinned)
+        env:
+          PERIPHERY_VERSION: "3.8.0"
+          PERIPHERY_SHA256: "07d4e286e31dd79164df39097e0b59f533c94badbe18158464a455ea88a166d7"
         run: |
           set -euo pipefail
-          curl -fsSL -o /usr/local/bin/periphery \
-            "https://github.com/peripheryapp/periphery/releases/latest/download/periphery"
-          chmod +x /usr/local/bin/periphery
-          periphery --version
+          bin="$RUNNER_TEMP/periphery"
+          zip="$RUNNER_TEMP/periphery.zip"
+          curl -fsSL --retry 3 -o "$zip" \
+            "https://github.com/peripheryapp/periphery/releases/download/$PERIPHERY_VERSION/periphery-$PERIPHERY_VERSION.zip"
+          echo "$PERIPHERY_SHA256  $zip" | shasum -a 256 -c -
+          unzip -oq "$zip" -d "$bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          "$bin/periphery" version
 
       # Project, scheme, and retention rules come from .periphery.yml. Without
       # --strict, findings exit 0 and surface as annotations — so a non-zero
