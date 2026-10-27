@@ -36,19 +36,16 @@ CI pins **SwiftFormat 0.63.1** and **SwiftLint 0.65.1** (the lint job in
 pass locally and fail in CI, or the reverse. To bump, lint `main` with the new
 version, then update the version and SHA-256 in `ci.yml` and here together.
 
-If `~/MLXBits.xcworkspace` exists (the multi-Studio workspace: Image Studio,
-Video Studio, LTX Dataset Studio), you **must** build through it — never
-`-project` against the `.xcodeproj`:
+Build and test against the project, and open it on its own in Xcode — not
+through a workspace that also holds other projects. Scheme-relative paths
+resolve against whatever is opened (see Local tips below).
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" \
            -scheme "MLXBits Image Studio" -configuration Debug build
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" \
            -scheme "MLXBits Image Studio" test
 ```
-
-On a plain clone without that workspace, substitute
-`-project "MLXBits Image Studio.xcodeproj"`.
 
 SwiftFormat and SwiftLint also run as pre-build scripts, so a build rewrites
 formatting. Lint before you build to avoid a confusing second diff.
@@ -237,7 +234,7 @@ This is what four 28pt icon buttons in the dimension row cost the first time.
   - **Every new source-image entry point** passes its path through `settings.adoptSourceImage(_:)`.
   - **Anything a job reads from disk** goes in its spec's `accessPaths(job:)`.
 - Support (spec §5): the Support window (`Views/Support/`) shows StoreKit tips in the App Store build and the Ko-fi link in the DMG; the App Store build never shows external donation links (`SupportLinks`). The one-time nudge appears after 50 saved images (`SupportStore`); in DEBUG builds, lower the threshold with the launch argument `-supportNudgeThreshold <n>`. Never call `Product.purchase()` from unit tests: in the hosted test run it shows a real Apple Account sign-in.
-  - **Local tips** come from `Resources/Tips.storekit`, set as the App Store scheme's StoreKit configuration. The tracked path (`../Git/MLXBits Image Studio/Resources/Tips.storekit`) is relative to the owner's `~/MLXBits.xcworkspace`; opening the project directly shows a missing-file warning, which is harmless. `xcodegen generate` drops it (XcodeGen can't write a workspace-relative path): re-pick it in Edit Scheme ▸ Run ▸ Options and commit the scheme. `StoreKitStorefrontTests` don't need it, and are off on CI (`TEST_RUNNER_STOREKIT_TESTS=0`), where unsigned runs aren't entitled to StoreKitTest.
+  - **Local tips** come from `Resources/Tips.storekit`, set as the App Store scheme's StoreKit configuration (`storeKitConfiguration` in `project.yml`, so `xcodegen generate` keeps it). XcodeGen writes it as `../../Resources/Tips.storekit`, which Xcode resolves from the project's own `project.xcworkspace`; opened through an outside workspace, the path misses and local runs have no tip products. `StoreKitStorefrontTests` don't need it, and are off on CI (`TEST_RUNNER_STOREKIT_TESTS=0`), where unsigned runs aren't entitled to StoreKitTest.
 - Do not script bulk reads or edits over the user's image output directory.
   Fix the code and describe the manual cleanup instead.
 
