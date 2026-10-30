@@ -1,6 +1,6 @@
 # MLXBits Image Studio
 
-A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
+A native macOS Swift app for **FLUX, Krea 2, Z-Image, and Ideogram 4 image generation** powered by [mflux](https://github.com/filipstrand/mflux) and Apple MLX. Queue jobs, watch generations unfold step-by-step, cull and compare results in a Lightroom-style gallery, and even write prompts with a local LLM — all without a CLI, and NOT yet another Electron container "app".
 
 > **Requires macOS Tahoe 26.0+** and Apple Silicon M-series. [mflux](https://github.com/filipstrand/mflux) ships inside the app; nothing is installed on first launch.
 
@@ -8,31 +8,24 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 
 ## Screenshots
 
-<!-- Replace the placeholders below with actual screenshots before publishing. -->
-<!-- Suggested shots:
-     1. Full app window (params + live preview + gallery)
-     2. ParamsPanel close-up (model picker, prompt, LoRA manager)
-     3. Step-by-step live preview during generation
-     4. Gallery with metadata panel open
-     5. Settings → Model Defaults tab
--->
-
 | Main window                                      | Live preview                                      |
 | ------------------------------------------------ | ------------------------------------------------- |
-| ![Main window](docs/screenshots/main-window.png) | ![Main window](docs/screenshots/live-preview.png) |
+| ![Main window](docs/screenshots/main-window.png) | ![Live preview](docs/screenshots/live-preview.png) |
 
-| Gallery                                      | Settings                                      |
-| -------------------------------------------- | --------------------------------------------- |
-| ![Main window](docs/screenshots/gallery.png) | ![Main window](docs/screenshots/settings.png) |
+| Gallery                                  | Settings                                   |
+| ---------------------------------------- | ------------------------------------------ |
+| ![Gallery](docs/screenshots/gallery.png) | ![Settings](docs/screenshots/settings.png) |
 
 ---
 
 ## Features
 
 - **Text-to-image and image-to-image** generation via FLUX.2 Klein, Krea 2 Turbo, and Z-Image models
+- **FLUX.3 Klein** — text-to-image and multi-reference editing, in distilled and base variants
 - **Krea 2 Turbo** — fast photographic model family, with img2img support
 - **Z-Image & Z-Image Turbo** — Tongyi's 6B single-stream model; the distilled Turbo (9-step, guidance-free) and the base variant (classifier-free guidance + negative prompt), both with img2img and LoRA
-- **Ideogram 4** *(prototype)* — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring (see [Ideogram 4](#ideogram-4) below)
+- **Ideogram 4** — structured-caption generation with a regional bounding-box layout editor and Gemma-assisted caption authoring
+- **SeedVR2 upscaling** — diffusion super-resolution at 2×, 3× or 4× from an **Upscale…** action on any image
 - **Warm-model engine** — keeps the model loaded between generations, eliminating reload time on consecutive runs
 - **Scenario generator** — turn a rough outline into finished prompts with a local LLM (no API key, no network round-trip)
 - **Step-by-step live preview** — watch the image denoise in real time
@@ -40,9 +33,9 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 - **Lightroom-style gallery** — cull with pick/reject flags, filter by metadata or model family, and compare results side-by-side; thumbnail cache and metadata sidecars keep scans fast
 - **Prompt history & notepad** — searchable, pinnable prompt history plus a markdown notepad for reusable notes
 - **Wildcards & batches** — independent wildcard sampling, spread-across-batch seeds, and img2img prompt adoption
-- **LoRA support** — add any number of LoRA adapters with per-adapter strength sliders and reordering
+- **LoRA support** — add any number of LoRA adapters with per-adapter strength sliders and reordering (not available for FLUX.3)
 - **Batch generation** — run 1, 3, 5 or a custom count with auto-incrementing seeds, plus a learned generation-time estimate
-- **Shortcut Keys** - `Command + Enter` for one-shot generation, `Option + Command + Enter` for batch generation
+- **Shortcut keys** — `Command + Enter` for one-shot generation, `Option + Command + Enter` for batch generation
 - **Model defaults** — save per-model presets (steps, guidance, LoRAs, dimensions)
 - **Prompt templates** — save and reuse favorite prompt fragments like lighting, camera style
 - **Metadata tools** — token counter with a 512 soft-cap for FLUX.2, and one-click stripping of embedded metadata from exported images
@@ -53,47 +46,17 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and (prototype) Ideogram 4
 
 | Variant                     | Steps | Notes                                                                   |
 | --------------------------- | ----- | ----------------------------------------------------------------------- |
+| FLUX.3 Klein (distilled)    | 16    | Text-to-image and multi-reference editing                               |
+| FLUX.3 Klein (base)         | ~50   | Full diffusion with guidance; text-to-image and multi-reference editing |
 | FLUX.2 Klein 4B (distilled) | 4     | Fastest                                                                 |
 | FLUX.2 Klein 9B (distilled) | 4     | Best quality/speed trade-off                                            |
 | FLUX.2 Klein 4B (base)      | ~50   | Full diffusion                                                          |
 | FLUX.2 Klein 9B (base)      | ~50   | Full diffusion                                                          |
-| Krea 2 Turbo                | ~few  | Fast photographic model; text-to-image and img2img                      |
+| Krea 2 Turbo                | 8     | Fast photographic model; text-to-image and img2img                      |
 | Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
-| Ideogram 4 *(prototype)*    | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace). Needs mflux 0.18.1+ — see below |
+| [Ideogram 4](docs/models/ideogram4.md) | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace) |
 | Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
-
----
-
-## Ideogram 4 *(prototype)*
-
-> **Prototype:** Ideogram 4 support is fully built out in the app. The
-> `mflux-generate-ideogram4` CLI it drives now ships in released mflux — 0.18.0
-> added the CLI, 0.18.1 its step-by-step progress — so generation is no longer
-> blocked on upstream. It has not had the same end-to-end shakedown as the FLUX,
-> Krea 2, and Z-Image families, so it keeps the prototype label for now.
-
-Ideogram 4 is a structured-caption model: instead of a single prompt string it
-takes a JSON caption describing a high-level scene, an optional style block, and
-a compositional breakdown of regional elements (each with an optional bounding
-box and color palette).
-
-- **Caption editor** — author the structured caption in a sectioned form, or let
-  Gemma turn a plain description into a full caption (`mlx_lm` runs locally on
-  the bundled Python; no API key).
-- **Bounding-box layout editor** — drag, resize, and color regional elements on a
-  canvas overlaid on the output aspect ratio.
-- **Color palettes** — per-element and per-style palettes with editable hex entry,
-  so an exact color can be reused across elements.
-- **Precision** — FP8 / Q8 / Q4 selector. Q8/Q4 load pre-quantized MLX weights
-  directly; FP8 quantizes once via `mflux-save`.
-
-> **mflux support:** Ideogram 4 generation drives the `mflux-generate-ideogram4`
-> CLI, present from mflux 0.18.0 (0.18.1 adds stepwise progress). The bundled
-> mflux carries every family. With a Custom Python, any model whose CLI is missing
-> from that install is disabled in the model picker with a note saying so, rather
-> than failing when you hit Generate. The model is gated on HuggingFace — accept
-> the terms on the model page before first download.
 
 ---
 
@@ -112,142 +75,25 @@ Everything the app runs (Python, mflux, and the local Gemma tools) ships inside 
 
 ## Installation
 
-Download the latest `MLXBits_Image_Studio_<version>.dmg` from [Releases](../../releases), open it, and drag **MLXBits Image Studio** to `/Applications`.
+### Mac App Store
 
-The app is notarized/signed by Apple, so it should launch without any Gatekeeper prompt.
+<a href="https://apps.apple.com/us/app/mlxbits-image-studio/id6818989529?mt=12"><img src="docs/assets/download-on-the-mac-app-store.svg" alt="Download on the Mac App Store" height="40"></a>
 
----
+The App Store version runs sandboxed. On first launch it asks for a library folder and a models folder.
+
+### DMG
+
+Download the latest `MLXBits_Image_Studio_<version>.dmg` from [Releases](../../releases/latest), open it, and drag **MLXBits Image Studio** to `/Applications`.
+
+The app is signed and notarized by Apple, so it should launch without any Gatekeeper prompt. The DMG version is unsandboxed and can also run mflux from your own Python install.
+
+Image Studio is free either way, and it collects no data: see the [privacy policy](PRIVACY.md).
 
 Like the app? Support me by [buying me a coffee](https://ko-fi.com/mlxbits). :) Your support helps keep my apps and other content free.
 
-## Building from source
-
-Requirements: Xcode 26+, [XcodeGen](https://github.com/yonaskolb/XcodeGen), [SwiftLint](https://github.com/realm/SwiftLint), [SwiftFormat](https://github.com/nicklockwood/SwiftFormat).
-
-```bash
-brew install xcodegen swiftlint swiftformat uv
-
-git clone https://github.com/MLXBits/image-studio
-cd mlxbits-image-studio
-
-# Generate the Xcode project
-xcodegen generate
-
-# Open and build in Xcode
-open "MLXBits Image Studio.xcodeproj"
-```
-
-> **Signing:** Set `DEVELOPMENT_TEAM` in `project.yml` to your 10-character Apple Developer Team ID before building a signed Release. Debug builds are unsigned and work without a Team ID.
-
-### Python runtime and the App Store flavor
-
-Both flavors bundle their own Python with mflux and every dependency, pinned
-in `Runtime/`. `scripts/build-python-runtime.sh` builds it into
-`build/python-runtime/` (it needs `uv`: `brew install uv`), and the
-"Embed Python runtime" build phase runs it automatically when needed. The first
-build takes several minutes; later builds reuse it.
-
-**Developing against an mflux checkout:** set **Settings → Advanced → Python →
-Custom Python** (DMG build only) to the checkout's `.venv/bin/python`. mflux and
-the warm driver then run on it; everything else stays on the bundled runtime.
-To check a built app's runtime:
-`"<app>/Contents/MacOS/MLXBits Image Studio" --runtime-self-test`.
-
-To build the App Store flavor locally, copy `Config/Local.xcconfig.example` to
-`Config/Local.xcconfig` and set your Team ID, then build the
-**MLXBits Image Studio (App Store)** scheme. It runs sandboxed in its own
-container (`~/Library/Containers/com.mlxbits.image-studio.appstore`), so it
-never touches the DMG app's data.
-
-On first run the App Store flavor asks for a library folder (Skip for Now uses Pictures ▸ MLXBits Image Studio) and a models folder, offering `~/.cache/huggingface` when it exists. It keeps access to every folder and LoRA you choose. Images you bring in from outside the library are copied into the profile, so re-runs work after a relaunch.
-
-Image Studio is free in both flavors. **Support MLXBits Image Studio…** in the app menu (also in Settings ▸ Advanced) offers optional tips through the App Store in the App Store flavor, and a Ko-fi link in the DMG. Tips unlock nothing. After 50 images the app asks once, and never again.
-
-The app collects no data: see the [privacy policy](PRIVACY.md).
-
-To change a Python package version, edit `Runtime/requirements.in` and run
-`scripts/lock-python-runtime.sh`. The runtime build refuses GPL-family
-packages; a package without license metadata must be checked by hand and
-recorded in `Runtime/license-overrides.json`.
-
 ---
 
-## Cutting a release
-
-Releases are built, signed, notarized, and published automatically by GitHub Actions
-([`.github/workflows/release.yml`](.github/workflows/release.yml)) whenever a `vX.Y.Z` tag is
-pushed. The tag name is the source of truth for the release version.
-
-```bash
-git tag v0.6.3
-git push all v0.6.3    # → triggers the release workflow
-```
-
-The workflow derives the version from the tag, builds the Release archive with Developer ID
-signing, creates a notarized + stapled DMG, and publishes a GitHub release with generated notes.
-The tag is the sole source of truth for the version. (Optionally bump `MARKETING_VERSION` in
-`project.yml` too, so local Debug builds report the new number — CI overrides it either way.)
-
-**One-time setup** — add these repository secrets (Settings → Secrets and variables → Actions):
-
-| Secret | Value |
-| --- | --- |
-| `DEVELOPER_ID_CERT_P12_BASE64` | `base64 < DeveloperID.p12` — the "Developer ID Application" cert exported **with private key** |
-| `DEVELOPER_ID_CERT_PASSWORD` | the `.p12` export password |
-| `DEVELOPMENT_TEAM` | your 10-char Apple Team ID |
-| `APPLE_ID` | Apple ID email for notarization |
-| `APPLE_APP_SPECIFIC_PASSWORD` | app-specific password from appleid.apple.com |
-
-### App Store builds
-
-App Store builds are uploaded by a hand-run GitHub Actions workflow
-([`.github/workflows/appstore.yml`](.github/workflows/appstore.yml)): **Actions ▸ App Store ▸
-Run workflow**, or `gh workflow run appstore.yml` (newest `vX.Y.Z` tag) /
-`gh workflow run appstore.yml -f ref=main`. It builds the sandboxed App Store flavor with the
-bundled Python runtime, signs it with the Apple Distribution certificate, and uploads it to
-App Store Connect. The build shows up in TestFlight once Apple has processed it; submitting
-it for review is done in App Store Connect.
-
-| Secret | Value |
-|---|---|
-| `APPSTORE_DIST_CERT_P12_BASE64` / `_PASSWORD` | Apple Distribution certificate `.p12`, base64, and its export password |
-| `APPSTORE_INSTALLER_CERT_P12_BASE64` / `_PASSWORD` | Mac Installer Distribution certificate `.p12`, base64, and its export password |
-| `APPSTORE_PROFILE_BASE64` | Mac App Store provisioning profile for `com.mlxbits.image-studio.appstore`, base64 |
-| `ASC_KEY_ID`, `ASC_ISSUER_ID`, `ASC_KEY_P8_BASE64` | App Store Connect API key (App Manager role): key ID, issuer ID, `.p8` base64 |
-
----
-
-## Project layout
-
-```
-App/           App entry point and root layout
-Models/        Job models, model catalog, LoRA entries, prompt history/templates
-Runner/        Generic JobRunner<Spec> engine, per-family runner specs, warm-driver controller
-Stores/        @Observable state — AppSettings, per-family job stores, GalleryStore, TimingStore
-Views/         SwiftUI views (ParamsPanel, PreviewPane, Gallery, Queue, Settings, Ideogram4, Krea2, ZImage)
-Utilities/     KeychainHelper, MetadataSidecar, progress parser, caption/scenario LLMs, the Python toolchain
-Tests/         Swift Testing unit tests
-Resources/     Info.plist, entitlements, bundled Python drivers
-project.yml    XcodeGen source of truth (never edit .xcodeproj directly)
-```
-
-For naming conventions, the per-family file layout, and a step-by-step recipe
-for adding a model family, see [AGENTS.md](AGENTS.md).
-
-Submitting a version: see [docs/appstore/submission.md](docs/appstore/submission.md).
-
-### Working with an AI coding agent
-
-[AGENTS.md](AGENTS.md) is the canonical orientation file, read by Cursor,
-Codex, and others. Claude Code looks for `CLAUDE.md`, so after cloning, create
-a local symlink:
-
-```bash
-ln -s AGENTS.md CLAUDE.md
-```
-
-The symlink is gitignored on purpose — one tracked file, no duplicated
-guidance to keep in sync, and no tool-specific artifact in the repo.
+To build from source or contribute, see [DEVELOPMENT.md](DEVELOPMENT.md).
 
 ## License
 
