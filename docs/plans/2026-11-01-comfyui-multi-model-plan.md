@@ -46,34 +46,34 @@ This plan is **slice 1 only**: the shared template mechanism + Krea 2 (t2i + i2i
 
 Input classes / failure modes the spec implies but no single task's test fully pins; each is added to the owning task's tests.
 
-1. **Stale param map** (user re-exported, node IDs shifted) → `renderGraph` must throw on a missing mapped node/input, not silently emit a graph with an unfilled prompt. (phase C)
-2. **More LoRAs than 10 slots** → cap at 10 with a clear error, not a truncated silent stack. (phase C)
-3. **i2i job whose source image fails to upload** → fail the job with a clear error, never fall back to t2i (the #69 silent-drop class). (phase D)
-4. **Template references a model file absent on the server** → surface the server's error clearly (model not found), not a generic failure. (phase A harness + phase G live)
-5. **Flow/param-map mismatch** (i2i template missing a `denoise` input, or a t2i template with a stray `LoadImage`) → caught at render time. (phase F)
+1. **Stale param map** (user re-exported, node IDs shifted) → `renderGraph` must throw on a missing mapped node/input, not silently emit a graph with an unfilled prompt. (Task 3)
+2. **More LoRAs than 10 slots** → cap at 10 with a clear error, not a truncated silent stack. (Task 3)
+3. **i2i job whose source image fails to upload** → fail the job with a clear error, never fall back to t2i (the #69 silent-drop class). (Task 4)
+4. **Template references a model file absent on the server** → surface the server's error clearly (model not found), not a generic failure. (Task 1 harness + Task 7 live)
+5. **Flow/param-map mismatch** (i2i template missing a `denoise` input, or a t2i template with a stray `LoadImage`) → caught at render time. (Task 6)
 
 ## Work items, in dependency order
 
-### A. Dry-run harness (non-Swift gate)
+### Task 1: Dry-run harness (non-Swift gate)
 
 Reference implementation of param injection + the validation gate. Built and proven before any Swift.
 
 **Files:** Create `scripts/comfy_dry_run.py` · **Produces:** a reusable harness with `--template`, `--param-map`, `--params <json>`, `--url`, optional `--image <path>`, and a `--lora-test` mode.
 
-- [ ] **Step 1: Write the harness CLI + injection.** Load the template (`{nodeID: {class_type, inputs}}`) + param map (`{param: {node, input}}`), fill each mapped input from `--params`, and serialize the graph to the `/prompt` body. Reuse the existing `ComfyUIClient` endpoints: `POST /prompt` (body `{"prompt": graph, "client_id": <uuid>}`), `GET /history/<prompt_id>`, and the output download. Keep the injection logic minimal + explicit — this is the reference the Swift (phase C) must match.
-- [ ] **Step 2: Add the `--lora-test` mode.** Given a base template + a test LoRA + a fixed seed, run four variants and compare outputs: (a) no LoRA, (b) empty `lora_name`, (c) bogus `lora_name`, (d) valid `lora_name` with `strength_model=0` + `strength_clip=0`. Report which unused-slot strategies are clean no-ops (identical output to (a) at the same seed). This result fixes the `LoraMechanism` for phase C.
+- [ ] **Step 1: Write the harness CLI + injection.** Load the template (`{nodeID: {class_type, inputs}}`) + param map (`{param: {node, input}}`), fill each mapped input from `--params`, and serialize the graph to the `/prompt` body. Reuse the existing `ComfyUIClient` endpoints: `POST /prompt` (body `{"prompt": graph, "client_id": <uuid>}`), `GET /history/<prompt_id>`, and the output download. Keep the injection logic minimal + explicit — this is the reference the Swift (Task 3) must match.
+- [ ] **Step 2: Add the `--lora-test` mode.** Given a base template + a test LoRA + a fixed seed, run four variants and compare outputs: (a) no LoRA, (b) empty `lora_name`, (c) bogus `lora_name`, (d) valid `lora_name` with `strength_model=0` + `strength_clip=0`. Report which unused-slot strategies are clean no-ops (identical output to (a) at the same seed). This result fixes the `LoraMechanism` for Task 3.
 - [ ] **Step 3: Verify against live ComfyUI.** Run a t2i job end-to-end (template + param map + a real prompt/seed/size); confirm a valid image and that params are honored (change seed → different image; change size → different dimensions). Also confirm a template pointing at a missing model file surfaces the server's error clearly (Review Focus #4). Run the `--lora-test` and record the result.
   - Expected: t2i produces a valid image with honored params; the `--lora-test` names the cleanest no-op strategy.
 
-### B. Krea 2 templates + param maps (depends on user exports)
+### Task 2: Krea 2 templates + param maps (depends on user exports)
 
 **Files:** Create `Resources/comfy_templates/krea2/{t2i,i2i}.json` + `{t2i,i2i}.parammap.json` · **Depends on:** the user's Krea 2 t2i + i2i exports (API format, each with the 10-slot `LoraLoader` chain).
 
 - [ ] **Step 1: Ingest the exports.** Confirm each is API format (`{nodeID: {class_type, inputs}}`, no `nodes`/`links`); confirm the i2i export has the `LoadImage → VAEEncode → KSampler(denoise)` branch and both have the 10-slot `LoraLoader` chain.
 - [ ] **Step 2: Sanity pass → param maps.** For each template, identify the `(node, input)` for: prompt, negative prompt (if present), seed, width, height, steps, cfg, sampler, scheduler, denoise (i2i only), unet/clip/vae loader names, the 10 LoRA slots (on/off + name + strengths), and (i2i) the source-image filename input. Write each to `<flow>.parammap.json`.
-- [ ] **Step 3: Validate with the harness.** Run phase A's harness against both templates + param maps (t2i, and i2i with a real source image); confirm valid outputs + honored params. **Do not start phase C until both pass.**
+- [ ] **Step 3: Validate with the harness.** Run Task 1's harness against both templates + param maps (t2i, and i2i with a real source image); confirm valid outputs + honored params. **Do not start Task 3 until both pass.**
 
-### C. Swift template mechanism (generic)
+### Task 3: Swift template mechanism (generic)
 
 **Files:** Create `Utilities/ComfyTemplate.swift`, `Utilities/ComfyTemplate+Injection.swift` · Test `Tests/ComfyTemplateTests.swift`
 
@@ -83,18 +83,18 @@ Reference implementation of param injection + the validation gate. Built and pro
 - `ComfyInputValue: Decodable` — `case scalar(ComfyScalar)` (Int/Double/String/Bool) / `case ref(nodeID: String, outputIndex: Int)`.
 - `ComfyParamMap: Decodable` — `params: [String: ParamTarget]`; `ParamTarget { node: String, input: String }`; `static func load(familyFlowKey: String) throws -> ComfyParamMap`.
 - `ComfyJobParams` — `prompt: String`, `negativePrompt: String?`, `seed: Int`, `width: Int`, `height: Int`, `steps: Int`, `cfg: Double`, `sampler: String`, `scheduler: String`, `denoise: Double?`, `unetName/clipName/vaeName: String?`, `sourceImageName: String?`, `loras: [(name: String, strengthModel: Double, strengthClip: Double)]`.
-- `LoraMechanism` — `case emptyNoOp, strengthZero, switchBased` (set from phase A's `--lora-test` result).
+- `LoraMechanism` — `case emptyNoOp, strengthZero, switchBased` (set from Task 1's `--lora-test` result).
 - `func renderGraph(template: ComfyTemplate, paramMap: ComfyParamMap, params: ComfyJobParams, loraMechanism: LoraMechanism) throws -> [String: ComfyNode]`.
 
 - [ ] **Step 1: Write the failing decode tests.** Decode a small fixture template (2–3 nodes; one scalar + one `[nodeID, outputIndex]` ref input) and assert `classType` + input values; decode a param map and assert a target. Run → FAIL (types don't exist).
 - [ ] **Step 2: Implement the decode types + bundle loading.** `ComfyInputValue` decodes from either a scalar or a `[String, Int]` array (the ref form). `load(familyFlowKey:)` reads `comfy_templates/<key>.json` from the bundle. Run the decode tests → PASS.
 - [ ] **Step 3: Write the failing injection tests.** (a) `renderGraph` fills a mapped scalar input (e.g. `KSampler.steps`) from `params`; (b) a mapped input whose node or input name is absent throws (Review Focus #1); (c) more than 10 LoRAs throws (Review Focus #2); (d) the 10-slot chain is wired for N used slots with the rest neutralized per `loraMechanism`. Run → FAIL.
-- [ ] **Step 4: Implement `renderGraph`.** Fill each mapped input from `params` (throw on a missing node/input). Wire the 10-slot LoRA chain: for each used slot set name + strengths; neutralize unused slots per `loraMechanism` (empty / valid-name+zero / switch-off). For i2i, set the source-image filename input from `params.sourceImageName`. Match the phase A harness's injection exactly (same graph for the same inputs). Run the injection tests → PASS.
+- [ ] **Step 4: Implement `renderGraph`.** Fill each mapped input from `params` (throw on a missing node/input). Wire the 10-slot LoRA chain: for each used slot set name + strengths; neutralize unused slots per `loraMechanism` (empty / valid-name+zero / switch-off). For i2i, set the source-image filename input from `params.sourceImageName`. Match the Task 1 harness's injection exactly (same graph for the same inputs). Run the injection tests → PASS.
 - [ ] **Step 5: Commit.**
 
-### D. Krea 2 runner spec + drop the old builder
+### Task 4: Krea 2 runner spec + drop the old builder
 
-**Files:** Modify `Runner/Krea2JobRunner.swift`, `Utilities/ComfyUIClient.swift` · Test `Tests/ComfyTemplateTests.swift` (extend) · **Consumes:** `ComfyTemplate.load`, `ComfyParamMap.load`, `renderGraph` (phase C).
+**Files:** Modify `Runner/Krea2JobRunner.swift`, `Utilities/ComfyUIClient.swift` · Test `Tests/ComfyTemplateTests.swift` (extend) · **Consumes:** `ComfyTemplate.load`, `ComfyParamMap.load`, `renderGraph` (Task 3).
 
 - [ ] **Step 1: Write the failing runner tests.** `Krea2RunnerSpec.comfyGraph` returns a non-nil `ComfyGraph` for a t2i job and for an i2i job (with `imagePath`); the i2i render closure produces a graph whose `KSampler.denoise` equals `imageStrength` (Review Focus #3: a source image is required for i2i). Run → FAIL.
 - [ ] **Step 2: Implement `comfyGraph`.** Pick the flow key: `job.imagePath != nil ? "krea2/i2i" : "krea2/t2i"`. Load the template + param map. Build `ComfyJobParams` from the job + `settings.comfyUNet/Clip/Vae["krea2"]` (override the template's filenames) + the LoRA stack. Return a `ComfyGraph(totalNodes:totalSteps:render:)` whose render closure calls `renderGraph` per seed. For i2i, upload the source image first (reuse the existing upload path) and set `sourceImageName`; if the upload fails, throw (Review Focus #3 — never fall back to t2i).
@@ -102,21 +102,21 @@ Reference implementation of param injection + the validation gate. Built and pro
 - [ ] **Step 4: Run the full test suite.** `xcodebuild test` — count real results via `grep 'passed after'` in the log (the XCTest "Executed 0 tests" summary is misleading; TEST SUCCEEDED + exit 0 = green). Expected: all green, including the new Krea 2 topology tests.
 - [ ] **Step 5: Commit.**
 
-### E. Settings forms
+### Task 5: Settings forms
 
 **Files:** Modify `Views/Settings/ModelDefaultsView+Krea2Form.swift`
 
-- [ ] **Step 1: Confirm the Krea 2 rows feed the template.** The existing UNet/CLIP/VAE rows write to `settings.comfyUNet/Clip/Vae["krea2"]`, which phase D step 2 reads into `ComfyJobParams.unetName/clipName/vaeName`. Confirm t2i + i2i share the same model files (they do for Krea 2); if the i2i template needs a different VAE, add a `comfyVaeI2i` per-flow override here and in phase D.
+- [ ] **Step 1: Confirm the Krea 2 rows feed the template.** The existing UNet/CLIP/VAE rows write to `settings.comfyUNet/Clip/Vae["krea2"]`, which Task 4 step 2 reads into `ComfyJobParams.unetName/clipName/vaeName`. Confirm t2i + i2i share the same model files (they do for Krea 2); if the i2i template needs a different VAE, add a `comfyVaeI2i` per-flow override here and in Task 4.
 - [ ] **Step 2: Commit.**
 
-### F. Topology tests (pin the real templates)
+### Task 6: Topology tests (pin the real templates)
 
 **Files:** Test `Tests/ComfyTemplateTests.swift`
 
 - [ ] **Step 1: Add t2i + i2i topology tests against the real bundled templates.** Load `krea2/t2i` + `krea2/i2i`, render with sample params, and assert: the expected node set (t2i: `EmptyLatentImage`, `UNETLoader`, `CLIPLoader`, `VAELoader`, `KSampler`, `VAEDecode`, `SaveImage`; i2i: + `LoadImage`, `VAEEncode`), `KSampler` steps/cfg/sampler/scheduler match the params, the prompt is injected, the i2i `KSampler.denoise` == `imageStrength`, and the LoRA chain is correct (Review Focus #1, #3, #5).
 - [ ] **Step 2: Run → PASS. Commit.**
 
-### G. Bundle + live validation
+### Task 7: Bundle + live validation
 
 **Files:** Modify the Xcode project (add `Resources/comfy_templates/**` to the bundle)
 
@@ -126,9 +126,9 @@ Reference implementation of param injection + the validation gate. Built and pro
 
 ## Open questions to resolve during implementation
 
-- **`LoraMechanism`** (spec §5.3): fixed by phase A's `--lora-test` result before phase C is written.
+- **`LoraMechanism`** (spec §5.3): fixed by Task 1's `--lora-test` result before Task 3 is written.
 - **`LoraLoader` vs `LoraLoaderModelOnly`** (spec §5.3): the Krea 2 exports use `LoraLoaderModelOnly`; confirm the 10-slot chain uses the same class in both templates.
-- **i2i VAE:** confirm the Krea 2 i2i template uses the same VAE as t2i (expected); if it needs a full-encoder VAE, add the per-flow override in phase E.
+- **i2i VAE:** confirm the Krea 2 i2i template uses the same VAE as t2i (expected); if it needs a full-encoder VAE, add the per-flow override in Task 5.
 
 ## PR split
 
