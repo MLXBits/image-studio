@@ -357,8 +357,21 @@ enum FluxRunnerSpec: JobRunnerSpec {
         // Render once (seed 0, the Krea 2 convention): a stale param map throws here and fails the job
         // loudly instead of per seed. The per-seed closure then swaps only the noise seed.
         let loras = flux2Loras(job.loras)
-        let base = try template.render(map: map, params: params, loras: loras, loraKind: .full)
-        return ComfyGraph(totalNodes: template.nodes.count + loras.count, totalSteps: job.steps) { seed in
+        let rendered = try template.render(map: map, params: params, loras: loras, loraKind: .full)
+        // i2e only: excise the unused conditioning slots so the graph carries exactly the user's reference
+        // count. A LoadImage with no image input fails at runtime, so the unused slots are removed and the
+        // kept chains rewired before submission. t2i templates have no reference slots (hasRefs is false),
+        // so this is skipped there and the Krea 2 path is untouched.
+        let base: [String: Any]
+        if hasRefs {
+            let refCount = job.imagePath.isEmpty ? job.editImagePaths.count : 1
+            var excised = rendered
+            try exciseUnusedConditioningSlots(&excised, keepCount: refCount, slotOrder: map.referenceSlotOrder)
+            base = excised
+        } else {
+            base = rendered
+        }
+        return ComfyGraph(totalNodes: base.count, totalSteps: job.steps) { seed in
             var graph = base
             if let target = map.params["seed"],
                var node = graph[target.node] as? [String: Any],

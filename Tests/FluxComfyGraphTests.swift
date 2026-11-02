@@ -216,7 +216,7 @@ struct FluxComfyGraphTests {
             job: job, settings: Self.flux2Settings("flux2-klein-4b"), client: Self.stubClient()
         )
         let g = try #require(graph, "1-ref i2e should route remote")
-        #expect(g.totalNodes == 44) // the 44-node 4b i2e template (6-slot re-export), no LoRAs
+        #expect(g.totalNodes == 19) // 44-node 6-slot template excised to 1 ref: 44 − 5 slots × 5 nodes = 19
         #expect(g.totalSteps == 8)
 
         let rendered = try Self.nodes(g.build(7))
@@ -267,7 +267,7 @@ struct FluxComfyGraphTests {
             job: job, settings: Self.flux2Settings("flux2-klein-base-9b"), client: Self.stubClient()
         )
         let g = try #require(graph, "2-ref edit should route remote")
-        #expect(g.totalNodes == 44)
+        #expect(g.totalNodes == 24) // 44-node 6-slot template excised to 2 refs: 44 − 4 slots × 5 nodes = 24
 
         let rendered = try Self.nodes(g.build(1))
         let map = try Self.loadParamMap("9b-i2e-base")

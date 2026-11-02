@@ -252,6 +252,19 @@ struct ComfyParamMap: Decodable, Equatable, Sendable {
     }
 }
 
+extension ComfyParamMap {
+    /// The i2e reference-image LoadImage node IDs in the order the app assigns reference images to them
+    /// (`source_image`, `source_image_1`, `source_image_2`, ...). This is the `slotOrder` for
+    /// ``exciseUnusedConditioningSlots(_:keepCount:slotOrder:)``. Empty for t2i (no reference slots).
+    var referenceSlotOrder: [String] {
+        let keys = params.keys.filter { $0 == "source_image" || $0.hasPrefix("source_image_") }
+        func index(_ key: String) -> Int {
+            key == "source_image" ? 0 : (Int(key.dropFirst("source_image_".count)) ?? 0)
+        }
+        return keys.sorted { index($0) < index($1) }.compactMap { params[$0]?.node }
+    }
+}
+
 // MARK: - Helpers
 
 /// Splits a family/flow key (e.g. `krea2/t2i`) into the bundle resource name + subdirectory.
