@@ -20,11 +20,11 @@ Usage:
       --insert-lora 'krea2/Krea2-realism-V2.safetensors:0.8' \
       --insert-lora 'krea2/detail_slider_krea2_loraholic.safetensors:0.6'
 
-  # LoRA no-op test (determines the LoraMechanism for the 10-slot chain):
+  # LoRA no-op test (exercises the dynamic-insertion mechanism; the bogus-name
+  # variant is expected to be rejected by the server, zero-strength to be a no-op):
   python3 scripts/comfy_dry_run.py --lora-test --template t2i.json \
       --param-map t2i.parammap.json --params params.json --url http://localhost:8188 \
-      --lora <name.safetensors> [--lora-on lora1_on --lora-name lora1_name \
-      --lora-sm lora1_strength_model --lora-sc lora1_strength_clip]
+      --lora <name.safetensors>
 """
 
 from __future__ import annotations
@@ -38,6 +38,7 @@ import time
 import urllib.request
 import uuid
 from pathlib import Path
+from urllib.parse import urlencode
 
 
 class ParamMapError(Exception):
@@ -147,11 +148,14 @@ def download_outputs(url: str, entry: dict, out_dir: Path) -> list[Path]:
     saved: list[Path] = []
     for node_out in entry.get("outputs", {}).values():
         for img in node_out.get("images", []):
-            path = (
-                f"{url.rstrip('/')}/view?filename={img['filename']}"
-                f"&subfolder={img.get('subfolder', '')}&type={img.get('type', 'output')}"
+            filename = img["filename"]
+            if Path(filename).is_absolute() or ".." in Path(filename).parts:
+                raise ValueError(f"refusing to download image with unsafe filename: {filename!r}")
+            path = url.rstrip("/") + "/view?" + urlencode(
+                {"filename": filename, "subfolder": img.get("subfolder", ""),
+                 "type": img.get("type", "output")}
             )
-            dest = out_dir / img["filename"]
+            dest = out_dir / filename
             dest.write_bytes(_http(path, timeout=120))
             saved.append(dest)
     return saved
@@ -165,6 +169,11 @@ def run_job(url: str, template: dict, param_map: dict, params: dict,
             image_path: str | None = None, out_dir: Path = Path("comfy_dry_run_out"),
             loras: list[tuple[str, float]] | None = None) -> list[Path]:
     if image_path:
+        if "source_image" not in param_map:
+            raise ValueError(
+                "image_path given but the param map has no 'source_image' key; "
+                "the image would be uploaded and then silently dropped (t2i template)"
+            )
         params = dict(params)
         params["source_image"] = upload_image(url, Path(image_path))
     graph = inject(template, param_map, params)
@@ -180,30 +189,36 @@ def run_job(url: str, template: dict, param_map: dict, params: dict,
 
 
 def lora_test(url: str, template: dict, param_map: dict, params: dict, lora: str,
-              on: str, name: str, sm: str, sc: str,
               out_dir: Path = Path("comfy_dry_run_out")):
-    """Run 4 unused-slot variants at a fixed seed and report which are clean no-ops.
+    """Run 4 dynamic-insertion variants at a fixed seed and report which are clean no-ops.
 
-    (a) off, (b) on + empty name, (c) on + bogus name, (d) on + valid name + zero
-    strength. A variant whose output hash equals (a) is a clean no-op; the cleanest
-    one fixes the LoraMechanism for the Swift 10-slot chain.
+    Uses insert_loras (the same mechanism as --insert-lora), applied via
+    run_job(..., loras=...): (a) no LoRA (baseline; KSampler wired straight to the
+    UNET), (b) a bogus LoRA name (the server should reject it -> recorded as an
+    error, not a no-op), (c) the valid LoRA at strength 0 (expect a clean no-op,
+    hash == (a)), (d) the valid LoRA at strength 1 (expect a distinct output).
+    A non-baseline variant whose output hash equals (a) is a clean no-op.
     """
     seed = params.get("seed", 0)
     variants = {
-        "a_off": {on: False},
-        "b_on_empty_name": {on: True, name: ""},
-        "c_on_bogus_name": {on: True, name: "definitely_not_a_real_lora.safetensors"},
-        "d_on_zero_strength": {on: True, name: lora, sm: 0.0, sc: 0.0},
+        "a_no_lora": [],
+        "b_bogus_name": [("definitely_not_a_real_lora.safetensors", 1.0)],
+        "c_zero_strength": [(lora, 0.0)],
+        "d_full_strength": [(lora, 1.0)],
     }
     results: dict[str, str | None] = {}
-    for label, extra in variants.items():
+    for label, loras in variants.items():
         p = dict(params)
         p["seed"] = seed
-        p.update(extra)
-        out = run_job(url, template, param_map, p, out_dir=out_dir / label)
+        try:
+            out = run_job(url, template, param_map, p, out_dir=out_dir / label, loras=loras)
+        except Exception as e:
+            # A server-rejected variant (e.g. the bogus name) must not crash the loop.
+            results[label] = f"error: {e}"
+            continue
         results[label] = image_hash(out[0]) if out else None
-    base = results["a_off"]
-    clean = [label for label, h in results.items() if label != "a_off" and h == base]
+    base = results["a_no_lora"]
+    clean = [label for label, h in results.items() if label != "a_no_lora" and h == base]
     print(json.dumps({"results": results, "base": base, "clean_noops": clean}, indent=2))
     return results, clean
 
@@ -221,10 +236,6 @@ def main(argv: list[str] | None = None) -> None:
                          "(repeatable), e.g. 'krea2/Krea2-realism-V2.safetensors:0.8'")
     ap.add_argument("--lora-test", action="store_true")
     ap.add_argument("--lora", default=None, help="test LoRA filename for --lora-test")
-    ap.add_argument("--lora-on", default="lora_on", help="param name for the slot on/off switch")
-    ap.add_argument("--lora-name", default="lora_name", help="param name for the slot lora name")
-    ap.add_argument("--lora-sm", default="lora_strength_model", help="param name for strength_model")
-    ap.add_argument("--lora-sc", default="lora_strength_clip", help="param name for strength_clip")
     args = ap.parse_args(argv)
 
     template = json.loads(Path(args.template).read_text())
@@ -235,7 +246,6 @@ def main(argv: list[str] | None = None) -> None:
         if not args.lora:
             ap.error("--lora-test requires --lora <name.safetensors>")
         lora_test(args.url, template, param_map, params, args.lora,
-                  args.lora_on, args.lora_name, args.lora_sm, args.lora_sc,
                   out_dir=Path(args.out_dir))
     else:
         loras = [(n, float(s)) for n, s in (x.split(":", 1) for x in args.insert_lora)]
