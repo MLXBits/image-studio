@@ -205,6 +205,7 @@
 		B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */; };
 		B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */; };
 		BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5B056C022208F02D3ED376 /* LibraryStatus.swift */; };
+		BB5FD99CADAC038E7B9F62BA /* FluxTopologyTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 19DD535602DB858FE783042C /* FluxTopologyTests.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */; };
 		C05E113764CCC2006F583148 /* DonationLinksSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A341D36038DC53580B595B8C /* DonationLinksSection.swift */; };
@@ -320,6 +321,7 @@
 		17949F8190AF15B8FF337DC5 /* WeightDownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightDownloadStore.swift; sourceTree = "<group>"; };
 		17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsToolchainTests.swift; sourceTree = "<group>"; };
 		184D74615C4C4AD52CD2F287 /* RuntimeSelfTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeSelfTestTests.swift; sourceTree = "<group>"; };
+		19DD535602DB858FE783042C /* FluxTopologyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxTopologyTests.swift; sourceTree = "<group>"; };
 		1A8EBD8FF5006FB024DFE21C /* hf_cache_probe.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = hf_cache_probe.py; sourceTree = "<group>"; };
 		1AFC7127BA6FCFDD4BA4E83E /* Krea2JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2JobStore.swift; sourceTree = "<group>"; };
 		1B27E9DF7057F99605191072 /* Tips.storekit */ = {isa = PBXFileReference; path = Tips.storekit; sourceTree = "<group>"; };
@@ -705,6 +707,7 @@
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */,
 				46D7BAF347C2E496244BE37F /* FluxComfyGraphTests.swift */,
+				19DD535602DB858FE783042C /* FluxTopologyTests.swift */,
 				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */,
 				E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */,
@@ -1403,6 +1406,7 @@
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */,
 				E65DCAC140BBD44168133E1F /* FluxComfyGraphTests.swift in Sources */,
+				BB5FD99CADAC038E7B9F62BA /* FluxTopologyTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */,
 				22CA77DD79FAF7EE547EA6CF /* HFCacheVerdictStoreTests.swift in Sources */,
