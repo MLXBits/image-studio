@@ -295,12 +295,13 @@ struct Krea2ComfyGraphTests {
         #expect(params["save_subfolder"] as? String == "mlxbits/krea2")
     }
 
-    @Test func i2iParamsUseImageStrengthAndOmitSize() {
-        // The i2i template has no size node: denoise comes from the image strength and width/height stay out
-        // of the params (injecting them would throw `unknownParam`).
+    @Test func i2iParamsInvertImageStrengthForDenoiseAndOmitSize() {
+        // The i2i template has no size node: denoise is the INVERSE of image strength (high strength =
+        // keep the source = low denoise, matching the mflux CLI), and width/height stay out of the params
+        // (injecting them would throw `unknownParam`).
         let job = Krea2Job(prompt: "a panda", imagePath: "/tmp/source.png", imageStrength: 0.75)
         let params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
-        #expect(params["denoise"] as? Double == 0.75)
+        #expect(params["denoise"] as? Double == 0.25) // 1.0 - imageStrength (0.75)
         #expect(params["width"] == nil)
         #expect(params["height"] == nil)
     }
@@ -344,7 +345,7 @@ struct Krea2ComfyGraphTests {
         let nodes = try Self.nodes(graph)
         #expect(try Self.input(#require(nodes["30:70"]), "image") as? String == "source.png")
         let ks = try #require(nodes["30:3"])
-        #expect(try Self.input(ks, "denoise") as? Double == 0.75)
+        #expect(try Self.input(ks, "denoise") as? Double == 0.25) // 1.0 - imageStrength (0.75)
         #expect(try Self.input(#require(nodes["30:19"]), "value") as? String == "a panda")
         // The latent comes from the VAE-encoded source, not an empty latent.
         #expect(try Self.isRef(Self.input(ks, "latent_image"), to: "30:71", slot: 0))

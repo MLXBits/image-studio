@@ -196,7 +196,10 @@ enum Krea2RunnerSpec: JobRunnerSpec {
             "cfg": job.guidance,
             "sampler": "euler",
             "scheduler": "simple", // matches mflux's Krea2 spacing; "normal" wastes its last step on flow models
-            "denoise": isT2i ? 1.0 : job.imageStrength,
+            // i2i: "image strength" = image preservation (high = keep the source), so denoise is the
+            // INVERSE — the mflux CLI maps --image-strength 0.9 to denoise 0.1, and KSampler denoise
+            // 1.0 = full re-gen, 0.0 = unchanged.
+            "denoise": isT2i ? 1.0 : 1.0 - job.imageStrength,
             "unet_name": settings.comfyUNet[familyID] ?? "",
             "clip_name": settings.comfyClip[familyID] ?? "",
             "vae_name": settings.comfyVae[familyID] ?? "",
