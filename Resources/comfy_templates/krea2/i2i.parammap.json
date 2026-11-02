@@ -1,0 +1,50 @@
+{
+  "prompt": {
+    "node": "30:19",
+    "input": "value"
+  },
+  "seed": {
+    "node": "30:3",
+    "input": "seed"
+  },
+  "steps": {
+    "node": "30:3",
+    "input": "steps"
+  },
+  "cfg": {
+    "node": "30:3",
+    "input": "cfg"
+  },
+  "sampler": {
+    "node": "30:3",
+    "input": "sampler_name"
+  },
+  "scheduler": {
+    "node": "30:3",
+    "input": "scheduler"
+  },
+  "denoise": {
+    "node": "30:3",
+    "input": "denoise"
+  },
+  "unet_name": {
+    "node": "30:10",
+    "input": "unet_name"
+  },
+  "clip_name": {
+    "node": "30:11",
+    "input": "clip_name"
+  },
+  "vae_name": {
+    "node": "30:12",
+    "input": "vae_name"
+  },
+  "save_subfolder": {
+    "node": "29",
+    "input": "filename_prefix"
+  },
+  "source_image": {
+    "node": "30:70",
+    "input": "image"
+  }
+}

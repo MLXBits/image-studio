@@ -44,3 +44,7 @@ Carthage/Build/
 .env
 Config/Local.xcconfig
 __pycache__/
+
+# ComfyUI dry-run harness + generated image output (live artifacts, never commit)
+comfy_dry_run_out/
+output/
