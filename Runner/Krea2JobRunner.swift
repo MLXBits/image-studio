@@ -167,7 +167,7 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         // i2i only: upload the source once and reuse the server filename across seeds. A failed upload throws and
         // fails the job — there is no silent t2i fallback.
         if !job.imagePath.isEmpty {
-            params["source_image"] = try await client.uploadImage(localPath: job.imagePath)
+            params["source_image"] = try await client.uploadKreaImage(localPath: job.imagePath)
         }
         // Render once (seed 0, the old builder's convention): a stale param map throws here and fails the job
         // loudly instead of per seed. The per-seed closure then swaps only the KSampler seed.

@@ -448,7 +448,7 @@ final class ComfyUIClient {
     /// the server-side filename (for a `LoadImage` node's `image` input). Mirrors `scripts/comfy_dry_run.py`'s
     /// `upload_image`. Called once per i2i job (before the per-seed render) so every seed references the
     /// same uploaded file.
-    func uploadImage(localPath: String) async throws -> String {
+    func uploadKreaImage(localPath: String) async throws -> String {
         guard let url = URL(string: base + "/upload/image") else { throw ComfyUIError.invalidURL(base) }
         let fileURL = URL(fileURLWithPath: localPath)
         guard let fileData = try? Data(contentsOf: fileURL) else {
