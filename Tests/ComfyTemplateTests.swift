@@ -216,18 +216,18 @@ struct Krea2ComfyGraphTests {
     }
 
     /// The same decode path as ``ComfyTemplate/load(familyFlowKey:)``, pointed at the repo file instead of the
-    /// app bundle (which gains the templates in Task 7). Repo filenames carry the family prefix (`krea2_t2i.json`).
+    /// app bundle. Filenames match the loader's bundle layout (`comfy_templates/krea2/t2i.json`).
     private static func loadTemplate(_ flow: String) throws -> ComfyTemplate {
         try JSONDecoder().decode(
             ComfyTemplate.self,
-            from: Data(contentsOf: templateDir.appendingPathComponent("krea2_\(flow).json"))
+            from: Data(contentsOf: templateDir.appendingPathComponent("\(flow).json"))
         )
     }
 
     private static func loadParamMap(_ flow: String) throws -> ComfyParamMap {
         try JSONDecoder().decode(
             ComfyParamMap.self,
-            from: Data(contentsOf: templateDir.appendingPathComponent("krea2_\(flow).parammap.json"))
+            from: Data(contentsOf: templateDir.appendingPathComponent("\(flow).parammap.json"))
         )
     }
 
