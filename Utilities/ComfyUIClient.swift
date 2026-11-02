@@ -557,6 +557,46 @@ final class ComfyUIClient {
         return pid
     }
 
+    /// Uploads a local image to the server's input dir via multipart `POST /upload/image` and returns
+    /// the server-side filename (for a `LoadImage` node's `image` input). Mirrors `scripts/comfy_dry_run.py`'s
+    /// `upload_image`. Called once per i2i job (before the per-seed render) so every seed references the
+    /// same uploaded file.
+    func uploadImage(localPath: String) async throws -> String {
+        guard let url = URL(string: base + "/upload/image") else { throw ComfyUIError.invalidURL(base) }
+        let fileURL = URL(fileURLWithPath: localPath)
+        guard let fileData = try? Data(contentsOf: fileURL) else {
+            throw ComfyUIError.decodeFailed("could not read image file: \(localPath)")
+        }
+        let boundary = "----mlxbits" + UUID().uuidString.replacingOccurrences(of: "-", with: "")
+        var body = Data()
+        body.append(Data("--\(boundary)\r\n".utf8))
+        body.append(Data("Content-Disposition: form-data; name=\"image\"; filename=\"\(fileURL.lastPathComponent)\"\r\n".utf8))
+        body.append(Data("Content-Type: application/octet-stream\r\n\r\n".utf8))
+        body.append(fileData)
+        body.append(Data("\r\n--\(boundary)--\r\n".utf8))
+
+        var req = URLRequest(url: url, timeoutInterval: 120)
+        req.httpMethod = "POST"
+        var h = headers()
+        h["Content-Type"] = "multipart/form-data; boundary=\(boundary)"
+        req.allHTTPHeaderFields = h
+        req.httpBody = body
+
+        let (respData, response): (Data, URLResponse)
+        do { (respData, response) = try await session.data(for: req) } catch {
+            throw ComfyUIError.unreachable((error as? URLError)?.localizedDescription ?? error.localizedDescription)
+        }
+        guard let http = response as? HTTPURLResponse else { throw ComfyUIError.unreachable("no HTTP status") }
+        if !(200 ..< 300).contains(http.statusCode) {
+            throw ComfyUIError.httpStatus(http.statusCode, extractErrorMessage(String(data: respData, encoding: .utf8) ?? ""))
+        }
+        guard let json = (try? JSONSerialization.jsonObject(with: respData)) as? [String: Any],
+              let name = json["name"] as? String else {
+            throw ComfyUIError.decodeFailed("no name in /upload/image response")
+        }
+        return name
+    }
+
     struct HistoryRecord {
         var statusMessage: String? // raw `status_str` label — reads "success" on completion, so not an error indicator by itself.
         /// Best available diagnostic from `status.messages` (the entry whose kind contains "error"/"exception"), else nil.

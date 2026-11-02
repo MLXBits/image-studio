@@ -14,6 +14,12 @@ Usage:
   python3 scripts/comfy_dry_run.py --template t2i.json --param-map t2i.parammap.json \
       --params params.json --url http://localhost:8188 [--image src.png]
 
+  # dynamically insert LoRAs (chained between the UNET and KSampler), repeatable:
+  python3 scripts/comfy_dry_run.py --template t2i.json --param-map t2i.parammap.json \
+      --params params.json --url http://localhost:8188 \
+      --insert-lora 'krea2/Krea2-realism-V2.safetensors:0.8' \
+      --insert-lora 'krea2/detail_slider_krea2_loraholic.safetensors:0.6'
+
   # LoRA no-op test (determines the LoraMechanism for the 10-slot chain):
   python3 scripts/comfy_dry_run.py --lora-test --template t2i.json \
       --param-map t2i.parammap.json --params params.json --url http://localhost:8188 \
@@ -59,6 +65,35 @@ def inject(template: dict, param_map: dict, params: dict) -> dict:
             )
         graph[node_id]["inputs"][input_name] = params[param]
     return graph
+
+
+def insert_loras(graph: dict, loras: list[tuple[str, float]]) -> list[str]:
+    """Insert LoraLoaderModelOnly nodes chained between the UNETLoader and the
+    KSampler.model, in the given order. This is the dynamic-insertion mechanism
+    (no fixed slots, no neutralization) - the reference the Swift renderGraph
+    must match. loras is a list of (name, strength_model) tuples.
+
+    Returns the inserted node IDs (empty when no LoRAs; the KSampler is then
+    wired straight to the UNET).
+    """
+    unet = next(nid for nid, n in graph.items() if n["class_type"] == "UNETLoader")
+    ks = next(nid for nid, n in graph.items() if n["class_type"] == "KSampler")
+    if not loras:
+        graph[ks]["inputs"]["model"] = [unet, 0]
+        return []
+    prev = unet
+    inserted: list[str] = []
+    for i, (name, strength) in enumerate(loras):
+        nid = f"lora_ins_{i}"
+        graph[nid] = {
+            "inputs": {"model": [prev, 0], "lora_name": name, "strength_model": float(strength)},
+            "class_type": "LoraLoaderModelOnly",
+            "_meta": {"title": f"LoRA {i + 1}: {name.rsplit('/', 1)[-1]}"},
+        }
+        inserted.append(nid)
+        prev = nid
+    graph[ks]["inputs"]["model"] = [prev, 0]
+    return inserted
 
 
 # --- live transport (exercised in step 3 against a real server) --------------
@@ -127,11 +162,15 @@ def image_hash(path: Path) -> str:
 
 
 def run_job(url: str, template: dict, param_map: dict, params: dict,
-            image_path: str | None = None, out_dir: Path = Path("comfy_dry_run_out")) -> list[Path]:
+            image_path: str | None = None, out_dir: Path = Path("comfy_dry_run_out"),
+            loras: list[tuple[str, float]] | None = None) -> list[Path]:
     if image_path:
         params = dict(params)
         params["source_image"] = upload_image(url, Path(image_path))
     graph = inject(template, param_map, params)
+    if loras:
+        ins = insert_loras(graph, loras)
+        print(f"[INFO] inserted {len(ins)} LoRA(s): {[(n, s) for n, s in loras]}", file=sys.stderr)
     prompt_id = submit(url, graph)
     print(f"submitted {prompt_id}", file=sys.stderr)
     entry = poll_history(url, prompt_id)
@@ -177,6 +216,9 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--url", required=True)
     ap.add_argument("--image", default=None, help="source image for i2i (uploaded to the server)")
     ap.add_argument("--out-dir", default="comfy_dry_run_out")
+    ap.add_argument("--insert-lora", action="append", default=[], metavar="NAME:STRENGTH",
+                    help="dynamically insert a LoraLoaderModelOnly between the UNET and KSampler "
+                         "(repeatable), e.g. 'krea2/Krea2-realism-V2.safetensors:0.8'")
     ap.add_argument("--lora-test", action="store_true")
     ap.add_argument("--lora", default=None, help="test LoRA filename for --lora-test")
     ap.add_argument("--lora-on", default="lora_on", help="param name for the slot on/off switch")
@@ -196,8 +238,9 @@ def main(argv: list[str] | None = None) -> None:
                   args.lora_on, args.lora_name, args.lora_sm, args.lora_sc,
                   out_dir=Path(args.out_dir))
     else:
+        loras = [(n, float(s)) for n, s in (x.split(":", 1) for x in args.insert_lora)]
         run_job(args.url, template, param_map, params, image_path=args.image,
-                out_dir=Path(args.out_dir))
+                out_dir=Path(args.out_dir), loras=loras)
 
 
 if __name__ == "__main__":

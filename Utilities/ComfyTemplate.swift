@@ -10,8 +10,6 @@ enum ComfyTemplateError: Error, Equatable {
     case missingNode(String)
     /// A param-map target points at an input that isn't on the node (a stale param map).
     case missingInput(node: String, input: String)
-    /// More LoRAs than the template's slot count.
-    case tooManyLoras(Int)
 }
 
 // MARK: - JSON value helper
@@ -264,5 +262,103 @@ struct AnyCodingKey: CodingKey {
 
     init(intValue: Int) {
         self.stringValue = "\(intValue)"; self.intValue = intValue
+    }
+}
+
+// MARK: - Rendering (param injection + dynamic LoRA insertion)
+
+extension ComfyScalar {
+    /// The wire-form value (a JSON number, string, or bool).
+    var wireValue: Any {
+        switch self {
+        case let .int(v): v
+        case let .double(v): v
+        case let .string(v): v
+        case let .bool(v): v
+        }
+    }
+}
+
+extension ComfyInputValue {
+    /// The wire-form value: a scalar, or a `[nodeID, outputIndex]` ref array.
+    var wireValue: Any {
+        switch self {
+        case let .scalar(s): s.wireValue
+        case let .ref(nodeID, idx): [nodeID, idx]
+        }
+    }
+}
+
+extension ComfyTemplate {
+    /// Render a runnable `/prompt` graph: start from the base template, inject `params` via the
+    /// param map, then dynamically insert `loras` (LoraLoaderModelOnly) chained between the
+    /// UNETLoader and the KSampler.model. Swift counterpart of `scripts/comfy_dry_run.py`'s
+    /// `inject()` + `insert_loras()`.
+    ///
+    /// `params` is keyed by param-map name (`prompt`, `seed`, `denoise`, `source_image`, …); a param
+    /// absent from `params` is left at the template's baked value. Throws if a param-map target is
+    /// stale (missing node/input).
+    func render(map: ComfyParamMap, params: [String: Any], loras: [ComfyLora]) throws -> [String: Any] {
+        // 1. Base graph in wire form: {nodeID: {class_type, inputs}}.
+        var graph: [String: [String: Any]] = [:]
+        for (id, node) in nodes {
+            var inputs: [String: Any] = [:]
+            for (name, value) in node.inputs {
+                inputs[name] = value.wireValue
+            }
+            graph[id] = ["class_type": node.classType, "inputs": inputs]
+        }
+        // 2. Inject params (param-map name -> node.input).
+        for (name, value) in params {
+            guard let target = map.params[name] else { continue } // unknown param name: leave baked
+            guard var node = graph[target.node] else { throw ComfyTemplateError.missingNode(target.node) }
+            guard var inputs = node["inputs"] as? [String: Any] else {
+                throw ComfyTemplateError.missingInput(node: target.node, input: target.input)
+            }
+            // Fail loudly on a stale param map: the input must already exist on the node (never silently add it).
+            guard inputs[target.input] != nil else {
+                throw ComfyTemplateError.missingInput(node: target.node, input: target.input)
+            }
+            inputs[target.input] = value
+            node["inputs"] = inputs
+            graph[target.node] = node
+        }
+        // 3. Dynamic LoRA insertion (no fixed slots; only the user's real LoRAs, model-only).
+        try insertLoras(&graph, loras)
+        // 4. Upcast to the /prompt wire form.
+        var wire: [String: Any] = [:]
+        for (id, node) in graph {
+            wire[id] = node
+        }
+        return wire
+    }
+
+    /// Insert LoraLoaderModelOnly nodes chained between the UNETLoader and the KSampler.model, in
+    /// order. With no LoRAs the KSampler is wired straight to the UNET. Matches the template's LoRA
+    /// type (LoraLoaderModelOnly — model-only, no clip).
+    private func insertLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
+        guard let unet = graph.first(where: { $0.value["class_type"] as? String == "UNETLoader" })?.key,
+              let ks = graph.first(where: { $0.value["class_type"] as? String == "KSampler" })?.key,
+              var ksNode = graph[ks] else { return }
+        var ksInputs = ksNode["inputs"] as? [String: Any] ?? [:]
+        if loras.isEmpty {
+            ksInputs["model"] = [unet, 0]
+            ksNode["inputs"] = ksInputs
+            graph[ks] = ksNode
+            return
+        }
+        var prev: Any = [unet, 0]
+        for (i, lora) in loras.enumerated() {
+            // Node IDs must match scripts/comfy_dry_run.py `insert_loras` (the reference): `lora_ins_<i>`.
+            let id = "lora_ins_\(i)"
+            graph[id] = [
+                "class_type": "LoraLoaderModelOnly",
+                "inputs": ["model": prev, "lora_name": lora.name, "strength_model": lora.strength],
+            ]
+            prev = [id, 0]
+        }
+        ksInputs["model"] = prev
+        ksNode["inputs"] = ksInputs
+        graph[ks] = ksNode
     }
 }
