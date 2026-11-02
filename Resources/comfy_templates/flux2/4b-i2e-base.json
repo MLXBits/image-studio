@@ -1,0 +1,392 @@
+{
+  "76": {
+    "inputs": {
+      "image": "robed_women.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "81": {
+    "inputs": {
+      "image": "pink_tone_chair.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "94": {
+    "inputs": {
+      "filename_prefix": "Flux2-Klein-4b-base",
+      "images": [
+        "92:104",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:102": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:103": {
+    "inputs": {
+      "noise": [
+        "92:105",
+        0
+      ],
+      "guider": [
+        "92:114",
+        0
+      ],
+      "sampler": [
+        "92:102",
+        0
+      ],
+      "sigmas": [
+        "92:115",
+        0
+      ],
+      "latent_image": [
+        "92:109",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:104": {
+    "inputs": {
+      "samples": [
+        "92:103",
+        0
+      ],
+      "vae": [
+        "92:107",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:105": {
+    "inputs": {
+      "noise_seed": 133932424540642
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:106": {
+    "inputs": {
+      "unet_name": "flux-2-klein-base-4b-fp8.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:107": {
+    "inputs": {
+      "vae_name": "full_encoder_small_decoder.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:108": {
+    "inputs": {
+      "image": [
+        "92:110",
+        0
+      ]
+    },
+    "class_type": "GetImageSize",
+    "_meta": {
+      "title": "Get Image Size",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:109": {
+    "inputs": {
+      "width": [
+        "92:108",
+        0
+      ],
+      "height": [
+        "92:108",
+        1
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "Empty Flux 2 Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:110": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "76",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:85": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "81",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:111": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:113": {
+    "inputs": {
+      "text": "A stylish young woman with dark skin wearing a plush deep emerald green bathrobe, light pink towel turban, and red heart-shaped sunglasses, seated on a light-colored rattan chair with soft pink cushions, positioned in front of a textured dusty rose pink wall with an arched alcove, large tropical plants with broad dark green leaves framing both sides, woven straw baskets on the floor, remove any existing shoes from the background, only the woman's beige woven sandals visible in the foreground, soft natural lighting casting gentle shadows, warm bohemian chic aesthetic, professional fashion photography",
+      "clip": [
+        "92:111",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:87": {
+    "inputs": {
+      "text": "",
+      "clip": [
+        "92:111",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode ( Negative Prompt)",
+      "cnr_id": "comfy-core",
+      "ver": "0.9.1"
+    }
+  },
+  "92:114": {
+    "inputs": {
+      "cfg": 5,
+      "model": [
+        "92:106",
+        0
+      ],
+      "positive": [
+        "92:130",
+        0
+      ],
+      "negative": [
+        "92:128",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:115": {
+    "inputs": {
+      "steps": 20,
+      "width": [
+        "92:108",
+        0
+      ],
+      "height": [
+        "92:108",
+        1
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:125": {
+    "inputs": {
+      "conditioning": [
+        "92:87",
+        0
+      ],
+      "latent": [
+        "92:126",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:126": {
+    "inputs": {
+      "pixels": [
+        "92:110",
+        0
+      ],
+      "vae": [
+        "92:107",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:127": {
+    "inputs": {
+      "conditioning": [
+        "92:113",
+        0
+      ],
+      "latent": [
+        "92:126",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:128": {
+    "inputs": {
+      "conditioning": [
+        "92:125",
+        0
+      ],
+      "latent": [
+        "92:129",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:129": {
+    "inputs": {
+      "pixels": [
+        "92:85",
+        0
+      ],
+      "vae": [
+        "92:107",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:130": {
+    "inputs": {
+      "conditioning": [
+        "92:127",
+        0
+      ],
+      "latent": [
+        "92:129",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  }
+}

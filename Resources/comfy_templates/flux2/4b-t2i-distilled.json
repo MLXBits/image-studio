@@ -1,0 +1,249 @@
+{
+  "76": {
+    "inputs": {
+      "value": "A hedgehog wearing a tiny party hat surrounded by confetti, early digital camera style, slight noise, flash photography, candid moment, 2000s digicam aesthetic, festive birthday celebration atmosphere\n"
+    },
+    "class_type": "PrimitiveStringMultiline",
+    "_meta": {
+      "title": "Prompt",
+      "cnr_id": "comfy-core",
+      "ver": "0.9.1"
+    }
+  },
+  "78": {
+    "inputs": {
+      "filename_prefix": "Flux2-Klein",
+      "images": [
+        "77:82",
+        0
+      ]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:80": {
+    "inputs": {
+      "sampler_name": "euler"
+    },
+    "class_type": "KSamplerSelect",
+    "_meta": {
+      "title": "KSamplerSelect",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:81": {
+    "inputs": {
+      "noise": [
+        "77:86",
+        0
+      ],
+      "guider": [
+        "77:90",
+        0
+      ],
+      "sampler": [
+        "77:80",
+        0
+      ],
+      "sigmas": [
+        "77:93",
+        0
+      ],
+      "latent_image": [
+        "77:83",
+        0
+      ]
+    },
+    "class_type": "SamplerCustomAdvanced",
+    "_meta": {
+      "title": "SamplerCustomAdvanced",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:82": {
+    "inputs": {
+      "samples": [
+        "77:81",
+        0
+      ],
+      "vae": [
+        "77:89",
+        0
+      ]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:83": {
+    "inputs": {
+      "width": [
+        "77:84",
+        0
+      ],
+      "height": [
+        "77:85",
+        0
+      ],
+      "batch_size": 1
+    },
+    "class_type": "EmptyFlux2LatentImage",
+    "_meta": {
+      "title": "Empty Flux 2 Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:84": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Width",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:85": {
+    "inputs": {
+      "value": 1024
+    },
+    "class_type": "PrimitiveInt",
+    "_meta": {
+      "title": "Height",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:86": {
+    "inputs": {
+      "noise_seed": 432262096973490
+    },
+    "class_type": "RandomNoise",
+    "_meta": {
+      "title": "RandomNoise",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:87": {
+    "inputs": {
+      "unet_name": "flux-2-klein-4b.safetensors",
+      "weight_dtype": "default"
+    },
+    "class_type": "UNETLoader",
+    "_meta": {
+      "title": "Load Diffusion Model",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:88": {
+    "inputs": {
+      "clip_name": "qwen_3_4b.safetensors",
+      "type": "flux2",
+      "device": "default"
+    },
+    "class_type": "CLIPLoader",
+    "_meta": {
+      "title": "Load CLIP",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:89": {
+    "inputs": {
+      "vae_name": "flux2-vae.safetensors"
+    },
+    "class_type": "VAELoader",
+    "_meta": {
+      "title": "Load VAE",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:90": {
+    "inputs": {
+      "cfg": 1,
+      "model": [
+        "77:87",
+        0
+      ],
+      "positive": [
+        "77:92",
+        0
+      ],
+      "negative": [
+        "77:91",
+        0
+      ]
+    },
+    "class_type": "CFGGuider",
+    "_meta": {
+      "title": "CFG Guider",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:91": {
+    "inputs": {
+      "conditioning": [
+        "77:92",
+        0
+      ]
+    },
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out",
+      "cnr_id": "comfy-core",
+      "ver": "0.9.1"
+    }
+  },
+  "77:92": {
+    "inputs": {
+      "text": [
+        "76",
+        0
+      ],
+      "clip": [
+        "77:88",
+        0
+      ]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "CLIP Text Encode (Positive Prompt)",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "77:93": {
+    "inputs": {
+      "steps": 4,
+      "width": [
+        "77:84",
+        0
+      ],
+      "height": [
+        "77:85",
+        0
+      ]
+    },
+    "class_type": "Flux2Scheduler",
+    "_meta": {
+      "title": "Flux2Scheduler",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  }
+}
