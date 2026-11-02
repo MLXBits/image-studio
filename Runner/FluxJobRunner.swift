@@ -16,6 +16,8 @@ enum FluxRunnerSpec: JobRunnerSpec {
     static let stepwiseSubdir = "stepwise"
     static let outputPrefix = "image"
     static let encodingLabel = "Encoding prompt"
+    /// The max reference images the bundled i2e templates accept (their LoadImage slots).
+    static let maxEditRefs = 2
 
     static func tool(job: FluxJob) -> PythonTool {
         // A custom checkpoint runs through whatever family it loads as, so its target's
@@ -300,5 +302,128 @@ enum FluxRunnerSpec: JobRunnerSpec {
         }
 
         return args
+    }
+
+    // MARK: - ComfyUI remote routing (FLUX.2)
+
+    /// The FLUX.2 ComfyUI flow key for a variant + mode — `flux2/<size>-<flow>-<variant>`
+    /// (e.g. `flux2/4b-i2e-distilled`) — or nil when the variant has no bundled FLUX.2 template
+    /// (FLUX.3 is a separate workstream; the other families have none at all).
+    static func flux2FlowKey(variant: FluxModelVariant, hasRefs: Bool) -> String? {
+        guard variant.isFlux2 else { return nil }
+        let size = variant.rawValue.contains("4b") ? "4b" : "9b"
+        let kind = variant.rawValue.contains("base") ? "base" : "distilled"
+        return "flux2/\(size)-\(hasRefs ? "i2e" : "t2i")-\(kind)"
+    }
+
+    /// Remote FLUX.2 graph from the bundled templates: the t2i or i2e flow (by reference presence), the job's
+    /// params and the per-variant model files from Settings injected through the param map, and the enabled
+    /// LoRA chain inserted dynamically. FLUX.2's pipeline loads three files; all must be configured to route
+    /// remote, otherwise the job runs on local mflux. FLUX.3 (and custom checkpoints targeting it) is a
+    /// separate workstream. A failed source-image upload or a stale param map throws and fails the job —
+    /// there is no silent local fallback.
+    static func comfyGraph(job: FluxJob, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
+        // Custom checkpoints run as their target variant (as `buildArgs` does), so the template and the
+        // model-file settings follow the target.
+        let variant = job.model == .custom ? job.customBaseModel : job.model
+        let hasRefs = !job.imagePath.isEmpty || !job.editImagePaths.isEmpty
+        guard let key = flux2FlowKey(variant: variant, hasRefs: hasRefs) else { return nil }
+        // Shape check before any loading: the i2e templates carry exactly `maxEditRefs` LoadImage slots.
+        if job.imagePath.isEmpty, job.editImagePaths.count > maxEditRefs {
+            throw FluxComfyGraphError.tooManyReferences(got: job.editImagePaths.count, max: maxEditRefs)
+        }
+        let variantID = variant.rawValue
+        guard
+            !(settings.comfyUNet[variantID] ?? "").isEmpty,
+            !(settings.comfyClip[variantID] ?? "").isEmpty,
+            !(settings.comfyVae[variantID] ?? "").isEmpty
+        else { return nil }
+
+        let template = try ComfyTemplate.load(familyFlowKey: key)
+        let map = try ComfyParamMap.load(familyFlowKey: key)
+        var params = flux2Params(job: job, settings: settings, variant: variant, hasRefs: hasRefs)
+        // i2e only: upload the source(s) once and reuse the server filenames across seeds. A failed upload
+        // throws and fails the job — there is no silent t2i fallback.
+        if hasRefs {
+            if !job.imagePath.isEmpty {
+                params["source_image"] = try await client.uploadKreaImage(localPath: job.imagePath)
+            } else {
+                for (index, path) in job.editImagePaths.enumerated() {
+                    let name = try await client.uploadKreaImage(localPath: path)
+                    params[index == 0 ? "source_image" : "source_image_\(index)"] = name
+                }
+            }
+        }
+        // Render once (seed 0, the Krea 2 convention): a stale param map throws here and fails the job
+        // loudly instead of per seed. The per-seed closure then swaps only the noise seed.
+        let loras = flux2Loras(job.loras)
+        let base = try template.render(map: map, params: params, loras: loras, loraKind: .full)
+        return ComfyGraph(totalNodes: template.nodes.count + loras.count, totalSteps: job.steps) { seed in
+            var graph = base
+            if let target = map.params["seed"],
+               var node = graph[target.node] as? [String: Any],
+               var inputs = node["inputs"] as? [String: Any] {
+                inputs[target.input] = seed
+                node["inputs"] = inputs
+                graph[target.node] = node
+            }
+            return graph
+        }
+    }
+
+    /// The param-map values for one FLUX.2 job: its prompt/size/steps plus the per-variant model files from
+    /// Settings (which override the template's baked filenames). `seed` is 0 here; the per-seed closure swaps
+    /// it. Distilled variants run at cfg 1 (no CFG branch); Base uses the job's guidance. width/height ride
+    /// only on t2i — the i2e templates derive size from the reference.
+    static func flux2Params(job: FluxJob, settings: AppSettings, variant: FluxModelVariant, hasRefs: Bool) -> [String: Any] {
+        let variantID = variant.rawValue
+        var params: [String: Any] = [
+            "prompt": job.prompt,
+            "seed": 0, // set per seed by the render closure
+            "steps": job.steps,
+            "cfg": variant.isDistilled ? 1.0 : job.guidance,
+            "sampler": "euler",
+            "unet_name": settings.comfyUNet[variantID] ?? "",
+            "clip_name": settings.comfyClip[variantID] ?? "",
+            "vae_name": settings.comfyVae[variantID] ?? "",
+            // The param map targets SaveImage's filename_prefix, which must be `mlxbits/<family>`: ComfyUI's
+            // get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a bare
+            // "mlxbits" drops the file in the output ROOT. A single slash is required; it cannot nest.
+            "save_subfolder": "mlxbits/flux2",
+        ]
+        // The i2e templates have no size node (output follows the reference), so width/height are t2i-only.
+        if !hasRefs {
+            params["width"] = job.width
+            params["height"] = job.height
+        }
+        return params
+    }
+
+    /// The LoRAs to chain into the remote graph: enabled, valid, and `.flux` family (the FLUX.2
+    /// architecture), each local path reduced to the server-side filename.
+    static func flux2Loras(_ loras: [LoraEntry]) -> [ComfyLora] {
+        loras
+            .filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
+            .map { ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength) }
+    }
+}
+
+/// A FLUX.2 remote job that doesn't fit the bundled templates.
+enum FluxComfyGraphError: LocalizedError, Equatable {
+    /// More reference images than the i2e template's LoadImage slots.
+    case tooManyReferences(got: Int, max: Int)
+
+    var errorDescription: String? {
+        switch self {
+        case let .tooManyReferences(got, max):
+            "FLUX.2 remote editing supports at most \(max) reference images; this job has \(got)."
+        }
+    }
+}
+
+private extension FluxModelVariant {
+    /// The four FLUX.2 variants that have bundled ComfyUI templates (the FLUX family minus FLUX.3).
+    var isFlux2: Bool {
+        isFlux && !isFlux3
     }
 }
