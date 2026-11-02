@@ -12,6 +12,16 @@ enum ComfyTemplateError: Error, Equatable {
     case missingInput(node: String, input: String)
 }
 
+// MARK: - LoRA kind
+
+/// The LoRA loader mechanism a template family needs.
+enum ComfyLoraKind {
+    /// `LoraLoaderModelOnly` — model-only, no clip (Krea 2).
+    case modelOnly
+    /// `LoraLoader` — model + clip streams (FLUX.2).
+    case full
+}
+
 // MARK: - JSON value helper
 
 /// A flexible JSON value, used to distinguish a `[nodeID, outputIndex]` ref array from a scalar on decode.
@@ -291,14 +301,23 @@ extension ComfyInputValue {
 
 extension ComfyTemplate {
     /// Render a runnable `/prompt` graph: start from the base template, inject `params` via the
-    /// param map, then dynamically insert `loras` (LoraLoaderModelOnly) chained between the
-    /// UNETLoader and the KSampler.model. Swift counterpart of `scripts/comfy_dry_run.py`'s
-    /// `inject()` + `insert_loras()`.
+    /// param map, then dynamically insert `loras` chained between the UNETLoader and its model
+    /// consumer. Swift counterpart of `scripts/comfy_dry_run.py`'s `inject()` + `insert_loras()`.
     ///
     /// `params` is keyed by param-map name (`prompt`, `seed`, `denoise`, `source_image`, …); a param
     /// absent from `params` is left at the template's baked value. Throws if a param-map target is
     /// stale (missing node/input).
-    func render(map: ComfyParamMap, params: [String: Any], loras: [ComfyLora]) throws -> [String: Any] {
+    ///
+    /// `loraKind` selects the loader mechanism: ``ComfyLoraKind/modelOnly`` (default, Krea 2) inserts
+    /// `LoraLoaderModelOnly` nodes feeding the `KSampler.model`; ``ComfyLoraKind/full`` (FLUX.2) inserts
+    /// `LoraLoader` nodes with a parallel clip chain, rewiring the model consumer by reference (covers
+    /// `CFGGuider.model` — no `KSampler` needed) and every `CLIPTextEncode.clip` to the tail clip.
+    func render(
+        map: ComfyParamMap,
+        params: [String: Any],
+        loras: [ComfyLora],
+        loraKind: ComfyLoraKind = .modelOnly
+    ) throws -> [String: Any] {
         // 1. Base graph in wire form: {nodeID: {class_type, inputs}}.
         var graph: [String: [String: Any]] = [:]
         for (id, node) in nodes {
@@ -323,8 +342,8 @@ extension ComfyTemplate {
             node["inputs"] = inputs
             graph[target.node] = node
         }
-        // 3. Dynamic LoRA insertion (no fixed slots; only the user's real LoRAs, model-only).
-        try insertLoras(&graph, loras)
+        // 3. Dynamic LoRA insertion (no fixed slots; only the user's real LoRAs).
+        try insertLoras(&graph, loras, kind: loraKind)
         // 4. Upcast to the /prompt wire form.
         var wire: [String: Any] = [:]
         for (id, node) in graph {
@@ -333,31 +352,41 @@ extension ComfyTemplate {
         return wire
     }
 
-    /// Insert LoraLoaderModelOnly nodes chained between the UNETLoader and the KSampler.model, in
-    /// order. With no LoRAs the KSampler is wired straight to the UNET. Matches the template's LoRA
-    /// type (LoraLoaderModelOnly — model-only, no clip).
-    private func insertLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
+    /// Dynamically insert LoRA loader nodes chained after the UNETLoader, in order, and rewire the
+    /// model consumer to the chain tail. With no LoRAs this is a no-op (the UNET feeds its consumers
+    /// directly). Node IDs match `scripts/comfy_dry_run.py`'s `insert_loras` (the reference).
+    ///
+    /// ``ComfyLoraKind/modelOnly`` (Krea 2): `LoraLoaderModelOnly` nodes feeding the `KSampler.model`.
+    /// ``ComfyLoraKind/full`` (FLUX.2): `LoraLoader` nodes with a parallel clip chain anchored on the
+    /// `CLIPLoader`; the model consumer is found by reference-rewrite (every `[unetID, 0]` ref — covers
+    /// `KSampler.model`, `CFGGuider.model`, any consumer count), and every `[clipID, 0]` ref is rewired
+    /// to the tail clip (feeds both positive + negative `CLIPTextEncode`).
+    private func insertLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora], kind: ComfyLoraKind = .modelOnly) throws {
+        if loras.isEmpty {
+            return
+        }
+        switch kind {
+        case .modelOnly:
+            try insertModelOnlyLoras(&graph, loras)
+        case .full:
+            try insertFullLoras(&graph, loras)
+        }
+    }
+
+    /// The Krea 2 path: `LoraLoaderModelOnly` nodes chained between the UNETLoader and the
+    /// KSampler.model.
+    private func insertModelOnlyLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
         guard let unet = graph.first(where: { $0.value["class_type"] as? String == "UNETLoader" })?.key,
               let ks = graph.first(where: { $0.value["class_type"] as? String == "KSampler" })?.key,
               var ksNode = graph[ks]
         else {
-            // No UNETLoader/KSampler to chain between: harmless with no LoRAs (nothing to insert), but a
-            // silent wrong graph when LoRAs are requested — the job would run without them. Fail loudly.
-            if loras.isEmpty {
-                return
-            }
+            // No UNETLoader/KSampler to chain between: a silent wrong graph would run the job without
+            // the user's LoRAs and show no error — fail loudly.
             throw ComfyTemplateError.missingNode("UNETLoader/KSampler")
         }
         var ksInputs = ksNode["inputs"] as? [String: Any] ?? [:]
-        if loras.isEmpty {
-            ksInputs["model"] = [unet, 0]
-            ksNode["inputs"] = ksInputs
-            graph[ks] = ksNode
-            return
-        }
         var prev: Any = [unet, 0]
         for (i, lora) in loras.enumerated() {
-            // Node IDs must match scripts/comfy_dry_run.py `insert_loras` (the reference): `lora_ins_<i>`.
             let id = "lora_ins_\(i)"
             graph[id] = [
                 "class_type": "LoraLoaderModelOnly",
@@ -368,5 +397,77 @@ extension ComfyTemplate {
         ksInputs["model"] = prev
         ksNode["inputs"] = ksInputs
         graph[ks] = ksNode
+    }
+
+    /// The FLUX.2 path: `LoraLoader` nodes with both model + clip streams, chained after the
+    /// UNETLoader and the CLIPLoader anchor, then every model/clip consumer rewired to the chain tails.
+    private func insertFullLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
+        guard let unet = graph.first(where: { $0.value["class_type"] as? String == "UNETLoader" })?.key else {
+            throw ComfyTemplateError.missingNode("UNETLoader")
+        }
+        guard let clip = clipAnchor(graph) else {
+            throw ComfyTemplateError.missingNode("CLIPLoader")
+        }
+        // Each stream is (nodeID, outputSlot): the UNETLoader/CLIPLoader outputs are slot 0, but a
+        // LoraLoader's clip is slot 1 (its slot 0 is the model).
+        var prevModel: (id: String, slot: Int) = (unet, 0)
+        var prevClip: (id: String, slot: Int) = (clip, 0)
+        var inserted: [String] = []
+        for (i, lora) in loras.enumerated() {
+            let id = "lora_ins_\(i)"
+            graph[id] = [
+                "class_type": "LoraLoader",
+                "inputs": [
+                    "model": [prevModel.id, prevModel.slot],
+                    "clip": [prevClip.id, prevClip.slot],
+                    "lora_name": lora.name,
+                    "strength_model": lora.strength,
+                    "strength_clip": lora.strength, // the app uses a single LoRA strength for both
+                ],
+            ]
+            inserted.append(id)
+            prevModel = (id, 0)
+            prevClip = (id, 1)
+        }
+        rewireConsumers(&graph, skipping: Set(inserted), tails: [unet: prevModel, clip: prevClip])
+    }
+
+    /// The `CLIPLoader` whose output feeds a `CLIPTextEncode` node's `clip` input (the anchor for the
+    /// `.full` clip chain), or nil when no such anchor exists.
+    private func clipAnchor(_ graph: [String: [String: Any]]) -> String? {
+        for (_, node) in graph where (node["class_type"] as? String) == "CLIPTextEncode" {
+            guard let inputs = node["inputs"] as? [String: Any],
+                  let clip = inputs["clip"] as? [Any], clip.count == 2, clip[1] as? Int == 0,
+                  let src = clip[0] as? String,
+                  (graph[src]?["class_type"] as? String) == "CLIPLoader"
+            else { continue }
+            return src
+        }
+        return nil
+    }
+
+    /// Rewire every `[sourceID, 0]` ref in `tails` to its chain tail (the UNETLoader ref → model tail,
+    /// the CLIPLoader ref → tail clip). Skip the inserted LoRA nodes: the first of them still
+    /// references the UNETLoader/CLIPLoader by design and must not be rewritten into a self-cycle.
+    private func rewireConsumers(
+        _ graph: inout [String: [String: Any]],
+        skipping inserted: Set<String>,
+        tails: [String: (id: String, slot: Int)]
+    ) {
+        for (id, var node) in graph where !inserted.contains(id) {
+            guard var inputs = node["inputs"] as? [String: Any] else { continue }
+            var changed = false
+            for (key, value) in inputs {
+                guard let ref = value as? [Any], ref.count == 2, ref[1] as? Int == 0,
+                      let src = ref[0] as? String, let tail = tails[src]
+                else { continue }
+                inputs[key] = [tail.id, tail.slot]
+                changed = true
+            }
+            if changed {
+                node["inputs"] = inputs
+                graph[id] = node
+            }
+        }
     }
 }
