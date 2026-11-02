@@ -36,6 +36,50 @@
       "ver": "0.8.2"
     }
   },
+  "147": {
+    "inputs": {
+      "image": "pink_tone_chair.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "148": {
+    "inputs": {
+      "image": "pink_tone_chair.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "149": {
+    "inputs": {
+      "image": "pink_tone_chair.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "150": {
+    "inputs": {
+      "image": "pink_tone_chair.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
   "92:102": {
     "inputs": {
       "sampler_name": "euler"
@@ -247,11 +291,11 @@
         0
       ],
       "positive": [
-        "92:130",
+        "92:145",
         0
       ],
       "negative": [
-        "92:128",
+        "92:146",
         0
       ]
     },
@@ -379,6 +423,274 @@
       ],
       "latent": [
         "92:129",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:131": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "150",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:132": {
+    "inputs": {
+      "pixels": [
+        "92:131",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:133": {
+    "inputs": {
+      "conditioning": [
+        "92:130",
+        0
+      ],
+      "latent": [
+        "92:132",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:134": {
+    "inputs": {
+      "conditioning": [
+        "92:128",
+        0
+      ],
+      "latent": [
+        "92:132",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:135": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "147",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:136": {
+    "inputs": {
+      "pixels": [
+        "92:135",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:137": {
+    "inputs": {
+      "conditioning": [
+        "92:133",
+        0
+      ],
+      "latent": [
+        "92:136",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:138": {
+    "inputs": {
+      "conditioning": [
+        "92:134",
+        0
+      ],
+      "latent": [
+        "92:136",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:139": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "149",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:140": {
+    "inputs": {
+      "pixels": [
+        "92:139",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:141": {
+    "inputs": {
+      "conditioning": [
+        "92:137",
+        0
+      ],
+      "latent": [
+        "92:140",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:142": {
+    "inputs": {
+      "conditioning": [
+        "92:138",
+        0
+      ],
+      "latent": [
+        "92:140",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:143": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "148",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:144": {
+    "inputs": {
+      "pixels": [
+        "92:143",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:145": {
+    "inputs": {
+      "conditioning": [
+        "92:141",
+        0
+      ],
+      "latent": [
+        "92:144",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:146": {
+    "inputs": {
+      "conditioning": [
+        "92:142",
+        0
+      ],
+      "latent": [
+        "92:144",
         0
       ]
     },

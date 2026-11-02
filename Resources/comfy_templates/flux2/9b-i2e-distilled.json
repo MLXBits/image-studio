@@ -36,6 +36,50 @@
       "ver": "0.17.0"
     }
   },
+  "167": {
+    "inputs": {
+      "image": "handbag_white.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "168": {
+    "inputs": {
+      "image": "handbag_white.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "169": {
+    "inputs": {
+      "image": "handbag_white.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "170": {
+    "inputs": {
+      "image": "handbag_white.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
   "92:101": {
     "inputs": {
       "sampler_name": "euler"
@@ -74,11 +118,11 @@
         0
       ],
       "positive": [
-        "92:131",
+        "92:165",
         0
       ],
       "negative": [
-        "92:129",
+        "92:166",
         0
       ]
     },
@@ -384,6 +428,274 @@
     "class_type": "ImageScaleToTotalPixels",
     "_meta": {
       "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:151": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "170",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:152": {
+    "inputs": {
+      "pixels": [
+        "92:151",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:153": {
+    "inputs": {
+      "conditioning": [
+        "92:131",
+        0
+      ],
+      "latent": [
+        "92:152",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:154": {
+    "inputs": {
+      "conditioning": [
+        "92:129",
+        0
+      ],
+      "latent": [
+        "92:152",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:155": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "169",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:156": {
+    "inputs": {
+      "pixels": [
+        "92:155",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:157": {
+    "inputs": {
+      "conditioning": [
+        "92:153",
+        0
+      ],
+      "latent": [
+        "92:156",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:158": {
+    "inputs": {
+      "conditioning": [
+        "92:154",
+        0
+      ],
+      "latent": [
+        "92:156",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:159": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "168",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:160": {
+    "inputs": {
+      "pixels": [
+        "92:159",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:161": {
+    "inputs": {
+      "conditioning": [
+        "92:157",
+        0
+      ],
+      "latent": [
+        "92:160",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:162": {
+    "inputs": {
+      "conditioning": [
+        "92:158",
+        0
+      ],
+      "latent": [
+        "92:160",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:163": {
+    "inputs": {
+      "upscale_method": "lanczos",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "167",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:164": {
+    "inputs": {
+      "pixels": [
+        "92:163",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:165": {
+    "inputs": {
+      "conditioning": [
+        "92:161",
+        0
+      ],
+      "latent": [
+        "92:164",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:166": {
+    "inputs": {
+      "conditioning": [
+        "92:162",
+        0
+      ],
+      "latent": [
+        "92:164",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
       "cnr_id": "comfy-core",
       "ver": "0.8.2"
     }

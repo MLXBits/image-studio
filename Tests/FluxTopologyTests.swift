@@ -70,12 +70,12 @@ struct FluxTopologyTests {
 
     /// Distilled t2i runs CFG-free: a ConditioningZeroOut node exists and CFGGuider.cfg is 1.
     @Test func t2iDistilledUsesZeroOutAndCfgOne() throws {
-        // 9b-t2i-distilled is pinned separately (`nineBT2iDistilledShippedAsBaseStack`): the shipped
-        // template is a re-export of the base stack, not distilled.
-        let t = try ComfyTemplate.load(familyFlowKey: "flux2/4b-t2i-distilled")
-        #expect(!Self.ids(t, "ConditioningZeroOut").isEmpty, "4b-t2i-distilled: missing ConditioningZeroOut")
-        let g = try #require(Self.guider(t))
-        #expect(Self.number(g.inputs["cfg"]) == 1, "4b-t2i-distilled: cfg must be 1, got \(Self.number(g.inputs["cfg"]) ?? -1)")
+        for key in ["flux2/4b-t2i-distilled", "flux2/9b-t2i-distilled"] {
+            let t = try ComfyTemplate.load(familyFlowKey: key)
+            #expect(!Self.ids(t, "ConditioningZeroOut").isEmpty, "\(key): missing ConditioningZeroOut")
+            let g = try #require(Self.guider(t))
+            #expect(Self.number(g.inputs["cfg"]) == 1, "\(key): cfg must be 1, got \(Self.number(g.inputs["cfg"]) ?? -1)")
+        }
     }
 
     /// Base t2i uses real CFG: a negative `CLIPTextEncode` (empty text) exists and cfg is not 1.
@@ -88,29 +88,16 @@ struct FluxTopologyTests {
         }
     }
 
-    /// DEVIATION FROM PLAN — pinned as shipped: `flux2/9b-t2i-distilled` is byte-identical to
-    /// `flux2/9b-t2i-base` except the UNet filename (`flux-2-klein-9b-fp8` vs
-    /// `flux-2-klein-base-9b-fp8`). It carries the base stack (cfg 5, negative encode, no
-    /// ConditioningZeroOut), not the distilled stack. If the template is re-exported as truly
-    /// distilled, update this test and `t2iDistilledUsesZeroOutAndCfgOne`.
-    @Test func nineBT2iDistilledShippedAsBaseStack() throws {
-        let t = try ComfyTemplate.load(familyFlowKey: "flux2/9b-t2i-distilled")
-        #expect(Self.ids(t, "ConditioningZeroOut").isEmpty, "9b-t2i-distilled: unexpectedly has ConditioningZeroOut")
-        #expect(Self.negativeEncode(t) != nil, "9b-t2i-distilled: negative encode disappeared")
-        let g = try #require(Self.guider(t))
-        #expect(Self.number(g.inputs["cfg"]) == 5, "9b-t2i-distilled: cfg changed from 5")
-    }
-
     // MARK: i2e
 
     /// All 4 i2e (edit) templates carry the advanced stack, reference conditioning (ReferenceLatent),
-    /// and >= 2 LoadImage nodes (currently 2 per template; the user will re-export with 6 slots later).
+    /// and exactly 6 LoadImage nodes (one per reference slot, source_image through source_image_5).
     @Test func i2eTemplatesWireTheAdvancedStackAndReferences() throws {
         for key in Self.i2eKeys {
             let t = try ComfyTemplate.load(familyFlowKey: key)
             Self.assertAdvancedStack(t, key: key)
             #expect(!Self.ids(t, "ReferenceLatent").isEmpty, "\(key): missing ReferenceLatent")
-            #expect(Self.ids(t, "LoadImage").count >= 2, "\(key): expected >= 2 LoadImage, got \(Self.ids(t, "LoadImage").count)")
+            #expect(Self.ids(t, "LoadImage").count == 6, "\(key): expected == 6 LoadImage, got \(Self.ids(t, "LoadImage").count)")
         }
     }
 

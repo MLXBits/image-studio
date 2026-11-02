@@ -36,6 +36,50 @@
       "ver": "0.8.2"
     }
   },
+  "148": {
+    "inputs": {
+      "image": "comfy_logo_blue.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "149": {
+    "inputs": {
+      "image": "comfy_logo_blue.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "150": {
+    "inputs": {
+      "image": "comfy_logo_blue.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "151": {
+    "inputs": {
+      "image": "comfy_logo_blue.png"
+    },
+    "class_type": "LoadImage",
+    "_meta": {
+      "title": "Load Image",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
   "92:101": {
     "inputs": {
       "sampler_name": "euler"
@@ -74,11 +118,11 @@
         0
       ],
       "positive": [
-        "92:84:120",
+        "92:135:134",
         0
       ],
       "negative": [
-        "92:84:118",
+        "92:135:132",
         0
       ]
     },
@@ -384,6 +428,290 @@
     "class_type": "GetImageSize",
     "_meta": {
       "title": "Get Image Size",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:128": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "148",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:129": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "149",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:130": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "150",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:131": {
+    "inputs": {
+      "upscale_method": "nearest-exact",
+      "megapixels": 1,
+      "resolution_steps": 1,
+      "image": [
+        "151",
+        0
+      ]
+    },
+    "class_type": "ImageScaleToTotalPixels",
+    "_meta": {
+      "title": "Scale Image to Total Pixels",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:135:132": {
+    "inputs": {
+      "conditioning": [
+        "92:139:136",
+        0
+      ],
+      "latent": [
+        "92:135:133",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:135:133": {
+    "inputs": {
+      "pixels": [
+        "92:128",
+        0
+      ],
+      "vae": [
+        "92:110",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:135:134": {
+    "inputs": {
+      "conditioning": [
+        "92:139:138",
+        0
+      ],
+      "latent": [
+        "92:135:133",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:139:136": {
+    "inputs": {
+      "conditioning": [
+        "92:143:140",
+        0
+      ],
+      "latent": [
+        "92:139:137",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:139:137": {
+    "inputs": {
+      "pixels": [
+        "92:129",
+        0
+      ],
+      "vae": [
+        "92:110",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:139:138": {
+    "inputs": {
+      "conditioning": [
+        "92:143:142",
+        0
+      ],
+      "latent": [
+        "92:139:137",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:143:140": {
+    "inputs": {
+      "conditioning": [
+        "92:147:144",
+        0
+      ],
+      "latent": [
+        "92:143:141",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:143:141": {
+    "inputs": {
+      "pixels": [
+        "92:130",
+        0
+      ],
+      "vae": [
+        "92:110",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:143:142": {
+    "inputs": {
+      "conditioning": [
+        "92:147:146",
+        0
+      ],
+      "latent": [
+        "92:143:141",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:147:144": {
+    "inputs": {
+      "conditioning": [
+        "92:84:118",
+        0
+      ],
+      "latent": [
+        "92:147:145",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:147:145": {
+    "inputs": {
+      "pixels": [
+        "92:131",
+        0
+      ],
+      "vae": [
+        "92:110",
+        0
+      ]
+    },
+    "class_type": "VAEEncode",
+    "_meta": {
+      "title": "VAE Encode",
+      "cnr_id": "comfy-core",
+      "ver": "0.8.2"
+    }
+  },
+  "92:147:146": {
+    "inputs": {
+      "conditioning": [
+        "92:84:120",
+        0
+      ],
+      "latent": [
+        "92:147:145",
+        0
+      ]
+    },
+    "class_type": "ReferenceLatent",
+    "_meta": {
+      "title": "Set Reference Latent",
       "cnr_id": "comfy-core",
       "ver": "0.8.2"
     }

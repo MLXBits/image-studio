@@ -27,7 +27,7 @@
   },
   "75:62": {
     "inputs": {
-      "steps": 20,
+      "steps": 4,
       "width": [
         "75:68",
         0
@@ -46,7 +46,7 @@
   },
   "75:63": {
     "inputs": {
-      "cfg": 5,
+      "cfg": 1,
       "model": [
         "75:70",
         0
@@ -56,7 +56,7 @@
         0
       ],
       "negative": [
-        "75:67",
+        "75:114",
         0
       ]
     },
@@ -130,21 +130,6 @@
     "class_type": "EmptyFlux2LatentImage",
     "_meta": {
       "title": "Empty Flux 2 Latent",
-      "cnr_id": "comfy-core",
-      "ver": "0.8.2"
-    }
-  },
-  "75:67": {
-    "inputs": {
-      "text": "",
-      "clip": [
-        "75:71",
-        0
-      ]
-    },
-    "class_type": "CLIPTextEncode",
-    "_meta": {
-      "title": "CLIP Text Encode (Negative Prompt)",
       "cnr_id": "comfy-core",
       "ver": "0.8.2"
     }
@@ -231,6 +216,15 @@
       "title": "CLIP Text Encode (Positive Prompt)",
       "cnr_id": "comfy-core",
       "ver": "0.8.2"
+    }
+  },
+  "75:114": {
+    "inputs": {},
+    "class_type": "ConditioningZeroOut",
+    "_meta": {
+      "title": "Conditioning Zero Out",
+      "cnr_id": "comfy-core",
+      "ver": "0.43.0"
     }
   }
 }

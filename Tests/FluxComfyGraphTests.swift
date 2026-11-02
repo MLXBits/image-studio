@@ -216,7 +216,7 @@ struct FluxComfyGraphTests {
             job: job, settings: Self.flux2Settings("flux2-klein-4b"), client: Self.stubClient()
         )
         let g = try #require(graph, "1-ref i2e should route remote")
-        #expect(g.totalNodes == 24) // the 24-node 4b i2e template, no LoRAs
+        #expect(g.totalNodes == 44) // the 44-node 4b i2e template (6-slot re-export), no LoRAs
         #expect(g.totalSteps == 8)
 
         let rendered = try Self.nodes(g.build(7))
@@ -267,7 +267,7 @@ struct FluxComfyGraphTests {
             job: job, settings: Self.flux2Settings("flux2-klein-base-9b"), client: Self.stubClient()
         )
         let g = try #require(graph, "2-ref edit should route remote")
-        #expect(g.totalNodes == 24)
+        #expect(g.totalNodes == 44)
 
         let rendered = try Self.nodes(g.build(1))
         let map = try Self.loadParamMap("9b-i2e-base")
@@ -277,7 +277,7 @@ struct FluxComfyGraphTests {
     }
 
     @Test func tooManyReferencesThrows() async throws {
-        let paths = try (0 ..< 3).map { _ in try Self.writeTempImage().path }
+        let paths = try (0 ..< 7).map { _ in try Self.writeTempImage().path }
         let job = FluxJob(
             model: .flux2Klein4B, prompt: "a panda", steps: 8, isEditMode: true, editImagePaths: paths
         )
@@ -287,7 +287,7 @@ struct FluxComfyGraphTests {
             )
             Issue.record("expected tooManyReferences")
         } catch let error as FluxComfyGraphError {
-            #expect(error == .tooManyReferences(got: 3, max: 2))
+            #expect(error == .tooManyReferences(got: 7, max: 6))
         }
     }
 

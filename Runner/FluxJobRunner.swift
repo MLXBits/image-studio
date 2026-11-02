@@ -17,7 +17,7 @@ enum FluxRunnerSpec: JobRunnerSpec {
     static let outputPrefix = "image"
     static let encodingLabel = "Encoding prompt"
     /// The max reference images the bundled i2e templates accept (their LoadImage slots).
-    static let maxEditRefs = 2
+    static let maxEditRefs = 6
 
     static func tool(job: FluxJob) -> PythonTool {
         // A custom checkpoint runs through whatever family it loads as, so its target's
