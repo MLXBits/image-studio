@@ -204,7 +204,6 @@
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */; };
 		B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */; };
-		901FF2C164F343249F3B69B8 /* FluxComfyGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC4AB11AE6C6477C89EB1B1B /* FluxComfyGraphTests.swift */; };
 		BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB5B056C022208F02D3ED376 /* LibraryStatus.swift */; };
 		BBB620776EC9224152F2768A /* ColorPaletteEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 654AC3A3DC3E6FAE9A129B80 /* ColorPaletteEditor.swift */; };
 		BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */; };
@@ -246,8 +245,10 @@
 		E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */ = {isa = PBXBuildFile; fileRef = 42A12301E41212F054BE2021 /* FakeRuntime.swift */; };
 		E4FEBA849C59CE3F30938431 /* FileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E6617CA61E62244D246073A /* FileAccess.swift */; };
 		E644615EFBDA336E54EF04EE /* ZImageParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F07AFF0DD77A3B5CD7EFFDF /* ZImageParamsPanelView.swift */; };
+		E65DCAC140BBD44168133E1F /* FluxComfyGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D7BAF347C2E496244BE37F /* FluxComfyGraphTests.swift */; };
 		E9A31A5F22F720F6F3F282EF /* PythonToolTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD95ADD5D2C2E7652E42DEA5 /* PythonToolTests.swift */; };
 		E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CB12782BB6D8B424591F3DE /* GalleryStore.swift */; };
+		EA64AC27031D0CAC1DC7C56B /* ModelDefaultsView+FluxForm.swift in Sources */ = {isa = PBXBuildFile; fileRef = E982AB0083FDDE2E7A28A7D9 /* ModelDefaultsView+FluxForm.swift */; };
 		EA83B400F4041AFE4F5297BA /* OpenAIChatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985F3C0FD2619F10E9F451D5 /* OpenAIChatClient.swift */; };
 		ED4DDCD94B96DF5BCF8E8F61 /* ZImageParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 050EE7381BE7F16200F99AD6 /* ZImageParamsPanelState.swift */; };
 		EEBF4E221B30F1A8CF11C79A /* ProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EC0C84DEFADEB7756B4B0F /* ProfileStore.swift */; };
@@ -367,6 +368,7 @@
 		444CC52F9371A805017902EA /* StoreKitStorefrontTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StoreKitStorefrontTests.swift; sourceTree = "<group>"; };
 		45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunner.swift; sourceTree = "<group>"; };
 		46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryEditorView.swift; sourceTree = "<group>"; };
+		46D7BAF347C2E496244BE37F /* FluxComfyGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxComfyGraphTests.swift; sourceTree = "<group>"; };
 		49C3919786032AB418561420 /* AspectDirectiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectDirectiveTests.swift; sourceTree = "<group>"; };
 		4A99968429C87E4B28CF3541 /* SupportLinksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportLinksTests.swift; sourceTree = "<group>"; };
 		4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometry.swift; sourceTree = "<group>"; };
@@ -445,7 +447,6 @@
 		8B2A8574EE932E2F7883D31C /* ImageMetadataInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageMetadataInfo.swift; sourceTree = "<group>"; };
 		8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidDecodeToggleView.swift; sourceTree = "<group>"; };
 		8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Flux3ModelRouteTests.swift; sourceTree = "<group>"; };
-		FC4AB11AE6C6477C89EB1B1B /* FluxComfyGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxComfyGraphTests.swift; sourceTree = "<group>"; };
 		8DB456E628824B578B6A4293 /* Binding+Element.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Binding+Element.swift"; sourceTree = "<group>"; };
 		8DF8DCD6AFA207134C719360 /* JobStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStore.swift; sourceTree = "<group>"; };
 		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
@@ -529,6 +530,7 @@
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverControllerTests.swift; sourceTree = "<group>"; };
 		E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStoreTests.swift; sourceTree = "<group>"; };
+		E982AB0083FDDE2E7A28A7D9 /* ModelDefaultsView+FluxForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+FluxForm.swift"; sourceTree = "<group>"; };
 		E9A0FCCEEF7103CD4889BEF8 /* Toolchain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolchain.swift; sourceTree = "<group>"; };
 		EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxFileAccess.swift; sourceTree = "<group>"; };
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
@@ -702,7 +704,7 @@
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */,
-				FC4AB11AE6C6477C89EB1B1B /* FluxComfyGraphTests.swift */,
+				46D7BAF347C2E496244BE37F /* FluxComfyGraphTests.swift */,
 				98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */,
 				F6D52946EA46D68E4DB629B7 /* GrantStoreTests.swift */,
 				E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */,
@@ -862,6 +864,7 @@
 				46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */,
 				64A7412A576F846395336217 /* ModelDefaultsView.swift */,
 				7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */,
+				E982AB0083FDDE2E7A28A7D9 /* ModelDefaultsView+FluxForm.swift */,
 				318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */,
 				4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */,
 				6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */,
@@ -1285,6 +1288,7 @@
 				C0F1D93B8A95B95BDEFF588B /* MfluxProbes.swift in Sources */,
 				F3E191D188A24E56316B8E75 /* MissingLibraryBanner.swift in Sources */,
 				F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */,
+				EA64AC27031D0CAC1DC7C56B /* ModelDefaultsView+FluxForm.swift in Sources */,
 				67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */,
 				EF113144EC0E822A2551EF74 /* ModelDefaultsView+Ideogram4Form.swift in Sources */,
 				B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */,
@@ -1398,7 +1402,7 @@
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */,
-				901FF2C164F343249F3B69B8 /* FluxComfyGraphTests.swift in Sources */,
+				E65DCAC140BBD44168133E1F /* FluxComfyGraphTests.swift in Sources */,
 				48E827E3E979F1A939D5A5E1 /* GemmaChatRunnerRunTests.swift in Sources */,
 				BC365CA84D2FCCA9C4165B22 /* GrantStoreTests.swift in Sources */,
 				22CA77DD79FAF7EE547EA6CF /* HFCacheVerdictStoreTests.swift in Sources */,
