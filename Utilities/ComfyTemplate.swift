@@ -339,7 +339,15 @@ extension ComfyTemplate {
     private func insertLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
         guard let unet = graph.first(where: { $0.value["class_type"] as? String == "UNETLoader" })?.key,
               let ks = graph.first(where: { $0.value["class_type"] as? String == "KSampler" })?.key,
-              var ksNode = graph[ks] else { return }
+              var ksNode = graph[ks]
+        else {
+            // No UNETLoader/KSampler to chain between: harmless with no LoRAs (nothing to insert), but a
+            // silent wrong graph when LoRAs are requested — the job would run without them. Fail loudly.
+            if loras.isEmpty {
+                return
+            }
+            throw ComfyTemplateError.missingNode("UNETLoader/KSampler")
+        }
         var ksInputs = ksNode["inputs"] as? [String: Any] ?? [:]
         if loras.isEmpty {
             ksInputs["model"] = [unet, 0]
