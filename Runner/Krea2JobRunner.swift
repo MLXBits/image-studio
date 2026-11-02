@@ -145,37 +145,72 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         )
     }
 
-    /// Remote text-to-image graph (UNet + LoRA chain). Krea 2's fp8 pipeline loads three files; all must be configured
-    /// to route remote, otherwise the job runs on local mflux.
+    /// Remote Krea 2 graph from the bundled templates: the t2i or i2i flow (by source-image presence), the job's
+    /// params and the per-family model files from Settings injected through the param map, and the enabled LoRA
+    /// chain inserted dynamically. Krea 2's fp8 pipeline loads three files; all must be configured to route
+    /// remote, otherwise the job runs on local mflux.
     static func comfyGraph(job: Krea2Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
         let id = family.id
         guard
-            let unet = settings.comfyUNet[id], !unet.isEmpty,
-            let clip = settings.comfyClip[id], !clip.isEmpty,
-            let vae = settings.comfyVae[id], !vae.isEmpty
+            !(settings.comfyUNet[id] ?? "").isEmpty,
+            !(settings.comfyClip[id] ?? "").isEmpty,
+            !(settings.comfyVae[id] ?? "").isEmpty
         else { return nil }
 
-        let input = ComfyUIClient.WorkflowInput(
-            prompt: job.prompt,
-            negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
-            width: job.width, height: job.height, steps: job.steps, cfg: job.guidance,
-            seed: 0, // set per seed by build
-            unetName: unet, clipName: clip, vaeName: vae,
-            loras: job.loras.filter(\.enabled).map { entry in
-                ComfyLora(name: resolverServerLoraName(entry.path), strength: entry.strength)
-            },
-            // Server-side output subfolder. Must be non-empty (we set the family id, e.g. "krea2") so the SaveImage filename_prefix
-            // becomes "mlxbits/krea2": ComfyUI's get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a
-            // bare "mlxbits" (empty subfolder) drops the file in the output ROOT. A single slash is required; it cannot nest.
-            saveSubfolder: id
-        )
-        // Base Krea2 graph is 8 nodes (empty latent, unet/clip/vae loaders, clip encode, sampler, decode, save);
-        // each enabled LoRA adds one LoraLoader node.
-        return ComfyGraph(totalNodes: 8 + input.loras.count, totalSteps: job.steps) { seed in
-            var seeded = input
-            seeded.seed = seed
-            return client.buildKrea2Workflow(seeded)
+        let key = job.imagePath.isEmpty ? "krea2/t2i" : "krea2/i2i"
+        let template = try ComfyTemplate.load(familyFlowKey: key)
+        let map = try ComfyParamMap.load(familyFlowKey: key)
+        let loras = job.loras.filter(\.enabled).map {
+            ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength)
         }
+        var params = krea2Params(job: job, settings: settings, familyID: id)
+        // i2i only: upload the source once and reuse the server filename across seeds. A failed upload throws and
+        // fails the job — there is no silent t2i fallback.
+        if !job.imagePath.isEmpty {
+            params["source_image"] = try await client.uploadImage(localPath: job.imagePath)
+        }
+        // Render once (seed 0, the old builder's convention): a stale param map throws here and fails the job
+        // loudly instead of per seed. The per-seed closure then swaps only the KSampler seed.
+        let base = try template.render(map: map, params: params, loras: loras)
+        return ComfyGraph(totalNodes: template.nodes.count + loras.count, totalSteps: job.steps) { seed in
+            var graph = base
+            if let target = map.params["seed"],
+               var node = graph[target.node] as? [String: Any],
+               var inputs = node["inputs"] as? [String: Any] {
+                inputs[target.input] = seed
+                node["inputs"] = inputs
+                graph[target.node] = node
+            }
+            return graph
+        }
+    }
+
+    /// The param-map values for one Krea 2 job: its prompt/size/steps plus the per-family model files from
+    /// Settings (which override the template's baked filenames). `seed` is 0 here; the per-seed closure swaps it.
+    static func krea2Params(job: Krea2Job, settings: AppSettings, familyID: String) -> [String: Any] {
+        let isT2i = job.imagePath.isEmpty
+        var params: [String: Any] = [
+            "prompt": job.prompt,
+            "seed": 0, // set per seed by the render closure
+            "steps": job.steps,
+            "cfg": job.guidance,
+            "sampler": "euler",
+            "scheduler": "simple", // matches mflux's Krea2 spacing; "normal" wastes its last step on flow models
+            "denoise": isT2i ? 1.0 : job.imageStrength,
+            "unet_name": settings.comfyUNet[familyID] ?? "",
+            "clip_name": settings.comfyClip[familyID] ?? "",
+            "vae_name": settings.comfyVae[familyID] ?? "",
+            // The param map targets SaveImage's filename_prefix, which must be `mlxbits/<family>`: ComfyUI's
+            // get_save_image_path does dirname(prefix)→subfolder, basename(prefix)→filename, and a bare "mlxbits"
+            // drops the file in the output ROOT. A single slash is required; it cannot nest.
+            "save_subfolder": "mlxbits/\(familyID)",
+        ]
+        // The i2i template has no size node (output follows the source), so width/height are t2i-only.
+        if isT2i {
+            params["width"] = job.width
+            params["height"] = job.height
+        }
+        return params
     }
 
     static func buildArgs(job: Krea2Job, ctx: JobRunContext, settings: AppSettings) -> [String] {

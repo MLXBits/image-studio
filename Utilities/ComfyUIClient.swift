@@ -278,120 +278,6 @@ final class ComfyUIClient {
         return names.filter { !$0.isEmpty }
     }
 
-    // MARK: - Workflow building (PoC: Krea2 UNet text-to-image graph)
-    //
-    // Verified against the live ComfyUI server via /object_info + a real POST /prompt. Krea2's model is
-    // a fp8 *diffusion UNet* living in `models/unet`, not a monolithic checkpoint — so it loads through
-    // three separate loaders (UNETLoader → MODEL, CLIPLoader with type="krea2" → CLIP, VAELoader → VAE),
-    // not CheckpointLoaderSimple (which only reads `models/checkpoints` and has no krea2 file there).
-    // EmptyLatentImage requires batch_size on this server version. LoRAs chain LoraLoader nodes feeding
-    // the next loader; KSampler consumes the final model/clip/vae — your saved stacks plug in here.
-
-    struct WorkflowInput {
-        var prompt: String
-        var negativePrompt: String?
-        var width: Int
-        var height: Int
-        var steps: Int
-        var cfg: Double
-        var seed: Int
-        /// Server-side UNet filename (`models/unet`), e.g. `krea2_turbo_fp8_scaled.safetensors`.
-        var unetName: String
-        /// Server-side CLIP text-encoder filename (`models/clip`).
-        var clipName: String
-        /// CLIPLoader pipeline type; "krea2" is the server's first-class Krea 2 encoder.
-        var clipType: String = "krea2"
-        /// Server-side VAE filename (`models/vae`).
-        var vaeName: String
-        /// UNETLoader `weight_dtype`. Required (advanced) on current ComfyUI. `"default"` lets the server
-        /// honor the dtype stored inside the weights file — correct for fp8 checkpoints like Krea 2's.
-        var weightDtype: String = "default"
-        var loras: [ComfyLora] = []
-        var sampler: String = "euler"
-        var scheduler: String = "simple" // matches mflux's Krea2 spacing; "normal" wastes its last step (0.001→0) on flow models
-        /// Server-side output subfolder for the SaveImage node, appended as a path component to the `mlxbits` filename prefix. Must be
-        /// non-empty (e.g. `"krea2"` → prefix `mlxbits/krea2`) or ComfyUI's `get_save_image_path` computes an empty dirname and drops the
-        /// file in the output ROOT. Single level only — a second slash does not nest.
-        var saveSubfolder: String = ""
-    }
-
-    /// Builds the Krea2 graph as the `/prompt` wire form `{nodeID:{class_type, inputs}}`.
-    func buildKrea2Workflow(_ input: WorkflowInput) -> Any {
-        var raw: [String: Any] = [:]
-
-        // Source of the latent to denoise (text-to-image → empty noise). KSampler + this server require batch_size.
-        let emptyID = "EMPTY"
-        raw[emptyID] = ["class_type": "EmptyLatentImage", "inputs": ["width": input.width, "height": input.height, "batch_size": 1]]
-
-        // Model source: UNet (a diffusion model, not a checkpoint), with any LoRAs chained in front of KSampler.
-        let unetID = "UNET"
-        raw[unetID] = ["class_type": "UNETLoader", "inputs": ["unet_name": input.unetName, "weight_dtype": input.weightDtype]]
-
-        // CLIP text encoder + VAE are separate loaders for this pipeline (Krea2 uses the server's krea2 clip type).
-        let clipID = "CLIPL"
-        raw[clipID] = ["class_type": "CLIPLoader", "inputs": ["clip_name": input.clipName, "type": input.clipType]]
-        let vaeID = "VAEL"
-        raw[vaeID] = ["class_type": "VAELoader", "inputs": ["vae_name": input.vaeName]]
-
-        // LoRAs chain as a series. On this ComfyUI version the LoraLoader's output is `['MODEL', 'CLIP']` (index 0 = MODEL,
-        // index 1 = CLIP) and it has NO vae input/output — verified against /object_info on the live server. So each lora consumes
-        // the previous node's model (slot 0) and clip (slot 1 for a LoraLoader, slot 0 for a loader), re-emitting both; VAE never
-        // passes through a LoRA, so VAEDecode always reads the base VAELoader. Reading a lora's CLIP from slot 0 (its MODEL) is what
-        // produced "Return type mismatch ... received_type(MODEL)" for two-plus LoRAs.
-        var upstreamModel = unetID
-        var upstreamClip: [Any] = [clipID, 0] // first lora's clip comes from the base CLIPLoader (single CLIP output, slot 0)
-        for (i, lora) in input.loras.enumerated() {
-            let id = "LORA_\(i)"
-            raw[id] = [
-                "class_type": "LoraLoader",
-                "inputs": [
-                    "model": [upstreamModel, 0], // MODEL from previous unet/lora (slot 0 on both node kinds)
-                    "clip": upstreamClip, // CLIP from base CLIPLoader, or the previous lora's slot-1 CLIP output
-                    "lora_name": lora.name,
-                    "strength_model": lora.strength,
-                    "strength_clip": lora.strength,
-                ],
-            ]
-            upstreamModel = id
-            upstreamClip = [id, 1] // this lora re-emits CLIP at output slot 1 (MODEL is slot 0)
-        }
-
-        let clipPosID = "CLIP_POS"
-        raw[clipPosID] = ["class_type": "CLIPTextEncode", "inputs": ["text": input.prompt, "clip": upstreamClip]]
-        var hasNeg = false
-        if let neg = input.negativePrompt, !neg.isEmpty {
-            hasNeg = true
-            raw["CLIP_NEG"] = ["class_type": "CLIPTextEncode", "inputs": ["text": neg, "clip": upstreamClip]]
-        }
-
-        var ks: [String: Any] = [
-            "model": [upstreamModel, 0],
-            "positive": [clipPosID, 0],
-            "negative": hasNeg ? ["CLIP_NEG", 0] as [Any] : [clipPosID, 0] as [Any],
-            "latent_image": [emptyID, 0],
-            "seed": input.seed,
-            "steps": input.steps,
-            "cfg": input.cfg,
-            "sampler_name": input.sampler,
-            "scheduler": input.scheduler,
-            "denoise": 1.0,
-        ]
-        raw["KSAMPLER"] = ["class_type": "KSampler", "inputs": ks]
-
-        let decodeID = "DECODE"
-        raw[decodeID] = ["class_type": "VAEDecode", "inputs": ["samples": ["KSAMPLER", 0], "vae": [vaeID, 0]]]
-        // SaveImage writes to the server's output dir; we fetch it back via /view by filename. The `mlxbits/<family>` prefix
-        // lands remote results in a per-family subfolder on the *server* (e.g. output/mlxbits/krea2/) without touching its config.
-        let prefix = input.saveSubfolder.isEmpty ? "mlxbits" : "mlxbits/\(input.saveSubfolder)"
-        raw["SAVE"] = ["class_type": "SaveImage", "inputs": ["images": [decodeID, 0], "filename_prefix": prefix]]
-
-        var payload: [String: Any] = [:]
-        for (id, def) in raw {
-            payload[id] = def
-        }
-        return payload
-    }
-
     // MARK: - Submit + track + fetch
 
     /// Submits a workflow and returns its server-side output files once `/history/{id}` reports them.
@@ -399,7 +285,8 @@ final class ComfyUIClient {
     /// the `/history` poll remains the *sole* completion/failure authority — so if the socket drops,
     /// the run still completes and the UI simply degrades to a coarse "Generating…" label.
     ///
-    /// `workflow` is a prebuilt `/prompt` graph from one of the `build…Workflow` builders; `totalSteps` is only used to report
+    /// `workflow` is a prebuilt `/prompt` graph (the SeedVR2 builder, or the bundled-template render for Krea 2); `totalSteps` is only used
+    /// to report
     /// a full progress bar on completion.
     func generate(
         workflow: Any,

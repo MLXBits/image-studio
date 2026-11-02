@@ -19,7 +19,8 @@ extension ComfyUIClient {
         /// Server-side VAE filename (`models/vae`), e.g. `seedvr2_ema_vae_fp16.safetensors`.
         var vaeName: String
         var colorCorrection: String = "lab"
-        /// See ``WorkflowInput/saveSubfolder``.
+        /// Extra path segment appended to the SaveImage `filename_prefix` (`mlxbits/<saveSubfolder>`;
+        /// empty = `mlxbits`).
         var saveSubfolder: String = ""
     }
 

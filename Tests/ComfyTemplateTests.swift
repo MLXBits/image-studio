@@ -192,3 +192,206 @@ struct ComfyRenderTests {
         }
     }
 }
+
+// MARK: - Krea 2 runner graph (template mechanism)
+
+/// The Krea 2 runner's remote graph after the template migration: the params dict
+/// ``Krea2RunnerSpec/krea2Params(job:settings:familyID:)`` builds, the rendered `/prompt` graph against the
+/// real bundled templates (read from the repo until Task 7 ships them into the app bundle), and — once the
+/// bundle has the templates — the full ``Krea2RunnerSpec/comfyGraph(job:settings:client:)`` path.
+struct Krea2ComfyGraphTests {
+    /// True once Task 7 bundles `comfy_templates` into the app: ``Krea2RunnerSpec/comfyGraph(job:settings:client:)``
+    /// loads the real templates from `Bundle.main`, so the full-runner test below is skipped until then. The
+    /// render-path tests above cover the same code against the repo files in the meantime.
+    private static var templatesBundled: Bool {
+        (try? ComfyTemplate.load(familyFlowKey: "krea2/t2i")) != nil
+    }
+
+    /// The repo's `Resources/comfy_templates/krea2` dir, resolved from this file's location.
+    private static var templateDir: URL {
+        URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent() // Tests/
+            .deletingLastPathComponent() // repo root
+            .appendingPathComponent("Resources/comfy_templates/krea2")
+    }
+
+    /// The same decode path as ``ComfyTemplate/load(familyFlowKey:)``, pointed at the repo file instead of the
+    /// app bundle (which gains the templates in Task 7). Repo filenames carry the family prefix (`krea2_t2i.json`).
+    private static func loadTemplate(_ flow: String) throws -> ComfyTemplate {
+        try JSONDecoder().decode(
+            ComfyTemplate.self,
+            from: Data(contentsOf: templateDir.appendingPathComponent("krea2_\(flow).json"))
+        )
+    }
+
+    private static func loadParamMap(_ flow: String) throws -> ComfyParamMap {
+        try JSONDecoder().decode(
+            ComfyParamMap.self,
+            from: Data(contentsOf: templateDir.appendingPathComponent("krea2_\(flow).parammap.json"))
+        )
+    }
+
+    private static func krea2Settings() -> AppSettings {
+        let settings = AppSettings()
+        settings.suspendPersistence()
+        settings.comfyUNet = ["krea2": "krea2_turbo_fp8_scaled.safetensors"]
+        settings.comfyClip = ["krea2": "qwen3vl_4b_fp8_scaled.safetensors"]
+        settings.comfyVae = ["krea2": "qwen_image_vae.safetensors"]
+        return settings
+    }
+
+    /// The rendered graph as node-id → node dict.
+    private static func nodes(_ graph: Any) throws -> [String: [String: Any]] {
+        let raw = try #require(graph as? [String: Any])
+        var out: [String: [String: Any]] = [:]
+        for (id, value) in raw {
+            if let node = value as? [String: Any] {
+                out[id] = node
+            }
+        }
+        return out
+    }
+
+    /// A node's `inputs` value by key.
+    private static func input(_ node: [String: Any], _ key: String) throws -> Any? {
+        try #require(node["inputs"] as? [String: Any])[key]
+    }
+
+    /// True when `value` is a wire ref `[nodeID, slot]` pointing at `(node, slot)`.
+    private static func isRef(_ value: Any?, to node: String, slot: Int) -> Bool {
+        guard let ref = value as? [Any], ref.count == 2 else { return false }
+        return ref[0] as? String == node && ref[1] as? Int == slot
+    }
+
+    @Test func comfyGraphIsNilWithoutModelFiles() async throws {
+        // No family model files configured → the job stays on local mflux (nil graph), before any template load.
+        // Clear the fields explicitly: `AppSettings()` may load ambient settings that already have krea2 set.
+        let settings = AppSettings()
+        settings.suspendPersistence()
+        settings.comfyUNet = [:]
+        settings.comfyClip = [:]
+        settings.comfyVae = [:]
+        let job = Krea2Job(prompt: "a panda")
+        let client = ComfyUIClient(config: .init(baseURL: "http://127.0.0.1:1"))
+        let graph = try await Krea2RunnerSpec.comfyGraph(job: job, settings: settings, client: client)
+        #expect(graph == nil)
+    }
+
+    @Test func t2iParamsCarryJobValuesAndModelFiles() {
+        let job = Krea2Job(prompt: "a panda", width: 512, height: 768, steps: 20, guidance: 1.0)
+        let params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        #expect(params["prompt"] as? String == "a panda")
+        #expect(params["seed"] as? Int == 0)
+        #expect(params["steps"] as? Int == 20)
+        #expect(params["cfg"] as? Double == 1.0)
+        #expect(params["sampler"] as? String == "euler")
+        #expect(params["scheduler"] as? String == "simple")
+        #expect(params["denoise"] as? Double == 1.0)
+        #expect(params["width"] as? Int == 512)
+        #expect(params["height"] as? Int == 768)
+        #expect(params["unet_name"] as? String == "krea2_turbo_fp8_scaled.safetensors")
+        #expect(params["clip_name"] as? String == "qwen3vl_4b_fp8_scaled.safetensors")
+        #expect(params["vae_name"] as? String == "qwen_image_vae.safetensors")
+        #expect(params["save_subfolder"] as? String == "mlxbits/krea2")
+    }
+
+    @Test func i2iParamsUseImageStrengthAndOmitSize() {
+        // The i2i template has no size node: denoise comes from the image strength and width/height stay out
+        // of the params (injecting them would throw `unknownParam`).
+        let job = Krea2Job(prompt: "a panda", imagePath: "/tmp/source.png", imageStrength: 0.75)
+        let params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        #expect(params["denoise"] as? Double == 0.75)
+        #expect(params["width"] == nil)
+        #expect(params["height"] == nil)
+    }
+
+    @Test func t2iRenderInjectsPromptStepsAndModelFiles() throws {
+        let template = try Self.loadTemplate("t2i")
+        let map = try Self.loadParamMap("t2i")
+        let job = Krea2Job(prompt: "a panda", width: 512, height: 768, steps: 20, guidance: 1.0)
+        let graph = try template.render(
+            map: map,
+            params: Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2"),
+            loras: []
+        )
+        let nodes = try Self.nodes(graph)
+        #expect(try Self.input(#require(nodes["30:19"]), "value") as? String == "a panda")
+        let ks = try #require(nodes["30:3"])
+        #expect(try Self.input(ks, "steps") as? Int == 20)
+        #expect(try Self.input(ks, "cfg") as? Double == 1.0)
+        #expect(try Self.input(ks, "sampler_name") as? String == "euler")
+        #expect(try Self.input(ks, "scheduler") as? String == "simple")
+        #expect(try Self.input(ks, "denoise") as? Double == 1.0)
+        #expect(try Self.input(ks, "seed") as? Int == 0)
+        #expect(try Self.input(#require(nodes["30:10"]), "unet_name") as? String == "krea2_turbo_fp8_scaled.safetensors")
+        #expect(try Self.input(#require(nodes["30:11"]), "clip_name") as? String == "qwen3vl_4b_fp8_scaled.safetensors")
+        #expect(try Self.input(#require(nodes["30:12"]), "vae_name") as? String == "qwen_image_vae.safetensors")
+        #expect(try Self.input(#require(nodes["30:5"]), "width") as? Int == 512)
+        #expect(try Self.input(#require(nodes["30:5"]), "height") as? Int == 768)
+        #expect(try Self.input(#require(nodes["29"]), "filename_prefix") as? String == "mlxbits/krea2")
+        // No LoRAs: the KSampler reads the UNETLoader straight.
+        #expect(try Self.isRef(Self.input(ks, "model"), to: "30:10", slot: 0))
+    }
+
+    @Test func i2iRenderInjectsSourceAndStrength() throws {
+        let template = try Self.loadTemplate("i2i")
+        let map = try Self.loadParamMap("i2i")
+        let job = Krea2Job(prompt: "a panda", imagePath: "/tmp/source.png", imageStrength: 0.75)
+        var params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        // The server filename `uploadImage` returns; the runner sets it from the actual upload.
+        params["source_image"] = "source.png"
+        let graph = try template.render(map: map, params: params, loras: [])
+        let nodes = try Self.nodes(graph)
+        #expect(try Self.input(#require(nodes["30:70"]), "image") as? String == "source.png")
+        let ks = try #require(nodes["30:3"])
+        #expect(try Self.input(ks, "denoise") as? Double == 0.75)
+        #expect(try Self.input(#require(nodes["30:19"]), "value") as? String == "a panda")
+        // The latent comes from the VAE-encoded source, not an empty latent.
+        #expect(try Self.isRef(Self.input(ks, "latent_image"), to: "30:71", slot: 0))
+    }
+
+    @Test func t2iRenderChainsEnabledLoras() throws {
+        let template = try Self.loadTemplate("t2i")
+        let map = try Self.loadParamMap("t2i")
+        let job = Krea2Job(prompt: "a panda")
+        let loras = [
+            ComfyLora(name: "krea2/styleA.safetensors", strength: 0.8),
+            ComfyLora(name: "styleB.safetensors", strength: 0.6),
+        ]
+        let graph = try template.render(
+            map: map,
+            params: Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2"),
+            loras: loras
+        )
+        let nodes = try Self.nodes(graph)
+        #expect(nodes.count == template.nodes.count + loras.count)
+        // Model-only chain: lora_ins_0 ← UNETLoader, lora_ins_1 ← lora_ins_0, KSampler ← lora_ins_1.
+        let lora0 = try #require(nodes["lora_ins_0"])
+        let lora1 = try #require(nodes["lora_ins_1"])
+        #expect(lora0["class_type"] as? String == "LoraLoaderModelOnly")
+        #expect(try Self.input(lora0, "lora_name") as? String == "krea2/styleA.safetensors")
+        #expect(try Self.input(lora0, "strength_model") as? Double == 0.8)
+        #expect(try Self.isRef(Self.input(lora0, "model"), to: "30:10", slot: 0))
+        #expect(try Self.input(lora1, "lora_name") as? String == "styleB.safetensors")
+        #expect(try Self.input(lora1, "strength_model") as? Double == 0.6)
+        #expect(try Self.isRef(Self.input(lora1, "model"), to: "lora_ins_0", slot: 0))
+        let ks = try #require(nodes["30:3"])
+        #expect(try Self.isRef(Self.input(ks, "model"), to: "lora_ins_1", slot: 0))
+    }
+
+    @Test(.enabled(if: Self.templatesBundled))
+    func t2iJobYieldsAComfyGraphWhoseRenderInjectsJobParams() async throws {
+        let job = Krea2Job(prompt: "a panda", width: 512, height: 768, steps: 20, guidance: 1.0)
+        let client = ComfyUIClient(config: .init(baseURL: "http://127.0.0.1:1"))
+        let maybeGraph = try await Krea2RunnerSpec.comfyGraph(job: job, settings: Self.krea2Settings(), client: client)
+        let graph = try #require(maybeGraph)
+        #expect(graph.totalNodes == 10) // the 10-node t2i template, no LoRAs
+        #expect(graph.totalSteps == 20)
+        let rendered = try Self.nodes(graph.build(42))
+        let ks = try #require(rendered["30:3"])
+        #expect(try Self.input(#require(rendered["30:19"]), "value") as? String == "a panda")
+        #expect(try Self.input(ks, "steps") as? Int == 20)
+        #expect(try Self.input(ks, "cfg") as? Double == 1.0)
+        #expect(try Self.input(ks, "seed") as? Int == 42)
+    }
+}
