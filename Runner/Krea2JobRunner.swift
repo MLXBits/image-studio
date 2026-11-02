@@ -160,7 +160,7 @@ enum Krea2RunnerSpec: JobRunnerSpec {
         let key = job.imagePath.isEmpty ? "krea2/t2i" : "krea2/i2i"
         let template = try ComfyTemplate.load(familyFlowKey: key)
         let map = try ComfyParamMap.load(familyFlowKey: key)
-        let loras = job.loras.filter(\.enabled).map {
+        let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }.map {
             ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength)
         }
         var params = krea2Params(job: job, settings: settings, familyID: id)
