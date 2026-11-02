@@ -379,6 +379,88 @@ struct Krea2ComfyGraphTests {
         #expect(try Self.isRef(Self.input(ks, "model"), to: "lora_ins_1", slot: 0))
     }
 
+    /// Pins the real t2i template topology: the rendered graph (no LoRAs) has exactly the bundled template's
+    /// 10 class_types — prompt primitive, CLIP encode + zero-out pair, loaders, sampler, decode, save. A
+    /// re-export that drops or adds a node (e.g. a stray LoadImage on t2i) fails this. With a LoRA, the only
+    /// added class is LoraLoaderModelOnly (the chain wiring itself is pinned by `t2iRenderChainsEnabledLoras`).
+    @Test func t2iRenderedGraphPinsTheRealNodeSet() throws {
+        let template = try Self.loadTemplate("t2i")
+        let map = try Self.loadParamMap("t2i")
+        let job = Krea2Job(prompt: "a panda")
+        let params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        let graph = try template.render(map: map, params: params, loras: [])
+        let classes = try Set(Self.nodes(graph).values.compactMap { $0["class_type"] as? String })
+        let expected: Set = [
+            "EmptyLatentImage", "UNETLoader", "CLIPLoader", "VAELoader", "KSampler",
+            "VAEDecode", "SaveImage", "CLIPTextEncode", "ConditioningZeroOut", "PrimitiveStringMultiline",
+        ]
+        #expect(classes == expected, "t2i class_types: \(classes.sorted())")
+        #expect(try Self.nodes(graph).count == expected.count, "t2i node count")
+        // With a LoRA, the only added class is LoraLoaderModelOnly.
+        let loraGraph = try template.render(
+            map: map,
+            params: params,
+            loras: [ComfyLora(name: "krea2/styleA.safetensors", strength: 0.8)]
+        )
+        let loraClasses = try Set(Self.nodes(loraGraph).values.compactMap { $0["class_type"] as? String })
+        #expect(loraClasses == expected.union(["LoraLoaderModelOnly"]), "t2i+LoRA class_types: \(loraClasses.sorted())")
+    }
+
+    /// Pins the real i2i template topology: the rendered graph (no LoRAs) is the t2i class set minus
+    /// EmptyLatentImage, plus LoadImage + VAEEncode (11 nodes) — the denoise-based img2img path.
+    @Test func i2iRenderedGraphPinsTheRealNodeSet() throws {
+        let template = try Self.loadTemplate("i2i")
+        let map = try Self.loadParamMap("i2i")
+        let job = Krea2Job(prompt: "a panda", imagePath: "/tmp/source.png", imageStrength: 0.75)
+        var params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        params["source_image"] = "source.png"
+        let graph = try template.render(map: map, params: params, loras: [])
+        let nodes = try Self.nodes(graph)
+        let classes = Set(nodes.values.compactMap { $0["class_type"] as? String })
+        let expected: Set = [
+            "UNETLoader", "CLIPLoader", "VAELoader", "KSampler", "VAEDecode", "SaveImage",
+            "CLIPTextEncode", "ConditioningZeroOut", "PrimitiveStringMultiline", "LoadImage", "VAEEncode",
+        ]
+        #expect(classes == expected, "i2i class_types: \(classes.sorted())")
+        #expect(nodes.count == expected.count, "i2i node count")
+    }
+
+    /// Review Focus #5: a flow/param-map mismatch is caught at render time. The t2i param map targets node
+    /// `30:5` (EmptyLatentImage), which the i2i template lacks, and the t2i params carry `width`/`height` —
+    /// render throws `missingNode` instead of silently emitting a graph with unfilled sizes.
+    @Test func i2iTemplateWithT2iParamMapThrowsAtRender() throws {
+        let template = try Self.loadTemplate("i2i")
+        let map = try Self.loadParamMap("t2i")
+        let job = Krea2Job(prompt: "a panda", width: 512, height: 768, steps: 20, guidance: 1.0)
+        let params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        do {
+            _ = try template.render(map: map, params: params, loras: [])
+            Issue.record("expected missingNode")
+        } catch let e as ComfyTemplateError {
+            #expect(e == .missingNode("30:5"))
+        } catch {
+            Issue.record("unexpected error: \(error)")
+        }
+    }
+
+    /// Review Focus #5 (reverse flow): the i2i param map targets node `30:70` (LoadImage), which the t2i
+    /// template lacks, and the i2i params carry `source_image` — render throws `missingNode`.
+    @Test func t2iTemplateWithI2iParamMapThrowsAtRender() throws {
+        let template = try Self.loadTemplate("t2i")
+        let map = try Self.loadParamMap("i2i")
+        let job = Krea2Job(prompt: "a panda", imagePath: "/tmp/source.png", imageStrength: 0.75)
+        var params = Krea2RunnerSpec.krea2Params(job: job, settings: Self.krea2Settings(), familyID: "krea2")
+        params["source_image"] = "source.png"
+        do {
+            _ = try template.render(map: map, params: params, loras: [])
+            Issue.record("expected missingNode")
+        } catch let e as ComfyTemplateError {
+            #expect(e == .missingNode("30:70"))
+        } catch {
+            Issue.record("unexpected error: \(error)")
+        }
+    }
+
     @Test(.enabled(if: Self.templatesBundled))
     func t2iJobYieldsAComfyGraphWhoseRenderInjectsJobParams() async throws {
         let job = Krea2Job(prompt: "a panda", width: 512, height: 768, steps: 20, guidance: 1.0)
