@@ -68,11 +68,16 @@ struct FluxTopologyTests {
         }
     }
 
-    /// Distilled t2i runs CFG-free: a ConditioningZeroOut node exists and CFGGuider.cfg is 1.
+    /// Distilled t2i runs CFG-free: a ConditioningZeroOut node exists with a wired conditioning input, and CFGGuider.cfg is 1.
     @Test func t2iDistilledUsesZeroOutAndCfgOne() throws {
         for key in ["flux2/4b-t2i-distilled", "flux2/9b-t2i-distilled"] {
             let t = try ComfyTemplate.load(familyFlowKey: key)
-            #expect(!Self.ids(t, "ConditioningZeroOut").isEmpty, "\(key): missing ConditioningZeroOut")
+            let zeroIDs = Self.ids(t, "ConditioningZeroOut")
+            #expect(!zeroIDs.isEmpty, "\(key): missing ConditioningZeroOut")
+            for zid in zeroIDs {
+                let z = try #require(t.nodes[zid])
+                #expect(z.inputs["conditioning"] != nil, "\(key): ConditioningZeroOut \(zid) missing 'conditioning' input")
+            }
             let g = try #require(Self.guider(t))
             #expect(Self.number(g.inputs["cfg"]) == 1, "\(key): cfg must be 1, got \(Self.number(g.inputs["cfg"]) ?? -1)")
         }

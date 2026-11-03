@@ -219,7 +219,12 @@
     }
   },
   "75:114": {
-    "inputs": {},
+    "inputs": {
+      "conditioning": [
+        "75:74",
+        0
+      ]
+    },
     "class_type": "ConditioningZeroOut",
     "_meta": {
       "title": "Conditioning Zero Out",
