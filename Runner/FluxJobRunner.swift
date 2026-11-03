@@ -326,11 +326,17 @@ enum FluxRunnerSpec: JobRunnerSpec {
         // Custom checkpoints run as their target variant (as `buildArgs` does), so the template and the
         // model-file settings follow the target.
         let variant = job.model == .custom ? job.customBaseModel : job.model
-        let hasRefs = !job.imagePath.isEmpty || !job.editImagePaths.isEmpty
+        // Reference selection follows the job's edit mode, exactly like `buildArgs`/`accessPaths`: edit mode
+        // uses `editImagePaths`; otherwise the single `imagePath` (i2i). Stale state left in the inactive
+        // mode's field must not affect routing.
+        let refs: [String] = job.isEditMode
+            ? job.editImagePaths
+            : (job.imagePath.isEmpty ? [] : [job.imagePath])
+        let hasRefs = !refs.isEmpty
         guard let key = flux2FlowKey(variant: variant, hasRefs: hasRefs) else { return nil }
         // Shape check before any loading: the i2e templates carry exactly `maxEditRefs` LoadImage slots.
-        if job.imagePath.isEmpty, job.editImagePaths.count > maxEditRefs {
-            throw FluxComfyGraphError.tooManyReferences(got: job.editImagePaths.count, max: maxEditRefs)
+        if refs.count > maxEditRefs {
+            throw FluxComfyGraphError.tooManyReferences(got: refs.count, max: maxEditRefs)
         }
         let variantID = variant.rawValue
         guard
@@ -345,13 +351,8 @@ enum FluxRunnerSpec: JobRunnerSpec {
         // i2e only: upload the source(s) once and reuse the server filenames across seeds. A failed upload
         // throws and fails the job — there is no silent t2i fallback.
         if hasRefs {
-            if !job.imagePath.isEmpty {
-                params["source_image"] = try await client.uploadKreaImage(localPath: job.imagePath)
-            } else {
-                for (index, path) in job.editImagePaths.enumerated() {
-                    let name = try await client.uploadKreaImage(localPath: path)
-                    params[index == 0 ? "source_image" : "source_image_\(index)"] = name
-                }
+            for (index, path) in refs.enumerated() {
+                params[index == 0 ? "source_image" : "source_image_\(index)"] = try await client.uploadKreaImage(localPath: path)
             }
         }
         // Render once (seed 0, the Krea 2 convention): a stale param map throws here and fails the job
@@ -364,7 +365,7 @@ enum FluxRunnerSpec: JobRunnerSpec {
         // so this is skipped there and the Krea 2 path is untouched.
         let base: [String: Any]
         if hasRefs {
-            let refCount = job.imagePath.isEmpty ? job.editImagePaths.count : 1
+            let refCount = refs.count
             var excised = rendered
             try exciseUnusedConditioningSlots(&excised, keepCount: refCount, slotOrder: map.referenceSlotOrder)
             base = excised

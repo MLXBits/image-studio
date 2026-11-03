@@ -276,6 +276,53 @@ struct FluxComfyGraphTests {
         #expect(StubUploadProtocol.requestedPaths == ["/upload/image", "/upload/image"], "one upload per reference")
     }
 
+    @Test(.enabled(if: Self.templatesBundled))
+    func editModeIgnoresStaleImagePathAndUsesEditRefs() async throws {
+        StubUploadProtocol.requestedPaths = []
+
+        let stale = try Self.writeTempImage()
+        let a = try Self.writeTempImage()
+        let b = try Self.writeTempImage()
+        // Stale state from a prior i2i run lingers in `imagePath`; edit mode must route on `editImagePaths`.
+        let job = FluxJob(
+            model: .flux2KleinBase9B, prompt: "a panda", steps: 8, imagePath: stale.path,
+            isEditMode: true, editImagePaths: [a.path, b.path]
+        )
+        let graph = try await FluxRunnerSpec.comfyGraph(
+            job: job, settings: Self.flux2Settings("flux2-klein-base-9b"), client: Self.stubClient()
+        )
+        let g = try #require(graph, "edit mode should route remote")
+        #expect(g.totalNodes == 24) // 2 edit refs: 44-node 6-slot template excised to 2 refs (stale imagePath ignored)
+
+        let rendered = try Self.nodes(g.build(1))
+        let map = try Self.loadParamMap("9b-i2e-base")
+        #expect(try Self.injected(rendered, map, "source_image") as? String == StubUploadProtocol.uploadedName)
+        #expect(try Self.injected(rendered, map, "source_image_1") as? String == StubUploadProtocol.uploadedName)
+        #expect(
+            StubUploadProtocol.requestedPaths == ["/upload/image", "/upload/image"],
+            "one upload per edit ref; stale imagePath not uploaded"
+        )
+    }
+
+    @Test(.enabled(if: Self.templatesBundled))
+    func nonEditModeIgnoresStaleEditRefsAndRoutesT2i() async throws {
+        StubUploadProtocol.requestedPaths = []
+
+        let a = try Self.writeTempImage()
+        let b = try Self.writeTempImage()
+        // Stale state from a prior edit run lingers in `editImagePaths`; non-edit mode with an empty
+        // `imagePath` must route t2i (no references), not i2e.
+        let job = FluxJob(
+            model: .flux2Klein4B, prompt: "a panda", steps: 8, editImagePaths: [a.path, b.path]
+        )
+        let graph = try await FluxRunnerSpec.comfyGraph(
+            job: job, settings: Self.flux2Settings("flux2-klein-4b"), client: Self.stubClient()
+        )
+        let g = try #require(graph, "t2i should route remote")
+        #expect(g.totalNodes == 16) // 4b-t2i-distilled has no reference slots
+        #expect(StubUploadProtocol.requestedPaths == [], "stale editImagePaths must not be uploaded")
+    }
+
     @Test func tooManyReferencesThrows() async throws {
         let paths = try (0 ..< 7).map { _ in try Self.writeTempImage().path }
         let job = FluxJob(
