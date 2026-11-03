@@ -57,13 +57,11 @@ extension ModelDefaultsView {
                     )
                     .font(.caption).foregroundStyle(.tertiary)
                 }
-                ForEach(FluxModelVariant.builtIn, id: \.self) { variant in
-                    Section(variant.displayName) {
-                        let files = Flux2TemplateFiles.forVariant(variant)
-                        comfyFileRow("UNet model", \.comfyUNet, options: models.unets, placeholder: files.unet, key: variant.rawValue)
-                        comfyFileRow("CLIP encoder", \.comfyClip, options: models.clips, placeholder: files.clip, key: variant.rawValue)
-                        comfyFileRow("VAE", \.comfyVae, options: models.vaes, placeholder: files.vae, key: variant.rawValue)
-                    }
+                Section(model.displayName) {
+                    let files = Flux2TemplateFiles.forVariant(model)
+                    comfyFileRow("UNet model", \.comfyUNet, options: models.unets, placeholder: files.unet, key: model.rawValue)
+                    comfyFileRow("CLIP encoder", \.comfyClip, options: models.clips, placeholder: files.clip, key: model.rawValue)
+                    comfyFileRow("VAE", \.comfyVae, options: models.vaes, placeholder: files.vae, key: model.rawValue)
                 }
             }
 
