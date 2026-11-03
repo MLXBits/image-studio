@@ -3,7 +3,7 @@ import Foundation
 /// Persists and manages the Ideogram 4 generation queue.
 @Observable
 @MainActor
-final class Ideogram4JobStore: ProfileScopedJobStore {
+final class Ideogram4JobStore: @MainActor ProfileScopedJobStore {
     @ObservationIgnored let history = JobHistoryFile(fileName: "ideogram4-jobs.json", directory: nil)
 
     var jobs: [Ideogram4Job] = []

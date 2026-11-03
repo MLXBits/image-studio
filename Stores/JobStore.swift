@@ -7,7 +7,7 @@ import Foundation
 /// It does not execute jobs — that is handled by ``FluxJobRunner``.
 @Observable
 @MainActor
-final class JobStore: ProfileScopedJobStore {
+final class JobStore: @MainActor ProfileScopedJobStore {
     @ObservationIgnored let history = JobHistoryFile(fileName: "jobs.json", directory: nil)
 
     var jobs: [FluxJob] = []
