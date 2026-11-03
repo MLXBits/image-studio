@@ -50,7 +50,7 @@ This plan is the **FLUX.2 slice** (4 variants × t2i/edit = 8 templates). It shi
 
 1. **Upsampler slot:** N/A for FLUX.2 (FLUX.3-only; see the FLUX.3 workstream).
 2. **FLUX.2 edit VAE ≠ t2i VAE:** bake the edit VAE (`full_encoder_small_decoder`) into the `<variant>/edit` templates; override only the t2i VAE via settings.
-3. **Base vs Distilled:** separate templates per variant (they differ structurally: `ConditioningZeroOut` + cfg=1 for Distilled, CFG + empty negative for Base). The template key is per-variant-per-flow (e.g. `flux2/4b-base/t2i`, `flux2/4b-distilled/t2i`). The user has all 8 FLUX.2 templates in place (explicitly labeled Distilled and Base).
+3. **Base vs Distilled:** separate templates per variant (they differ structurally: `ConditioningZeroOut` + cfg=1 for Distilled, CFG + empty negative for Base). The template key is per-variant-per-flow (e.g. `flux2/4b-t2i-base`, `flux2/4b-t2i-distilled`). The user has all 8 FLUX.2 templates in place (explicitly labeled Distilled and Base).
 4. **`imageStrength` on reference flows:** hide the slider when the job routes to ComfyUI.
 5. **FLUX.3 upsampler on/off:** N/A for FLUX.2 (FLUX.3-only; see the FLUX.3 workstream).
 
@@ -96,7 +96,7 @@ This plan is the **FLUX.2 slice** (4 variants × t2i/edit = 8 templates). It shi
 **Files:** Modify `Runner/FluxJobRunner.swift` · Test `Tests/ComfyTemplateTests.swift` (extend) · **Consumes:** Task 3's `render(map:params:loras:loraKind:)`.
 
 - [ ] **Step 1: Write the failing runner tests.** `FluxRunnerSpec.comfyGraph` returns a non-nil `ComfyGraph` for a FLUX.2 t2i job (each variant) and a FLUX.2 edit job (with refs); returns nil when the model-file settings are incomplete; picks the correct `<variant>/<flow>` template. Run → FAIL.
-- [ ] **Step 2: Implement `comfyGraph`.** Pick the flow key by variant + mode (`flux2/4b-base/t2i`, `flux2/4b-base/edit`, …); guard on `comfyUNet/Clip/Vae[variantID]` all set; build the params (prompt, seed, steps, cfg, width/height for t2i only); map LoRAs (full kind); upload source images for i2i/edit and set `source_image`/`source_image_N`; return a `ComfyGraph` whose render closure calls `render` per seed. Run → PASS.
+- [ ] **Step 2: Implement `comfyGraph`.** Pick the flow key by variant + mode (`flux2/4b-t2i-base`, `flux2/4b-i2e-base`, …); guard on `comfyUNet/Clip/Vae[variantID]` all set; build the params (prompt, seed, steps, cfg, width/height for t2i only); map LoRAs (full kind); upload source images for i2i/edit and set `source_image`/`source_image_N`; return a `ComfyGraph` whose render closure calls `render` per seed. Run → PASS.
 - [ ] **Step 3: Run the full suite. Commit.**
 
 ### Task 5: FLUX.2 settings form
@@ -131,7 +131,7 @@ FLUX.3 is split into its own workstream due to distinct complexity. A separate p
 
 - **i2i vs edit template:** this plan uses one `<variant>/edit` template for both i2i (1 ref) and edit (N refs). If the user prefers separate `<variant>/i2i` + `<variant>/edit` exports, adjust Task 1 + the flow-key selection in Task 4 (the UI is unchanged either way).
 - **Multi-ref slot count: 6.** The app supports up to 6 reference images (the model max, for flexibility). The `<size>-i2e-<variant>` templates have 6 `source_image_N` slots; the app caps `editImagePaths` at 6 (Review Focus #3).
-- **Variant → flow-key mapping:** the runner maps `FluxModelVariant` → flow key `flux2/<size>-<flow>-<variant>` (e.g. `.flux2Klein4B` → `flux2/4b-t2i-base` for t2i, `flux2/4b-i2e-base` for i2e/edit) + settings key `FluxModelVariant.rawValue` (e.g. `flux2-klein-4b`). The naming is confirmed lowercase, flat.
+- **Variant → flow-key mapping:** the runner maps `FluxModelVariant` → flow key `flux2/<size>-<flow>-<variant>` (e.g. `.flux2Klein4B` → `flux2/4b-t2i-distilled`, `.flux2KleinBase4B` → `flux2/4b-i2e-base` for i2e/edit) + settings key `FluxModelVariant.rawValue` (e.g. `flux2-klein-4b`). The naming is confirmed lowercase, flat.
 
 ## PR split
 
