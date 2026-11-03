@@ -37,7 +37,7 @@ struct WeightDownloadStoreTests {
     }
 
     private func store(_ tool: FakeTool) -> WeightDownloadStore {
-        WeightDownloadStore { try tool.make($0, $1) }
+        WeightDownloadStore { tool.make($0, $1) }
     }
 
     private func waitUntil(_ condition: () -> Bool) async throws {

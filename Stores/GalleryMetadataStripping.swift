@@ -75,11 +75,11 @@ nonisolated private func stripMetadataViaImageIO(at url: URL) -> Bool {
     guard let destination = CGImageDestinationCreateWithURL(tempURL as CFURL, type, 1, nil) else { return false }
 
     let options: [CFString: Any] = [
-        kCGImagePropertyExifDictionary: kCFNull,
-        kCGImagePropertyGPSDictionary: kCFNull,
-        kCGImagePropertyIPTCDictionary: kCFNull,
-        kCGImageMetadataShouldExcludeXMP: kCFBooleanTrue as Any,
-        kCGImageMetadataShouldExcludeGPS: kCFBooleanTrue as Any,
+        kCGImagePropertyExifDictionary: NSNull(),
+        kCGImagePropertyGPSDictionary: NSNull(),
+        kCGImagePropertyIPTCDictionary: NSNull(),
+        kCGImageMetadataShouldExcludeXMP: true,
+        kCGImageMetadataShouldExcludeGPS: true,
     ]
     let ok = CGImageDestinationCopyImageSource(destination, source, options as CFDictionary, nil)
     guard ok else {
