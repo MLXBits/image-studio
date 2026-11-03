@@ -10,9 +10,11 @@ import Foundation
 /// slots (the tail of `slotOrder`) are removed and the kept chains are rewired so the last kept
 /// ReferenceLatent feeds the CFGGuider directly.
 ///
-/// The excision set is derived from `slotOrder` (the param-map image-assignment order), NOT the chain
-/// order — the two diverge from slot 3 onward. The ReferenceLatent chains are traced from the graph and
-/// rewired, which handles the resulting non-contiguous excision.
+/// The excision set is derived from `slotOrder` (the param-map image-assignment order), which equals the
+/// chain order — the param-map slots are kept aligned with the ReferenceLatent chain (pinned by
+/// `i2eReferenceSlotOrderMatchesCFGGuiderChain`), so the excised slots are a contiguous tail. The
+/// ReferenceLatent chains are still traced from the graph and rewired, which keeps the excision robust if
+/// the two orders ever drift apart again.
 ///
 /// - Parameters:
 ///   - graph: the wire-form graph to modify in place.

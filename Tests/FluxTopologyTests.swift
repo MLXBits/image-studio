@@ -138,6 +138,50 @@ struct FluxTopologyTests {
             }
         }
     }
+
+    /// The param-map slot order (`referenceSlotOrder`: source_image, source_image_1..5) must equal the order the
+    /// model actually sees the references — the ReferenceLatent chain traced from `CFGGuider.positive` (head to
+    /// tail). A re-export that drifts the two orders would let a prompt's "image N" edit with the wrong reference,
+    /// and the i2e excision would stop removing a contiguous tail. (FLUX.2 Klein interprets a prompt's "image N"
+    /// as the N-th entry in reference_latents, i.e. the N-th slot in this order.)
+    @Test func i2eReferenceSlotOrderMatchesCFGGuiderChain() throws {
+        for key in Self.i2eKeys {
+            let t = try ComfyTemplate.load(familyFlowKey: key)
+            let m = try ComfyParamMap.load(familyFlowKey: key)
+            guard let guider = Self.guider(t) else {
+                Issue.record("\(key): need exactly one CFGGuider to trace the chain")
+                continue
+            }
+            guard case let .ref(nodeID: tail, _) = guider.inputs["positive"] else {
+                Issue.record("\(key): CFGGuider.positive must be a node ref")
+                continue
+            }
+            // Trace the ReferenceLatent chain from the tail (CFGGuider.positive) back to the head, collecting the
+            // LoadImage each node encodes (latent -> VAEEncode -> ImageScaleToTotalPixels -> LoadImage).
+            var chain: [String] = []
+            var cur: String? = tail
+            while let nid = cur, let node = t.nodes[nid], node.classType == "ReferenceLatent" {
+                guard case let .ref(nodeID: vaeID, _) = node.inputs["latent"],
+                      let vae = t.nodes[vaeID],
+                      case let .ref(nodeID: scaleID, _) = vae.inputs["pixels"],
+                      let scale = t.nodes[scaleID],
+                      case let .ref(nodeID: loadID, _) = scale.inputs["image"] else {
+                    Issue.record("\(key): chain node \(nid) does not resolve to a LoadImage")
+                    break
+                }
+                chain.append(loadID)
+                // Follow the conditioning link to the previous node in the chain (stop at a non-ReferenceLatent).
+                if case let .ref(nodeID: condID, _) = node.inputs["conditioning"] {
+                    cur = t.nodes[condID]?.classType == "ReferenceLatent" ? condID : nil
+                } else {
+                    cur = nil
+                }
+            }
+            chain.reverse() // head -> tail
+            #expect(chain.count == 6, "\(key): expected 6 reference slots in the chain, got \(chain.count)")
+            #expect(m.referenceSlotOrder == chain, "\(key): referenceSlotOrder \(m.referenceSlotOrder) != chain order \(chain)")
+        }
+    }
 }
 
 // MARK: - FLUX.2 bundle

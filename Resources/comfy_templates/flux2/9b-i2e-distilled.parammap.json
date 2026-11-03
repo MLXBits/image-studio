@@ -12,19 +12,19 @@
     "input": "image"
   },
   "source_image_2": {
-    "node": "167",
+    "node": "170",
     "input": "image"
   },
   "source_image_3": {
-    "node": "168",
-    "input": "image"
-  },
-  "source_image_4": {
     "node": "169",
     "input": "image"
   },
+  "source_image_4": {
+    "node": "168",
+    "input": "image"
+  },
   "source_image_5": {
-    "node": "170",
+    "node": "167",
     "input": "image"
   },
   "seed": {
