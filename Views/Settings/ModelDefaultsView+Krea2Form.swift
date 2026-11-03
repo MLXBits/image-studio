@@ -127,6 +127,12 @@ extension ModelDefaultsView {
                 options: options,
                 placeholder: placeholder
             )
+            .onChange(of: options) { _, newOptions in
+                let stored = settings[keyPath: map][key] ?? ""
+                if stored.isEmpty && newOptions.contains(placeholder) {
+                    settings[keyPath: map][key] = placeholder
+                }
+            }
         }
     }
 
