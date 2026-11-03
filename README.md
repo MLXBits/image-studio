@@ -48,10 +48,10 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, and Ideogram 4 image gener
 | --------------------------- | ----- | ----------------------------------------------------------------------- |
 | FLUX.3 Klein (distilled)    | 16    | Text-to-image and multi-reference editing                               |
 | FLUX.3 Klein (base)         | ~50   | Full diffusion with guidance; text-to-image and multi-reference editing |
-| FLUX.2 Klein 4B (distilled) | 4     | Fastest                                                                 |
-| FLUX.2 Klein 9B (distilled) | 4     | Best quality/speed trade-off                                            |
-| FLUX.2 Klein 4B (base)      | ~50   | Full diffusion                                                          |
-| FLUX.2 Klein 9B (base)      | ~50   | Full diffusion                                                          |
+| [FLUX.2 Klein 4B](docs/models/flux2-4b.md) (distilled) | 4     | Fastest                                                                 |
+| [FLUX.2 Klein 9B](docs/models/flux2-9b.md) (distilled) | 4     | Best quality/speed trade-off                                            |
+| [FLUX.2 Klein 4B](docs/models/flux2-4b.md) (base)      | ~50   | Full diffusion                                                          |
+| [FLUX.2 Klein 9B](docs/models/flux2-9b.md) (base)      | ~50   | Full diffusion                                                          |
 | Krea 2 Turbo                | 8     | Fast photographic model; text-to-image and img2img                      |
 | Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
