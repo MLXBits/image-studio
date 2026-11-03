@@ -125,6 +125,19 @@ struct FluxTopologyTests {
             #expect(Self.number(g.inputs["cfg"]) != 1, "\(key): cfg must not be 1 for a base template")
         }
     }
+
+    /// Every `VAEEncode` node in every i2e template must carry a `vae` input wired to the template's
+    /// VAELoader — ComfyUI rejects the graph with a required-input error when a job keeps 3+ reference
+    /// slots and a VAEEncode is missing its `vae`.
+    @Test func i2eVAEEncodeNodesAllReferenceTheVAE() throws {
+        for key in Self.i2eKeys {
+            let t = try ComfyTemplate.load(familyFlowKey: key)
+            for vaeID in Self.ids(t, "VAEEncode") {
+                let node = try #require(t.nodes[vaeID])
+                #expect(node.inputs["vae"] != nil, "\(key): VAEEncode \(vaeID) missing 'vae' input")
+            }
+        }
+    }
 }
 
 // MARK: - FLUX.2 bundle
