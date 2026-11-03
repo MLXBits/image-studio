@@ -266,6 +266,7 @@ struct Ideogram4CompletedPreviewView: View {
                 Button("Remix (new seed)") { onRemix(metadata) }
                 if let path = job.outputPath {
                     Divider()
+                    CopyPathMenu(path: path)
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     }

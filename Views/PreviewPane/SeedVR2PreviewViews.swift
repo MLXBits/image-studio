@@ -150,6 +150,7 @@ struct SeedVR2CompletedPreviewView: View {
                         NSPasteboard.general.writeObjects([img])
                     }
                     Divider()
+                    CopyPathMenu(path: path)
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     }

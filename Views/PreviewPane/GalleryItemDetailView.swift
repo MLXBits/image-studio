@@ -92,6 +92,7 @@ struct GalleryItemDetailView: View {
                     Button("Show Log") { showingLog = true }
                 }
                 Divider()
+                CopyPathMenu(path: item.path)
                 Button("Reveal in Finder") {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
                 }

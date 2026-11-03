@@ -161,6 +161,7 @@ struct ZImageCompletedPreviewView: View {
                 }
                 if let path = job.outputPath {
                     Divider()
+                    CopyPathMenu(path: path)
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     }

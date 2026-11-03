@@ -50,6 +50,7 @@ struct CompletedImageView: View {
                         Button("Upscale…") { onUpscale(path) }
                     }
                     Divider()
+                    CopyPathMenu(path: path)
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     }
