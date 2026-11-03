@@ -399,7 +399,7 @@ struct DimensionPickerView: View {
 
 // MARK: - Grid lines shape
 
-private struct CanvasGridLines: Shape {
+nonisolated private struct CanvasGridLines: Shape {
     let cols: Int
     let rows: Int
 

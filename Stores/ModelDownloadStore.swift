@@ -20,7 +20,7 @@ enum ModelDownloadError: LocalizedError, Equatable {
 @Observable
 final class ModelDownloadStore {
     /// Fetches one Hugging Face repo into the cache. Swapped out in tests.
-    typealias Fetch = (_ repo: String, _ settings: AppSettings) async throws -> Void
+    typealias Fetch = @MainActor (_ repo: String, _ settings: AppSettings) async throws -> Void
 
     struct Download: Equatable {
         let startedAt: Date

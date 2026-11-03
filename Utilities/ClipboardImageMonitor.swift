@@ -103,7 +103,7 @@ final class ClipboardImageMonitor: ObservableObject {
         }
     }
 
-    deinit {
+    isolated deinit {
         pollTimer?.invalidate()
         if let activationObserver {
             NotificationCenter.default.removeObserver(activationObserver)

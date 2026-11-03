@@ -113,7 +113,7 @@ enum CameraPOV: String, CaseIterable, Identifiable, PhotoDimension {
 
 // MARK: - Shot size / lens / depth of field (the camera menu)
 
-enum ShotSize: CaseIterable, PhotoDimension {
+nonisolated enum ShotSize: CaseIterable, PhotoDimension {
     case extremeCloseUp, closeUp, medium, full, wide, establishing
 
     var label: String {
@@ -139,7 +139,7 @@ enum ShotSize: CaseIterable, PhotoDimension {
     }
 }
 
-enum Lens: CaseIterable, PhotoDimension {
+nonisolated enum Lens: CaseIterable, PhotoDimension {
     case ultraWide, wide, normal, telephoto, macro
 
     var label: String {
@@ -163,7 +163,7 @@ enum Lens: CaseIterable, PhotoDimension {
     }
 }
 
-enum DepthOfField: CaseIterable, PhotoDimension {
+nonisolated enum DepthOfField: CaseIterable, PhotoDimension {
     case veryShallow, shallow, moderate, deep, veryDeep
 
     var label: String {

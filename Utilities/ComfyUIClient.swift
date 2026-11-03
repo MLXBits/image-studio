@@ -196,7 +196,7 @@ final class ComfyUIClient {
     /// server reports them. Start it *before* submitting, then use its returned `clientID` in the
     /// /prompt body so the socket is addressed correctly. Safe to discard — no global state; a dead
     /// connection only loses live progress, never the result (polling still decides completion).
-    final class ProgressTracker: @unchecked Sendable {
+    nonisolated final class ProgressTracker: @unchecked Sendable {
         /// Extracts the JSON payload as `Data` from a websocket frame. ComfyUI sends its frames as text (`.string`) — not binary — so
         /// handling
         /// only `.data` silently drops every `executing`/`progress` message and live progress never reaches the UI. Accept both shapes;

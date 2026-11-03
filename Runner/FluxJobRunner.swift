@@ -5,10 +5,10 @@ import Foundation
 /// process lifecycle; this spec supplies the FLUX-specific behavior.
 typealias FluxJobRunner = JobRunner<FluxRunnerSpec>
 
-extension FluxJob: GeneratedJob {}
-extension JobStore: GenerationJobStore {}
+extension FluxJob: @MainActor GeneratedJob {}
+extension JobStore: @MainActor GenerationJobStore {}
 
-enum FluxRunnerSpec: JobRunnerSpec {
+enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = FluxJob
     typealias Store = JobStore
 

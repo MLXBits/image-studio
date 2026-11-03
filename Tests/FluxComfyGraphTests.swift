@@ -8,11 +8,13 @@ import Testing
 /// test session injected through ``ComfyUIClient/init(config:session:)``; `canInit` matches only
 /// `http://127.0.0.1/upload/image`, so any other request on that session passes through to the real
 /// transport.
-private final class StubUploadProtocol: URLProtocol {
+nonisolated private final class StubUploadProtocol: URLProtocol {
     /// The server filename every upload "lands" as.
     static let uploadedName = "uploaded_ref.png"
     /// Paths of every intercepted request, in order (suite is serialized; reset per test).
-    static var requestedPaths: [String] = []
+    /// `nonisolated(unsafe)`: URLSession writes it from its own thread, and each test reads it only
+    /// after awaiting the request, so writes and reads never overlap.
+    nonisolated(unsafe) static var requestedPaths: [String] = []
 
     override static func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "127.0.0.1" && request.url?.path == "/upload/image"
@@ -57,7 +59,7 @@ struct FluxComfyGraphTests {
     }
 
     /// True when the flux2 templates are in the app bundle (the `comfyGraph` path loads from there).
-    private static var templatesBundled: Bool {
+    nonisolated private static var templatesBundled: Bool {
         (try? ComfyTemplate.load(familyFlowKey: "flux2/4b-t2i-distilled")) != nil
     }
 
