@@ -1,6 +1,6 @@
 import Foundation
 
-enum Ideogram4Preset: String, CaseIterable, Codable, Hashable {
+nonisolated enum Ideogram4Preset: String, CaseIterable, Codable, Hashable {
     case turbo = "V4_TURBO_12"
     case normal = "V4_DEFAULT_20"
     case quality = "V4_QUALITY_48"

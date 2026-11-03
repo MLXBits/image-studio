@@ -43,7 +43,7 @@ enum FlagFilter: String, CaseIterable, Identifiable {
 /// on the image file itself. All operations are `nonisolated` so they can run inside
 /// the detached gallery scan. Writing an xattr does not touch the file's contents or
 /// modification date, so gallery ordering is unaffected.
-enum GalleryCulling {
+nonisolated enum GalleryCulling {
     static let flagAttr = "com.mlxbits.imagestudio.flag"
     static let ratingAttr = "com.mlxbits.imagestudio.rating"
 

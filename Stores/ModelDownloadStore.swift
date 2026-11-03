@@ -113,7 +113,7 @@ final class ModelDownloadStore {
     static func hasCachedWeights(repo: String, hubDir: URL) -> Bool {
         let snapshots = cacheFolder(repo: repo, hubDir: hubDir).appendingPathComponent("snapshots", isDirectory: true)
         let revisions = (try? FileManager.default.contentsOfDirectory(at: snapshots, includingPropertiesForKeys: nil)) ?? []
-        return revisions.contains(where: hasWeights)
+        return revisions.contains { hasWeights($0) }
     }
 
     /// Every shard the snapshot's index lists, or a `.safetensors` file when

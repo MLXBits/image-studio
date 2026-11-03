@@ -97,7 +97,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         !isIdeogram4 && !isKrea2 && !isZImage && self != .custom
     }
 
-    var displayName: String {
+    nonisolated var displayName: String {
         switch self {
         case .flux2Klein4B: "FLUX.2 Klein 4B"
         case .flux2Klein9B: "FLUX.2 Klein 9B"
