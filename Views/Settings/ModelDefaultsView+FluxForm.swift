@@ -57,11 +57,22 @@ extension ModelDefaultsView {
                     )
                     .font(.caption).foregroundStyle(.tertiary)
                 }
-                Section(model.displayName) {
+                Section {
                     let files = Flux2TemplateFiles.forVariant(model)
                     comfyFileRow("UNet model", \.comfyUNet, options: models.unets, placeholder: files.unet, key: model.rawValue)
                     comfyFileRow("CLIP encoder", \.comfyClip, options: models.clips, placeholder: files.clip, key: model.rawValue)
                     comfyFileRow("VAE", \.comfyVae, options: models.vaes, placeholder: files.vae, key: model.rawValue)
+                } header: {
+                    Text(model.displayName)
+                } footer: {
+                    if !flux2FilesComplete(model) {
+                        Label(
+                            "Remote routing stays off until all three files are set for this variant.",
+                            systemImage: "exclamationmark.triangle.fill"
+                        )
+                        .font(.caption)
+                        .foregroundStyle(.orange)
+                    }
                 }
             }
 
@@ -109,5 +120,13 @@ extension ModelDefaultsView {
         }
         .formStyle(.grouped)
         .id(model) // force re-render when model changes
+    }
+
+    /// True when all three remote model files (UNet/CLIP/VAE) are stored for this variant —
+    /// the same three `FluxRunnerSpec.comfyGraph` gates on before routing a job to ComfyUI.
+    private func flux2FilesComplete(_ model: FluxModelVariant) -> Bool {
+        !((settings.comfyUNet[model.rawValue] ?? "").isEmpty
+            || (settings.comfyClip[model.rawValue] ?? "").isEmpty
+            || (settings.comfyVae[model.rawValue] ?? "").isEmpty)
     }
 }
