@@ -92,7 +92,7 @@ final class ComfyModelStore {
     // MARK: - Status discriminators (plain logic; avoids `if case` patterns that trip SwiftFormat)
 
     private func fetchIsInFlight() -> Bool {
-        guard inFlight != nil, !inFlight!.isCancelled else { return false }
+        guard let inFlight, !inFlight.isCancelled else { return false }
         switch status {
         case .loading:
             return true

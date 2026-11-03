@@ -361,7 +361,8 @@ final class ComfyUIClient {
             parts.append(kind)
         }
         if let n = obj["node_id"] as? String, !n.isEmpty {
-            let type = (obj["node_type"] as? String ?? "").isEmpty ? "" : " \((obj["node_type"] as? String)!)"
+            let nodeType = obj["node_type"] as? String ?? ""
+            let type = nodeType.isEmpty ? "" : " \(nodeType)"
             parts.append("[node \(n)\(type)]")
         }
         if let msg = obj["exception_message"] as? String, !msg.isEmpty {
@@ -515,6 +516,8 @@ final class ComfyUIClient {
         workflow: Any,
         totalNodes: Int,
         totalSteps: Int,
+        // SwiftLint misses that progressTask/tickerTask capture onProgress, which does make it escape.
+        // swiftlint:disable:next unneeded_escaping
         onProgress: @escaping (ComfyUIProgress) -> Void,
         pollInterval: TimeInterval = 1.0,
         maxWaitSeconds: Int = 3600
@@ -529,7 +532,6 @@ final class ComfyUIClient {
         let tracker = ProgressTracker(baseURL: base)
         _ = tracker.start(clientId: clientID)
 
-        var firstDenoiseAt: Date?
         onProgress(ComfyUIProgress(isDenoising: false, phaseLabel: "Submitting…", totalNodes: totalNodes))
         do {
             let promptID = try await submit(data: data)
@@ -550,12 +552,9 @@ final class ComfyUIClient {
             }
             let progressTask = Task {
                 for await snap in tracker.progressStream where !Task.isCancelled {
-                    if firstDenoiseAt == nil && (snap.phaseLabel == "Denoising" || snap.nodeID == "KSAMPLER") {
-                        firstDenoiseAt = Date()
-                    }
-                    let nodePos = snap.executedNodes.contains(snap.nodeID ?? "")
-                        ? (snap.executedNodes.firstIndex(of: snap.nodeID!)! + 1)
-                        : snap.executedNodes.count
+                    let nodePos = snap.nodeID
+                        .flatMap { snap.executedNodes.firstIndex(of: $0) }
+                        .map { $0 + 1 } ?? snap.executedNodes.count
                     lastPhase = snap.phaseLabel
                     if nodePos > lastNode {
                         lastNode = nodePos
@@ -606,14 +605,13 @@ final class ComfyUIClient {
                     //   1. `completed == false` with an execution_error entry in status.messages (e.g. CUDA OOM) — this build's shape;
                     //   2. no `completed` key but a terminal error message present — older ComfyUI writes only {"status": "error"}.
                     case false?:
-                        let detail = record.errorMessage ?? record.statusMessage
-                        throw ComfyUIError
-                            .executionFailed(detail?
-                                .isEmpty == false ? detail! : "the server reported an execution failure with no details")
-                    case nil where record.errorMessage != nil:
-                        throw ComfyUIError.executionFailed(record.errorMessage!)
-                    default:
-                        break // still running → poll again
+                        let detail = (record.errorMessage ?? record.statusMessage).flatMap { $0.isEmpty ? nil : $0 }
+                        throw ComfyUIError.executionFailed(detail ?? "the server reported an execution failure with no details")
+                    case nil:
+                        if let message = record.errorMessage {
+                            throw ComfyUIError.executionFailed(message)
+                        }
+                        // still running → poll again
                     }
 
                     try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
@@ -762,8 +760,7 @@ final class ComfyUIClient {
     /// outputs are served by the same call.
     func downloadOutput(filename: String, subfolder: String? = nil, type: String = "output", to localPath: String) async -> Bool {
         var candidates: [(String, String)] = [(filename, subfolder ?? "")]
-        if filename.contains("/"), (subfolder ?? "").isEmpty {
-            let slash = filename.lastIndex(of: "/")!
+        if let slash = filename.lastIndex(of: "/"), (subfolder ?? "").isEmpty {
             let head = String(filename[..<slash])
             let tail = String(filename[filename.index(after: slash)...])
             candidates.append((tail, head))
