@@ -128,11 +128,21 @@ extension ModelDefaultsView {
                 placeholder: placeholder
             )
             .onChange(of: options) { _, newOptions in
-                let stored = settings[keyPath: map][key] ?? ""
-                if stored.isEmpty && newOptions.contains(placeholder) {
-                    settings[keyPath: map][key] = placeholder
-                }
+                autoFillIfEmpty(options: newOptions, placeholder: placeholder, map: map, key: key)
             }
+            .onAppear {
+                autoFillIfEmpty(options: options, placeholder: placeholder, map: map, key: key)
+            }
+        }
+    }
+
+    private func autoFillIfEmpty(
+        options: [String], placeholder: String,
+        map: ReferenceWritableKeyPath<AppSettings, [String: String]>, key: String
+    ) {
+        let stored = settings[keyPath: map][key] ?? ""
+        if stored.isEmpty && options.contains(placeholder) {
+            settings[keyPath: map][key] = placeholder
         }
     }
 
