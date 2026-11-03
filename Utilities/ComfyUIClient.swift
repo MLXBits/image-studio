@@ -547,8 +547,7 @@ final class ComfyUIClient {
             func publish(phase: String?, node: Int) {
                 onProgress(ComfyUIProgress(isDenoising: true, phaseLabel: phase, currentNode: node, totalNodes: totalNodes))
             }
-            let progressTask = Task { [weak self] in
-                guard let self else { return }
+            let progressTask = Task {
                 for await snap in tracker.progressStream where !Task.isCancelled {
                     if firstDenoiseAt == nil && (snap.phaseLabel == "Denoising" || snap.nodeID == "KSAMPLER") {
                         firstDenoiseAt = Date()
@@ -571,8 +570,7 @@ final class ComfyUIClient {
             // Heartbeat ticker: fire a coarse denoising frame every second so the caller's elapsed clock keeps
             // updating even on builds that send no websocket `executing`/`progress` frames through the handler. It carries forward the last
             // real node/phase, never regressing them.
-            let tickerTask = Task { [weak self] in
-                guard let self else { return }
+            let tickerTask = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     if Task.isCancelled {
