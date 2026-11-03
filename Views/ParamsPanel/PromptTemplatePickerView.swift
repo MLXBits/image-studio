@@ -159,13 +159,13 @@ struct PromptTemplatePickerView: View {
                     Image(name)
                         .renderingMode(.original)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .scaledToFill()
                 } else if FileManager.default.fileExists(atPath: name),
                           let img = NSImage(contentsOfFile: name) {
                     // Custom template — file path on disk
                     Image(nsImage: img)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .scaledToFill()
                 } else {
                     placeholderIcon(for: template.category)
                 }
@@ -371,7 +371,7 @@ struct TemplateEditSheet: View {
                    let img = NSImage(contentsOfFile: exampleImagePath) {
                     Image(nsImage: img)
                         .resizable()
-                        .aspectRatio(contentMode: .fill)
+                        .scaledToFill()
                         .frame(width: 48, height: 48)
                         .clipShape(RoundedRectangle(cornerRadius: 6))
                     Button {

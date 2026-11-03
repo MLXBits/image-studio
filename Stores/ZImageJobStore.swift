@@ -3,7 +3,7 @@ import Foundation
 /// Persists and manages the Z-Image generation queue.
 @Observable
 @MainActor
-final class ZImageJobStore: ProfileScopedJobStore {
+final class ZImageJobStore: @MainActor ProfileScopedJobStore {
     @ObservationIgnored let history = JobHistoryFile(fileName: "zimage-jobs.json", directory: nil)
 
     var jobs: [ZImageJob] = []

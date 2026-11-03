@@ -102,8 +102,9 @@ struct ComfyUIProgress: Equatable {
     var totalNodes: Int = 0
 }
 
-/// Network client for a running ComfyUI server. Deliberately NOT main-actor-isolated: its methods do
-/// URLSession I/O and are called from background tasks by ``JobRunner``/the store, so keep them off-main.
+/// Network client for a running ComfyUI server. Main-actor-isolated by the project default
+/// (`SWIFT_DEFAULT_ACTOR_ISOLATION`): its URLSession calls suspend rather than block, so awaiting them
+/// leaves the main thread free.
 final class ComfyUIClient {
     struct Config {
         static func normalize(_ raw: String) -> String {
@@ -360,7 +361,8 @@ final class ComfyUIClient {
             parts.append(kind)
         }
         if let n = obj["node_id"] as? String, !n.isEmpty {
-            let type = (obj["node_type"] as? String ?? "").isEmpty ? "" : " \((obj["node_type"] as? String)!)"
+            let nodeType = obj["node_type"] as? String ?? ""
+            let type = nodeType.isEmpty ? "" : " \(nodeType)"
             parts.append("[node \(n)\(type)]")
         }
         if let msg = obj["exception_message"] as? String, !msg.isEmpty {
@@ -514,6 +516,8 @@ final class ComfyUIClient {
         workflow: Any,
         totalNodes: Int,
         totalSteps: Int,
+        // SwiftLint misses that progressTask/tickerTask capture onProgress, which does make it escape.
+        // swiftlint:disable:next unneeded_escaping
         onProgress: @escaping (ComfyUIProgress) -> Void,
         pollInterval: TimeInterval = 1.0,
         maxWaitSeconds: Int = 3600
@@ -528,7 +532,6 @@ final class ComfyUIClient {
         let tracker = ProgressTracker(baseURL: base)
         _ = tracker.start(clientId: clientID)
 
-        var firstDenoiseAt: Date?
         onProgress(ComfyUIProgress(isDenoising: false, phaseLabel: "Submitting…", totalNodes: totalNodes))
         do {
             let promptID = try await submit(data: data)
@@ -538,51 +541,38 @@ final class ComfyUIClient {
             // position is derived from the ordered executedNodes list (1-based index of current + 1), so even
             // without per-step frames the user sees "Node X / N" advance as nodes complete.
             // Both progressTask (real websocket frames) and tickerTask (1s elapsed-clock heartbeat) feed the same onProgress. Without
-            // shared, locked state they race and the status line flip-flops between a real "Node X/N" frame and the ticker's bare
-            // "Generating". lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it
-            // only keeps the elapsed clock ticking when frames are sparse.
-            let progressLock = NSLock()
+            // shared state the status line flip-flops between a real "Node X/N" frame and the ticker's bare "Generating".
+            // lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it only keeps
+            // the elapsed clock ticking when frames are sparse. No lock: both tasks inherit this method's main-actor isolation, so they
+            // never run at the same time and each read-modify-write below completes without an intervening `await`.
             var lastPhase: String?
             var lastNode = 0
             func publish(phase: String?, node: Int) {
                 onProgress(ComfyUIProgress(isDenoising: true, phaseLabel: phase, currentNode: node, totalNodes: totalNodes))
             }
-            let progressTask = Task { [weak self] in
-                guard let self else { return }
+            let progressTask = Task {
                 for await snap in tracker.progressStream where !Task.isCancelled {
-                    if firstDenoiseAt == nil && (snap.phaseLabel == "Denoising" || snap.nodeID == "KSAMPLER") {
-                        firstDenoiseAt = Date()
-                    }
-                    let nodePos = snap.executedNodes.contains(snap.nodeID ?? "")
-                        ? (snap.executedNodes.firstIndex(of: snap.nodeID!)! + 1)
-                        : snap.executedNodes.count
-                    progressLock.lock()
+                    let nodePos = snap.nodeID
+                        .flatMap { snap.executedNodes.firstIndex(of: $0) }
+                        .map { $0 + 1 } ?? snap.executedNodes.count
                     lastPhase = snap.phaseLabel
                     if nodePos > lastNode {
                         lastNode = nodePos
                     }
-                    let phase = snap.phaseLabel
-                    let node = lastNode
-                    progressLock.unlock()
-                    publish(phase: phase, node: node)
+                    publish(phase: snap.phaseLabel, node: lastNode)
                 }
             }
 
             // Heartbeat ticker: fire a coarse denoising frame every second so the caller's elapsed clock keeps
             // updating even on builds that send no websocket `executing`/`progress` frames through the handler. It carries forward the last
             // real node/phase, never regressing them.
-            let tickerTask = Task { [weak self] in
-                guard let self else { return }
+            let tickerTask = Task {
                 while !Task.isCancelled {
                     try? await Task.sleep(nanoseconds: 1_000_000_000)
                     if Task.isCancelled {
                         break
                     }
-                    progressLock.lock()
-                    let phase = lastPhase ?? "Generating"
-                    let node = lastNode
-                    progressLock.unlock()
-                    publish(phase: phase, node: node)
+                    publish(phase: lastPhase ?? "Generating", node: lastNode)
                 }
             }
 
@@ -615,14 +605,13 @@ final class ComfyUIClient {
                     //   1. `completed == false` with an execution_error entry in status.messages (e.g. CUDA OOM) — this build's shape;
                     //   2. no `completed` key but a terminal error message present — older ComfyUI writes only {"status": "error"}.
                     case false?:
-                        let detail = record.errorMessage ?? record.statusMessage
-                        throw ComfyUIError
-                            .executionFailed(detail?
-                                .isEmpty == false ? detail! : "the server reported an execution failure with no details")
-                    case nil where record.errorMessage != nil:
-                        throw ComfyUIError.executionFailed(record.errorMessage!)
-                    default:
-                        break // still running → poll again
+                        let detail = (record.errorMessage ?? record.statusMessage).flatMap { $0.isEmpty ? nil : $0 }
+                        throw ComfyUIError.executionFailed(detail ?? "the server reported an execution failure with no details")
+                    case nil:
+                        if let message = record.errorMessage {
+                            throw ComfyUIError.executionFailed(message)
+                        }
+                        // still running → poll again
                     }
 
                     try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
@@ -771,8 +760,7 @@ final class ComfyUIClient {
     /// outputs are served by the same call.
     func downloadOutput(filename: String, subfolder: String? = nil, type: String = "output", to localPath: String) async -> Bool {
         var candidates: [(String, String)] = [(filename, subfolder ?? "")]
-        if filename.contains("/"), (subfolder ?? "").isEmpty {
-            let slash = filename.lastIndex(of: "/")!
+        if let slash = filename.lastIndex(of: "/"), (subfolder ?? "").isEmpty {
             let head = String(filename[..<slash])
             let tail = String(filename[filename.index(after: slash)...])
             candidates.append((tail, head))

@@ -2,7 +2,7 @@ import Foundation
 
 /// Where profile data lives on disk. Injected so the migration can be tested
 /// against a throwaway folder; the app uses ``live``.
-struct ProfilePaths: Equatable {
+nonisolated struct ProfilePaths: Equatable {
     static let live = Self(
         appSupport: AppSettings.appSupportURL,
         thumbnailsRoot: ThumbnailCache.rootDirectory

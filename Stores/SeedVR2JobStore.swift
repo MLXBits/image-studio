@@ -7,7 +7,7 @@ import Foundation
 /// only calls it for jobs with a non-empty `seeds`, which SeedVR2 never has).
 @Observable
 @MainActor
-final class SeedVR2JobStore: ProfileScopedJobStore {
+final class SeedVR2JobStore: @MainActor ProfileScopedJobStore {
     static let interruptedMessage = "Interrupted — app was quit during upscale"
 
     @ObservationIgnored let history = JobHistoryFile(fileName: "seedvr2-jobs.json", directory: nil)

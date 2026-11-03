@@ -22,7 +22,7 @@ struct SeedVR2StepwisePreviewView: View {
                     if let img = displayedImage {
                         Image(nsImage: img)
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
+                            .scaledToFit()
                     } else {
                         upscalingPlaceholder
                     }
@@ -134,7 +134,7 @@ struct SeedVR2CompletedPreviewView: View {
             ZStack {
                 Color.black.opacity(0.05)
                 if let img = image {
-                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                    Image(nsImage: img).resizable().scaledToFit()
                 } else {
                     ProgressView()
                 }

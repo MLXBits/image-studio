@@ -183,7 +183,7 @@ extension BBoxEditorView {
     }
 
     func horizonDragGesture(canvasSize: CGSize) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(BBoxEditorView.canvasSpace))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
             .onChanged { value in
                 draggingHorizon = true
                 let ny = Int((value.location.y / max(canvasSize.height, 1) * 1000).rounded())
@@ -241,7 +241,7 @@ extension BBoxEditorView {
     }
 
     func anchorDragGesture(isA: Bool, canvasSize: CGSize) -> some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named(BBoxEditorView.canvasSpace))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named(Self.canvasSpace))
             .onChanged { value in
                 let norm = anchorNorm(value.location, canvasSize)
                 if isA {

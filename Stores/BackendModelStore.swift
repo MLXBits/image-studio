@@ -277,7 +277,7 @@ extension LMSessionStatus {
 
         /// Short form for tight pill widths — last path component of the key (`org/model-quant` → `model-quant`).
         var shortKey: String {
-            key.components(separatedBy: "/").last(where: { !$0.isEmpty }) ?? key
+            key.components(separatedBy: "/").last { !$0.isEmpty } ?? key
         }
     }
 

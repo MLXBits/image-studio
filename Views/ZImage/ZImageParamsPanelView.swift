@@ -276,7 +276,7 @@ struct ZImageParamsPanelView: View {
                     if let img = NSImage(contentsOfFile: params.imagePath) {
                         Image(nsImage: img)
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
+                            .scaledToFill()
                             .frame(width: 48, height: 48)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .thumbnailHoverPreview(imagePath: params.imagePath)

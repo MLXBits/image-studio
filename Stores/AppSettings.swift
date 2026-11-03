@@ -161,7 +161,7 @@ class AppSettings {
     /// Maximum number of unpinned ``promptHistory`` entries kept.
     static let promptHistoryCap = 200
 
-    static let appSupportURL: URL = {
+    nonisolated static let appSupportURL: URL = {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
             ?? FileManager.default.temporaryDirectory
         return base.appendingPathComponent("MLXBits Image Studio", isDirectory: true)

@@ -465,7 +465,7 @@ struct ParamsPanelView: View {
                     if let img = NSImage(contentsOfFile: params.imagePath) {
                         Image(nsImage: img)
                             .resizable()
-                            .aspectRatio(contentMode: .fill)
+                            .scaledToFill()
                             .frame(width: 48, height: 48)
                             .clipShape(RoundedRectangle(cornerRadius: 6))
                             .thumbnailHoverPreview(imagePath: params.imagePath)
@@ -710,7 +710,7 @@ struct ParamsPanelView: View {
             if let img = NSImage(contentsOfFile: path) {
                 Image(nsImage: img)
                     .resizable()
-                    .aspectRatio(contentMode: .fill)
+                    .scaledToFill()
                     .frame(width: 36, height: 36)
                     .clipShape(RoundedRectangle(cornerRadius: 4))
                     .thumbnailHoverPreview(imagePath: path)
@@ -799,7 +799,7 @@ private struct ThumbnailHoverPreview: ViewModifier {
                 if let img = NSImage(contentsOfFile: imagePath), img.size.width > 0 {
                     Image(nsImage: img)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFit()
                         .frame(maxWidth: 360, maxHeight: 360)
                         .padding(8)
                 }

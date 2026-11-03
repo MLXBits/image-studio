@@ -18,7 +18,7 @@ struct CompletedImageView: View {
                 if let img = image {
                     Image(nsImage: img)
                         .resizable()
-                        .aspectRatio(contentMode: .fit)
+                        .scaledToFit()
                 } else {
                     ProgressView()
                 }

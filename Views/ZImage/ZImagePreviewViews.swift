@@ -21,7 +21,7 @@ struct ZImageStepwisePreviewView: View {
                     if let img = displayedImage {
                         Image(nsImage: img)
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
+                            .scaledToFit()
                     } else {
                         generatingPlaceholder
                     }
@@ -136,7 +136,7 @@ struct ZImageCompletedPreviewView: View {
             ZStack {
                 Color.black.opacity(0.05)
                 if let img = image {
-                    Image(nsImage: img).resizable().aspectRatio(contentMode: .fit)
+                    Image(nsImage: img).resizable().scaledToFit()
                 } else {
                     ProgressView()
                 }

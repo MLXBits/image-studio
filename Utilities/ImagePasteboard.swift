@@ -16,7 +16,7 @@ enum ImagePasteboard {
     /// when the pasteboard refuses them.
     @discardableResult
     static func copyImages(atPaths paths: [String], to pasteboard: NSPasteboard = .general) -> Int {
-        let items = paths.compactMap(item(forPath:))
+        let items = paths.compactMap { item(forPath: $0) }
         guard !items.isEmpty else { return 0 }
         pasteboard.clearContents()
         return pasteboard.writeObjects(items) ? items.count : 0

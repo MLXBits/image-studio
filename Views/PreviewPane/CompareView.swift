@@ -175,7 +175,7 @@ struct CompareView: View {
                 Group {
                     if let image {
                         Image(nsImage: image)
-                            .resizable().aspectRatio(contentMode: .fit)
+                            .resizable().scaledToFit()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(Self.imagePadding)
                             .scaleEffect(scale, anchor: .center)
