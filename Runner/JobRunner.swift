@@ -934,7 +934,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 lastCompletedOutputPath = landedPaths.last
             }
             finishJob(job, status: .completed, stepDir: stepDir)
-        } catch let e as CancellationError {
+        } catch is CancellationError {
             job.status = .cancelled
             finishJob(job, status: .cancelled, stepDir: stepDir)
         } catch {
