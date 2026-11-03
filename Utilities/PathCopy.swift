@@ -1,4 +1,5 @@
 import AppKit
+import SwiftUI
 
 /// Helpers for the "Copy Path" context-menu action: computing an image path relative to the
 /// output directory, and writing a string to the pasteboard.
@@ -16,5 +17,19 @@ enum PathCopy {
     static func copy(_ string: String) {
         NSPasteboard.general.clearContents()
         NSPasteboard.general.setString(string, forType: .string)
+    }
+}
+
+/// Shared "Copy Path" submenu for image context menus. Copies `path` relative to the output
+/// directory (Relative) or as-is (Absolute); the image file, never the sidecar.
+struct CopyPathMenu: View {
+    let path: String
+    @Environment(AppSettings.self) private var settings
+
+    var body: some View {
+        Menu("Copy Path") {
+            Button("Relative") { PathCopy.copy(PathCopy.relative(path, to: settings.outputDir)) }
+            Button("Absolute") { PathCopy.copy(path) }
+        }
     }
 }
