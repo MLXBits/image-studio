@@ -1447,7 +1447,7 @@ Expected:
 
 - [ ] **Step 5: Verify the DMG flavor is unaffected**
 
-Run: `xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" build -quiet`
+Run: `xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" build -quiet`
 Expected: `** BUILD SUCCEEDED **`, or silence with `-quiet` and exit 0. The build log shows no "Embed Python runtime" phase yet; it arrives in Task 10.
 
 - [ ] **Step 6: Commit**
@@ -1702,10 +1702,10 @@ git checkout -- "MLXBits Image Studio.xcodeproj/xcshareddata/xcschemes/MLXBits I
 ```bash
 printf 'DEVELOPMENT_TEAM = 39TQC8LANW\n' > Config/Local.xcconfig   # never committed (.gitignore)
 git status --short Config/   # expected: no Local.xcconfig line
-time xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+time xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore build 2>&1 | grep -E "Python runtime|Signed .* Mach-O|BUILD (SUCCEEDED|FAILED)"
 # Save the paths the later steps need (each step may run in a fresh shell).
-SETTINGS=$(xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+SETTINGS=$(xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore -showBuildSettings 2>/dev/null)
 {
   printf 'APP=%q\n' "$(echo "$SETTINGS" | sed -n 's/^ *CODESIGNING_FOLDER_PATH = //p' | head -1)"
@@ -1765,7 +1765,7 @@ Expected: `ad-hoc runtime OK`.
 source build/appstore-paths.env
 ls "$STAGE_DIR"
 rm "$STAGE_DIR"/*/.complete
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore build 2>&1 | grep -E "Signed .* Mach-O|BUILD"
 ```
 
@@ -1776,11 +1776,11 @@ Expected: one stage folder before. After the build, `Signed … Mach-O files` re
 ```bash
 source build/appstore-paths.env
 echo "# probe $(date +%s)" >> Runtime/tools.txt      # changes the cache key
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore build 2>&1 | grep -E "Building Python runtime|Signed|embedded|BUILD"
 ls "$STAGE_DIR" | wc -l
 git checkout -- Runtime/tools.txt
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore build -quiet && ls "$STAGE_DIR" | wc -l
 ```
 
@@ -1791,7 +1791,7 @@ Expected:
 - [ ] **Step 9: Verify an unchanged rebuild is fast**
 
 ```bash
-time xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+time xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore build 2>&1 | grep -E "Python runtime|Signed|BUILD"
 ```
 
@@ -1939,7 +1939,7 @@ Expected: 23 tests, all PASS.
 
 - [ ] **Step 3: Swift test suite (DMG flavor)**
 
-Run: `xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" test 2>&1 | tail -5`
+Run: `xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" test 2>&1 | tail -5`
 Expected: `** TEST SUCCEEDED **` with the same test count as `main` (249 at v0.15.0). The TestHost guard keeps the run off real data.
 
 - [ ] **Step 4: Confirm nothing untracked or secret is staged**

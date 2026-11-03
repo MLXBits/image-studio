@@ -60,10 +60,10 @@
   ```bash
   git checkout -- "MLXBits Image Studio.xcodeproj/xcshareddata/xcschemes/MLXBits Image Studio.xcscheme"
   ```
-- **Builds and tests** go through the workspace, into a derived-data folder of their own. The owner's running Debug build lives in Xcode's default DerivedData; don't overwrite it.
+- **Builds and tests** go through the project, into a derived-data folder of their own. The owner's running Debug build lives in Xcode's default DerivedData; don't overwrite it.
   ```bash
   DD="$TMPDIR/image-studio-m4-derived"
-  xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" \
+  xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" \
     -derivedDataPath "$DD" test BUNDLE_PYTHON_RUNTIME=NO 2>&1 | tail -40
   ```
   Unit tests use fake runtimes, so `BUNDLE_PYTHON_RUNTIME=NO` keeps them fast. Builds meant to be run use `YES`, the default once Task 9 lands.
@@ -355,7 +355,7 @@ struct ToolchainTests {
 ```bash
 xcodegen generate
 git checkout -- "MLXBits Image Studio.xcodeproj/xcshareddata/xcschemes/MLXBits Image Studio.xcscheme"
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" \
   -derivedDataPath "$DD" test BUNDLE_PYTHON_RUNTIME=NO 2>&1 | grep -E "error:|Test run" | head -20
 ```
 
@@ -591,7 +591,7 @@ nonisolated struct RuntimeManifest: Decodable, Equatable, Sendable {
 - [ ] **Step 5: Run the tests to see them pass**
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" \
   -derivedDataPath "$DD" test BUNDLE_PYTHON_RUNTIME=NO \
   -only-testing:"MLXBits Image StudioTests/ToolchainTests" \
   -only-testing:"MLXBits Image StudioTests/PythonToolTests" 2>&1 | grep -E "✔|✘|passed|failed" | tail -20
@@ -1962,7 +1962,7 @@ Expected:
 Also build the App Store flavor, so the `BuildFlavor` branches compile there:
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore -derivedDataPath "$DD" build BUNDLE_PYTHON_RUNTIME=NO CODE_SIGNING_ALLOWED=NO -quiet
 ```
 
@@ -2267,7 +2267,7 @@ Expected:
 - [ ] **Step 2: Build the DMG flavor with the runtime and self-test it**
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" -configuration Debug \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" -configuration Debug \
   -derivedDataPath "$DD" build -quiet
 APP="$DD/Build/Products/Debug/MLXBits Image Studio.app"
 ls "$APP/Contents/Resources/python/bin"; lipo -archs "$APP/Contents/MacOS/MLXBits Image Studio"
@@ -2398,7 +2398,7 @@ Codesign may ask once for keychain access; the owner clicks Always Allow. The Te
 
 ```bash
 TEAM=$(sed -n 's/^DEVELOPMENT_TEAM *= *//p' Config/Local.xcconfig)
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" -configuration Release \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" -configuration Release \
   -derivedDataPath "$DD" -archivePath "$DD/Release.xcarchive" archive -quiet \
   DEVELOPMENT_TEAM="$TEAM" CODE_SIGN_STYLE=Manual CODE_SIGN_IDENTITY="Developer ID Application"
 APP="$DD/Release.xcarchive/Products/Applications/MLXBits Image Studio.app"
@@ -2417,7 +2417,7 @@ If torch or another import fails under the hardened runtime, apply the spec's ri
 - [ ] **Step 3: Sandboxed self-test** (App Store flavor, Apple Development signing from `Config/Local.xcconfig`)
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore -derivedDataPath "$DD" build -quiet
 "$DD/Build/Products/Debug-AppStore/MLXBits Image Studio.app/Contents/MacOS/MLXBits Image Studio" --runtime-self-test; echo "exit $?"
 ```

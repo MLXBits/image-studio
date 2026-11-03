@@ -71,7 +71,7 @@ struct PathCopyTests {
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `xcodebuild test -workspace MLXBits.xcworkspace -scheme "MLXBits Image Studio" -only-testing:"MLXBits Image StudioTests/PathCopyTests" 2>&1 | grep -E "PathCopy|error:|Compiling"`
+Run: `xcodebuild test -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" -only-testing:"MLXBits Image StudioTests/PathCopyTests" 2>&1 | grep -E "PathCopy|error:|Compiling"`
 Expected: FAIL — `PathCopy` not defined (compile error).
 
 - [ ] **Step 3: Implement `PathCopy` in `Utilities/PathCopy.swift`**
@@ -101,7 +101,7 @@ enum PathCopy {
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `xcodebuild test -workspace MLXBits.xcworkspace -scheme "MLXBits Image Studio" -only-testing:"MLXBits Image StudioTests/PathCopyTests" 2>&1 | grep -E "PathCopy|passed|failed"`
+Run: `xcodebuild test -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" -only-testing:"MLXBits Image StudioTests/PathCopyTests" 2>&1 | grep -E "PathCopy|passed|failed"`
 Expected: PASS (4 tests).
 
 - [ ] **Step 5: Run the lint gate**
@@ -160,7 +160,7 @@ In each view's `.contextMenu`, place the submenu immediately before `Button("Rev
 
 - [ ] **Step 3: Build**
 
-Run: `xcodebuild build -workspace MLXBits.xcworkspace -scheme "MLXBits Image Studio" 2>&1 | grep -E "error:|BUILD"`
+Run: `xcodebuild build -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" 2>&1 | grep -E "error:|BUILD"`
 Expected: `BUILD SUCCEEDED`.
 
 - [ ] **Step 4: Run the lint gate**
@@ -226,7 +226,7 @@ onCopyPath: { path, isRelative in
 
 - [ ] **Step 4: Build**
 
-Run: `xcodebuild build -workspace MLXBits.xcworkspace -scheme "MLXBits Image Studio" 2>&1 | grep -E "error:|BUILD"`
+Run: `xcodebuild build -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" 2>&1 | grep -E "error:|BUILD"`
 Expected: `BUILD SUCCEEDED`.
 
 - [ ] **Step 5: Run the lint gate**

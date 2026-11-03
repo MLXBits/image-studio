@@ -89,14 +89,14 @@ Inside the sandbox, `NSHomeDirectory()` is the app's container. Use `FileAccessP
 - **Tests and builds** use their own derived-data folder, never Xcode's default, which belongs to the owner's running build.
   - **One test suite:**
     ```bash
-    xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio" \
+    xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio" \
       -derivedDataPath "$TMPDIR/image-studio-m5-derived" test BUNDLE_PYTHON_RUNTIME=NO \
       -only-testing:"MLXBits Image StudioTests/<SuiteName>" 2>&1 | grep -E "✔|✘|passed|failed|error:" | tail -30
     ```
   - **The full suite** is the same command without `-only-testing`.
   - **App Store flavor, compile only:**
     ```bash
-    xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+    xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
       -configuration Debug-AppStore -derivedDataPath "$TMPDIR/image-studio-m5-derived" \
       build BUNDLE_PYTHON_RUNTIME=NO CODE_SIGNING_ALLOWED=NO -quiet
     ```
@@ -3019,7 +3019,7 @@ Expected: all tests pass (the 279 from before plus the ones this plan adds), bot
 - [ ] **Step 2: Build the App Store flavor to run**
 
 ```bash
-xcodebuild -workspace "$HOME/MLXBits.xcworkspace" -scheme "MLXBits Image Studio (App Store)" \
+xcodebuild -project "MLXBits Image Studio.xcodeproj" -scheme "MLXBits Image Studio (App Store)" \
   -configuration Debug-AppStore -derivedDataPath "$TMPDIR/image-studio-m5-derived" build 2>&1 | tail -5
 ```
 
