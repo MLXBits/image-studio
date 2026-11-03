@@ -1,0 +1,62 @@
+{
+  "prompt": {
+    "node": "92:109",
+    "input": "text"
+  },
+  "source_image": {
+    "node": "76",
+    "input": "image"
+  },
+  "source_image_1": {
+    "node": "81",
+    "input": "image"
+  },
+  "source_image_2": {
+    "node": "151",
+    "input": "image"
+  },
+  "source_image_3": {
+    "node": "150",
+    "input": "image"
+  },
+  "source_image_4": {
+    "node": "149",
+    "input": "image"
+  },
+  "source_image_5": {
+    "node": "148",
+    "input": "image"
+  },
+  "seed": {
+    "node": "92:106",
+    "input": "noise_seed"
+  },
+  "steps": {
+    "node": "92:102",
+    "input": "steps"
+  },
+  "cfg": {
+    "node": "92:103",
+    "input": "cfg"
+  },
+  "sampler": {
+    "node": "92:101",
+    "input": "sampler_name"
+  },
+  "unet_name": {
+    "node": "92:107",
+    "input": "unet_name"
+  },
+  "clip_name": {
+    "node": "92:108",
+    "input": "clip_name"
+  },
+  "vae_name": {
+    "node": "92:110",
+    "input": "vae_name"
+  },
+  "save_subfolder": {
+    "node": "94",
+    "input": "filename_prefix"
+  }
+}

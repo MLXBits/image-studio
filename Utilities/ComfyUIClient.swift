@@ -15,11 +15,6 @@ import Foundation
 //   GET  /view          ?filename=&type=output[&subfolder=] → image bytes.
 //   GET  /system_stats  liveness + GPU/VRAM (the Settings "Test Connection" proof).
 //   POST /interrupt     cooperative cancel of the currently-executing prompt.
-//
-// Output routing: ComfyUI's get_save_image_path splits `filename_prefix` via os.path.dirname→subfolder, basename→filename. A bare
-// "mlxbits" has an empty dirname and drops the file in the output ROOT; a slash is required ("mlxbits/krea2" → subfolder "mlxbits",
-// file "krea2_…"). We always set saveSubfolder (the family id) to guarantee that. /history reports `subfolder`, which downloadOutput
-// resolves.
 
 enum ComfyUIError: LocalizedError {
     case invalidURL(String)
@@ -128,7 +123,7 @@ final class ComfyUIClient {
     private let config: Config
     /// Unique id for this client; sent as `client_id` so the server can attribute runs.
     let clientID = UUID().uuidString
-    private let session: URLSession
+    private var session: URLSession
     /// Consecutive `/history` transport failures tolerated before giving up — about a minute of blip tolerance at the default 1 Hz poll,
     /// long enough to ride out a router hiccup while permanent loss still fails within roughly that same window.
     static let maxConsecutiveHistoryFailures = 60
@@ -890,6 +885,12 @@ final class ComfyUIClient {
 
 /// `private` members aren't visible from `ComfyUIClient+*.swift`; these are the requests those extensions make.
 extension ComfyUIClient {
+    /// Test seam: inject a session whose protocol classes stub the transport (tests are `@testable`).
+    convenience init(config: Config, session: URLSession) {
+        self.init(config: config)
+        self.session = session
+    }
+
     /// GET `path` with this client's auth headers; returns the 2xx response body.
     func getData(_ path: String) async throws -> Data {
         try await get(path)

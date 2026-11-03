@@ -110,20 +110,39 @@ extension ModelDefaultsView {
         }
     }
 
-    /// One Krea 2 server file: the label on its own line above the picker, so long filenames never wrap inconsistently.
+    /// One server file row: the label on its own line above the picker, so long filenames never wrap inconsistently.
+    /// `key` selects the settings-dict slot — the family id for single-variant families, the variant's
+    /// `rawValue` for per-variant rows (FLUX.2).
     func comfyFileRow(
-        _ label: String, _ map: ReferenceWritableKeyPath<AppSettings, [String: String]>, options: [String], placeholder: String
+        _ label: String, _ map: ReferenceWritableKeyPath<AppSettings, [String: String]>, options: [String], placeholder: String,
+        key: String = ModelFamily.krea2.id
     ) -> some View {
         VStack(alignment: .leading, spacing: 4) {
             Text(label).font(.caption).foregroundStyle(.secondary)
             comfyPicker(
                 value: Binding(
-                    get: { settings[keyPath: map][ModelFamily.krea2.id] ?? "" },
-                    set: { settings[keyPath: map][ModelFamily.krea2.id] = $0 }
+                    get: { settings[keyPath: map][key] ?? "" },
+                    set: { settings[keyPath: map][key] = $0 }
                 ),
                 options: options,
                 placeholder: placeholder
             )
+            .onChange(of: options) { _, newOptions in
+                autoFillIfEmpty(options: newOptions, placeholder: placeholder, map: map, key: key)
+            }
+            .onAppear {
+                autoFillIfEmpty(options: options, placeholder: placeholder, map: map, key: key)
+            }
+        }
+    }
+
+    private func autoFillIfEmpty(
+        options: [String], placeholder: String,
+        map: ReferenceWritableKeyPath<AppSettings, [String: String]>, key: String
+    ) {
+        let stored = settings[keyPath: map][key] ?? ""
+        if stored.isEmpty && options.contains(placeholder) {
+            settings[keyPath: map][key] = placeholder
         }
     }
 

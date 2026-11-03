@@ -15,6 +15,8 @@ disabled_rules:
   - type_body_length
   # Xcode-generated app entry point name contains underscores
   - type_name
+  # SwiftFormat wraps closure params to the next line; this rule conflicts
+  - closure_parameter_position
   # NOTE: function_body_length is enabled globally (see config below) and
   # disabled only for view files via Views/.swiftlint.yml (nested configs
   # MERGE with this one). It ignores computed properties, so SwiftUI `var

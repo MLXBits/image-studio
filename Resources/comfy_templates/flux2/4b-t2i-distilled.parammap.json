@@ -1,0 +1,46 @@
+{
+  "prompt": {
+    "node": "76",
+    "input": "value"
+  },
+  "width": {
+    "node": "77:84",
+    "input": "value"
+  },
+  "height": {
+    "node": "77:85",
+    "input": "value"
+  },
+  "seed": {
+    "node": "77:86",
+    "input": "noise_seed"
+  },
+  "steps": {
+    "node": "77:93",
+    "input": "steps"
+  },
+  "cfg": {
+    "node": "77:90",
+    "input": "cfg"
+  },
+  "sampler": {
+    "node": "77:80",
+    "input": "sampler_name"
+  },
+  "unet_name": {
+    "node": "77:87",
+    "input": "unet_name"
+  },
+  "clip_name": {
+    "node": "77:88",
+    "input": "clip_name"
+  },
+  "vae_name": {
+    "node": "77:89",
+    "input": "vae_name"
+  },
+  "save_subfolder": {
+    "node": "78",
+    "input": "filename_prefix"
+  }
+}

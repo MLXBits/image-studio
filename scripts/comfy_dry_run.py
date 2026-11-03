@@ -14,11 +14,15 @@ Usage:
   python3 scripts/comfy_dry_run.py --template t2i.json --param-map t2i.parammap.json \
       --params params.json --url http://localhost:8188 [--image src.png]
 
-  # dynamically insert LoRAs (chained between the UNET and KSampler), repeatable:
+  # dynamically insert LoRAs (chained after the UNETLoader, rewiring its consumers),
+  # repeatable; --lora-kind model-only (default, Krea 2) or full (FLUX.2, model + clip):
   python3 scripts/comfy_dry_run.py --template t2i.json --param-map t2i.parammap.json \
       --params params.json --url http://localhost:8188 \
       --insert-lora 'krea2/Krea2-realism-V2.safetensors:0.8' \
       --insert-lora 'krea2/detail_slider_krea2_loraholic.safetensors:0.6'
+  python3 scripts/comfy_dry_run.py --template 4b-t2i-base.json --param-map 4b-t2i-base.parammap.json \
+      --params params.json --url http://localhost:8188 --lora-kind full \
+      --insert-lora 'flux2/flux2-style.safetensors:0.8'
 
   # LoRA no-op test (exercises the dynamic-insertion mechanism; the bogus-name
   # variant is expected to be rejected by the server, zero-strength to be a no-op):
@@ -68,32 +72,89 @@ def inject(template: dict, param_map: dict, params: dict) -> dict:
     return graph
 
 
-def insert_loras(graph: dict, loras: list[tuple[str, float]]) -> list[str]:
-    """Insert LoraLoaderModelOnly nodes chained between the UNETLoader and the
-    KSampler.model, in the given order. This is the dynamic-insertion mechanism
-    (no fixed slots, no neutralization) - the reference the Swift renderGraph
-    must match. loras is a list of (name, strength_model) tuples.
+def _clip_anchor(graph: dict) -> str:
+    """Return the node ID of the CLIPLoader that feeds a CLIPTextEncode.clip input.
 
-    Returns the inserted node IDs (empty when no LoRAs; the KSampler is then
-    wired straight to the UNET).
+    Raises ValueError when no such anchor exists (fail loudly, never silently).
     """
+    for nid, n in graph.items():
+        if n["class_type"] != "CLIPTextEncode":
+            continue
+        clip = n["inputs"].get("clip")
+        if isinstance(clip, list) and len(clip) == 2 and clip[1] == 0:
+            src = clip[0]
+            if graph.get(src, {}).get("class_type") == "CLIPLoader":
+                return src
+    raise ValueError(
+        "--lora-kind full requires a CLIPLoader feeding a CLIPTextEncode node; "
+        "none found in the template"
+    )
+
+
+def insert_loras(graph: dict, loras: list[tuple[str, float]],
+                 kind: str = "model-only") -> list[str]:
+    """Insert LoRA loader nodes chained after the UNETLoader, in the given order,
+    and rewire every `[unetID, 0]` reference in the graph to the model chain tail
+    (covers KSampler.model, CFGGuider.model, any number of consumers). This is the
+    dynamic-insertion mechanism (no fixed slots, no neutralization) - the reference
+    the Swift renderGraph must match. loras is a list of (name, strength_model)
+    tuples.
+
+    kind='model-only' (default) inserts LoraLoaderModelOnly nodes (Krea 2).
+    kind='full' inserts LoraLoader nodes with a parallel clip chain anchored on
+    the CLIPLoader feeding a CLIPTextEncode: every `[clipID, 0]` reference is
+    rewired to the tail clip (feeds both positive and negative encoders), and
+    strength_clip equals strength_model (the app uses a single LoRA strength).
+
+    Returns the inserted node IDs (empty when no LoRAs; the UNET then feeds its
+    consumers directly).
+    """
+    if kind not in ("model-only", "full"):
+        raise ValueError(f"unknown lora kind {kind!r} (expected 'model-only' or 'full')")
     unet = next(nid for nid, n in graph.items() if n["class_type"] == "UNETLoader")
-    ks = next(nid for nid, n in graph.items() if n["class_type"] == "KSampler")
     if not loras:
-        graph[ks]["inputs"]["model"] = [unet, 0]
         return []
-    prev = unet
+    clip = _clip_anchor(graph) if kind == "full" else None
+    # Each stream is (node_id, output_slot): the CLIPLoader's clip is slot 0, but a
+    # LoraLoader's clip is slot 1 (its slot 0 is the model).
+    prev_model = (unet, 0)
+    prev_clip = (clip, 0)
     inserted: list[str] = []
     for i, (name, strength) in enumerate(loras):
         nid = f"lora_ins_{i}"
+        if kind == "full":
+            inputs = {
+                "model": [prev_model[0], prev_model[1]],
+                "clip": [prev_clip[0], prev_clip[1]],
+                "lora_name": name,
+                "strength_model": float(strength),
+                "strength_clip": float(strength),
+            }
+            class_type = "LoraLoader"
+        else:
+            inputs = {"model": [prev_model[0], prev_model[1]], "lora_name": name,
+                      "strength_model": float(strength)}
+            class_type = "LoraLoaderModelOnly"
         graph[nid] = {
-            "inputs": {"model": [prev, 0], "lora_name": name, "strength_model": float(strength)},
-            "class_type": "LoraLoaderModelOnly",
+            "inputs": inputs,
+            "class_type": class_type,
             "_meta": {"title": f"LoRA {i + 1}: {name.rsplit('/', 1)[-1]}"},
         }
         inserted.append(nid)
-        prev = nid
-    graph[ks]["inputs"]["model"] = [prev, 0]
+        prev_model = (nid, 0)
+        prev_clip = (nid, 1)
+    # Rewire every consumer of the UNET (and, for full, the CLIPLoader) to the
+    # chain tail(s). Skip the inserted nodes: the first of them still references
+    # the UNET/CLIP by design and must not be rewritten into a self-cycle.
+    for nid, n in graph.items():
+        if nid in inserted:
+            continue
+        for key, val in n["inputs"].items():
+            if isinstance(val, list) and len(val) == 2 and val[1] == 0:
+                if val[0] == unet:
+                    n["inputs"][key] = [prev_model[0], prev_model[1]]
+                elif kind == "full" and val[0] == clip:
+                    n["inputs"][key] = [prev_clip[0], prev_clip[1]]
     return inserted
 
 
@@ -167,7 +228,8 @@ def image_hash(path: Path) -> str:
 
 def run_job(url: str, template: dict, param_map: dict, params: dict,
             image_path: str | None = None, out_dir: Path = Path("comfy_dry_run_out"),
-            loras: list[tuple[str, float]] | None = None) -> list[Path]:
+            loras: list[tuple[str, float]] | None = None,
+            lora_kind: str = "model-only") -> list[Path]:
     if image_path:
         if "source_image" not in param_map:
             raise ValueError(
@@ -178,7 +240,7 @@ def run_job(url: str, template: dict, param_map: dict, params: dict,
         params["source_image"] = upload_image(url, Path(image_path))
     graph = inject(template, param_map, params)
     if loras:
-        ins = insert_loras(graph, loras)
+        ins = insert_loras(graph, loras, kind=lora_kind)
         print(f"[INFO] inserted {len(ins)} LoRA(s): {[(n, s) for n, s in loras]}", file=sys.stderr)
     prompt_id = submit(url, graph)
     print(f"submitted {prompt_id}", file=sys.stderr)
@@ -189,7 +251,7 @@ def run_job(url: str, template: dict, param_map: dict, params: dict,
 
 
 def lora_test(url: str, template: dict, param_map: dict, params: dict, lora: str,
-              out_dir: Path = Path("comfy_dry_run_out")):
+              out_dir: Path = Path("comfy_dry_run_out"), lora_kind: str = "model-only"):
     """Run 4 dynamic-insertion variants at a fixed seed and report which are clean no-ops.
 
     Uses insert_loras (the same mechanism as --insert-lora), applied via
@@ -211,7 +273,8 @@ def lora_test(url: str, template: dict, param_map: dict, params: dict, lora: str
         p = dict(params)
         p["seed"] = seed
         try:
-            out = run_job(url, template, param_map, p, out_dir=out_dir / label, loras=loras)
+            out = run_job(url, template, param_map, p, out_dir=out_dir / label,
+                          loras=loras, lora_kind=lora_kind)
         except Exception as e:
             # A server-rejected variant (e.g. the bogus name) must not crash the loop.
             results[label] = f"error: {e}"
@@ -232,8 +295,11 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--image", default=None, help="source image for i2i (uploaded to the server)")
     ap.add_argument("--out-dir", default="comfy_dry_run_out")
     ap.add_argument("--insert-lora", action="append", default=[], metavar="NAME:STRENGTH",
-                    help="dynamically insert a LoraLoaderModelOnly between the UNET and KSampler "
-                         "(repeatable), e.g. 'krea2/Krea2-realism-V2.safetensors:0.8'")
+                    help="dynamically insert a LoRA loader after the UNETLoader, rewiring "
+                         "its consumers (repeatable), e.g. 'krea2/Krea2-realism-V2.safetensors:0.8'")
+    ap.add_argument("--lora-kind", choices=["full", "model-only"], default="model-only",
+                    help="'model-only' inserts LoraLoaderModelOnly (Krea 2, default); "
+                         "'full' inserts LoraLoader with model + clip chains (FLUX.2)")
     ap.add_argument("--lora-test", action="store_true")
     ap.add_argument("--lora", default=None, help="test LoRA filename for --lora-test")
     args = ap.parse_args(argv)
@@ -246,11 +312,11 @@ def main(argv: list[str] | None = None) -> None:
         if not args.lora:
             ap.error("--lora-test requires --lora <name.safetensors>")
         lora_test(args.url, template, param_map, params, args.lora,
-                  out_dir=Path(args.out_dir))
+                  out_dir=Path(args.out_dir), lora_kind=args.lora_kind)
     else:
         loras = [(n, float(s)) for n, s in (x.split(":", 1) for x in args.insert_lora)]
         run_job(args.url, template, param_map, params, image_path=args.image,
-                out_dir=Path(args.out_dir), loras=loras)
+                out_dir=Path(args.out_dir), loras=loras, lora_kind=args.lora_kind)
 
 
 if __name__ == "__main__":
