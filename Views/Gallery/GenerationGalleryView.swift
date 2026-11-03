@@ -175,6 +175,9 @@ struct GenerationGalleryView: View {
                         }
                         gallery.delete(item, outputDir: settings.outputDir)
                     },
+                    onCopyPath: { path, isRelative in
+                        PathCopy.copy(isRelative ? PathCopy.relative(path, to: settings.outputDir) : path)
+                    },
                     onDeleteMultiRequest: {
                         deleteTarget = nil
                         showingDeleteConfirm = true
