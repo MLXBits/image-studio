@@ -109,18 +109,6 @@ struct ModelDefaultsView: View {
         }
     }
 
-    /// Trigger ComfyUI model discovery when a remote-capable form (Krea 2, SeedVR2) appears, but only if some family is in
-    /// remote mode with a URL set and lists haven't already loaded for that exact server. This is what populates the pickers
-    /// on first open (the `.onChange` handlers alone never fire unless a value actually changes).
-    private func ensureComfyDiscovery() async {
-        guard settings.comfyBackendEnabled.values.contains(true) else { return }
-        let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if !comfyModels.hasLoaded(for: trimmed) {
-            comfyModels.refresh(baseURL: trimmed)
-        }
-    }
-
     // MARK: - Model list
 
     private var modelList: some View {
@@ -302,6 +290,18 @@ struct ModelDefaultsView: View {
             }
         }
         .padding()
+    }
+
+    /// Trigger ComfyUI model discovery when a remote-capable form (Krea 2, SeedVR2) appears, but only if some family is in
+    /// remote mode with a URL set and lists haven't already loaded for that exact server. This is what populates the pickers
+    /// on first open (the `.onChange` handlers alone never fire unless a value actually changes).
+    private func ensureComfyDiscovery() async {
+        guard settings.comfyBackendEnabled.values.contains(true) else { return }
+        let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if !comfyModels.hasLoaded(for: trimmed) {
+            comfyModels.refresh(baseURL: trimmed)
+        }
     }
 
     // MARK: - Cache log
