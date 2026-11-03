@@ -17,7 +17,10 @@ struct PathCopyTests {
     }
 
     @Test func relativeDoesNotMatchSiblingDirPrefix() {
-        // "/outside" starts with the string "/out" but is a sibling dir, not under it.
         #expect(PathCopy.relative("/Users/paul/outside/img.png", to: "/Users/paul/out") == "/Users/paul/outside/img.png")
+    }
+
+    @Test func relativeFallsBackForDotDotPathOutsideBase() {
+        #expect(PathCopy.relative("/out/../other/img.png", to: "/out") == "/out/../other/img.png")
     }
 }

@@ -4,13 +4,34 @@ import SwiftUI
 /// Helpers for the "Copy Path" context-menu action: computing an image path relative to the
 /// output directory, and writing a string to the pasteboard.
 enum PathCopy {
-    /// Returns `path` relative to `base` when `path` is under `base`; otherwise returns `path`
-    /// unchanged, so a file outside the output dir still yields a usable absolute path.
+    /// Returns `path` relative to `base` when `path` is under `base` (both normalized, so `..`
+    /// segments can't fake containment); otherwise returns `path` unchanged, so a file outside
+    /// the output dir still yields a usable absolute path.
     static func relative(_ path: String, to base: String) -> String {
-        let trimmedBase = base.hasSuffix("/") ? String(base.dropLast()) : base
-        let prefix = trimmedBase + "/"
-        guard path.hasPrefix(prefix) else { return path }
-        return String(path.dropFirst(prefix.count))
+        let normalizedPath = normalize(path)
+        let normalizedBase = normalize(base)
+        let prefix = normalizedBase + "/"
+        guard normalizedPath.hasPrefix(prefix) else { return path }
+        return String(normalizedPath.dropFirst(prefix.count))
+    }
+
+    /// Lexically normalizes an absolute path: resolves `.` and `..` segments and removes
+    /// trailing slashes, without touching the filesystem.
+    private static func normalize(_ path: String) -> String {
+        var components: [String] = []
+        for part in path.split(separator: "/", omittingEmptySubsequences: true) {
+            if part == "." {
+                continue
+            }
+            if part == ".." {
+                if !components.isEmpty {
+                    components.removeLast()
+                }
+            } else {
+                components.append(String(part))
+            }
+        }
+        return "/" + components.joined(separator: "/")
     }
 
     /// Writes `string` to the general pasteboard, replacing prior contents.
