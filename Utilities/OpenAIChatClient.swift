@@ -27,8 +27,53 @@ enum OpenAIChatClientError: LocalizedError {
 /// and ``IdeogramCaptionGenerator`` remote paths call ``chat(system:examples:…)``
 /// and feed the returned text into their existing reply extractors.
 enum OpenAIChatClient {
+    // MARK: - LM Studio native API (session polling + eject)
+
+    /// Mirrors the server's `GET /api/v1/models` shape for the fields we read. Kept here — not in
+    /// ``Models/OpenAIChat.swift`` — because it is wire-specific to this client, while ``LMSessionStatus``
+    /// is what stores and views consume. Unknown keys (e.g. `size_bytes`, `capabilities`) are ignored by
+    /// default decoding; the top-level array key is `models` per the live API. A model with several loaded
+    /// instances reports them all in one entry's `loaded_instances`.
+    private struct LMModelListResponse: Decodable {
+        enum CodingKeys: String, Swift.CodingKey { case models }
+
+        struct Entry: Decodable {
+            enum CodingKeys: String, Swift.CodingKey {
+                case key
+                case displayName = "display_name"
+                case loadedInstances = "loaded_instances"
+            }
+
+            let key: String
+            let displayName: String?
+            let loadedInstances: [Instance]
+        }
+
+        struct Instance: Decodable {
+            struct Config: Decodable {
+                enum CodingKeys: String, Swift.CodingKey { case contextLength = "context_length" }
+
+                let contextLength: Int?
+            }
+
+            let id: String
+            let config: Config?
+        }
+
+        let models: [Entry]
+    }
+
     /// First model load on the server can be slow, so allow a generous timeout.
     private static let requestTimeout: TimeInterval = 120
+
+    // MARK: - Non-native surface memory
+
+    /// Base URLs whose native `/api/v1` surface 404/405'd at least once (llama.cpp's router, plain OpenAI
+    /// proxies, …). In-process only — cleared on app restart — and keyed by the *normalized* base URL, so
+    /// pointing the app at a different backend (different host:port) is never mis-cached. While a base is
+    /// listed here, the poll and eject paths skip the native call instead of re-404ing every cycle.
+    private static let nonNativeSurfaceLock = NSLock()
+    private static var nonNativeSurfaceBases = Set<String>()
 
     /// Normalizes a user-entered base URL: trims trailing slashes and appends the
     /// `/v1` API prefix when absent (so `http://localhost:1234` and
@@ -110,51 +155,6 @@ enum OpenAIChatClient {
             throw OpenAIChatClientError.decoding(error.localizedDescription)
         }
     }
-
-    // MARK: - LM Studio native API (session polling + eject)
-
-    /// Mirrors the server's `GET /api/v1/models` shape for the fields we read. Kept here — not in
-    /// ``Models/OpenAIChat.swift`` — because it is wire-specific to this client, while ``LMSessionStatus``
-    /// is what stores and views consume. Unknown keys (e.g. `size_bytes`, `capabilities`) are ignored by
-    /// default decoding; the top-level array key is `models` per the live API. A model with several loaded
-    /// instances reports them all in one entry's `loaded_instances`.
-    private struct LMModelListResponse: Decodable {
-        enum CodingKeys: String, Swift.CodingKey { case models }
-
-        let models: [Entry]
-
-        struct Entry: Decodable {
-            enum CodingKeys: String, Swift.CodingKey {
-                case key
-                case displayName = "display_name"
-                case loadedInstances = "loaded_instances"
-            }
-
-            let key: String
-            let displayName: String?
-            let loadedInstances: [Instance]
-        }
-
-        struct Instance: Decodable {
-            let id: String
-            let config: Config?
-
-            struct Config: Decodable {
-                enum CodingKeys: String, Swift.CodingKey { case contextLength = "context_length" }
-
-                let contextLength: Int?
-            }
-        }
-    }
-
-    // MARK: - Non-native surface memory
-
-    /// Base URLs whose native `/api/v1` surface 404/405'd at least once (llama.cpp's router, plain OpenAI
-    /// proxies, …). In-process only — cleared on app restart — and keyed by the *normalized* base URL, so
-    /// pointing the app at a different backend (different host:port) is never mis-cached. While a base is
-    /// listed here, the poll and eject paths skip the native call instead of re-404ing every cycle.
-    private static let nonNativeSurfaceLock = NSLock()
-    private static var nonNativeSurfaceBases = Set<String>()
 
     /// True when this base URL's native `/api/v1` surface was already found missing this session.
     /// Exposed (non-private) for unit testing.

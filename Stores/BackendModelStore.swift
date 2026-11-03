@@ -18,16 +18,6 @@ import SwiftUI
 ///   works even when the model was already loaded before this app (re)started.
 @Observable
 final class BackendModelStore {
-    /// Poll cadence while at least one backend is configured and reachable. Generous — these are
-    /// housekeeping reads, not run progress; a 5 s cycle keeps the pill responsive without churning
-    /// the LAN or hammering a box already mid-render (each poll is a single small JSON GET).
-    static let pollInterval: TimeInterval = 5
-
-    /// GPU occupancy (bytes) that counts as *something resident*. An idle ComfyUI holds ~0–1 GB of driver and OS
-    /// overhead on its card; above this floor, the delta is a loaded model. Kept at 1 GB so it tolerates normal
-    /// idle variance while always surfacing a real diffusion model (~10 GB class or larger).
-    static let residencyFloorBytes: Int64 = 1_073_741_824
-
     // MARK: - ComfyUI residency
 
     struct ComfyStatus: Equatable {
@@ -50,11 +40,6 @@ final class BackendModelStore {
         }
     }
 
-    private(set) var comfy = ComfyStatus()
-    /// Set between an eject click and the next poll that confirms the VRAM recovered — drives a brief
-    /// "Freeing…" label instead of leaving the pill frozen on its old reading.
-    private(set) var isComfyEjecting = false
-
     // MARK: - LM Studio residency
 
     struct LMServerStatus: Equatable {
@@ -65,6 +50,34 @@ final class BackendModelStore {
         var lacksNativeAPI = false
         var models: [LMSessionStatus.Entry] = []
     }
+
+    /// Poll cadence while at least one backend is configured and reachable. Generous — these are
+    /// housekeeping reads, not run progress; a 5 s cycle keeps the pill responsive without churning
+    /// the LAN or hammering a box already mid-render (each poll is a single small JSON GET).
+    static let pollInterval: TimeInterval = 5
+
+    /// GPU occupancy (bytes) that counts as *something resident*. An idle ComfyUI holds ~0–1 GB of driver and OS
+    /// overhead on its card; above this floor, the delta is a loaded model. Kept at 1 GB so it tolerates normal
+    /// idle variance while always surfacing a real diffusion model (~10 GB class or larger).
+    static let residencyFloorBytes: Int64 = 1_073_741_824
+
+    // MARK: - Pure helpers (unit-tested)
+
+    /// Residency decision from raw GPU occupancy, pulled out of ``comfyResidentGB`` so the floor is testable without a
+    /// live server. `occupiedBytes` is the ComfyUI card's current `total − free`; an idle server holds only ~0–1 GB of
+    /// driver/OS overhead, so anything at or below the floor reports nothing resident (`nil`), and above it we surface
+    /// the full occupancy in GB (we don't subtract the floor from the display value — showing "29.5 GB" is what a user
+    /// wants to see, not "28.5 GB above noise"). This needs no baseline capture: an already-loaded model at app start
+    /// simply reads as high occupancy immediately.
+    static func residentGB(occupiedBytes: Int64) -> Double? {
+        guard occupiedBytes >= residencyFloorBytes else { return nil } // below idle-overhead floor → nothing to show
+        return Double(occupiedBytes) / 1_073_741_824
+    }
+
+    private(set) var comfy = ComfyStatus()
+    /// Set between an eject click and the next poll that confirms the VRAM recovered — drives a brief
+    /// "Freeing…" label instead of leaving the pill frozen on its old reading.
+    private(set) var isComfyEjecting = false
 
     private(set) var lm = LMServerStatus()
     private(set) var isEjecting = Set<String>() // model keys with an in-flight unload
@@ -80,6 +93,31 @@ final class BackendModelStore {
     var localRunInFlight = false
 
     private var pollTask: Task<Void, Never>?
+
+    // MARK: - Derived UI state (read by the pills in ``ContentView``)
+
+    /// Human size of what's currently resident on ComfyUI's GPU above the idle floor. `nil` when nothing is
+    /// resident, we haven't yet read both VRAM figures, or we're mid-eject (the number will be wrong anyway for one poll).
+    var comfyResidentGB: Double? {
+        guard let occupied = comfy.occupiedBytes, !isComfyEjecting else { return nil }
+        return Self.residentGB(occupiedBytes: occupied)
+    }
+
+    var lmLoadedEntries: [LMSessionStatus.Entry] {
+        // Ejecting keys are hidden from the count while their unload is in flight — the pill shows "Freeing…"
+        // instead of a stale model list that's about to be empty.
+        let ejecting = Set(isEjecting)
+        return lm.models.filter { !ejecting.contains($0.model.key) }
+    }
+
+    var lmHasResidency: Bool {
+        !lmLoadedEntries.isEmpty
+    }
+
+    /// Ejectable on the Comfy pill: only when we *know* something is resident (occupancy read, not offline).
+    var canEjectComfy: Bool {
+        comfy.reachable && comfy.occupiedBytes != nil && comfyResidentGB != nil && !isComfyEjecting
+    }
 
     init(settings: AppSettings? = nil) {
         self.settings = settings
@@ -185,31 +223,6 @@ final class BackendModelStore {
         return status == 404 || status == 405
     }
 
-    // MARK: - Derived UI state (read by the pills in ``ContentView``)
-
-    /// Human size of what's currently resident on ComfyUI's GPU above the idle floor. `nil` when nothing is
-    /// resident, we haven't yet read both VRAM figures, or we're mid-eject (the number will be wrong anyway for one poll).
-    var comfyResidentGB: Double? {
-        guard let occupied = comfy.occupiedBytes, !isComfyEjecting else { return nil }
-        return Self.residentGB(occupiedBytes: occupied)
-    }
-
-    var lmLoadedEntries: [LMSessionStatus.Entry] {
-        // Ejecting keys are hidden from the count while their unload is in flight — the pill shows "Freeing…"
-        // instead of a stale model list that's about to be empty.
-        let ejecting = Set(isEjecting)
-        return lm.models.filter { !ejecting.contains($0.model.key) }
-    }
-
-    var lmHasResidency: Bool {
-        !lmLoadedEntries.isEmpty
-    }
-
-    /// Ejectable on the Comfy pill: only when we *know* something is resident (occupancy read, not offline).
-    var canEjectComfy: Bool {
-        comfy.reachable && comfy.occupiedBytes != nil && comfyResidentGB != nil && !isComfyEjecting
-    }
-
     // MARK: - Eject actions
 
     /// Asks ComfyUI to unload every resident model (`POST /free`, `unload_models: true`). The next poll's
@@ -247,19 +260,6 @@ final class BackendModelStore {
             self?.isEjecting.subtract(keys)
             self?.isEjectingAll = false
         }
-    }
-
-    // MARK: - Pure helpers (unit-tested)
-
-    /// Residency decision from raw GPU occupancy, pulled out of ``comfyResidentGB`` so the floor is testable without a
-    /// live server. `occupiedBytes` is the ComfyUI card's current `total − free`; an idle server holds only ~0–1 GB of
-    /// driver/OS overhead, so anything at or below the floor reports nothing resident (`nil`), and above it we surface
-    /// the full occupancy in GB (we don't subtract the floor from the display value — showing "29.5 GB" is what a user
-    /// wants to see, not "28.5 GB above noise"). This needs no baseline capture: an already-loaded model at app start
-    /// simply reads as high occupancy immediately.
-    static func residentGB(occupiedBytes: Int64) -> Double? {
-        guard occupiedBytes >= residencyFloorBytes else { return nil } // below idle-overhead floor → nothing to show
-        return Double(occupiedBytes) / 1_073_741_824
     }
 }
 

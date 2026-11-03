@@ -6,6 +6,11 @@ import Foundation
 /// failed/empty discovery leaves the lists empty, in which case the form falls back to manual text entry.
 @Observable
 final class ComfyModelStore {
+    /// Last fetch result so the UI can surface "Found N models" or a failure message.
+    enum Status: Equatable {
+        case idle, loading, loaded(count: Int), failed(String)
+    }
+
     var unets: [String] = []
     var clips: [String] = []
     var vaes: [String] = []
@@ -14,11 +19,6 @@ final class ComfyModelStore {
     /// model lists; fed to ``onLorasDiscovered`` so the owner can auto-catalog them into the library.
     var loras: [String] = []
     var schedulers: [String] = []
-
-    /// Last fetch result so the UI can surface "Found N models" or a failure message.
-    enum Status: Equatable {
-        case idle, loading, loaded(count: Int), failed(String)
-    }
 
     private(set) var status: Status = .idle
     private var inFlight: Task<Void, Never>?
