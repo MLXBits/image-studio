@@ -102,8 +102,9 @@ struct ComfyUIProgress: Equatable {
     var totalNodes: Int = 0
 }
 
-/// Network client for a running ComfyUI server. Deliberately NOT main-actor-isolated: its methods do
-/// URLSession I/O and are called from background tasks by ``JobRunner``/the store, so keep them off-main.
+/// Network client for a running ComfyUI server. Main-actor-isolated by the project default
+/// (`SWIFT_DEFAULT_ACTOR_ISOLATION`): its URLSession calls suspend rather than block, so awaiting them
+/// leaves the main thread free.
 final class ComfyUIClient {
     struct Config {
         static func normalize(_ raw: String) -> String {
@@ -538,10 +539,10 @@ final class ComfyUIClient {
             // position is derived from the ordered executedNodes list (1-based index of current + 1), so even
             // without per-step frames the user sees "Node X / N" advance as nodes complete.
             // Both progressTask (real websocket frames) and tickerTask (1s elapsed-clock heartbeat) feed the same onProgress. Without
-            // shared, locked state they race and the status line flip-flops between a real "Node X/N" frame and the ticker's bare
-            // "Generating". lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it
-            // only keeps the elapsed clock ticking when frames are sparse.
-            let progressLock = NSLock()
+            // shared state the status line flip-flops between a real "Node X/N" frame and the ticker's bare "Generating".
+            // lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it only keeps
+            // the elapsed clock ticking when frames are sparse. No lock: both tasks inherit this method's main-actor isolation, so they
+            // never run at the same time and each read-modify-write below completes without an intervening `await`.
             var lastPhase: String?
             var lastNode = 0
             func publish(phase: String?, node: Int) {
@@ -555,15 +556,11 @@ final class ComfyUIClient {
                     let nodePos = snap.executedNodes.contains(snap.nodeID ?? "")
                         ? (snap.executedNodes.firstIndex(of: snap.nodeID!)! + 1)
                         : snap.executedNodes.count
-                    progressLock.lock()
                     lastPhase = snap.phaseLabel
                     if nodePos > lastNode {
                         lastNode = nodePos
                     }
-                    let phase = snap.phaseLabel
-                    let node = lastNode
-                    progressLock.unlock()
-                    publish(phase: phase, node: node)
+                    publish(phase: snap.phaseLabel, node: lastNode)
                 }
             }
 
@@ -576,11 +573,7 @@ final class ComfyUIClient {
                     if Task.isCancelled {
                         break
                     }
-                    progressLock.lock()
-                    let phase = lastPhase ?? "Generating"
-                    let node = lastNode
-                    progressLock.unlock()
-                    publish(phase: phase, node: node)
+                    publish(phase: lastPhase ?? "Generating", node: lastNode)
                 }
             }
 
