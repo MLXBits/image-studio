@@ -24,6 +24,8 @@ struct LoraBaseModelHeuristicTests {
 
     @Test func otherFamiliesMatchByTokens() {
         #expect(LoraBaseModelHeuristic.guess(for: "flux1-dev-boost.safetensors") == .matched(.flux))
+        #expect(LoraBaseModelHeuristic.guess(for: "flux2-klein-style.safetensors") == .matched(.flux))
+        #expect(LoraBaseModelHeuristic.guess(for: "flux2/Foo.safetensors") == .matched(.flux))
         #expect(LoraBaseModelHeuristic.guess(for: "ideogram4-detail.safetensors") == .matched(.ideogram4))
         #expect(LoraBaseModelHeuristic.guess(for: "zimage-turbo-skin.safetensors") == .matched(.zimage))
     }
