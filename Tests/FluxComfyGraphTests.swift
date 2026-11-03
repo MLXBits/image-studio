@@ -338,6 +338,23 @@ struct FluxComfyGraphTests {
         }
     }
 
+    /// When remote routing is enabled but the variant's model files are incomplete, an over-limit reference
+    /// count must fall back to local mflux (return nil), not throw — the model-file gate runs before the
+    /// reference-count shape check.
+    @Test func incompleteModelFilesWithTooManyRefsYieldNil() async throws {
+        let settings = AppSettings()
+        settings.suspendPersistence()
+        settings.comfyUNet = [:]
+        settings.comfyClip = ["flux2-klein-4b": "clip.safetensors"]
+        settings.comfyVae = ["flux2-klein-4b": "vae.safetensors"]
+        let paths = try (0 ..< 7).map { _ in try Self.writeTempImage().path }
+        let job = FluxJob(
+            model: .flux2Klein4B, prompt: "a panda", steps: 8, isEditMode: true, editImagePaths: paths
+        )
+        let graph = try await FluxRunnerSpec.comfyGraph(job: job, settings: settings, client: Self.client())
+        #expect(graph == nil, "incomplete files stay local even with an over-limit ref count")
+    }
+
     // MARK: custom checkpoints follow their target
 
     @Test(.enabled(if: Self.templatesBundled))

@@ -334,16 +334,19 @@ enum FluxRunnerSpec: JobRunnerSpec {
             : (job.imagePath.isEmpty ? [] : [job.imagePath])
         let hasRefs = !refs.isEmpty
         guard let key = flux2FlowKey(variant: variant, hasRefs: hasRefs) else { return nil }
-        // Shape check before any loading: the i2e templates carry exactly `maxEditRefs` LoadImage slots.
-        if refs.count > maxEditRefs {
-            throw FluxComfyGraphError.tooManyReferences(got: refs.count, max: maxEditRefs)
-        }
         let variantID = variant.rawValue
+        // The model-file gate runs before the reference-count check: when remote routing is enabled but the
+        // variant's files are incomplete, the job falls back to local mflux (the documented behavior) instead
+        // of failing on an over-limit ref count.
         guard
             !(settings.comfyUNet[variantID] ?? "").isEmpty,
             !(settings.comfyClip[variantID] ?? "").isEmpty,
             !(settings.comfyVae[variantID] ?? "").isEmpty
         else { return nil }
+        // Shape check after the file gate: the i2e templates carry exactly `maxEditRefs` LoadImage slots.
+        if refs.count > maxEditRefs {
+            throw FluxComfyGraphError.tooManyReferences(got: refs.count, max: maxEditRefs)
+        }
 
         let template = try ComfyTemplate.load(familyFlowKey: key)
         let map = try ComfyParamMap.load(familyFlowKey: key)
