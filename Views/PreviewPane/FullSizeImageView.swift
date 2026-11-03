@@ -42,7 +42,7 @@ struct FullSizeImageView: View {
             GeometryReader { geo in
                 Image(nsImage: image)
                     .resizable()
-                    .aspectRatio(contentMode: .fit)
+                    .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(Self.imagePadding)
                     .scaleEffect(scale, anchor: .center)
