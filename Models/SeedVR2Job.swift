@@ -3,7 +3,7 @@ import Foundation
 
 /// Reads the true pixel dimensions (not point size) of the image at `path`, as displayed: EXIF orientations 5–8 (rotated
 /// 90°) swap width and height, matching mflux's `open_oriented` and ComfyUI's `LoadImage`.
-func seedVR2PixelSize(ofImageAt path: String) -> CGSize? {
+nonisolated func seedVR2PixelSize(ofImageAt path: String) -> CGSize? {
     guard let src = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
           let props = CGImageSourceCopyPropertiesAtIndex(src, 0, nil) as? [CFString: Any],
           let w = props[kCGImagePropertyPixelWidth] as? Int,

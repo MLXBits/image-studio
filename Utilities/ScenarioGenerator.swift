@@ -4,7 +4,7 @@ import Foundation
 /// phrase injected into the request's "Invent freely" / "Only if the outline
 /// specifies them" lists — the wording is mirrored in the few-shot examples
 /// inside `scenario_prompt.md`, so changes here must be reflected there.
-enum ScenarioCategory: String, CaseIterable, Codable, Identifiable {
+nonisolated enum ScenarioCategory: String, CaseIterable, Codable, Identifiable {
     case participants
     case hairEyeColor
     case clothing
