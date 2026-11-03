@@ -128,6 +128,7 @@ struct SeedVR2CompletedPreviewView: View {
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         VStack(spacing: 0) {
@@ -150,6 +151,10 @@ struct SeedVR2CompletedPreviewView: View {
                         NSPasteboard.general.writeObjects([img])
                     }
                     Divider()
+                    Menu("Copy Path") {
+                        Button("Relative") { PathCopy.copy(PathCopy.relative(path, to: settings.outputDir)) }
+                        Button("Absolute") { PathCopy.copy(path) }
+                    }
                     Button("Reveal in Finder") {
                         NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                     }

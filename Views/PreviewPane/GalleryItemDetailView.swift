@@ -20,6 +20,7 @@ struct GalleryItemDetailView: View {
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
+    @Environment(AppSettings.self) private var settings
 
     var body: some View {
         let info = if item.ideogram4Metadata != nil {
@@ -92,6 +93,10 @@ struct GalleryItemDetailView: View {
                     Button("Show Log") { showingLog = true }
                 }
                 Divider()
+                Menu("Copy Path") {
+                    Button("Relative") { PathCopy.copy(PathCopy.relative(item.path, to: settings.outputDir)) }
+                    Button("Absolute") { PathCopy.copy(item.path) }
+                }
                 Button("Reveal in Finder") {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")
                 }
