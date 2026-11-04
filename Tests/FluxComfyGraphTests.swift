@@ -1,5 +1,6 @@
 import Foundation
 @testable import MLXBits_Image_Studio
+import os
 import Testing
 
 // MARK: - FLUX.2 comfyGraph (Task 4)
@@ -11,10 +12,15 @@ import Testing
 nonisolated private final class StubUploadProtocol: URLProtocol {
     /// The server filename every upload "lands" as.
     static let uploadedName = "uploaded_ref.png"
+    /// Backing store for ``requestedPaths``. URLSession writes it from its own thread while tests
+    /// reset and read it on the main actor, so every access goes through the lock.
+    private static let requestLog = OSAllocatedUnfairLock<[String]>(initialState: [])
+
     /// Paths of every intercepted request, in order (suite is serialized; reset per test).
-    /// `nonisolated(unsafe)`: URLSession writes it from its own thread, and each test reads it only
-    /// after awaiting the request, so writes and reads never overlap.
-    nonisolated(unsafe) static var requestedPaths: [String] = []
+    static var requestedPaths: [String] {
+        get { requestLog.withLock { $0 } }
+        set { requestLog.withLock { $0 = newValue } }
+    }
 
     override static func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "127.0.0.1" && request.url?.path == "/upload/image"
@@ -26,7 +32,7 @@ nonisolated private final class StubUploadProtocol: URLProtocol {
 
     override func startLoading() {
         guard let url = request.url else { return }
-        Self.requestedPaths.append(url.path)
+        Self.requestLog.withLock { $0.append(url.path) }
         let body = Data(#"{"name": "uploaded_ref.png", "subfolder": "", "type": "input"}"#.utf8)
         guard let response = HTTPURLResponse(
             url: url,

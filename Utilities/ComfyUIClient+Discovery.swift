@@ -32,9 +32,9 @@ extension ComfyUIClient {
             throw ComfyUIError.decodeFailed("unexpected /system_stats shape")
         }
         var stats = SystemStats()
-        if let comfy = json["comfyui"] as? [String: Any], let info = comfy["info"] as? [String: Any] {
-            stats.serverVersion = info["version"] as? String
-            stats.os = info["os"] as? String
+        if let system = json["system"] as? [String: Any] {
+            stats.serverVersion = system["comfyui_version"] as? String
+            stats.os = system["os"] as? String
         }
         if let devices = json["devices"] as? [[String: Any]] {
             for d in devices {

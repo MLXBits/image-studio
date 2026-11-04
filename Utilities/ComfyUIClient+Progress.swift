@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 // MARK: - Live step progress (WebSocket)
 //
@@ -11,6 +12,16 @@ import Foundation
 // It never decides completion/failure — `generate()` keeps polling /history for that. The WS
 // stream merely paints live progress between polls, so a dead socket degrades to the old
 // coarse "Generating…" behavior instead of breaking the run.
+
+/// Mutable state of a ``ComfyUIClient/ProgressTracker``, shared by its caller (`start`/`stop`) and
+/// its websocket read loop, which runs on the URL session's queue. Lives behind the tracker's lock.
+nonisolated private struct ProgressTrackerState {
+    var task: URLSessionWebSocketTask?
+    /// Last-running-node id; only ever read to build the current snapshot.
+    var lastNodeID: String?
+    /// Distinct node ids in first-seen order; grown as `executing` frames arrive.
+    var executedNodes: [String] = []
+}
 
 extension ComfyUIClient {
     struct LiveProgress: Equatable {
@@ -46,7 +57,7 @@ extension ComfyUIClient {
     /// server reports them. Start it *before* submitting, then use its returned `clientID` in the
     /// /prompt body so the socket is addressed correctly. Safe to discard — no global state; a dead
     /// connection only loses live progress, never the result (polling still decides completion).
-    nonisolated final class ProgressTracker: @unchecked Sendable {
+    nonisolated final class ProgressTracker: Sendable {
         /// Extracts the JSON payload as `Data` from a websocket frame. ComfyUI sends its frames as text (`.string`) — not binary — so
         /// handling
         /// only `.data` silently drops every `executing`/`progress` message and live progress never reaches the UI. Accept both shapes;
@@ -110,18 +121,12 @@ extension ComfyUIClient {
         }
 
         private let baseURL: String
-        private var task: URLSessionWebSocketTask?
+        private let state = OSAllocatedUnfairLock(initialState: ProgressTrackerState())
         private let continuation: AsyncStream<LiveProgress>.Continuation
 
         /// Yields a snapshot each time the server reports one. Terminates when the socket closes;
         /// consumers stop reading on job completion regardless.
         let progressStream: AsyncStream<LiveProgress>
-
-        /// Last-running-node id, mutated by the websocket read loop (arrives on the URL session queue);
-        /// only ever read to build the current snapshot, so a plain stored var suffices.
-        private var lastNodeID: String?
-        /// Distinct node ids in first-seen order; grown by the read loop as `executing` frames arrive.
-        private var executedNodes: [String] = []
 
         init(baseURL: String) {
             self.baseURL = baseURL
@@ -139,7 +144,9 @@ extension ComfyUIClient {
                 return false
             }
             comps.scheme = (comps.scheme ?? "").lowercased() == "https" ? "wss" : "ws"
-            comps.path = "/ws"
+            // Append rather than replace, so a reverse-proxy prefix (`/comfy`) survives — the HTTP
+            // calls append their endpoint paths to the same base.
+            comps.path += "/ws"
             comps.queryItems = [URLQueryItem(name: "clientId", value: clientId)]
             guard let connectURL = comps.url else {
                 continuation.finish()
@@ -150,7 +157,7 @@ extension ComfyUIClient {
             cfg.timeoutIntervalForRequest = 60 // handshake only; the stream itself is unbounded
             cfg.timeoutIntervalForResource = .infinity
             let task = URLSession(configuration: cfg).webSocketTask(with: connectURL)
-            self.task = task
+            state.withLock { $0.task = task }
             task.resume()
             receiveLoop(task: task)
             return true
@@ -162,11 +169,14 @@ extension ComfyUIClient {
                 guard let self else { return }
                 switch result {
                 case let .success(message):
-                    if let snap = Self.decode(
-                        Self.payloadData(from: message),
-                        lastNodeID: &self.lastNodeID,
-                        executedNodes: &self.executedNodes
-                    ) {
+                    let snap = self.state.withLock { st in
+                        Self.decode(
+                            Self.payloadData(from: message),
+                            lastNodeID: &st.lastNodeID,
+                            executedNodes: &st.executedNodes
+                        )
+                    }
+                    if let snap {
                         self.continuation.yield(snap)
                     }
                     self.receiveLoop(task: task) // keep reading either way
@@ -179,8 +189,11 @@ extension ComfyUIClient {
         }
 
         func stop() {
+            let task = state.withLock { st in
+                defer { st.task = nil }
+                return st.task
+            }
             task?.cancel(with: .normalClosure, reason: nil)
-            task = nil
             continuation.finish()
         }
     }
