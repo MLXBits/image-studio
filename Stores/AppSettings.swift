@@ -200,13 +200,13 @@ class AppSettings {
     /// The active profile's library folder. Read-only here: the profile registry
     /// owns it, and ``activateProfile(contentURL:libraryPath:)`` /
     /// ``applyLibraryPath(_:)`` are the only writers.
-    private(set) var outputDir: String
+    private(set) var outputDir: String = ""
 
     var defaultModel: FluxModelVariant {
         didSet { save() }
     }
 
-    var defaultBoard: String {
+    var defaultBoard: String = "" {
         didSet { saveProfile() }
     }
 
@@ -263,7 +263,7 @@ class AppSettings {
         didSet { save() }
     }
 
-    var lastPrompt: String {
+    var lastPrompt: String = "" {
         didSet { saveProfile() }
     }
 
@@ -275,7 +275,7 @@ class AppSettings {
         didSet { save() }
     }
 
-    var lastLoras: [LoraEntry] {
+    var lastLoras: [LoraEntry] = [] {
         didSet { saveProfile() }
     }
 
@@ -461,7 +461,7 @@ class AppSettings {
     // MARK: - Notepad
 
     /// Free-form markdown scratchpad for reusable prompt notes. Autosaves on edit.
-    var notepadText: String {
+    var notepadText: String = "" {
         didSet { saveProfile() }
     }
 
@@ -469,7 +469,7 @@ class AppSettings {
 
     /// Prompts recorded when jobs are queued, newest first. Unpinned entries are
     /// capped at ``promptHistoryCap``; pinned entries are never evicted.
-    var promptHistory: [PromptHistoryEntry] {
+    var promptHistory: [PromptHistoryEntry] = [] {
         didSet { saveProfile() }
     }
 
@@ -494,7 +494,7 @@ class AppSettings {
     // MARK: - Scenario generator
 
     /// Last outline entered in the scenario generator, restored across launches.
-    var lastScenarioOutline: String {
+    var lastScenarioOutline: String = "" {
         didSet { saveProfile() }
     }
 
@@ -565,12 +565,12 @@ class AppSettings {
     }
 
     /// User-created prompt templates (built-ins live in `BuiltInTemplates.all`).
-    var customTemplates: [PromptTemplate] {
+    var customTemplates: [PromptTemplate] = [] {
         didSet { saveProfile() }
     }
 
     /// IDs of the currently active prompt templates, in selection order.
-    var activeTemplateIDs: [UUID] {
+    var activeTemplateIDs: [UUID] = [] {
         didSet { saveProfile() }
     }
 
@@ -588,9 +588,11 @@ class AppSettings {
     @ObservationIgnored var sessionLease: FileAccessLease?
 
     // MARK: - Per-profile persistence
+    // Per-profile fields start empty; ProfileStore activates a profile right
+    // after init, which loads them from that profile's profile.json.
 
     /// Gallery boards the user collapsed in the active profile's library.
-    var galleryCollapsedBoards: [String] {
+    var galleryCollapsedBoards: [String] = [] {
         didSet { saveProfile() }
     }
 
@@ -635,11 +637,7 @@ class AppSettings {
         let model = s.defaultModel ?? .flux2Klein9B
 
         customPythonPath = Self.customPython(migrating: s); customPythonMigrationUnsaved = s.customPython == nil && s.mfluxBinaryDir != nil
-        // Per-profile fields start empty; ProfileStore activates a profile right
-        // after init, which loads them from that profile's profile.json.
-        outputDir = ""
         defaultModel = model
-        defaultBoard = ""
         defaultWidth = s.defaultWidth ?? 1024
         defaultHeight = s.defaultHeight ?? 1024
         legacyDefaultLoras = s.defaultLoras ?? []
@@ -649,10 +647,8 @@ class AppSettings {
         hfOffline = s.hfOffline ?? false
         hfToken = KeychainHelper.get("hf_token")
         logFontSize = s.logFontSize ?? 12.0
-        lastPrompt = ""
         lastWidth = s.lastWidth ?? 1024
         lastHeight = s.lastHeight ?? 1024
-        lastLoras = []
         modelDefaults = s.modelDefaults ?? [:]
         let lastM = s.lastModel ?? s.defaultModel ?? .flux2Klein9B
         lastModel = lastM
@@ -668,14 +664,8 @@ class AppSettings {
         lastIdeogramWidth = s.lastIdeogramWidth
         lastIdeogramHeight = s.lastIdeogramHeight
         lastIdeogramQuantize = s.lastIdeogramQuantize
-        lastIdeogramCaption = nil
-        lastIdeogramPlainPrompt = nil
-        lastIdeogramUsePlainPrompt = nil
-        lastIdeogramSeed = nil
         lastCustomModelRepo = s.lastCustomModelRepo ?? ""
         lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
-        lastKrea2 = nil
-        lastZImage = nil
         comfyURL = s.comfyURL ?? ""
         // Migrate a pre-split saved `comfyCheckpoint` entry into the UNet slot so existing config keeps working.
         var unetMap = s.comfyUNet ?? [:]
@@ -707,12 +697,9 @@ class AppSettings {
         ideogram4LowRam = s.ideogram4LowRam ?? false
         ideogram4StrictValidation = s.ideogram4StrictValidation ?? false
         ideogram4CfgEnd = s.ideogram4CfgEnd
-        notepadText = ""
-        promptHistory = []
         keepModelWarm = s.keepModelWarm ?? false
         warmIdleMinutes = s.warmIdleMinutes ?? 10
         warmTextEncoderPolicy = s.warmTextEncoderPolicy ?? .auto
-        lastScenarioOutline = ""
         scenarioCategories = s.scenarioCategories
             .map { Set($0.compactMap(ScenarioCategory.init)) }
             ?? Set(ScenarioCategory.allCases)
@@ -725,9 +712,6 @@ class AppSettings {
         openAITopP = s.openAITopP ?? 0.95
         openAITopK = s.openAITopK ?? 64
         openAIAPIKey = KeychainHelper.get("openai_api_key")
-        customTemplates = []
-        activeTemplateIDs = []
-        galleryCollapsedBoards = []
         refreshToolchain()
     }
 
