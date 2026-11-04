@@ -46,6 +46,11 @@ struct ComfySystemStatsTests {
         #expect(stats.vramFreeBytes == 40)
     }
 
+    @Test func aFractionalByteCountRoundsDown() throws {
+        let stats = try parse(#"{"devices": [{"name": "cuda:0", "vram_total": 100, "vram_free": 40.7}]}"#)
+        #expect(stats.vramFreeBytes == 40)
+    }
+
     @Test func noDevicesLeavesVRAMUnset() throws {
         let stats = try parse(#"{"system": {"os": "darwin"}}"#)
         #expect(stats.gpuNames.isEmpty)

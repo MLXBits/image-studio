@@ -45,6 +45,8 @@ extension GalleryStore {
     }
 
     func moveItem(_ item: GalleryItem, toBoard board: String, outputDir: String) {
+        // Already there: the name check below would see the image itself and refuse.
+        guard item.board != board else { return }
         if lockedPaths.contains(item.path) {
             lockError = lockMessage(item.filename)
             return

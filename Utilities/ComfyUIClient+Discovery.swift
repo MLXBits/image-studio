@@ -41,8 +41,10 @@ extension ComfyUIClient {
             if let v = primary[key] as? Int64 {
                 return v
             }
+            // Integral JSON numbers already matched `Int64` above, so this only sees fractions.
+            // Round down (as before) but return nil rather than trap on an out-of-range value.
             if let v = primary[key] as? Double {
-                return Int64(v)
+                return Int64(exactly: v.rounded(.down))
             }
             if let v = primary[key] as? Int {
                 return Int64(v)
