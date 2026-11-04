@@ -5,10 +5,10 @@ import Foundation
 /// Ideogram-specific behavior (structured caption prompt files, preset step counts).
 typealias Ideogram4JobRunner = JobRunner<Ideogram4RunnerSpec>
 
-extension Ideogram4Job: GeneratedJob {}
-extension Ideogram4JobStore: GenerationJobStore {}
+extension Ideogram4Job: @MainActor GeneratedJob {}
+extension Ideogram4JobStore: @MainActor GenerationJobStore {}
 
-enum Ideogram4RunnerSpec: JobRunnerSpec {
+enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Ideogram4Job
     typealias Store = Ideogram4JobStore
 

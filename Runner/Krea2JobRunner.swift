@@ -7,10 +7,10 @@ import Foundation
 /// loads the saved dir on subsequent runs. BF16 loads the repo directly.
 typealias Krea2JobRunner = JobRunner<Krea2RunnerSpec>
 
-extension Krea2Job: GeneratedJob {}
-extension Krea2JobStore: GenerationJobStore {}
+extension Krea2Job: @MainActor GeneratedJob {}
+extension Krea2JobStore: @MainActor GenerationJobStore {}
 
-enum Krea2RunnerSpec: JobRunnerSpec {
+enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Krea2Job
     typealias Store = Krea2JobStore
 

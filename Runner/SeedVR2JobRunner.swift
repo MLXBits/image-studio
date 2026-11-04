@@ -8,10 +8,10 @@ import Foundation
 /// back-to-back), so it always uses the one-shot CLI path.
 typealias SeedVR2JobRunner = JobRunner<SeedVR2RunnerSpec>
 
-extension SeedVR2Job: GeneratedJob {}
-extension SeedVR2JobStore: GenerationJobStore {}
+extension SeedVR2Job: @MainActor GeneratedJob {}
+extension SeedVR2JobStore: @MainActor GenerationJobStore {}
 
-enum SeedVR2RunnerSpec: JobRunnerSpec {
+enum SeedVR2RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = SeedVR2Job
     typealias Store = SeedVR2JobStore
 

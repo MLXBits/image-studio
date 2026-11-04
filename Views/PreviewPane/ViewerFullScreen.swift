@@ -88,8 +88,7 @@ final class ViewerFullScreenController {
         observers.removeAll()
     }
 
-    deinit {
-        let observers = observers
+    isolated deinit {
         observers.forEach(NotificationCenter.default.removeObserver)
     }
 }

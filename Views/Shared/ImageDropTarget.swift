@@ -1,3 +1,4 @@
+import os
 import SwiftUI
 import UniformTypeIdentifiers
 
@@ -44,25 +45,25 @@ enum ImageDropResolver {
         let group = DispatchGroup()
         // Indexed so the delivered order matches the drop order regardless of which
         // provider finishes loading first — it decides multi-image reference order.
-        var byIndex: [Int: String] = [:]
-        let lock = NSLock()
+        // Providers call back on background queues, so the map lives behind a lock.
+        let byIndex = OSAllocatedUnfairLock(initialState: [Int: String]())
 
         for (index, provider) in providers.enumerated() {
             group.enter()
             path(from: provider) { path in
                 if let path {
-                    lock.lock(); byIndex[index] = path; lock.unlock()
+                    byIndex.withLock { $0[index] = path }
                 }
                 group.leave()
             }
         }
 
         group.notify(queue: .main) {
-            completion(byIndex.keys.sorted().compactMap { byIndex[$0] })
+            completion(byIndex.withLock { map in map.keys.sorted().compactMap { map[$0] } })
         }
     }
 
-    private static func path(from provider: NSItemProvider, completion: @escaping (String?) -> Void) {
+    private static func path(from provider: NSItemProvider, completion: @escaping @Sendable (String?) -> Void) {
         let fileURL = UTType.fileURL.identifier
         if provider.hasItemConformingToTypeIdentifier(fileURL) {
             provider.loadDataRepresentation(forTypeIdentifier: fileURL) { data, _ in

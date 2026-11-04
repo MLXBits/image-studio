@@ -289,42 +289,7 @@ struct GenerationGalleryView: View {
         .onChange(of: collapsedBoards) { _, newValue in
             settings.galleryCollapsedBoards = newValue.sorted()
         }
-        .alert("Could not delete", isPresented: Binding(
-            get: { gallery.deleteError != nil },
-            set: {
-                if !$0 {
-                    gallery.deleteError = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(gallery.deleteError ?? "")
-        }
-        .alert("Image protected", isPresented: Binding(
-            get: { gallery.lockError != nil },
-            set: {
-                if !$0 {
-                    gallery.lockError = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(gallery.lockError ?? "")
-        }
-        .alert("Could not strip metadata", isPresented: Binding(
-            get: { gallery.stripError != nil },
-            set: {
-                if !$0 {
-                    gallery.stripError = nil
-                }
-            }
-        )) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text(gallery.stripError ?? "")
-        }
+        .modifier(GalleryErrorAlerts())
         .alert("Rename Folder", isPresented: $showingRenameAlert) {
             TextField("Folder name", text: $renameNameDraft)
             Button("Rename") {

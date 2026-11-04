@@ -3,7 +3,7 @@ import Foundation
 // MARK: - Errors
 
 /// Failures loading or rendering a bundled ComfyUI template.
-enum ComfyTemplateError: Error, Equatable {
+nonisolated enum ComfyTemplateError: Error, Equatable {
     /// The template or param-map file is missing from the bundle.
     case notFound(String)
     /// A param-map target points at a node that isn't in the template (a stale param map).
@@ -15,7 +15,7 @@ enum ComfyTemplateError: Error, Equatable {
 // MARK: - LoRA kind
 
 /// The LoRA loader mechanism a template family needs.
-enum ComfyLoraKind {
+nonisolated enum ComfyLoraKind {
     /// `LoraLoaderModelOnly` — model-only, no clip (Krea 2).
     case modelOnly
     /// `LoraLoader` — model + clip streams (FLUX.2).
@@ -27,7 +27,7 @@ enum ComfyLoraKind {
 /// A flexible JSON value, used to distinguish a `[nodeID, outputIndex]` ref array from a scalar on decode.
 /// Whole-number JSON numbers decode as `.int` so `steps: 20` stays an Int on the wire; `cfg: 7.0` decodes as
 /// `.double` only when it is not a whole number.
-enum ComfyJSONValue: Codable, Equatable, Sendable {
+nonisolated enum ComfyJSONValue: Codable, Equatable, Sendable {
     case null
     case bool(Bool)
     case int(Int)
@@ -77,7 +77,7 @@ enum ComfyJSONValue: Codable, Equatable, Sendable {
 // MARK: - Scalar + input value
 
 /// A scalar input value (a JSON number, string, or bool).
-enum ComfyScalar: Codable, Equatable, Sendable {
+nonisolated enum ComfyScalar: Codable, Equatable, Sendable {
     case int(Int)
     case double(Double)
     case string(String)
@@ -106,7 +106,7 @@ enum ComfyScalar: Codable, Equatable, Sendable {
 }
 
 /// A node input: either a scalar value or a reference to another node's output (`[nodeID, outputIndex]`).
-enum ComfyInputValue: Codable, Equatable, Sendable {
+nonisolated enum ComfyInputValue: Codable, Equatable, Sendable {
     case scalar(ComfyScalar)
     case ref(nodeID: String, outputIndex: Int)
 
@@ -144,7 +144,7 @@ enum ComfyInputValue: Codable, Equatable, Sendable {
 // MARK: - Node + template
 
 /// One node in the `/prompt` wire form: `{class_type, inputs}` (`_meta` and any other keys are ignored on decode).
-struct ComfyNode: Codable, Equatable, Sendable {
+nonisolated struct ComfyNode: Codable, Equatable, Sendable {
     private enum Key: CodingKey {
         case classType, inputs
 
@@ -191,7 +191,7 @@ struct ComfyNode: Codable, Equatable, Sendable {
 
 /// A bundled ComfyUI template: the raw `/prompt` graph `{nodeID: {class_type, inputs}}`, decoded directly into
 /// ``nodes`` (no wrapper key, so the bundled file is byte-identical to the user's ComfyUI API export).
-struct ComfyTemplate: Decodable, Equatable, Sendable {
+nonisolated struct ComfyTemplate: Decodable, Equatable, Sendable {
     /// Loads the bundled template for a family/flow key (e.g. `krea2/t2i`) from `comfy_templates/<key>.json`.
     static func load(familyFlowKey key: String) throws -> Self {
         let (resource, subdirectory) = try comfyBundlePath(key: key, suffix: "")
@@ -220,13 +220,13 @@ struct ComfyTemplate: Decodable, Equatable, Sendable {
 // MARK: - Param map
 
 /// One param target: the node + input a param fills.
-struct ParamTarget: Codable, Equatable, Sendable {
+nonisolated struct ParamTarget: Codable, Equatable, Sendable {
     let node: String
     let input: String
 }
 
 /// The param-map sidecar: `{param: {node, input}}`, decoded directly into ``params``.
-struct ComfyParamMap: Decodable, Equatable, Sendable {
+nonisolated struct ComfyParamMap: Decodable, Equatable, Sendable {
     /// Loads the bundled param map for a family/flow key from `comfy_templates/<key>.parammap.json`.
     static func load(familyFlowKey key: String) throws -> Self {
         let (resource, subdirectory) = try comfyBundlePath(key: key, suffix: ".parammap")
@@ -252,7 +252,7 @@ struct ComfyParamMap: Decodable, Equatable, Sendable {
     }
 }
 
-extension ComfyParamMap {
+nonisolated extension ComfyParamMap {
     /// The i2e reference-image LoadImage node IDs in the order the app assigns reference images to them
     /// (`source_image`, `source_image_1`, `source_image_2`, ...). This is the `slotOrder` for
     /// ``exciseUnusedConditioningSlots(_:keepCount:slotOrder:)``. Empty for t2i (no reference slots).
@@ -268,7 +268,7 @@ extension ComfyParamMap {
 // MARK: - Helpers
 
 /// Splits a family/flow key (e.g. `krea2/t2i`) into the bundle resource name + subdirectory.
-private func comfyBundlePath(key: String, suffix: String) throws -> (resource: String, subdirectory: String) {
+nonisolated private func comfyBundlePath(key: String, suffix: String) throws -> (resource: String, subdirectory: String) {
     let parts = key.split(separator: "/").map(String.init)
     guard let resource = parts.last else { throw ComfyTemplateError.notFound(key) }
     let sub = "comfy_templates" + parts.dropLast().map { "/" + $0 }.joined()
@@ -276,7 +276,7 @@ private func comfyBundlePath(key: String, suffix: String) throws -> (resource: S
 }
 
 /// A generic coding key, for decoding a top-level dict into a struct property.
-struct AnyCodingKey: CodingKey {
+nonisolated struct AnyCodingKey: CodingKey {
     let stringValue: String
     let intValue: Int?
     init(stringValue: String) {
@@ -290,7 +290,7 @@ struct AnyCodingKey: CodingKey {
 
 // MARK: - Rendering (param injection + dynamic LoRA insertion)
 
-extension ComfyScalar {
+nonisolated extension ComfyScalar {
     /// The wire-form value (a JSON number, string, or bool).
     var wireValue: Any {
         switch self {
@@ -302,7 +302,7 @@ extension ComfyScalar {
     }
 }
 
-extension ComfyInputValue {
+nonisolated extension ComfyInputValue {
     /// The wire-form value: a scalar, or a `[nodeID, outputIndex]` ref array.
     var wireValue: Any {
         switch self {
@@ -312,7 +312,7 @@ extension ComfyInputValue {
     }
 }
 
-extension ComfyTemplate {
+nonisolated extension ComfyTemplate {
     /// Render a runnable `/prompt` graph: start from the base template, inject `params` via the
     /// param map, then dynamically insert `loras` chained between the UNETLoader and its model
     /// consumer. Swift counterpart of `scripts/comfy_dry_run.py`'s `inject()` + `insert_loras()`.

@@ -203,7 +203,7 @@ struct Krea2ComfyGraphTests {
     /// True once Task 7 bundles `comfy_templates` into the app: ``Krea2RunnerSpec/comfyGraph(job:settings:client:)``
     /// loads the real templates from `Bundle.main`, so the full-runner test below is skipped until then. The
     /// render-path tests above cover the same code against the repo files in the meantime.
-    private static var templatesBundled: Bool {
+    nonisolated private static var templatesBundled: Bool {
         (try? ComfyTemplate.load(familyFlowKey: "krea2/t2i")) != nil
     }
 

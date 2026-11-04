@@ -21,6 +21,45 @@ enum OpenAIChatClientError: LocalizedError {
     }
 }
 
+// MARK: - LM Studio wire types
+
+/// Mirrors the server's `GET /api/v1/models` shape for the fields we read. Kept here — not in
+/// ``Models/OpenAIChat.swift`` — because it is wire-specific to this client, while ``LMSessionStatus``
+/// is what stores and views consume. Unknown keys (e.g. `size_bytes`, `capabilities`) are ignored by
+/// default decoding; the top-level array key is `models` per the live API. A model with several loaded
+/// instances reports them all in one entry's `loaded_instances`.
+nonisolated private struct LMModelListResponse: Decodable {
+    enum CodingKeys: String, Swift.CodingKey { case models }
+
+    let models: [LMModelEntry]
+}
+
+/// One model in ``LMModelListResponse``.
+nonisolated private struct LMModelEntry: Decodable {
+    enum CodingKeys: String, Swift.CodingKey {
+        case key
+        case displayName = "display_name"
+        case loadedInstances = "loaded_instances"
+    }
+
+    let key: String
+    let displayName: String?
+    let loadedInstances: [LMModelInstance]
+}
+
+/// One loaded instance of an ``LMModelEntry``.
+nonisolated private struct LMModelInstance: Decodable {
+    let id: String
+    let config: LMInstanceConfig?
+}
+
+/// The load-time configuration of an ``LMModelInstance``.
+nonisolated private struct LMInstanceConfig: Decodable {
+    enum CodingKeys: String, Swift.CodingKey { case contextLength = "context_length" }
+
+    let contextLength: Int?
+}
+
 /// Talks to an OpenAI-compatible chat endpoint (e.g. LM Studio) as an alternative
 /// to running Gemma locally. Stateless namespace mirroring ``UpdateChecker``'s
 /// `URLSession` + status-guard + `JSONDecoder` idiom; the ``ScenarioGenerator``
@@ -28,40 +67,6 @@ enum OpenAIChatClientError: LocalizedError {
 /// and feed the returned text into their existing reply extractors.
 enum OpenAIChatClient {
     // MARK: - LM Studio native API (session polling + eject)
-
-    /// Mirrors the server's `GET /api/v1/models` shape for the fields we read. Kept here — not in
-    /// ``Models/OpenAIChat.swift`` — because it is wire-specific to this client, while ``LMSessionStatus``
-    /// is what stores and views consume. Unknown keys (e.g. `size_bytes`, `capabilities`) are ignored by
-    /// default decoding; the top-level array key is `models` per the live API. A model with several loaded
-    /// instances reports them all in one entry's `loaded_instances`.
-    private struct LMModelListResponse: Decodable {
-        enum CodingKeys: String, Swift.CodingKey { case models }
-
-        struct Entry: Decodable {
-            enum CodingKeys: String, Swift.CodingKey {
-                case key
-                case displayName = "display_name"
-                case loadedInstances = "loaded_instances"
-            }
-
-            let key: String
-            let displayName: String?
-            let loadedInstances: [Instance]
-        }
-
-        struct Instance: Decodable {
-            struct Config: Decodable {
-                enum CodingKeys: String, Swift.CodingKey { case contextLength = "context_length" }
-
-                let contextLength: Int?
-            }
-
-            let id: String
-            let config: Config?
-        }
-
-        let models: [Entry]
-    }
 
     /// First model load on the server can be slow, so allow a generous timeout.
     private static let requestTimeout: TimeInterval = 120

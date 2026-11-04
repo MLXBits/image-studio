@@ -105,9 +105,15 @@ Gitignored but present on disk, and expensive to grep:
 
 - `build/`, `DerivedData/` — build output
 - `.jscpd-report/` — duplication-checker HTML
-- `*.xcodeproj/` — generated from `project.yml`; read the manifest instead
 - `docs/screenshots/` — binary PNGs
 - `build/python-runtime/` — the bundled Python runtime (~1.6 GB)
+
+`*.xcodeproj/` is generated from `project.yml` but tracked in git; read the
+manifest instead. After `xcodegen generate`, commit the `.pbxproj` change with
+the `project.yml` change. XcodeGen and Xcode 27 write the shared schemes in two
+different but equivalent formats, so each one rewrites them (Metal API
+validation stays off in both). Do not commit a scheme diff unless you changed
+the scheme in `project.yml`.
 
 ## Architecture in one paragraph
 
@@ -216,11 +222,50 @@ are near the line, so measure rather than eyeball when adding to either — a
 `NSHostingController(rootView:).sizeThatFits(in:)` probe on the row is enough.
 This is what four 28pt icon buttons in the dimension row cost the first time.
 
-## Conventions and gotchas
+## Swift concurrency
 
-- Swift 5.9 with `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor` — types are
-  main-actor isolated by default. Annotate explicitly to move work off the main
-  actor.
+Swift 6 language mode, with `SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor` and
+Approachable Concurrency. A clean build has zero compiler warnings. Isolation
+mistakes are build errors here, not warnings.
+
+**Every declaration without an annotation is `@MainActor`**: types, methods,
+properties, free functions, and the members of extensions. Code that looks
+nonisolated is not. So:
+
+- A pure value type or helper (an options enum, a JSON model, a path or size
+  helper) that runs off the main actor needs `nonisolated` on its declaration.
+  "Off the main actor" includes `Task.detached`, `nonisolated` functions,
+  URLSession or NSItemProvider callbacks, and `@Test(.enabled(if:))` traits. Put
+  `nonisolated` on the type **and** on each of its extensions. If one member
+  reads app state (`AppSettings`, a store, a `.shared` instance), mark only the
+  pure members.
+- A class whose callbacks arrive on another thread (URLSession, NSItemProvider,
+  `Process`) must be `nonisolated`. The default makes it main-actor, and its
+  callbacks then race with it.
+- A conformance to a protocol whose associated type or parent protocol
+  (`Codable`, `Identifiable`, `Hashable`) is satisfied main-actor needs
+  `@MainActor` on the conformance:
+  `final class Krea2JobStore: @MainActor ProfileScopedJobStore`.
+- `deinit` is nonisolated. To touch main-actor properties in it, write
+  `isolated deinit`.
+- A `Task { }` started from main-actor code runs on the main actor. Two such
+  tasks never run at the same time, so their shared state needs no lock.
+- Pass a closure, not a method name, to `map`, `compactMap` or
+  `contains(where:)`: `{ f($0) }` takes the caller's isolation, while `f`
+  keeps its `@MainActor` type.
+
+**Do not:**
+
+- Call `NSLock.lock()` in async code. When state really crosses threads, use
+  `OSAllocatedUnfairLock(initialState:)` and `withLock`.
+- Write `[weak self]` and `guard let self` in a closure that never uses `self`.
+- Bind an error you do not use. Write `catch is CancellationError`.
+- Silence a diagnostic with `@unchecked Sendable` or `nonisolated(unsafe)`.
+  Fix the isolation.
+- Write a doc comment that states an isolation ("not main-actor-isolated")
+  unless an annotation makes it true.
+
+## Conventions and gotchas
 - Tests are Swift Testing (`@Test`, `#expect`), not XCTest, and cover pure logic
   only. Do not add UI tests.
 - Progress reporting parses mflux's tqdm output (`Utilities/JobProgressParser.swift`).

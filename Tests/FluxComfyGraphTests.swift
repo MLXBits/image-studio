@@ -1,5 +1,6 @@
 import Foundation
 @testable import MLXBits_Image_Studio
+import os
 import Testing
 
 // MARK: - FLUX.2 comfyGraph (Task 4)
@@ -8,11 +9,18 @@ import Testing
 /// test session injected through ``ComfyUIClient/init(config:session:)``; `canInit` matches only
 /// `http://127.0.0.1/upload/image`, so any other request on that session passes through to the real
 /// transport.
-private final class StubUploadProtocol: URLProtocol {
+nonisolated private final class StubUploadProtocol: URLProtocol {
     /// The server filename every upload "lands" as.
     static let uploadedName = "uploaded_ref.png"
+    /// Backing store for ``requestedPaths``. URLSession writes it from its own thread while tests
+    /// reset and read it on the main actor, so every access goes through the lock.
+    private static let requestLog = OSAllocatedUnfairLock<[String]>(initialState: [])
+
     /// Paths of every intercepted request, in order (suite is serialized; reset per test).
-    static var requestedPaths: [String] = []
+    static var requestedPaths: [String] {
+        get { requestLog.withLock { $0 } }
+        set { requestLog.withLock { $0 = newValue } }
+    }
 
     override static func canInit(with request: URLRequest) -> Bool {
         request.url?.host == "127.0.0.1" && request.url?.path == "/upload/image"
@@ -24,7 +32,7 @@ private final class StubUploadProtocol: URLProtocol {
 
     override func startLoading() {
         guard let url = request.url else { return }
-        Self.requestedPaths.append(url.path)
+        Self.requestLog.withLock { $0.append(url.path) }
         let body = Data(#"{"name": "uploaded_ref.png", "subfolder": "", "type": "input"}"#.utf8)
         guard let response = HTTPURLResponse(
             url: url,
@@ -57,7 +65,7 @@ struct FluxComfyGraphTests {
     }
 
     /// True when the flux2 templates are in the app bundle (the `comfyGraph` path loads from there).
-    private static var templatesBundled: Bool {
+    nonisolated private static var templatesBundled: Bool {
         (try? ComfyTemplate.load(familyFlowKey: "flux2/4b-t2i-distilled")) != nil
     }
 
