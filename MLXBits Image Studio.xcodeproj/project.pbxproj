@@ -153,6 +153,7 @@
 		7B00953DA812E388BDA9E2B5 /* RuntimeSelfTest.swift in Sources */ = {isa = PBXBuildFile; fileRef = 874CD195F06DAABC0E167B4D /* RuntimeSelfTest.swift */; };
 		7BA338B1191C52728553F91B /* JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DF8DCD6AFA207134C719360 /* JobStore.swift */; };
 		7C60C7BFCDAAF8232B92AB98 /* ProfileStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F8528218ED691462B19A8F04 /* ProfileStoreTests.swift */; };
+		7E75EBA71420B021618588B4 /* GalleryStore+FileOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5AF021E15D725FFD96E972 /* GalleryStore+FileOperations.swift */; };
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
 		7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */; };
 		80480D0FFF9AFC8967EA1529 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585B7D9DFD8D0BF3352D6E1C /* TestHost.swift */; };
@@ -544,6 +545,7 @@
 		EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxModelCatalog.swift; sourceTree = "<group>"; };
 		EB9B23607A627A711FA11B06 /* ComfyTemplate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyTemplate.swift; sourceTree = "<group>"; };
 		EF1A8D4AFA49B16B96016982 /* UpdateChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateChecker.swift; sourceTree = "<group>"; };
+		EF5AF021E15D725FFD96E972 /* GalleryStore+FileOperations.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "GalleryStore+FileOperations.swift"; sourceTree = "<group>"; };
 		F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UpdateCheckerTests.swift; sourceTree = "<group>"; };
 		F611B70C3A587B09B5890AE0 /* LoraLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibrary.swift; sourceTree = "<group>"; };
 		F6B9489D3752E5655C477D9F /* ToolchainMigration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolchainMigration.swift; sourceTree = "<group>"; };
@@ -1009,6 +1011,7 @@
 				038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */,
 				F812C375B01307E326002869 /* GalleryMetadataStripping.swift */,
 				6CB12782BB6D8B424591F3DE /* GalleryStore.swift */,
+				EF5AF021E15D725FFD96E972 /* GalleryStore+FileOperations.swift */,
 				32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */,
 				FF983CF3653BD37AECF73856 /* Ideogram4JobStore.swift */,
 				F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */,
@@ -1246,6 +1249,7 @@
 				A6509F3BDE674DAEE4544546 /* GalleryItemDetailView.swift in Sources */,
 				5AA9A2C97A8FFFA68E0EB360 /* GalleryMetadataStripping.swift in Sources */,
 				1B8C89C99300F30608BBA29F /* GalleryRating.swift in Sources */,
+				7E75EBA71420B021618588B4 /* GalleryStore+FileOperations.swift in Sources */,
 				E9CA85A03944BAC9A4FB9BA9 /* GalleryStore.swift in Sources */,
 				3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */,
 				76D529E00F618E43FC1A3849 /* GenerationCoordinator.swift in Sources */,
