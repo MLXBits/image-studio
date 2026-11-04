@@ -24,7 +24,7 @@ nonisolated private struct ProgressTrackerState {
 }
 
 extension ComfyUIClient {
-    struct LiveProgress: Equatable {
+    nonisolated struct LiveProgress: Equatable {
         var step: Int = 0 // completed steps (from `progress.value`)
         var totalSteps: Int = 0 // denoise total (from `progress.max`)
         var nodeID: String? // currently-running node id (`executing.node` / `progress.node`)

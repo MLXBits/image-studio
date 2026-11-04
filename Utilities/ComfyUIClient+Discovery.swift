@@ -25,55 +25,48 @@ extension ComfyUIClient {
         }
     }
 
+    /// Reads a decoded `/system_stats` body. Every device's name goes into ``SystemStats/gpuNames``,
+    /// but the VRAM figures come from the first device only: ComfyUI lists its primary (generation)
+    /// device first, and mixing fields from several GPUs would describe none of them.
+    static func parseSystemStats(_ json: [String: Any]) -> SystemStats {
+        var stats = SystemStats()
+        if let system = json["system"] as? [String: Any] {
+            stats.serverVersion = system["comfyui_version"] as? String
+            stats.os = system["os"] as? String
+        }
+        let devices = json["devices"] as? [[String: Any]] ?? []
+        stats.gpuNames = devices.compactMap { $0["name"] as? String }.filter { !$0.isEmpty }
+        guard let primary = devices.first else { return stats }
+        func asBytes(_ key: String) -> Int64? {
+            if let v = primary[key] as? Int64 {
+                return v
+            }
+            if let v = primary[key] as? Double {
+                return Int64(v)
+            }
+            if let v = primary[key] as? Int {
+                return Int64(v)
+            }
+            return nil
+        }
+        // Driver-level (`vram_free` / `vram_total`) is what actually tracks occupancy because ComfyUI
+        // loads weights through the CUDA driver, not torch's allocator; `torch_vram_free` sits near zero
+        // even with a 30 GB model resident, so it is only a fallback for builds that lack the driver figure.
+        stats.vramFreeBytes = asBytes("vram_free") ?? asBytes("torch_vram_free")
+        if let total = asBytes("vram_total") {
+            stats.vramTotalBytes = total
+            stats.vramTotalGb = Double(total) / 1_073_741_824
+        }
+        return stats
+    }
+
     /// Hits `/system_stats` — the cheap liveness + "did we reach the right box" check.
     func systemStats() async throws -> SystemStats {
         let data = try await getData("/system_stats")
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
             throw ComfyUIError.decodeFailed("unexpected /system_stats shape")
         }
-        var stats = SystemStats()
-        if let system = json["system"] as? [String: Any] {
-            stats.serverVersion = system["comfyui_version"] as? String
-            stats.os = system["os"] as? String
-        }
-        if let devices = json["devices"] as? [[String: Any]] {
-            for d in devices {
-                if let name = d["name"] as? String, !name.isEmpty {
-                    stats.gpuNames.append(name)
-                }
-                func asBytes(_ key: String) -> Int64? {
-                    if let v = d[key] as? Int64 {
-                        return v
-                    }
-                    if let v = d[key] as? Double {
-                        return Int64(v)
-                    }
-                    if let v = d[key] as? Int {
-                        return Int64(v)
-                    }
-                    return nil
-                }
-                // Read both the driver-level and torch-tracked figures. Driver-level (`vram_free` /
-                // `vram_total`) is what actually tracks occupancy because ComfyUI loads weights through the
-                // CUDA driver, not torch's allocator; we keep `torch_vram_free` out of the residency math on
-                // purpose for exactly that reason (it sits near-zero even with a 30 GB model resident).
-                if let free = asBytes("vram_free") {
-                    stats.vramFreeBytes = free
-                } else if let torchFree = asBytes("torch_vram_free"), stats.vramFreeBytes == nil {
-                    // Fallback for builds that only expose the torch figure.
-                    stats.vramFreeBytes = torchFree
-                }
-                if let total = asBytes("vram_total") {
-                    stats.vramTotalBytes = total
-                    stats.vramTotalGb = Double(total) / 1_073_741_824
-                } else if let vram = d["vram_total"] as? Double {
-                    // Older/alternate shape where the value is already GB.
-                    stats.vramTotalBytes = Int64(vram * 1_073_741_824)
-                    stats.vramTotalGb = vram
-                }
-            }
-        }
-        return stats
+        return Self.parseSystemStats(json)
     }
 
     /// Pulls available UNet / CLIP / VAE / sampler lists from `/object_info`. Each loader list is read from the

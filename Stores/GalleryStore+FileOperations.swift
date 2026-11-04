@@ -49,20 +49,16 @@ extension GalleryStore {
             lockError = lockMessage(item.filename)
             return
         }
-        let src = URL(fileURLWithPath: item.path)
         let destDir = board == "Default"
             ? URL(fileURLWithPath: outputDir)
             : URL(fileURLWithPath: outputDir).appendingPathComponent(board)
-        try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
-        let dest = destDir.appendingPathComponent(src.lastPathComponent)
-        try? FileManager.default.moveItem(at: src, to: dest)
-        let srcJson = MetadataSidecar.sidecarURL(for: item.path)
-        if FileManager.default.fileExists(atPath: srcJson.path) {
-            let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
-            try? FileManager.default.moveItem(at: srcJson, to: destJson)
+        do {
+            try Self.moveImageWithSidecar(URL(fileURLWithPath: item.path), to: destDir)
+            // Cache is keyed by absolute path; the moved file regenerates under the new key.
+            ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
+        } catch {
+            moveError = "Could not move \(item.filename): \(error.localizedDescription)"
         }
-        // Cache is keyed by absolute path; the moved file regenerates under the new key.
-        ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         scan(outputDir: outputDir)
     }
 
@@ -99,9 +95,10 @@ extension GalleryStore {
             return
         }
         // Same for an approved pick inside it: the folder delete would take it
-        // along, so block until the flag is cleared.
-        if let pick = items.first(where: { $0.board == board && isPick($0) }) {
-            lockError = "\"\(board)\" contains \(pick.filename), which is flagged as a "
+        // along, so block until the flag is cleared. Read the flags on disk rather
+        // than trusting `items`, which misses images added since the last scan.
+        if let pick = Self.pickName(under: dir) {
+            lockError = "\"\(board)\" contains \(pick), which is flagged as a "
                 + "pick. Clear the flag (press P again) before deleting the folder."
             return
         }
@@ -142,23 +139,23 @@ extension GalleryStore {
         let locked = items.filter { lockedPaths.contains($0.path) }
         let movable = items.filter { !lockedPaths.contains($0.path) }
         var purgedPaths: [String] = []
+        var failures: [String] = []
+        let destDir = board == "Default"
+            ? URL(fileURLWithPath: outputDir)
+            : URL(fileURLWithPath: outputDir).appendingPathComponent(board)
         for item in movable {
             guard item.board != board else { continue }
-            let src = URL(fileURLWithPath: item.path)
-            let destDir = board == "Default"
-                ? URL(fileURLWithPath: outputDir)
-                : URL(fileURLWithPath: outputDir).appendingPathComponent(board)
-            try? FileManager.default.createDirectory(at: destDir, withIntermediateDirectories: true)
-            let dest = destDir.appendingPathComponent(src.lastPathComponent)
-            try? FileManager.default.moveItem(at: src, to: dest)
-            let srcJson = MetadataSidecar.sidecarURL(for: item.path)
-            if FileManager.default.fileExists(atPath: srcJson.path) {
-                let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
-                try? FileManager.default.moveItem(at: srcJson, to: destJson)
+            do {
+                try Self.moveImageWithSidecar(URL(fileURLWithPath: item.path), to: destDir)
+                purgedPaths.append(item.path)
+            } catch {
+                failures.append("\(item.filename): \(error.localizedDescription)")
             }
-            purgedPaths.append(item.path)
         }
         ThumbnailCache.purge(paths: purgedPaths, in: thumbnailDirectory)
+        if !failures.isEmpty {
+            moveError = "Could not move:\n" + failures.joined(separator: "\n")
+        }
         if !locked.isEmpty {
             lockError = lockMessage(skipped: locked)
         }
@@ -222,5 +219,75 @@ extension GalleryStore {
             ? nil
             : "Could not strip metadata from: \(failures.joined(separator: ", "))"
         return succeeded
+    }
+}
+
+// MARK: - Disk helpers
+
+extension GalleryStore {
+    /// Filename of the first file under `dir`, at any depth, whose on-disk flag marks it
+    /// as a pick. Reads the xattrs directly, so it also sees files the last scan missed.
+    nonisolated static func pickName(under dir: URL) -> String? {
+        guard let files = FileManager.default.enumerator(
+            at: dir,
+            includingPropertiesForKeys: [.isRegularFileKey]
+        ) else { return nil }
+        for case let url as URL in files {
+            guard (try? url.resourceValues(forKeys: [.isRegularFileKey]))?.isRegularFile == true else { continue }
+            if GalleryCulling.readFlag(path: url.path) == .pick {
+                return url.lastPathComponent
+            }
+        }
+        return nil
+    }
+
+    /// Moves an image and its settings sidecar (if any) into `destDir` as one step. Refuses
+    /// before touching anything when `destDir` already holds either filename, so an image
+    /// never ends up with another image's settings. If the image moves but its sidecar
+    /// cannot follow, the image is moved back; nothing is left half-moved unless that
+    /// rollback fails too, which the thrown error says.
+    nonisolated static func moveImageWithSidecar(_ image: URL, to destDir: URL) throws {
+        let fm = FileManager.default
+        let srcJson = MetadataSidecar.sidecarURL(for: image.path)
+        let hasSidecar = fm.fileExists(atPath: srcJson.path)
+        let dest = destDir.appendingPathComponent(image.lastPathComponent)
+        let destJson = destDir.appendingPathComponent(srcJson.lastPathComponent)
+        if fm.fileExists(atPath: dest.path) {
+            throw GalleryMoveError.nameTaken(dest.lastPathComponent)
+        }
+        // A leftover sidecar at the destination would attach itself to the moved image.
+        if fm.fileExists(atPath: destJson.path) {
+            throw GalleryMoveError.nameTaken(destJson.lastPathComponent)
+        }
+        try fm.createDirectory(at: destDir, withIntermediateDirectories: true)
+        try fm.moveItem(at: image, to: dest)
+        guard hasSidecar else { return }
+        do {
+            try fm.moveItem(at: srcJson, to: destJson)
+        } catch {
+            do {
+                try fm.moveItem(at: dest, to: image)
+            } catch {
+                throw GalleryMoveError.sidecarLeftBehind(dest.lastPathComponent)
+            }
+            throw error
+        }
+    }
+}
+
+/// Why ``GalleryStore/moveImageWithSidecar(_:to:)`` refused or failed a move.
+nonisolated enum GalleryMoveError: LocalizedError, Equatable {
+    /// The destination board already has a file with this name.
+    case nameTaken(String)
+    /// The image moved, its sidecar could not follow, and moving the image back failed too.
+    case sidecarLeftBehind(String)
+
+    var errorDescription: String? {
+        switch self {
+        case let .nameTaken(name):
+            "the folder already contains \(name)"
+        case let .sidecarLeftBehind(name):
+            "\(name) moved, but its settings file stayed in the old folder"
+        }
     }
 }

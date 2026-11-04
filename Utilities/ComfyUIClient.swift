@@ -29,10 +29,18 @@ final class ComfyUIClient {
             return base
         }
 
-        /// Base URL, normalized to have no trailing slash (e.g. http://192.168.1.50:8188).
-        var baseURL: String
+        /// Base URL, normalized to have no trailing slash (e.g. http://192.168.1.50:8188), so the
+        /// endpoint paths appended to it never produce `//prompt` or `//ws`.
+        let baseURL: String
         /// Optional bearer token for servers with auth enabled; nil/empty = none.
         var apiKey: String?
+
+        /// Normalizes `baseURL` (trims whitespace and trailing slashes) for every caller, so a
+        /// settings value like `http://host:8188/` works the same as one without the slash.
+        init(baseURL: String, apiKey: String? = nil) {
+            self.baseURL = Self.normalize(baseURL)
+            self.apiKey = apiKey
+        }
     }
 
     struct HistoryRecord {

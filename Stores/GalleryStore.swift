@@ -104,6 +104,9 @@ final class GalleryStore {
     var deleteError: String?
     /// Set when a metadata strip fails. Observed by ``GenerationGalleryView``.
     var stripError: String?
+    /// Set when moving an image to another board fails, or is refused because the
+    /// board already holds a file with the same name. Observed by ``GenerationGalleryView``.
+    var moveError: String?
     /// Absolute paths currently attached to an img2img / edit drop area. Any
     /// operation that would move, rename away, or delete one of these would
     /// rug-pull a queued or future generation, so they are protected — such
