@@ -9,7 +9,7 @@ nonisolated protocol SupportDefaults: AnyObject {
     func set(_ value: Any?, forKey defaultName: String)
 }
 
-extension UserDefaults: SupportDefaults {}
+extension UserDefaults: nonisolated SupportDefaults {}
 
 /// What the support nudge needs to know, app-global rather than per profile
 /// (spec §5): images generated, and whether the nudge was dismissed, the
