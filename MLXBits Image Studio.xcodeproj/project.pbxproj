@@ -18,6 +18,7 @@
 		0703F36886C67EE775626A49 /* SeedVR2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */; };
 		096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */; };
 		0966E1C3A3BB9397B45B7D88 /* AsyncGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FFCBAEC556970B3C1F7CA6D /* AsyncGate.swift */; };
+		0A632BF4F39783EFA3A94643 /* ScenarioPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */; };
 		0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
@@ -321,6 +322,7 @@
 		0F1D6F08C26D2F223943219B /* Krea2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2PreviewViews.swift; sourceTree = "<group>"; };
 		0FDC6C81B1A3D2212D5D8342 /* ProfileRegistryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileRegistryTests.swift; sourceTree = "<group>"; };
 		11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelView.swift; sourceTree = "<group>"; };
+		129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioPanelController.swift; sourceTree = "<group>"; };
 		138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDropTarget.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStatusTests.swift; sourceTree = "<group>"; };
@@ -816,6 +818,7 @@
 				3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */,
 				5D9BC624F6CEF346F6A7F07E /* ScenarioBatchQueue.swift */,
 				D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */,
+				129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */,
 				D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */,
 			);
 			path = ParamsPanel;
@@ -1384,6 +1387,7 @@
 				3AFED2C263CCBA74B59D34C4 /* ScenarioBatchQueue.swift in Sources */,
 				F3821108E24EEEEA9C759A95 /* ScenarioGenerator.swift in Sources */,
 				8939CD33C69686E0A6C49587 /* ScenarioGeneratorView.swift in Sources */,
+				0A632BF4F39783EFA3A94643 /* ScenarioPanelController.swift in Sources */,
 				05AD4C861994526C8680D4C6 /* SectionCard.swift in Sources */,
 				98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */,
 				096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */,
