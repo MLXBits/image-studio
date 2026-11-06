@@ -408,6 +408,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         }
 
+        // cancel() may have cancelled runTask during an earlier await that ignores it (e.g. a save's output tail).
+        if Task.isCancelled {
+            finishJob(job, status: .cancelled, stepDir: stepDir)
+            return
+        }
+
         let args = Spec.buildArgs(job: job, ctx: ctx, settings: settings)
         job.log += "$ \(tool.rawValue) \(args.joined(separator: " "))\n\n"
 
