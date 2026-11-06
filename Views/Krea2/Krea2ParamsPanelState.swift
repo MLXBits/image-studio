@@ -175,7 +175,7 @@ final class Krea2ParamsPanelState {
             width: size?.width ?? width,
             height: size?.height ?? height,
             seed: seed,
-            steps: steps,
+            steps: FluxModelVariant.krea2.clampedSteps(steps),
             guidance: guidance,
             quantize: quantize,
             lowRam: lowRam,

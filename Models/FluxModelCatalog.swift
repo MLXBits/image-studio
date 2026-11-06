@@ -135,6 +135,15 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
+    /// Upper bound of the Steps field for this model's family.
+    var maxSteps: Int {
+        switch self {
+        case .krea2: 50
+        case .zimage, .zimageTurbo: 100
+        default: 150
+        }
+    }
+
     var defaultGuidance: Double {
         switch self {
         case .ideogram4: 7.0 // not used by Ideogram4 runner
@@ -434,5 +443,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             match = candidates.first { $0.lowercased().contains(bf16CacheKey) }
         }
         return match.map { hubDir.appendingPathComponent($0) }
+    }
+}
+
+extension FluxModelVariant {
+    /// A text field commits on focus loss without `.onSubmit`, so every job and saved default clamps here.
+    func clampedSteps(_ steps: Int) -> Int {
+        min(max(steps, 1), maxSteps)
     }
 }

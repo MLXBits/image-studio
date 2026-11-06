@@ -202,7 +202,7 @@ final class ZImageParamsPanelState {
             width: size?.width ?? width,
             height: size?.height ?? height,
             seed: seed,
-            steps: steps,
+            steps: variant.clampedSteps(steps),
             guidance: guidance,
             quantize: quantize,
             loras: loras,
