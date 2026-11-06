@@ -252,6 +252,10 @@ final class JobRunner<Spec: JobRunnerSpec> {
             if let process = currentProcess, process.isRunning {
                 stoppedProcess = process
                 process.terminate()
+            } else if let runTask {
+                // Between steps (e.g. warm-driver startup): run() checks this at its next await (#81).
+                runTask.cancel()
+                activeJob?.statusLine = "Stopping…"
             }
             return
         }
@@ -385,7 +389,13 @@ final class JobRunner<Spec: JobRunnerSpec> {
         // startup failure falls through to the one-shot CLI below.
         if settings.keepModelWarm {
             if let driver, let request = Spec.driverRequest(job: job, ctx: ctx, settings: settings) {
-                if await driver.ensureRunning() {
+                let driverReady = await driver.ensureRunning()
+                // Startup can take up to 90 s and ignores cancellation, so honour a Stop pressed during it.
+                if Task.isCancelled {
+                    finishJob(job, status: .cancelled, stepDir: stepDir)
+                    return
+                }
+                if driverReady {
                     await runViaDriver(driver, request: request, job: job, stepDir: stepDir, timing: timing)
                     return
                 }
