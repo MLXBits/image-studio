@@ -252,6 +252,8 @@ final class ScenarioGenerator {
         // Fetched by the app, not the driver, so closing the panel mid-download
         // doesn't throw the download away (#18).
         try await downloads.ensureAvailable(modelPath, settings: settings)
+        // The panel may have closed during the download; don't start a driver for it.
+        try Task.checkCancellation()
 
         let fullPrompt = GemmaChatRunner.chatPrompt(
             system: config.system,
