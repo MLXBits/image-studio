@@ -408,21 +408,30 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         // A published pre-saved repo maps directly to its hub cache dir (models--org--name),
         // so match it explicitly rather than by substring. FLUX 3 uses one at every precision,
         // and the exact name also keeps Klein from claiming Base's nested folder.
+        let cacheName = { (repo: String) in "models--" + repo.replacingOccurrences(of: "/", with: "--") }
         if let repo = preQuantizedRepoID(quantize: quantize) {
-            let cacheName = "models--" + repo.replacingOccurrences(of: "/", with: "--")
-            return entries.contains(cacheName) ? hubDir.appendingPathComponent(cacheName) : nil
+            return entries.contains(cacheName(repo)) ? hubDir.appendingPathComponent(cacheName(repo)) : nil
         }
+        if quantize == 0, let repo = bf16HFRepoID, entries.contains(cacheName(repo)) {
+            return hubDir.appendingPathComponent(cacheName(repo))
+        }
+        // The substring fallback must skip every variant's own repo folder, or
+        // Z-Image's `z-image` key claims Z-Image-Turbo's weights.
+        let claimed = Set(Self.allCases.flatMap { variant in
+            ([variant.bf16HFRepoID] + [0, 4, 8].map { variant.preQuantizedRepoID(quantize: $0) }).compactMap { $0 }.map { cacheName($0) }
+        })
+        let candidates = entries.filter { !claimed.contains($0) }
         let match: String?
         switch quantize {
         case 8:
             let key = rawValue.lowercased()
-            match = entries.first { $0.lowercased().contains(key) && $0.contains("8bit") }
+            match = candidates.first { $0.lowercased().contains(key) && $0.contains("8bit") }
         case 4:
             let key = rawValue.lowercased()
-            match = entries.first { $0.lowercased().contains(key) && $0.contains("4bit") }
+            match = candidates.first { $0.lowercased().contains(key) && $0.contains("4bit") }
         default:
             guard !bf16CacheKey.isEmpty else { return nil }
-            match = entries.first { $0.lowercased().contains(bf16CacheKey) }
+            match = candidates.first { $0.lowercased().contains(bf16CacheKey) }
         }
         return match.map { hubDir.appendingPathComponent($0) }
     }

@@ -47,6 +47,26 @@ struct ModelCacheLocationTests {
         #expect(FluxModelVariant.ideogram4.isOnDisk(quantize: 8, savedIn: noSaves, hubDir: hub))
     }
 
+    /// Z-Image's cache key is a prefix of Z-Image-Turbo's folder name, so a
+    /// substring match alone would report and delete Turbo's weights as base's.
+    @Test func zImageDoesNotClaimTurboWeights() throws {
+        try cache("Tongyi-MAI/Z-Image-Turbo")
+        try cache("filipstrand/Z-Image-Turbo-mflux-4bit")
+        #expect(FluxModelVariant.zimage.hubCacheFolder(quantize: 0, hubDir: hub) == nil)
+        #expect(FluxModelVariant.zimage.hubCacheFolder(quantize: 4, hubDir: hub) == nil)
+        try cache("Tongyi-MAI/Z-Image")
+        #expect(FluxModelVariant.zimage.hubCacheFolder(quantize: 0, hubDir: hub)?.lastPathComponent == "models--Tongyi-MAI--Z-Image")
+        #expect(FluxModelVariant.zimageTurbo.hubCacheFolder(quantize: 0, hubDir: hub)?
+            .lastPathComponent == "models--Tongyi-MAI--Z-Image-Turbo")
+    }
+
+    @Test func kleinQ0IsFoundInItsDotlessRepo() throws {
+        try cache("mlx-community/flux2-klein-9b-bf16")
+        #expect(FluxModelVariant.flux2Klein9B.onDiskURL(quantize: 0, hubDir: hub)?
+            .lastPathComponent == "models--mlx-community--flux2-klein-9b-bf16")
+        #expect(FluxModelVariant.flux2Klein4B.hubCacheFolder(quantize: 0, hubDir: hub) == nil)
+    }
+
     @Test func ideogramTermsLinkFollowsThePrecision() {
         let link = { FluxModelVariant.ideogram4.hfRepoURL(quantize: $0)?.absoluteString }
         #expect(link(0) == "https://huggingface.co/ideogram-ai/ideogram-4-fp8")
