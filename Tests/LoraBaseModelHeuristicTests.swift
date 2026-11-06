@@ -40,6 +40,13 @@ struct LoraBaseModelHeuristicTests {
         #expect(LoraBaseModelHeuristic.guess(for: "mystery_style_v1.safetensors") == .unclassified)
     }
 
+    @Test func idoSubstringDoesNotMatchIdeogram() {
+        // "ido" was once an Ideogram token and matched inside these names (#82).
+        #expect(LoraBaseModelHeuristic.guess(for: "idol-style.safetensors") == .unclassified)
+        #expect(LoraBaseModelHeuristic.guess(for: "midori-v2.safetensors") == .unclassified)
+        #expect(LoraBaseModelHeuristic.guess(for: "video/motion_v1.safetensors") == .unclassified)
+    }
+
     @Test func subfolderHelperStripsCorrectly() {
         #expect(LoraBaseModelHeuristic.subfolder(of: "krea2/foo.safetensors") == "krea2")
         #expect(LoraBaseModelHeuristic.subfolder(of: "a/b/c.safetensors") == "a")
