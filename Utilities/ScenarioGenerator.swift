@@ -295,6 +295,7 @@ final class ScenarioGenerator {
     func shutdown() {
         pending?.resume(throwing: CancellationError())
         pending = nil
+        cancelling = false
         handshake?.resume(returning: false)
         handshake = nil
         process?.terminate()
@@ -378,13 +379,15 @@ final class ScenarioGenerator {
                 handle.readabilityHandler = nil
                 Task { @MainActor [weak self] in self?.driverExited(proc) }
             } else {
-                Task { @MainActor [weak self] in self?.consumeStdout(data) }
+                Task { @MainActor [weak self] in self?.consumeStdout(data, from: proc) }
             }
         }
-        // Backstop in case EOF never arrives (e.g. a grandchild holds stdout open).
+        // Backstop if EOF never arrives; the delay lets buffered stdout (a final `result`) drain first.
         proc.terminationHandler = { [weak self] _ in
-            stdoutPipe.fileHandleForReading.readabilityHandler = nil
-            Task { @MainActor [weak self] in self?.driverExited(proc) }
+            DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                stdoutPipe.fileHandleForReading.readabilityHandler = nil
+                Task { @MainActor [weak self] in self?.driverExited(proc) }
+            }
         }
 
         _ = send(["cmd": "hello"])
@@ -410,13 +413,10 @@ final class ScenarioGenerator {
         cont.resume(returning: ok)
     }
 
-    /// The driver exited (crash, cancel, or quit). Runs once from EOF and once
-    /// from the termination handler; the second call finds nothing to resolve.
+    /// The driver exited (crash, cancel, quit). Called from EOF and termination; the second call is a no-op.
     private func driverExited(_ proc: Process) {
         // A replacement driver is already up: this late exit is the old one's.
-        if let process, process !== proc {
-            return
-        }
+        guard process == nil || process === proc else { return }
         process = nil
         stdinHandle = nil
         let error: Error = cancelling ? CancellationError() : ScenarioGeneratorError.driverExited
@@ -427,7 +427,8 @@ final class ScenarioGenerator {
         resolveHandshake(false)
     }
 
-    private func consumeStdout(_ data: Data) {
+    private func consumeStdout(_ data: Data, from proc: Process) {
+        guard process === proc else { return } // output from a driver since replaced
         stdoutTail += String(bytes: data, encoding: .utf8) ?? ""
         while let newline = stdoutTail.firstIndex(of: "\n") {
             let line = String(stdoutTail[..<newline])
