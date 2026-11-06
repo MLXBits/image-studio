@@ -91,7 +91,6 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
 
     /// Cancels a roll in flight and closes the panel, which frees the warm model.
     func close() {
-        session?.task?.cancel()
         panel?.close()
     }
 
@@ -110,6 +109,7 @@ final class ScenarioPanelController: NSObject, NSWindowDelegate {
     /// Fires on both the titlebar close button and programmatic `close()`, so the warm
     /// LLM is always released (kept resident across re-rolls only while the panel is up).
     func windowWillClose(_: Notification) {
+        session?.task?.cancel()
         session?.generator.shutdown()
     }
 
