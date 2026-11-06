@@ -53,6 +53,7 @@ enum ScenarioGeneratorError: LocalizedError {
     case promptFileNotFound
     case subprocessFailed(Int32, String)
     case emptyReply(String)
+    case driverExited
 
     var errorDescription: String? {
         switch self {
@@ -64,6 +65,8 @@ enum ScenarioGeneratorError: LocalizedError {
             "mlx_lm.generate failed (exit \(code)):\n…\(output.suffix(600))"
         case let .emptyReply(raw):
             "Model produced no prompt text.\n\nRaw output:\n\(raw.prefix(2000))"
+        case .driverExited:
+            "The warm LLM driver stopped unexpectedly. Try again to restart it."
         }
     }
 }
@@ -316,7 +319,7 @@ final class ScenarioGenerator {
                 pending = cont
                 guard send(request) else {
                     pending = nil
-                    cont.resume(throwing: ScenarioGeneratorError.emptyReply("Could not reach the warm LLM driver"))
+                    cont.resume(throwing: ScenarioGeneratorError.driverExited)
                     return
                 }
             }
@@ -370,7 +373,18 @@ final class ScenarioGenerator {
         stdoutTail = ""
         stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
             let data = handle.availableData
-            Task { @MainActor [weak self] in self?.consumeStdout(data) }
+            if data.isEmpty {
+                // EOF: drop the handler, or it keeps firing and pins a core.
+                handle.readabilityHandler = nil
+                Task { @MainActor [weak self] in self?.driverExited(proc) }
+            } else {
+                Task { @MainActor [weak self] in self?.consumeStdout(data) }
+            }
+        }
+        // Backstop in case EOF never arrives (e.g. a grandchild holds stdout open).
+        proc.terminationHandler = { [weak self] _ in
+            stdoutPipe.fileHandleForReading.readabilityHandler = nil
+            Task { @MainActor [weak self] in self?.driverExited(proc) }
         }
 
         _ = send(["cmd": "hello"])
@@ -396,18 +410,24 @@ final class ScenarioGenerator {
         cont.resume(returning: ok)
     }
 
-    private func consumeStdout(_ data: Data) {
-        if data.isEmpty {
-            // EOF — the process exited (crash, cancel, or quit).
-            let error: Error = cancelling ? CancellationError()
-                : ScenarioGeneratorError.emptyReply("Warm LLM driver exited unexpectedly")
-            cancelling = false
-            onModelLoading?(false)
-            pending?.resume(throwing: error)
-            pending = nil
-            resolveHandshake(false)
+    /// The driver exited (crash, cancel, or quit). Runs once from EOF and once
+    /// from the termination handler; the second call finds nothing to resolve.
+    private func driverExited(_ proc: Process) {
+        // A replacement driver is already up: this late exit is the old one's.
+        if let process, process !== proc {
             return
         }
+        process = nil
+        stdinHandle = nil
+        let error: Error = cancelling ? CancellationError() : ScenarioGeneratorError.driverExited
+        cancelling = false
+        onModelLoading?(false)
+        pending?.resume(throwing: error)
+        pending = nil
+        resolveHandshake(false)
+    }
+
+    private func consumeStdout(_ data: Data) {
         stdoutTail += String(bytes: data, encoding: .utf8) ?? ""
         while let newline = stdoutTail.firstIndex(of: "\n") {
             let line = String(stdoutTail[..<newline])
