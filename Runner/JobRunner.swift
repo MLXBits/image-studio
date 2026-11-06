@@ -888,16 +888,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
                 // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
                 // canonical `_seed_{N}` name matching a local run's expandedPaths.
-                let outDir = (ctx.outputFile as NSString).deletingLastPathComponent
                 guard !outputs.isEmpty else { continue }
                 let out = outputs[0]
-                let local: String
-                if seedsToRun.count == 1 && index == 0 {
-                    local = ctx.outputFile
-                } else {
-                    let name = "\(Spec.outputPrefix)_seed_\(seed).png"
-                    local = "\(outDir)/\(name)"
-                }
+                let local = seedsToRun.count == 1
+                    ? ctx.outputFile
+                    : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: [seed])[0].path
                 guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
                 else { continue }
 
