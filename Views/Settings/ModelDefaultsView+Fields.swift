@@ -23,8 +23,8 @@ extension ModelDefaultsView {
                     .textFieldStyle(.roundedBorder)
                     .multilineTextAlignment(.trailing)
                     .frame(width: 64)
-                    .onSubmit { bound.wrappedValue = max(1, min(150, bound.wrappedValue)) }
-                Stepper("", value: bound, in: 1 ... 150).labelsHidden()
+                    .onSubmit { bound.wrappedValue = model.clampedSteps(bound.wrappedValue) }
+                Stepper("", value: bound, in: 1 ... model.maxSteps).labelsHidden()
             }
         }
         .accessibilityLabel("Default steps for \(model.displayName)")

@@ -158,13 +158,13 @@ struct Krea2ParamsPanelView: View {
                             + "with diminishing returns; fewer may reduce quality."
                     )
                 }
-                Stepper(value: $params.steps, in: 1 ... 50) {
+                Stepper(value: $params.steps, in: 1 ... FluxModelVariant.krea2.maxSteps) {
                     TextField("", value: $params.steps, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                         .multilineTextAlignment(.trailing)
                         .frame(width: 60)
-                        .onSubmit { params.steps = max(1, min(50, params.steps)) }
+                        .onSubmit { params.steps = FluxModelVariant.krea2.clampedSteps(params.steps) }
                 }
                 .accessibilityLabel("Steps")
                 .accessibilityValue("\(params.steps)")

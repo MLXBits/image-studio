@@ -344,13 +344,13 @@ struct ParamsPanelView: View {
                             + " time with diminishing quality returns."
                     )
                 }
-                Stepper(value: $params.steps, in: 1 ... 150) {
+                Stepper(value: $params.steps, in: 1 ... params.model.maxSteps) {
                     TextField("", value: $params.steps, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .font(.system(.body, design: .monospaced))
                         .multilineTextAlignment(.trailing)
                         .frame(width: 60)
-                        .onSubmit { params.steps = max(1, min(150, params.steps)) }
+                        .onSubmit { params.steps = params.model.clampedSteps(params.steps) }
                 }
                 .accessibilityLabel("Steps")
                 .accessibilityValue("\(params.steps)")

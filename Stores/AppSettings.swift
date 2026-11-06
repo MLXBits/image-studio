@@ -29,7 +29,7 @@ extension ModelDefaults {
     /// Resolves all values, using global fallbacks for width/height.
     func resolved(for model: FluxModelVariant) -> Resolved {
         Resolved(
-            steps: steps ?? model.defaultSteps,
+            steps: model.clampedSteps(steps ?? model.defaultSteps),
             guidance: model.isDistilled ? 1.0 : (guidance ?? model.defaultGuidance),
             quantize: quantize ?? model.recommendedQuantize,
             lowRam: lowRam ?? false,

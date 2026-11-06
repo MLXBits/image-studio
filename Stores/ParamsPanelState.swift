@@ -182,7 +182,7 @@ final class ParamsPanelState {
             height: size?.height ?? height,
             seed: seed,
             seeds: seeds,
-            steps: steps,
+            steps: model.clampedSteps(steps),
             guidance: guidance,
             loras: loras,
             quantize: quantize,

@@ -265,6 +265,7 @@
 		EA83B400F4041AFE4F5297BA /* OpenAIChatClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 985F3C0FD2619F10E9F451D5 /* OpenAIChatClient.swift */; };
 		ED4DDCD94B96DF5BCF8E8F61 /* ZImageParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 050EE7381BE7F16200F99AD6 /* ZImageParamsPanelState.swift */; };
 		EEBF4E221B30F1A8CF11C79A /* ProfileStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85EC0C84DEFADEB7756B4B0F /* ProfileStore.swift */; };
+		EF0306EBB67FC93520FA8C03 /* StepClampTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E29C4BD5FBC92A1C2C0C6DE9 /* StepClampTests.swift */; };
 		EF113144EC0E822A2551EF74 /* ModelDefaultsView+Ideogram4Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4420F429A61B2BD0284305E8 /* ModelDefaultsView+Ideogram4Form.swift */; };
 		F05EFC3ABE1FE57C17649886 /* IdeogramCaptionGenerator.swift in Sources */ = {isa = PBXBuildFile; fileRef = B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */; };
 		F09E1151CBF07051EA0A79C7 /* ModelDefaultsView+Fields.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7015DE736C39E5A054329074 /* ModelDefaultsView+Fields.swift */; };
@@ -551,6 +552,7 @@
 		DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
 		DFE44A40E11389E274BB9806 /* AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppStore.xcconfig; sourceTree = "<group>"; };
 		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
+		E29C4BD5FBC92A1C2C0C6DE9 /* StepClampTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepClampTests.swift; sourceTree = "<group>"; };
 		E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverControllerTests.swift; sourceTree = "<group>"; };
@@ -776,6 +778,7 @@
 				1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */,
 				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
 				B5ED9C9945ED26673FBD294B /* SourceImageImportTests.swift */,
+				E29C4BD5FBC92A1C2C0C6DE9 /* StepClampTests.swift */,
 				444CC52F9371A805017902EA /* StoreKitStorefrontTests.swift */,
 				4A99968429C87E4B28CF3541 /* SupportLinksTests.swift */,
 				C46AE002D48DAF35B0063C84 /* SupportStoreTests.swift */,
@@ -1493,6 +1496,7 @@
 				45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */,
 				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
 				9A85F61E40284EC64E989700 /* SourceImageImportTests.swift in Sources */,
+				EF0306EBB67FC93520FA8C03 /* StepClampTests.swift in Sources */,
 				FFD3A45EFEB3CFD9B540B7FE /* StoreKitStorefrontTests.swift in Sources */,
 				856F1A2EB604DA5B9A891038 /* SupportLinksTests.swift in Sources */,
 				8B24A47DC0EEB34E0D593336 /* SupportStoreTests.swift in Sources */,
