@@ -86,6 +86,7 @@
 		3CB78AB5BDFF05ED862AC6FF /* WarmDriverEligibilityTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */; };
 		3DEE52936B36955647BE6E45 /* ProfileRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0FDC6C81B1A3D2212D5D8342 /* ProfileRegistryTests.swift */; };
 		3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */; };
+		3E9964BE9864A08D9EA836E4 /* DriverOutputStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15298BF47C9B7725CD838E00 /* DriverOutputStream.swift */; };
 		3F215B1FA4FEBE7338580874 /* UpdateCheckerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F34D7E7C3D9F69A7F299C34B /* UpdateCheckerTests.swift */; };
 		3F85FAC535EB0C70A26B25E6 /* BBoxSemantics.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B04A1F9CFDF301EF539392C /* BBoxSemantics.swift */; };
 		4072F5590CAD03FD0649A6B2 /* PathField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C53E533C3BFD36AF422078B /* PathField.swift */; };
@@ -179,6 +180,7 @@
 		92DA88BBA0367F13483FD7D0 /* TipJarSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 608CB34AC8957BE369F816F5 /* TipJarSection.swift */; };
 		932581AC6ABF9B321570FCB3 /* MLXBitsImageStudioApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */; };
 		939D3FE8CED702E3C86445B9 /* WildcardExpanderTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F95C286991226EA679AA0285 /* WildcardExpanderTests.swift */; };
+		949DA5A39DEB22A70F01F817 /* DriverOutputStreamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E7580270CB7EC83880600A3C /* DriverOutputStreamTests.swift */; };
 		9634A94E65107FFB9FC4E051 /* FluxJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91C5CA95EAA14C772647C853 /* FluxJob.swift */; };
 		96FC70E999A49888475CAC44 /* BBoxGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */; };
 		98F3EB2D2AA67C58F9BB4804 /* SectionContainerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8158844AE746F9CE0CBED40 /* SectionContainerView.swift */; };
@@ -322,6 +324,7 @@
 		138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDropTarget.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
 		14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LibraryStatusTests.swift; sourceTree = "<group>"; };
+		15298BF47C9B7725CD838E00 /* DriverOutputStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverOutputStream.swift; sourceTree = "<group>"; };
 		15867BF96F3C6A4258A837A4 /* ModelAvailabilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelAvailabilityTests.swift; sourceTree = "<group>"; };
 		165A1374AC984C7A2597FA6B /* AppSettings+FileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+FileAccess.swift"; sourceTree = "<group>"; };
 		16689FCDD956958978D337D9 /* AppSettings+ProfileStored.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+ProfileStored.swift"; sourceTree = "<group>"; };
@@ -550,6 +553,7 @@
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
 		E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverControllerTests.swift; sourceTree = "<group>"; };
 		E600C4BD2D8453F21DA72013 /* HFCacheVerdictStoreTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStoreTests.swift; sourceTree = "<group>"; };
+		E7580270CB7EC83880600A3C /* DriverOutputStreamTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DriverOutputStreamTests.swift; sourceTree = "<group>"; };
 		E982AB0083FDDE2E7A28A7D9 /* ModelDefaultsView+FluxForm.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+FluxForm.swift"; sourceTree = "<group>"; };
 		E9A0FCCEEF7103CD4889BEF8 /* Toolchain.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Toolchain.swift; sourceTree = "<group>"; };
 		EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SandboxFileAccess.swift; sourceTree = "<group>"; };
@@ -602,6 +606,7 @@
 				C45C60EE72D93B2B1A0A0715 /* ComfyUIClient+SeedVR2.swift */,
 				3080256EAB6D9613685431D3 /* ComfyUITypes.swift */,
 				CB933A545C60752280A661AE /* Debouncer.swift */,
+				15298BF47C9B7725CD838E00 /* DriverOutputStream.swift */,
 				1E6617CA61E62244D246073A /* FileAccess.swift */,
 				89BFE2281C9D0F3F494471F9 /* FileAccessPath.swift */,
 				4FC7445FBA2C696BE4141103 /* GalleryRating.swift */,
@@ -729,6 +734,7 @@
 				9A2923FC771E89E8E3C9E978 /* ComfySystemStatsTests.swift */,
 				5F8DF83AF5F24CD597C0AE21 /* ComfyTemplateTests.swift */,
 				05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */,
+				E7580270CB7EC83880600A3C /* DriverOutputStreamTests.swift */,
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */,
@@ -1258,6 +1264,7 @@
 				761BF3221011C46CAC9E715C /* DimensionPickerView.swift in Sources */,
 				DB9493BA714715D9A5EAA040 /* DimensionSliderRow.swift in Sources */,
 				C05E113764CCC2006F583148 /* DonationLinksSection.swift in Sources */,
+				3E9964BE9864A08D9EA836E4 /* DriverOutputStream.swift in Sources */,
 				0F280E349F7241B82C9D7EC7 /* DriverProtocol.swift in Sources */,
 				E4FEBA849C59CE3F30938431 /* FileAccess.swift in Sources */,
 				CF596B2952ECED2CB446B1FE /* FileAccessPath.swift in Sources */,
@@ -1438,6 +1445,7 @@
 				8BFB2DCB624469B736F6435A /* ComfySystemStatsTests.swift in Sources */,
 				CB8794511C9920CDDFDFA806 /* ComfyTemplateTests.swift in Sources */,
 				3E50D5778BB637EA1D9B5D36 /* DimensionConstraintsTests.swift in Sources */,
+				949DA5A39DEB22A70F01F817 /* DriverOutputStreamTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
 				C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,

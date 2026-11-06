@@ -365,6 +365,7 @@ final class ScenarioGenerator {
         proc.standardInput = stdinPipe
         proc.standardOutput = stdoutPipe
         proc.standardError = FileHandle.nullDevice
+        let output = DriverOutputStream.make(stdout: stdoutPipe.fileHandleForReading, process: proc)
         do { try proc.run() } catch {
             driverUnavailable = true
             return false
@@ -372,22 +373,12 @@ final class ScenarioGenerator {
         process = proc
         stdinHandle = stdinPipe.fileHandleForWriting
         stdoutTail = ""
-        stdoutPipe.fileHandleForReading.readabilityHandler = { [weak self] handle in
-            let data = handle.availableData
-            if data.isEmpty {
-                // EOF: drop the handler, or it keeps firing and pins a core.
-                handle.readabilityHandler = nil
-                Task { @MainActor [weak self] in self?.driverExited(proc) }
-            } else {
-                Task { @MainActor [weak self] in self?.consumeStdout(data, from: proc) }
+        // Exit handling runs only after every chunk the driver wrote, so a final `result` is never lost.
+        Task { [weak self] in
+            for await data in output {
+                self?.consumeStdout(data, from: proc)
             }
-        }
-        // Backstop if EOF never arrives; the delay lets buffered stdout (a final `result`) drain first.
-        proc.terminationHandler = { [weak self] _ in
-            DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                stdoutPipe.fileHandleForReading.readabilityHandler = nil
-                Task { @MainActor [weak self] in self?.driverExited(proc) }
-            }
+            self?.driverExited(proc)
         }
 
         _ = send(["cmd": "hello"])
@@ -413,7 +404,7 @@ final class ScenarioGenerator {
         cont.resume(returning: ok)
     }
 
-    /// The driver exited (crash, cancel, quit). Called from EOF and termination; the second call is a no-op.
+    /// The driver exited (crash, cancel, quit), after all of its stdout was consumed.
     private func driverExited(_ proc: Process) {
         // A replacement driver is already up: this late exit is the old one's.
         guard process == nil || process === proc else { return }
