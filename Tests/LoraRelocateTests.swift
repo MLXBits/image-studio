@@ -50,6 +50,17 @@ struct LoraRelocateTests {
         #expect(kept.stacks[0].loras.count == 2)
     }
 
+    /// A member counts as on the server when any entry for its path is a server LoRA of the family, not just the first.
+    @Test func aServerTwinBehindALocalEntryIsNotMissing() {
+        let member = LoraEntry(path: "style.safetensors")
+        let local = LibraryLora(name: "Local", path: "style.safetensors", modelFamily: .krea2)
+        let server = LibraryLora(name: "Server", path: "style.safetensors", modelFamily: .krea2, isServerLoRA: true)
+
+        #expect(!LoraLibraryStore.isMissingFromServer(member, family: .krea2, library: [local, server]))
+        #expect(LoraLibraryStore.isMissingFromServer(member, family: .krea2, library: [local]))
+        #expect(LoraLibraryStore.isMissingFromServer(member, family: .zimage, library: [local, server]))
+    }
+
     /// A default LoRA located again in Settings moves in this generation too,
     /// rather than the new file joining the lost one.
     @Test func aLocatedDefaultMovesInThisGeneration() {

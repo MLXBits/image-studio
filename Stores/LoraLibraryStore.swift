@@ -37,6 +37,11 @@ final class LoraLibraryStore {
         return (library, stacks)
     }
 
+    /// Checks every entry for the path, since a hand-edited entry can share it with the server's.
+    static func isMissingFromServer(_ member: LoraEntry, family: ModelFamily, library: [LibraryLora]) -> Bool {
+        !library.contains { $0.path == member.path && $0.isServerLoRA && $0.modelFamily == family }
+    }
+
     /// `library` without entry `id`, and `stacks` without the members that used its path — unless another entry (a twin at a
     /// different strength) still catalogs that file, in which case stacks keep it.
     static func deleting(
@@ -135,8 +140,7 @@ final class LoraLibraryStore {
     /// True when `member` can't be submitted to a ComfyUI server for `family`: its path doesn't match an auto-cataloged server entry
     /// of that family, so it's a local-disk path or a LoRA the user deleted from the library.
     func isMissingFromServer(_ member: LoraEntry, family: ModelFamily) -> Bool {
-        guard let lib = libraryEntry(path: member.path) else { return true }
-        return !(lib.isServerLoRA && lib.modelFamily == family)
+        Self.isMissingFromServer(member, family: family, library: library)
     }
 
     /// Members of `stack` that can't run under the current routing. Only ComfyUI routing has a catalog to check against.
