@@ -12,6 +12,7 @@ struct LoraRowView: View {
     var onMoveUp: () -> Void = {}
     var onMoveDown: () -> Void = {}
     var isLost = false
+    var isNotOnServer = false
     var onLocate: () -> Void = {}
     let onDelete: () -> Void
 
@@ -61,6 +62,12 @@ struct LoraRowView: View {
                         .buttonStyle(.link)
                         .font(.caption2)
                 }
+            }
+            if isNotOnServer {
+                Label("Not on server", systemImage: "exclamationmark.triangle.fill")
+                    .font(.caption2)
+                    .foregroundStyle(.orange)
+                    .help("This family routes to ComfyUI, and the server doesn't report this LoRA. Replace or remove it.")
             }
             HStack(spacing: 6) {
                 Slider(value: $lora.strength, in: -1 ... 1)

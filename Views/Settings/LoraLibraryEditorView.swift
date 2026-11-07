@@ -306,6 +306,7 @@ private struct LibraryLoraEditSheet: View {
 struct LoraStacksEditorView: View {
     let family: ModelFamily
     @Environment(LoraLibraryStore.self) private var libraryStore
+    @Environment(AppSettings.self) private var settings
     @State private var editing: LoraStack?
 
     private var stacks: [LoraStack] {
@@ -359,9 +360,17 @@ struct LoraStacksEditorView: View {
     }
 
     private func row(_ stack: LoraStack) -> some View {
-        HStack(spacing: 8) {
+        let missing = libraryStore.missingMembers(
+            of: stack, routedToComfyUI: settings.comfyBackendEnabled[family.id] == true
+        )
+        return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 3) {
                 HStack(spacing: 6) {
+                    if !missing.isEmpty {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .foregroundStyle(.orange)
+                            .help("Not on server: \(missing.map(\.displayName).joined(separator: ", "))")
+                    }
                     Text(stack.displayName)
                         .font(.callout)
                         .lineLimit(1)

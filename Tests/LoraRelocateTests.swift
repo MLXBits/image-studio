@@ -32,6 +32,24 @@ struct LoraRelocateTests {
         #expect(next.library.map(\.path) == ["/new/style.safetensors", "/new/style.safetensors"])
     }
 
+    /// Deleting a library LoRA drops it from every stack, unless a twin entry still catalogs the same file.
+    @Test func deletingAnEntryPrunesItFromStacks() {
+        let entry = LibraryLora(name: "Style", path: "/a/style.safetensors")
+        let other = LibraryLora(name: "Other", path: "/a/other.safetensors")
+        let stack = LoraStack(
+            name: "Combo",
+            loras: [LoraEntry(path: "/a/style.safetensors"), LoraEntry(path: "/a/other.safetensors")]
+        )
+
+        let next = LoraLibraryStore.deleting(entry.id, library: [entry, other], stacks: [stack])
+        #expect(next.library.map(\.path) == ["/a/other.safetensors"])
+        #expect(next.stacks[0].loras.map(\.path) == ["/a/other.safetensors"])
+
+        let twin = LibraryLora(name: "Style, softer", path: "/a/style.safetensors", defaultStrength: 0.5)
+        let kept = LoraLibraryStore.deleting(entry.id, library: [entry, twin], stacks: [stack])
+        #expect(kept.stacks[0].loras.count == 2)
+    }
+
     /// A default LoRA located again in Settings moves in this generation too,
     /// rather than the new file joining the lost one.
     @Test func aLocatedDefaultMovesInThisGeneration() {
