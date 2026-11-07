@@ -50,7 +50,7 @@ enum LoraBaseModelHeuristic {
     /// handles both flat basenames and `krea2/foo.safetensors`.
     static let signatures: [(family: ModelFamily, tokens: [String])] = [
         (.flux, ["flax", "flux1", "flux-2", "flux_2", "flux2", "flick", "a-pix"]),
-        (.ideogram4, ["ideogram", "ido"]),
+        (.ideogram4, ["ideogram"]),
         (.krea2, ["qwen-image", "krea2", "krea_2", "krea 2", "krea2-realism", "krea"]),
         (.zimage, ["zimage-turbo", "z-image", "z_image", "zi_turbo"]),
     ]
