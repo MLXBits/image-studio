@@ -881,14 +881,13 @@ struct GalleryCollectionView: NSViewRepresentable {
 
             menu.addItem(.separator())
             menu.addItem(menuItem("Strip Metadata") { [weak self] in self?.parent.onStripMetadata(item) })
-            if parent.multiSelectionIds.count == 1 {
-                let copyPathMenu = NSMenu(title: "Copy Path")
-                copyPathMenu.addItem(menuItem("Relative") { [weak self] in self?.parent.onCopyPath(item.path, true) })
-                copyPathMenu.addItem(menuItem("Absolute") { [weak self] in self?.parent.onCopyPath(item.path, false) })
-                let copyPathItem = NSMenuItem(title: "Copy Path", action: nil, keyEquivalent: "")
-                copyPathItem.submenu = copyPathMenu
-                menu.addItem(copyPathItem)
-            }
+            let pathTitle = copyCount > 1 ? "Copy \(copyCount) Paths" : "Copy Path"
+            let copyPathMenu = NSMenu(title: pathTitle)
+            copyPathMenu.addItem(menuItem("Relative") { [weak self] in self?.parent.onCopyPath(item, true) })
+            copyPathMenu.addItem(menuItem("Absolute") { [weak self] in self?.parent.onCopyPath(item, false) })
+            let copyPathItem = NSMenuItem(title: pathTitle, action: nil, keyEquivalent: "")
+            copyPathItem.submenu = copyPathMenu
+            menu.addItem(copyPathItem)
             menu.addItem(menuItem("Reveal in Finder") { [weak self] in
                 self?.parent.onRevealInFinder(item.path)
             })
@@ -910,7 +909,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onItemAppear: (GalleryItem) -> Void
     var onDeleteRequest: (GalleryItem) -> Void
     var onDeleteImmediate: (GalleryItem) -> Void
-    var onCopyPath: (String, Bool) -> Void
+    var onCopyPath: (GalleryItem, Bool) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void
     var onCopyItem: (GalleryItem) -> Void

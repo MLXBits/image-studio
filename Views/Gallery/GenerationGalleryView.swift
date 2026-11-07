@@ -175,8 +175,12 @@ struct GenerationGalleryView: View {
                         }
                         gallery.delete(item, outputDir: settings.outputDir)
                     },
-                    onCopyPath: { path, isRelative in
-                        PathCopy.copy(isRelative ? PathCopy.relative(path, to: settings.outputDir) : path)
+                    onCopyPath: { item, isRelative in
+                        // One path per line, the whole selection when the clicked item is in it.
+                        let items = selection.contains(item.id) ? selectionInGridOrder() : [item]
+                        PathCopy.copy(items.map {
+                            isRelative ? PathCopy.relative($0.path, to: settings.outputDir) : $0.path
+                        }.joined(separator: "\n"))
                     },
                     onDeleteMultiRequest: {
                         deleteTarget = nil

@@ -105,6 +105,8 @@ struct LoraManagerView: View {
                     onMoveUp: { move(from: index, to: index - 1) },
                     onMoveDown: { move(from: index, to: index + 1) },
                     isLost: FileAccessPath.isLocal(lora.path) && !settings.fileAccess.canReach(lora.path),
+                    isNotOnServer: settings.comfyBackendEnabled[modelFamily.id] == true
+                        && library?.isMissingFromServer(lora, family: modelFamily) == true,
                     onLocate: { locate(lora.id) },
                     onDelete: { remove(id: lora.id) }
                 )
@@ -287,11 +289,8 @@ private struct LoraPickerSheet: View {
     }
 
     private var stacks: [LoraStack] {
-        let all = library.stacks(for: family).filter { stack in
-            // When routed to ComfyUI, a stack is only usable if every member LoRA resolves to a server-cataloged entry;
-            // any local-disk path mixed in would be submitted unresolvable to the remote workflow.
-            !routedToComfyUI || stack.loras.allSatisfy { libraryEntryMatchesServer($0) }
-        }
+        // Unusable stacks stay listed (disabled, see `missingMembers`) so a stale member doesn't make the stack vanish silently.
+        let all = library.stacks(for: family)
         guard !search.isEmpty else { return all }
         let q = search.lowercased()
         return all.filter {
@@ -356,11 +355,8 @@ private struct LoraPickerSheet: View {
             .foregroundStyle(.secondary)
     }
 
-    /// True when a stack member's `path` matches an auto-cataloged (server) library entry for this family — i.e. the remote server actually
-    /// has that LoRA, so it can be submitted to a `LoraLoader` node by name.
-    private func libraryEntryMatchesServer(_ member: LoraEntry) -> Bool {
-        guard let lib = library.libraryEntry(path: member.path) else { return false }
-        return lib.isServerLoRA && lib.modelFamily == family
+    private func missingMembers(_ stack: LoraStack) -> [LoraEntry] {
+        library.missingMembers(of: stack, routedToComfyUI: routedToComfyUI)
     }
 
     private func libraryRow(_ entry: LibraryLora) -> some View {
@@ -389,7 +385,8 @@ private struct LoraPickerSheet: View {
     }
 
     private func stackRow(_ stack: LoraStack) -> some View {
-        HStack(spacing: 8) {
+        let missing = missingMembers(stack)
+        return HStack(spacing: 8) {
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
                     Text(stack.displayName).font(.callout).lineLimit(1)
@@ -403,11 +400,18 @@ private struct LoraPickerSheet: View {
                     Text(names).font(.caption2).foregroundStyle(.secondary)
                         .lineLimit(1).truncationMode(.middle)
                 }
+                if !missing.isEmpty {
+                    Text("Not on server: \(missing.map(\.displayName).joined(separator: ", "))")
+                        .font(.caption2).foregroundStyle(.orange)
+                        .lineLimit(2).truncationMode(.middle)
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("Apply") { onApplyStack(stack) }
                 .controlSize(.small)
                 .buttonStyle(.borderedProminent)
+                .disabled(!missing.isEmpty)
+                .help(missing.isEmpty ? "" : "Edit this stack in Settings › LoRAs › Stacks to replace the missing LoRAs")
         }
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))

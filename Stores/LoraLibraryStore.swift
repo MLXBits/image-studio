@@ -37,6 +37,27 @@ final class LoraLibraryStore {
         return (library, stacks)
     }
 
+    /// Checks every entry for the path, since a hand-edited entry can share it with the server's.
+    static func isMissingFromServer(_ member: LoraEntry, family: ModelFamily, library: [LibraryLora]) -> Bool {
+        !library.contains { $0.path == member.path && $0.isServerLoRA && $0.modelFamily == family }
+    }
+
+    /// `library` without entry `id`, and `stacks` without the members that used its path — unless another entry (a twin at a
+    /// different strength) still catalogs that file, in which case stacks keep it.
+    static func deleting(
+        _ id: UUID, library: [LibraryLora], stacks: [LoraStack]
+    ) -> (library: [LibraryLora], stacks: [LoraStack]) {
+        guard let path = library.first(where: { $0.id == id })?.path else { return (library, stacks) }
+        let library = library.filter { $0.id != id }
+        guard !library.contains(where: { $0.path == path }) else { return (library, stacks) }
+        let stacks = stacks.map { stack in
+            var stack = stack
+            stack.loras.removeAll { $0.path == path }
+            return stack
+        }
+        return (library, stacks)
+    }
+
     /// This generation's Flux LoRAs after the library's defaults change from
     /// `old` to `new`: a default located again (Locate…) moves to its new
     /// file, notes follow the library, and new defaults are added.
@@ -116,6 +137,18 @@ final class LoraLibraryStore {
             .sorted { $0.displayName.localizedCaseInsensitiveCompare($1.displayName) == .orderedAscending }
     }
 
+    /// True when `member` can't be submitted to a ComfyUI server for `family`: its path doesn't match an auto-cataloged server entry
+    /// of that family, so it's a local-disk path or a LoRA the user deleted from the library.
+    func isMissingFromServer(_ member: LoraEntry, family: ModelFamily) -> Bool {
+        Self.isMissingFromServer(member, family: family, library: library)
+    }
+
+    /// Members of `stack` that can't run under the current routing. Only ComfyUI routing has a catalog to check against.
+    func missingMembers(of stack: LoraStack, routedToComfyUI: Bool) -> [LoraEntry] {
+        guard routedToComfyUI else { return [] }
+        return stack.loras.filter { isMissingFromServer($0, family: stack.modelFamily) }
+    }
+
     /// The library entry matching `path` (identity key), if cataloged.
     func libraryEntry(path: String) -> LibraryLora? {
         library.first { $0.path == path }
@@ -184,7 +217,9 @@ final class LoraLibraryStore {
     }
 
     func deleteLibrary(id: UUID) {
-        library.removeAll { $0.id == id }
+        let next = Self.deleting(id, library: library, stacks: stacks)
+        library = next.library
+        stacks = next.stacks
     }
 
     func upsert(_ stack: LoraStack) {
