@@ -47,6 +47,7 @@ struct ContentView: View {
     @Environment(BackendModelStore.self) private var backendModels
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openURL) private var openURL
+    @Environment(\.openWindow) private var openWindow
 
     @State private var previewState: PreviewState = .idle
     @State private var selectedGalleryItem: GalleryItem?
@@ -653,6 +654,14 @@ struct ContentView: View {
                 Label("Notepad", systemImage: "note.text")
             }
             .help("Open the notepad for reusable prompt notes")
+        }
+
+        ToolbarItem(placement: .primaryAction) {
+            Button { openWindow(id: SupportView.windowID) } label: {
+                Label("Support", systemImage: "heart")
+                    .foregroundStyle(Color.accentColor)
+            }
+            .help("Support MLXBits Image Studio")
         }
 
         ToolbarItem(placement: .primaryAction) {
