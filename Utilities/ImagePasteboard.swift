@@ -22,6 +22,25 @@ enum ImagePasteboard {
         return pasteboard.writeObjects(items) ? items.count : 0
     }
 
+    /// The image on `pasteboard` as a path: an image file's own path (extension in
+    /// `extensions`), else raw image data saved to a temp PNG named with `tempPrefix`.
+    /// `nil` when it holds no image. Throws when the temp PNG can't be written, so
+    /// the caller can say so rather than keep a path to a missing file.
+    static func pastedImagePath(
+        tempPrefix: String, extensions: Set<String>, from pasteboard: NSPasteboard = .general
+    ) throws -> String? {
+        if let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+           let url = urls.first(where: { extensions.contains($0.pathExtension.lowercased()) }) {
+            return url.path
+        }
+        guard let tiff = NSImage(pasteboard: pasteboard)?.tiffRepresentation,
+              let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return nil }
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
+        try png.write(to: tmp)
+        return tmp.path
+    }
+
     private static func item(forPath path: String) -> NSPasteboardItem? {
         let url = URL(fileURLWithPath: path)
         guard let data = try? Data(contentsOf: url, options: .mappedIfSafe),

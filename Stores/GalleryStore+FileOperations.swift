@@ -76,11 +76,12 @@ extension GalleryStore {
         }
         do {
             try FileManager.default.removeItem(atPath: item.path)
+            // Only once the image is gone: a kept image must keep its settings.
+            try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+            ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         } catch {
             deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
         }
-        try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
-        ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         scan(outputDir: outputDir)
     }
 
@@ -116,9 +117,11 @@ extension GalleryStore {
         scan(outputDir: outputDir)
     }
 
-    func renameBoard(_ oldName: String, to newName: String, outputDir: String) {
+    /// Whether the folder was renamed; a failure sets ``moveError``.
+    @discardableResult
+    func renameBoard(_ oldName: String, to newName: String, outputDir: String) -> Bool {
         guard oldName != "Default", !newName.trimmingCharacters(in: .whitespaces).isEmpty,
-              newName != oldName else { return }
+              newName != oldName else { return false }
         let outputURL = URL(fileURLWithPath: outputDir)
         let oldDir = outputURL.appendingPathComponent(oldName)
         let newDir = outputURL.appendingPathComponent(newName)
@@ -127,12 +130,18 @@ extension GalleryStore {
         if let name = lockedName(under: oldDir) {
             lockError = "\"\(oldName)\" contains \(name), which is in use as an "
                 + "img2img source. Clear it from the drop area first."
-            return
+            return false
+        }
+        defer { scan(outputDir: outputDir) }
+        do {
+            try FileManager.default.moveItem(at: oldDir, to: newDir)
+        } catch {
+            moveError = "Could not rename \(oldName): \(error.localizedDescription)"
+            return false
         }
         // Every image under the board changes path, so its cache key changes too.
         ThumbnailCache.purge(paths: items.filter { $0.board == oldName }.map(\.path), in: thumbnailDirectory)
-        try? FileManager.default.moveItem(at: oldDir, to: newDir)
-        scan(outputDir: outputDir)
+        return true
     }
 
     func moveItems(_ items: [GalleryItem], toBoard board: String, outputDir: String) {
@@ -174,15 +183,17 @@ extension GalleryStore {
         let pickedIds = Set(picked.map(\.id))
         let deletable = unlocked.filter { !pickedIds.contains($0.id) }
         var failures: [String] = []
+        var deleted: [String] = []
         for item in deletable {
             do {
                 try FileManager.default.removeItem(atPath: item.path)
+                try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+                deleted.append(item.path)
             } catch {
                 failures.append(item.filename)
             }
-            try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
         }
-        ThumbnailCache.purge(paths: deletable.map(\.path), in: thumbnailDirectory)
+        ThumbnailCache.purge(paths: deleted, in: thumbnailDirectory)
         if !failures.isEmpty {
             deleteError = "Could not delete: \(failures.joined(separator: ", "))"
         }

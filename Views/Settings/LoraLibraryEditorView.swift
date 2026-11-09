@@ -54,6 +54,7 @@ struct LoraLibraryEditorView: View {
     @Environment(LoraLibraryStore.self) private var libraryStore
     @Environment(AppSettings.self) private var settings
     @State private var editing: LibraryLora?
+    @State private var deleting: LibraryLora?
 
     /// True when this family routes generation to a ComfyUI server; used only for the empty-state message so it can point at discovery
     /// rather than local file-adding.
@@ -111,6 +112,12 @@ struct LoraLibraryEditorView: View {
                 .environment(libraryStore)
                 .environment(settings)
         }
+        .confirmationDialog(
+            "Remove “\(deleting?.displayName ?? "")” from the library?",
+            isPresented: $deleting.isPresent(), titleVisibility: .visible, presenting: deleting
+        ) { entry in
+            Button("Remove", role: .destructive) { libraryStore.deleteLibrary(id: entry.id) }
+        } message: { _ in Text("Saved stacks drop it, unless another library entry uses the same file. The file on disk is not deleted.") }
     }
 
     private func row(_ entry: LibraryLora) -> some View {
@@ -166,7 +173,7 @@ struct LoraLibraryEditorView: View {
             Button("Edit") { editing = entry }
                 .controlSize(.small)
             Button {
-                libraryStore.deleteLibrary(id: entry.id)
+                deleting = entry
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }
@@ -308,6 +315,7 @@ struct LoraStacksEditorView: View {
     @Environment(LoraLibraryStore.self) private var libraryStore
     @Environment(AppSettings.self) private var settings
     @State private var editing: LoraStack?
+    @State private var deleting: LoraStack?
 
     private var stacks: [LoraStack] {
         libraryStore.stacks(for: family)
@@ -357,6 +365,12 @@ struct LoraStacksEditorView: View {
             LoraStackEditSheet(draft: stack, family: family)
                 .environment(libraryStore)
         }
+        .confirmationDialog(
+            "Delete the stack “\(deleting?.displayName ?? "")”?",
+            isPresented: $deleting.isPresent(), titleVisibility: .visible, presenting: deleting
+        ) { stack in
+            Button("Delete", role: .destructive) { libraryStore.deleteStack(id: stack.id) }
+        } message: { _ in Text("Its LoRAs stay in the library.") }
     }
 
     private func row(_ stack: LoraStack) -> some View {
@@ -395,7 +409,7 @@ struct LoraStacksEditorView: View {
             Button("Edit") { editing = stack }
                 .controlSize(.small)
             Button {
-                libraryStore.deleteStack(id: stack.id)
+                deleting = stack
             } label: {
                 Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
             }

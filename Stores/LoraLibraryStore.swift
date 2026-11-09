@@ -102,10 +102,7 @@ final class LoraLibraryStore {
     @ObservationIgnored private let saveDebouncer = Debouncer()
 
     init() {
-        let stored: Stored = {
-            guard let data = try? Data(contentsOf: Self.fileURL) else { return Stored() }
-            return (try? JSONDecoder().decode(Stored.self, from: data)) ?? Stored()
-        }()
+        let stored = StoredJSON.load(Stored.self, from: Self.fileURL) ?? Stored()
         library = stored.library ?? []
         stacks = stored.stacks ?? []
     }

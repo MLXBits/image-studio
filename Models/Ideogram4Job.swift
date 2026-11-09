@@ -121,7 +121,7 @@ extension Ideogram4Job: Codable {
             id: c.decode(UUID.self, forKey: .id),
             customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
             preset: (try? c.decode(Ideogram4Preset.self, forKey: .preset)) ?? .normal,
-            caption: (try? c.decode(IdeogramCaption.self, forKey: .caption)) ?? .empty(),
+            caption: (try? c.decode(LenientIdeogramCaption.self, forKey: .caption))?.caption ?? .empty(),
             usePlainPrompt: (try? c.decode(Bool.self, forKey: .usePlainPrompt)) ?? false,
             plainPrompt: (try? c.decode(String.self, forKey: .plainPrompt)) ?? "",
             width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,

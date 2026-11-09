@@ -18,6 +18,7 @@ struct IdeogramCaptionEditorView: View {
     @State private var showGemmaLog: Bool = false
     @State private var jsonPasteError: String?
     @State private var autosaveTask: Task<Void, Never>?
+    @State private var confirmingReset = false
 
     @AppStorage("ideogram.caption.styleExpanded") private var styleExpanded = true
     @AppStorage("ideogram.caption.bboxElementsExpanded") private var elementsExpanded = true
@@ -54,11 +55,16 @@ struct IdeogramCaptionEditorView: View {
                 .help("Copies the Ideogram4-compliant JSON to the clipboard or pastes it in. "
                     + "Pasted JSON is validated before replacing the form values.")
 
-                Button("Reset") { resetCaption() }
+                Button("Reset") { confirmingReset = true }
                     .buttonStyle(.plain)
                     .controlSize(.small)
                     .foregroundStyle(.red)
                     .help("Resets the entire form below, use to start over from scratch")
+                    .confirmationDialog("Reset the caption?", isPresented: $confirmingReset, titleVisibility: .visible) {
+                        Button("Reset", role: .destructive) { resetCaption() }
+                    } message: {
+                        Text("Clears the description, style, background, boxes, and plain prompt.")
+                    }
             }
             .padding(.bottom, 8)
             .alert("Couldn't paste JSON", isPresented: Binding(

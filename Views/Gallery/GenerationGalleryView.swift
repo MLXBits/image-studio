@@ -298,12 +298,11 @@ struct GenerationGalleryView: View {
             TextField("Folder name", text: $renameNameDraft)
             Button("Rename") {
                 let trimmed = renameNameDraft.trimmingCharacters(in: .whitespaces)
-                if let old = renamingBoard, !trimmed.isEmpty, trimmed != old {
-                    if collapsedBoards.contains(old) {
-                        collapsedBoards.remove(old)
-                        collapsedBoards.insert(trimmed)
-                    }
-                    gallery.renameBoard(old, to: trimmed, outputDir: settings.outputDir)
+                if let old = renamingBoard,
+                   gallery.renameBoard(old, to: trimmed, outputDir: settings.outputDir),
+                   collapsedBoards.contains(old) {
+                    collapsedBoards.remove(old)
+                    collapsedBoards.insert(trimmed)
                 }
                 renamingBoard = nil
             }

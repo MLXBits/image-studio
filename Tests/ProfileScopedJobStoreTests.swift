@@ -78,6 +78,21 @@ struct ProfileScopedJobStoreTests {
         }
     }
 
+    /// A history that doesn't decode is kept beside the empty queue, not overwritten by the next save.
+    @Test func corruptHistoryIsMovedAside() throws {
+        let dir = tempDir()
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        try Data("not json".utf8).write(to: dir.appendingPathComponent("seedvr2-jobs.json"))
+
+        let store = SeedVR2JobStore()
+        store.activate(profileDirectory: dir)
+
+        #expect(store.jobs.isEmpty)
+        let names = try FileManager.default.contentsOfDirectory(atPath: dir.path)
+        let aside = try #require(names.first { $0.hasPrefix("seedvr2-jobs.corrupt-") })
+        #expect(try String(contentsOf: dir.appendingPathComponent(aside), encoding: .utf8) == "not json")
+    }
+
     @Test func queuedOrRunningWorkBlocksASwitch() {
         let store = SeedVR2JobStore()
         store.activate(profileDirectory: tempDir())
