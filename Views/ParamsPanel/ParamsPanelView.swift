@@ -31,6 +31,7 @@ struct ParamsPanelView: View {
     @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var isImageDropTargeted: Bool = false
+    @State private var pasteError: String?
     @State private var isEditDropTargeted: Bool = false
     @State private var showingTemplatePicker: Bool = false
     @StateObject private var clipboardMonitor =
@@ -77,6 +78,7 @@ struct ParamsPanelView: View {
         .contentMargins(.trailing, 5, for: .scrollContent)
         .onAppear { clipboardMonitor.start() }
         .onDisappear { clipboardMonitor.stop() }
+        .errorAlert("Could not paste image", message: $pasteError)
     }
 
     // MARK: - Flux content
@@ -662,24 +664,14 @@ struct ParamsPanelView: View {
         }
     }
 
-    /// Resolves an image path from the general pasteboard, preferring an on-disk file
-    /// URL and otherwise saving raw image data to a temp PNG named with `tempPrefix`.
+    /// The pasted image's path, or `nil` (with ``pasteError`` set when saving it failed).
     private func imagePathFromPasteboard(tempPrefix: String) -> String? {
-        let pb = NSPasteboard.general
-        // Prefer a file URL so we keep the original file on disk
-        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
-            return url.path
+        do {
+            return try ImagePasteboard.pastedImagePath(tempPrefix: tempPrefix, extensions: Self.imageExtensions)
+        } catch {
+            pasteError = "The pasted image could not be saved: \(error.localizedDescription)"
+            return nil
         }
-        // Fall back to raw image data — save to a temp PNG
-        guard let image = NSImage(pasteboard: pb) else { return nil }
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]),
-              (try? png.write(to: tmp)) != nil else { return nil }
-        return tmp.path
     }
 
     private func pasteImage() {

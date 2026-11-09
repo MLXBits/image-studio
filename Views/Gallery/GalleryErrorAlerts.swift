@@ -17,7 +17,7 @@ struct GalleryErrorAlerts: ViewModifier {
     }
 }
 
-private extension View {
+extension View {
     /// An OK-only alert shown while `message` is non-nil; dismissing it clears `message`.
     func errorAlert(_ title: String, message: Binding<String?>) -> some View {
         alert(title, isPresented: Binding(

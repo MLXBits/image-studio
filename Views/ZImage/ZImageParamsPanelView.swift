@@ -17,6 +17,7 @@ struct ZImageParamsPanelView: View {
     @Environment(LoraLibraryStore.self) private var loraLibrary
 
     @State private var isImageDropTargeted: Bool = false
+    @State private var pasteError: String?
     @StateObject private var clipboardMonitor =
         ClipboardImageMonitor(imageExtensions: ["png", "jpg", "jpeg", "webp"])
 
@@ -80,6 +81,7 @@ struct ZImageParamsPanelView: View {
         }
         .onAppear { clipboardMonitor.start() }
         .onDisappear { clipboardMonitor.stop() }
+        .errorAlert("Could not paste image", message: $pasteError)
 
         Divider()
 
@@ -316,22 +318,13 @@ struct ZImageParamsPanelView: View {
     // MARK: - Img2img helpers
 
     private func pasteImage() {
-        let pb = NSPasteboard.general
-        // Prefer a file URL so we keep the original file on disk.
-        if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           let url = urls.first(where: { Self.imageExtensions.contains($0.pathExtension.lowercased()) }) {
-            params.imagePath = settings.adoptSourceImage(url.path)
-            return
+        do {
+            if let path = try ImagePasteboard.pastedImagePath(tempPrefix: "pasted-zimage", extensions: Self.imageExtensions) {
+                params.imagePath = settings.adoptSourceImage(path)
+            }
+        } catch {
+            pasteError = "The pasted image could not be saved: \(error.localizedDescription)"
         }
-        // Fall back to raw image data — save to a temp PNG.
-        guard let image = NSImage(pasteboard: pb) else { return }
-        let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("pasted-zimage-\(Int(Date().timeIntervalSince1970)).png")
-        guard let tiff = image.tiffRepresentation,
-              let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]),
-              (try? png.write(to: tmp)) != nil else { return }
-        params.imagePath = settings.adoptSourceImage(tmp.path)
     }
 
     private func browseImage() {
