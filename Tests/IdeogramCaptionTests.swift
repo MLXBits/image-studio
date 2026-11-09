@@ -76,4 +76,24 @@ struct IdeogramCaptionTests {
     @Test func fromJSONRejectsGarbage() {
         #expect(IdeogramCaption.from(jsonString: "not json") == nil)
     }
+
+    // MARK: - Lenient
+
+    /// A stored caption with one bad element and a wrongly typed style keeps everything else.
+    @Test func lenientDecodeDropsOnlyTheBadParts() throws {
+        let json = """
+        {"high_level_description": "a fox", "style_description": 7,
+         "compositional_deconstruction": {"background": "forest", "elements": [
+           {"type": "obj", "bbox": [10, 20, 300, 400], "desc": "a fox"},
+           {"type": "nope", "desc": "bad"},
+           {"type": "text", "text": "Hi", "desc": "sign"}
+         ]}}
+        """
+        #expect(IdeogramCaption.from(jsonString: json) == nil)
+        let caption = try JSONDecoder().decode(LenientIdeogramCaption.self, from: Data(json.utf8)).caption
+        #expect(caption.highLevelDescription == "a fox")
+        #expect(caption.styleDescription == nil)
+        #expect(caption.compositionalDeconstruction.background == "forest")
+        #expect(caption.compositionalDeconstruction.elements.map(\.desc) == ["a fox", "sign"])
+    }
 }

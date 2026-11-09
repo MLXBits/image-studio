@@ -326,8 +326,8 @@ struct Krea2ParamsPanelView: View {
             .appendingPathComponent("pasted-krea2-\(Int(Date().timeIntervalSince1970)).png")
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return }
-        try? png.write(to: tmp)
+              let png = rep.representation(using: .png, properties: [:]),
+              (try? png.write(to: tmp)) != nil else { return }
         params.imagePath = settings.adoptSourceImage(tmp.path)
     }
 

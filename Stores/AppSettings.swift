@@ -170,8 +170,7 @@ class AppSettings {
     private static let settingsURL: URL = appSupportURL.appendingPathComponent("settings.json")
 
     private static func loadStored() -> Stored {
-        guard let data = try? Data(contentsOf: settingsURL) else { return Stored() }
-        return (try? JSONDecoder().decode(Stored.self, from: data)) ?? Stored()
+        StoredJSON.load(Stored.self, from: settingsURL) ?? Stored()
     }
 
     /// The Custom Python to start with: the saved one or, on the first launch of

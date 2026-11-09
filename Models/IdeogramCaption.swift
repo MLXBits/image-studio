@@ -169,6 +169,50 @@ struct IdeogramCaptionComposition: Codable {
     var elements: [IdeogramCaptionElement]
 }
 
+// MARK: - Lenient decode (stored captions)
+
+/// A stored caption decoded field by field, so one bad key or element drops only
+/// itself. For saved jobs and drafts only: paste and generator output keep the
+/// strict decode, which is what rejects malformed JSON there.
+struct LenientIdeogramCaption: Decodable {
+    private enum Keys: String, CodingKey {
+        case highLevelDescription = "high_level_description"
+        case styleDescription = "style_description"
+        case compositionalDeconstruction = "compositional_deconstruction"
+        case background, elements
+    }
+
+    /// Consumes one array entry of any shape, to step past an element that won't decode.
+    private struct Skip: Decodable {
+        init(from _: Decoder) {}
+    }
+
+    let caption: IdeogramCaption
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: Keys.self)
+        let comp = try? c.nestedContainer(keyedBy: Keys.self, forKey: .compositionalDeconstruction)
+        var elements: [IdeogramCaptionElement] = []
+        if var list = try? comp?.nestedUnkeyedContainer(forKey: .elements) {
+            while !list.isAtEnd {
+                if let element = try? list.decode(IdeogramCaptionElement.self) {
+                    elements.append(element)
+                } else if (try? list.decode(Skip.self)) == nil {
+                    break
+                }
+            }
+        }
+        caption = IdeogramCaption(
+            highLevelDescription: (try? c.decode(String.self, forKey: .highLevelDescription)) ?? "",
+            styleDescription: try? c.decode(IdeogramCaptionStyle.self, forKey: .styleDescription),
+            compositionalDeconstruction: IdeogramCaptionComposition(
+                background: (try? comp?.decode(String.self, forKey: .background)) ?? "",
+                elements: elements
+            )
+        )
+    }
+}
+
 // MARK: - Equatable (drives SwiftUI onChange autosave)
 
 extension IdeogramCaptionElement: Equatable {}

@@ -28,16 +28,7 @@ struct QueueDrawerView: View {
                 .font(.headline)
             Spacer()
             if store.jobs.contains(where: \.status.isTerminal) {
-                Button {
-                    store.purgeTerminal()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                }
-                .buttonStyle(.iconButton)
-                .foregroundStyle(.secondary)
-                .focusable(false)
-                .help("Remove all completed, failed, and cancelled jobs")
+                PurgeFinishedButton { store.purgeTerminal() }
             }
             if store.isRunning {
                 Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
@@ -153,16 +144,7 @@ struct Ideogram4QueueDrawerView: View {
                 .font(.headline)
             Spacer()
             if store.jobs.contains(where: \.status.isTerminal) {
-                Button {
-                    store.purgeTerminal()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                }
-                .buttonStyle(.iconButton)
-                .foregroundStyle(.secondary)
-                .focusable(false)
-                .help("Remove all completed, failed, and cancelled jobs")
+                PurgeFinishedButton { store.purgeTerminal() }
             }
             if store.isRunning {
                 Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
@@ -376,16 +358,7 @@ struct Krea2QueueDrawerView: View {
                 .font(.headline)
             Spacer()
             if store.jobs.contains(where: \.status.isTerminal) {
-                Button {
-                    store.purgeTerminal()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                }
-                .buttonStyle(.iconButton)
-                .foregroundStyle(.secondary)
-                .focusable(false)
-                .help("Remove all completed, failed, and cancelled jobs")
+                PurgeFinishedButton { store.purgeTerminal() }
             }
             if store.isRunning {
                 Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
@@ -543,16 +516,7 @@ struct ZImageQueueDrawerView: View {
                 .font(.headline)
             Spacer()
             if store.jobs.contains(where: \.status.isTerminal) {
-                Button {
-                    store.purgeTerminal()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                }
-                .buttonStyle(.iconButton)
-                .foregroundStyle(.secondary)
-                .focusable(false)
-                .help("Remove all completed, failed, and cancelled jobs")
+                PurgeFinishedButton { store.purgeTerminal() }
             }
             if store.isRunning {
                 Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
@@ -715,16 +679,7 @@ struct SeedVR2QueueDrawerView: View {
                 .font(.headline)
             Spacer()
             if store.jobs.contains(where: \.status.isTerminal) {
-                Button {
-                    store.purgeTerminal()
-                } label: {
-                    Image(systemName: "trash")
-                        .font(.caption)
-                }
-                .buttonStyle(.iconButton)
-                .foregroundStyle(.secondary)
-                .focusable(false)
-                .help("Remove all completed, failed, and cancelled jobs")
+                PurgeFinishedButton { store.purgeTerminal() }
             }
             if store.isRunning {
                 Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
@@ -863,6 +818,30 @@ private struct SeedVR2QueueJobRow: View {
 // MARK: - JobStatusIcon
 
 /// Shared status glyph for Flux, Ideogram, Krea 2, and SeedVR2 queue rows.
+/// Clears finished jobs from a queue drawer, after a confirmation: their logs go with them.
+private struct PurgeFinishedButton: View {
+    let purge: () -> Void
+    @State private var confirming = false
+
+    var body: some View {
+        Button {
+            confirming = true
+        } label: {
+            Image(systemName: "trash")
+                .font(.caption)
+        }
+        .buttonStyle(.iconButton)
+        .foregroundStyle(.secondary)
+        .focusable(false)
+        .help("Remove all completed, failed, and cancelled jobs")
+        .confirmationDialog("Remove finished jobs?", isPresented: $confirming, titleVisibility: .visible) {
+            Button("Remove", role: .destructive, action: purge)
+        } message: {
+            Text("Completed, failed, and cancelled jobs leave the queue. Saved images stay in the gallery.")
+        }
+    }
+}
+
 private struct JobStatusIcon: View {
     let status: JobStatus
 

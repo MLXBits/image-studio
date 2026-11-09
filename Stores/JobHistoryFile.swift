@@ -46,12 +46,13 @@ final class JobHistoryFile {
         }
     }
 
-    /// `nil` when there is no directory, no file yet, or it doesn't decode.
+    /// `nil` when there is no directory, no file yet, or it doesn't decode (then
+    /// the file is moved aside, see ``StoredJSON/load(_:from:decoder:)``).
     func read<T: Decodable>(_: T.Type) -> T? {
-        guard let url, let data = try? Data(contentsOf: url) else { return nil }
+        guard let url else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(T.self, from: data)
+        return StoredJSON.load(T.self, from: url, decoder: decoder)
     }
 }
 
@@ -88,7 +89,8 @@ extension ProfileScopedJobStore {
     func save() {
         history.schedule { [weak self] in
             guard let self else { return }
-            history.write(Array(jobs.prefix(JobHistoryFile.maxJobs)))
+            // Not capped here: pruneIfNeeded bounds finished jobs, and pending ones must all survive.
+            history.write(jobs)
         }
     }
 

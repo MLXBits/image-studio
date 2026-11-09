@@ -17,4 +17,17 @@ extension Binding {
             }
         )
     }
+
+    /// `true` while the optional holds a value; setting `false` clears it. For the
+    /// `isPresented:` of a dialog that presents that value.
+    func isPresent<Wrapped>() -> Binding<Bool> where Value == Wrapped? {
+        Binding<Bool>(
+            get: { wrappedValue != nil },
+            set: { isPresented in
+                if !isPresented {
+                    wrappedValue = nil
+                }
+            }
+        )
+    }
 }

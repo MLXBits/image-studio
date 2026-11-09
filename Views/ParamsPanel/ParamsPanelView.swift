@@ -677,8 +677,8 @@ struct ParamsPanelView: View {
             .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
         guard let tiff = image.tiffRepresentation,
               let rep = NSBitmapImageRep(data: tiff),
-              let png = rep.representation(using: .png, properties: [:]) else { return nil }
-        try? png.write(to: tmp)
+              let png = rep.representation(using: .png, properties: [:]),
+              (try? png.write(to: tmp)) != nil else { return nil }
         return tmp.path
     }
 

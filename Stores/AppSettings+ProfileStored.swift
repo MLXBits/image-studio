@@ -13,15 +13,7 @@ extension AppSettings {
         /// `profile.corrupt-….json`, so neither the next save nor a later
         /// corruption can replace it.
         static func load(from url: URL?) -> Self {
-            guard let url, let data = try? Data(contentsOf: url) else { return Self() }
-            if let stored = try? JSONDecoder().decode(Self.self, from: data) {
-                return stored
-            }
-            let stamp = Int(Date().timeIntervalSince1970)
-            let aside = url.deletingLastPathComponent()
-                .appendingPathComponent("profile.corrupt-\(stamp)-\(UUID().uuidString.prefix(8)).json")
-            try? FileManager.default.moveItem(at: url, to: aside)
-            return Self()
+            url.flatMap { StoredJSON.load(Self.self, from: $0) } ?? Self()
         }
 
         var defaultBoard: String?
@@ -80,7 +72,7 @@ extension AppSettings {
             activeTemplateID = try? c.decode(UUID.self, forKey: .activeTemplateID)
             lastPrompt = try? c.decode(String.self, forKey: .lastPrompt)
             lastLoras = try? c.decode([LoraEntry].self, forKey: .lastLoras)
-            lastIdeogramCaption = try? c.decode(IdeogramCaption.self, forKey: .lastIdeogramCaption)
+            lastIdeogramCaption = (try? c.decode(LenientIdeogramCaption.self, forKey: .lastIdeogramCaption))?.caption
             lastIdeogramPlainPrompt = try? c.decode(String.self, forKey: .lastIdeogramPlainPrompt)
             lastIdeogramUsePlainPrompt = try? c.decode(Bool.self, forKey: .lastIdeogramUsePlainPrompt)
             lastIdeogramSeed = try? c.decode(Int.self, forKey: .lastIdeogramSeed)
