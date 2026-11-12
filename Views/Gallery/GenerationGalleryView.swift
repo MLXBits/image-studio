@@ -72,10 +72,6 @@ struct GenerationGalleryView: View {
         gallery.rejectedCount(modelFamily: modelFilter)
     }
 
-    private var orderedBoards: [String] {
-        GallerySearch.orderedBoards(for: modelItems, boards: gallery.boards)
-    }
-
     private var gallerySections: [GallerySection] {
         GallerySearch.sections(modelItems, boards: gallery.boards, collapsed: collapsedBoards)
     }
@@ -718,14 +714,6 @@ struct GenerationGalleryView: View {
         minRating = 0
     }
 
-    /// Board order for an already-filtered item set, so callers that have one in hand
-    /// don't trigger another full `modelItems` pass.
-    private func orderedBoards(for items: [GalleryItem]) -> [String] {
-        let hasDefault = items.contains { $0.board == "Default" }
-        let others = gallery.boards.filter { $0 != "Default" }.sorted()
-        return (hasDefault ? ["Default"] : []) + others
-    }
-
     // MARK: - Culling (keyboard-driven pick/reject + ratings)
 
     /// The images a cull key acts on: the whole selection when several are selected
@@ -800,7 +788,7 @@ struct GenerationGalleryView: View {
     /// Covers selected images in collapsed boards and ones the filters now hide.
     private func selectionInGridOrder() -> [GalleryItem] {
         let byBoard = Dictionary(grouping: gallery.items.filter { selection.contains($0.id) }, by: \.board)
-        let boards = orderedBoards(for: gallery.items)
+        let boards = GallerySearch.orderedBoards(for: gallery.items, boards: gallery.boards)
         let unlisted = byBoard.keys.filter { !boards.contains($0) }.sorted()
         return (boards + unlisted).flatMap { byBoard[$0] ?? [] }
     }

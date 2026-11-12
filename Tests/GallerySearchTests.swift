@@ -15,7 +15,11 @@ final class GallerySearchTests {
             id: UUID(), path: path, board: board, modifiedAt: Self.t0,
             thumbnailData: nil, thumbnailImage: nil, metadata: metadata,
             ideogram4Metadata: nil, krea2Metadata: nil, zimageMetadata: nil,
-            seedVR2Metadata: nil, flag: flag, rating: rating
+            seedVR2Metadata: nil, flag: flag, rating: rating,
+            searchHaystack: GallerySearch.haystack(
+                filename: (path as NSString).lastPathComponent,
+                flux: metadata, ideogram4: nil, krea2: nil, zimage: nil
+            )
         )
     }
 
@@ -29,7 +33,12 @@ final class GallerySearchTests {
             thumbnailData: nil, thumbnailImage: nil, metadata: nil,
             ideogram4Metadata: ideogram4Metadata, krea2Metadata: krea2Metadata,
             zimageMetadata: zimageMetadata, seedVR2Metadata: seedVR2Metadata,
-            flag: flag, rating: rating
+            flag: flag, rating: rating,
+            searchHaystack: GallerySearch.haystack(
+                filename: (path as NSString).lastPathComponent,
+                flux: nil, ideogram4: ideogram4Metadata,
+                krea2: krea2Metadata, zimage: zimageMetadata
+            )
         )
     }
 
@@ -227,6 +236,22 @@ final class GallerySearchTests {
 
         let bySeed = GallerySearch.filter(items, family: .flux, query: "42", flag: .all, minRating: 0)
         #expect(bySeed.map(\.path) == ["/out/bar.png"])
+    }
+
+    @Test func theFilterReadsTheStoredHaystackInsteadOfRebuildingFromMetadata() {
+        // Metadata that would produce "alpha …" in a freshly built haystack, but
+        // a deliberately different stored haystack: the filter must trust the
+        // stored field, never rebuild from metadata.
+        let item = GalleryItem(
+            id: UUID(), path: "/out/alpha.png", board: "Default", modifiedAt: Self.t0,
+            thumbnailData: nil, thumbnailImage: nil,
+            metadata: fluxMetadata(prompt: "an alpha prompt"),
+            ideogram4Metadata: nil, krea2Metadata: nil, zimageMetadata: nil,
+            seedVR2Metadata: nil, flag: nil, rating: 0,
+            searchHaystack: "beta something"
+        )
+        #expect(GallerySearch.filter([item], family: .flux, query: "alpha", flag: .all, minRating: 0).isEmpty)
+        #expect(GallerySearch.filter([item], family: .flux, query: "beta", flag: .all, minRating: 0).count == 1)
     }
 
     // MARK: - sections(_:boards:collapsed:)

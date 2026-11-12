@@ -183,7 +183,7 @@ final class FileAccessTests {
         now += 2 // TTL lapses
         #expect(!access.canReach(lora.path)) // fresh probe: gone
         try Data("weights".utf8).write(to: lora)
-        #expect(!access.canReach(lora.path)) // cached false, still within TTL
+        #expect(access.canReach(lora.path)) // negatives are never cached — a restored file is reachable immediately
         access.remember(lora) // Locate… re-chose the file
         #expect(access.canReach(lora.path)) // remember dropped the stale probe
     }

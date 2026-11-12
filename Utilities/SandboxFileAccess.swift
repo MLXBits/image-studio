@@ -37,14 +37,18 @@ final class SandboxFileAccess: FileAccess {
     /// The clock the probe TTL is measured against; injected for tests.
     private let now: () -> Date
     private var started: [String: Started] = [:]
-    /// The fileExists result behind canReach, per normalized path. The probes
-    /// feed UI affordances ("is lost" badges, lock labels) on the main thread —
-    /// LoraManagerView probes one LoRA per row, per body pass — so a probe is
-    /// trusted for probeTTL: 2 s staleness is imperceptible for badges, and it
-    /// bounds main-thread stat work to one per path per 2 s. The job path
-    /// (start) always stats fresh. No pruning of the table: the distinct local
-    /// paths the UI asks about are session-bounded (LoRA rows, a handful of
-    /// path fields), so an unbounded table is fine.
+    /// The fileExists result behind canReach, per normalized path — positive
+    /// results only. The probes feed UI affordances ("is lost" badges, lock
+    /// labels) on the main thread — LoraManagerView probes one LoRA per row,
+    /// per body pass — so a positive probe is trusted for probeTTL: 2 s
+    /// staleness is imperceptible for badges, and it bounds main-thread stat
+    /// work to one per path per 2 s. Negative results are always fresh: a
+    /// stale "unreachable" is the dangerous direction, because
+    /// `libraryStatus` gates jobs on canReach, and re-statting a rare missing
+    /// path is cheap. The job path (start) always stats fresh. No pruning of
+    /// the table: the distinct local paths the UI asks about are
+    /// session-bounded (LoRA rows, a handful of path fields), so an unbounded
+    /// table is fine.
     private var existsProbes: [String: ExistsProbe] = [:]
     /// Grants that failed to start: their bookmark no longer resolves to the
     /// path it was made for. They stop counting as access until chosen again.
@@ -122,15 +126,20 @@ final class SandboxFileAccess: FileAccess {
         return (try? SourceImageImport.adopt(path, library: library, inputs: inputs)) ?? path
     }
 
-    /// canReach's fileExists probe: the only stat canReach relies on, cached
-    /// behind probeTTL. Grant/unusable/isReadable stay live, so a grant that
-    /// stops resolving flips canReach immediately.
+    /// canReach's fileExists probe: the only stat canReach relies on. Positive
+    /// results are trusted for probeTTL (see `existsProbes`); negatives are
+    /// never cached — a stale "unreachable" could falsely report an
+    /// unreachable library and block jobs. Grant/unusable/isReadable stay
+    /// live, so a grant that stops resolving flips canReach immediately.
     private func exists(_ path: String) -> Bool {
-        if let probe = existsProbes[path], now().timeIntervalSince(probe.at) < Self.probeTTL {
-            return probe.result
+        if let probe = existsProbes[path], probe.result,
+           now().timeIntervalSince(probe.at) < Self.probeTTL {
+            return true
         }
         let result = FileManager.default.fileExists(atPath: path)
-        existsProbes[path] = ExistsProbe(result: result, at: now())
+        if result {
+            existsProbes[path] = ExistsProbe(result: true, at: now())
+        }
         return result
     }
 

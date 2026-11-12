@@ -22,6 +22,9 @@ struct GalleryItem: Identifiable, Equatable {
     var flag: PickFlag?
     /// 0–5 star rating, persisted as an xattr on the file.
     var rating: Int = 0
+    /// The lowercased search haystack, built once when the item is constructed
+    /// (the scan funnel) so an active search does zero per-item string building.
+    let searchHaystack: String
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -321,7 +324,14 @@ nonisolated private func scanDirectory(
             zimageMetadata: zimageMeta,
             seedVR2Metadata: seedVR2Meta,
             flag: GalleryCulling.readFlag(path: url.path),
-            rating: GalleryCulling.readRating(path: url.path)
+            rating: GalleryCulling.readRating(path: url.path),
+            searchHaystack: GallerySearch.haystack(
+                filename: (url.path as NSString).lastPathComponent,
+                flux: fluxMeta,
+                ideogram4: ideogramMeta,
+                krea2: krea2Meta,
+                zimage: zimageMeta
+            )
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }

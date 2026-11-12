@@ -3,33 +3,51 @@ import Foundation
 /// Pure search and grouping logic for the generation gallery, extracted from
 /// `GenerationGalleryView` so it can be unit-tested off the view.
 nonisolated enum GallerySearch {
-    /// Lower-cased blob of the sidecar fields the search box matches against:
-    /// prompt text, seed, model, and LoRA names.
-    static func haystack(for item: GalleryItem) -> String {
-        var parts: [String] = [item.filename]
-        if let meta = item.metadata {
+    /// The parts a haystack is built from, given by family. Kept separate from
+    /// the item so a scan can build the blob once at construction time.
+    static func haystack(
+        filename: String,
+        flux: GenerationMetadata?,
+        ideogram4: Ideogram4Metadata?,
+        krea2: Krea2Metadata?,
+        zimage: ZImageMetadata?
+    ) -> String {
+        var parts: [String] = [filename]
+        if let meta = flux {
             parts.append(meta.prompt)
             parts.append(meta.negativePrompt)
             parts.append(String(meta.seed))
             parts.append("\(meta.model)")
             parts.append(contentsOf: meta.loras.map(\.displayName))
         }
-        if let meta = item.ideogram4Metadata {
+        if let meta = ideogram4 {
             parts.append(meta.plainPrompt)
             parts.append(String(meta.seed))
             parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
         }
-        if let meta = item.krea2Metadata {
+        if let meta = krea2 {
             parts.append(meta.prompt)
             parts.append(String(meta.seed))
             parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
         }
-        if let meta = item.zimageMetadata {
+        if let meta = zimage {
             parts.append(meta.prompt)
             parts.append(String(meta.seed))
             parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
         }
         return parts.joined(separator: " ").lowercased()
+    }
+
+    /// Lower-cased blob of the sidecar fields the search box matches against:
+    /// prompt text, seed, model, and LoRA names.
+    static func haystack(for item: GalleryItem) -> String {
+        haystack(
+            filename: item.filename,
+            flux: item.metadata,
+            ideogram4: item.ideogram4Metadata,
+            krea2: item.krea2Metadata,
+            zimage: item.zimageMetadata
+        )
     }
 
     /// Store items limited to the selected model family — the source of truth
@@ -67,7 +85,7 @@ nonisolated enum GallerySearch {
             if item.rating < minRating {
                 return false
             }
-            if !query.isEmpty, !Self.haystack(for: item).contains(query) {
+            if !query.isEmpty, !item.searchHaystack.contains(query) {
                 return false
             }
             return true
