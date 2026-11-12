@@ -12,7 +12,7 @@ struct LoraEntry: Identifiable, Codable, Equatable, Hashable {
     var notes: String = ""
     var modelFamily: ModelFamily = .flux
 
-    var displayName: String {
+    nonisolated var displayName: String {
         if path.hasPrefix("/") {
             return URL(fileURLWithPath: path).lastPathComponent
         }

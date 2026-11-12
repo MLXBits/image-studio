@@ -49,29 +49,10 @@ struct GenerationGalleryView: View {
     /// adjacency, range selection). Mutating operations still address the full
     /// store by id, so they are unaffected by this filter.
     private var modelItems: [GalleryItem] {
-        let query = searchText.trimmingCharacters(in: .whitespaces).lowercased()
-        return gallery.items.filter { item in
-            guard item.modelFamily == modelFilter else { return false }
-            switch flagFilter {
-            case .all: break
-            case .picks: if item.flag != .pick {
-                    return false
-                }
-            case .rejects: if item.flag != .reject {
-                    return false
-                }
-            case .unflagged: if item.flag != nil {
-                    return false
-                }
-            }
-            if item.rating < minRating {
-                return false
-            }
-            if !query.isEmpty, !searchHaystack(for: item).contains(query) {
-                return false
-            }
-            return true
-        }
+        GallerySearch.filter(
+            gallery.items, family: modelFilter, query: searchText,
+            flag: flagFilter, minRating: minRating
+        )
     }
 
     /// Whether any culling filter is narrowing the gallery (drives the "clear" affordance).
@@ -92,33 +73,16 @@ struct GenerationGalleryView: View {
     }
 
     private var orderedBoards: [String] {
-        orderedBoards(for: modelItems)
+        GallerySearch.orderedBoards(for: modelItems, boards: gallery.boards)
     }
 
     private var gallerySections: [GallerySection] {
-        // Named folders are shown even when empty (their header acts as the drop
-        // target and delete affordance); the implicit "Default" board only appears
-        // when it actually holds loose images at the output root.
-        //
-        // `body` reads this on every layout pass, so a live window resize re-runs it
-        // continuously. Evaluate the filtered set once and group it, rather than
-        // filtering per board — that walked the whole gallery `boards + 1` times per
-        // frame, and blocked the SwiftUI update lock long enough to beachball.
-        // `Dictionary(grouping:)` keeps each group in encounter order, matching the
-        // previous per-board `filter`.
-        let items = modelItems
-        let byBoard = Dictionary(grouping: items, by: \.board)
-        return orderedBoards(for: items).map { board in
-            GallerySection(
-                board: board,
-                items: byBoard[board] ?? [],
-                isExpanded: !collapsedBoards.contains(board)
-            )
-        }
+        GallerySearch.sections(modelItems, boards: gallery.boards, collapsed: collapsedBoards)
     }
 
     var body: some View {
-        VStack(spacing: 0) {
+        let sections = gallerySections
+        return VStack(spacing: 0) {
             headerRow
                 .padding(.horizontal, 8)
                 .padding(.vertical, 6)
@@ -130,15 +94,15 @@ struct GenerationGalleryView: View {
             Divider()
 
             if selection.count > 1 {
-                batchActionBar
+                batchActionBar(boards: sections.map(\.board))
                 Divider()
             }
 
-            if gallerySections.isEmpty {
+            if sections.isEmpty {
                 emptyState
             } else {
                 GalleryCollectionView(
-                    sections: gallerySections,
+                    sections: sections,
                     selectedItemId: anchorItemId,
                     multiSelectionIds: selection,
                     anchorItemId: anchorItemId,
@@ -499,20 +463,6 @@ struct GenerationGalleryView: View {
         .help("Filter by minimum star rating")
     }
 
-    // MARK: - Batch action bar (shown only when 2+ items selected)
-
-    private var batchActionBar: some View {
-        // Prefer the labelled layout; fall back to icon-only when the pane is too
-        // narrow to fit the labels without wrapping.
-        ViewThatFits(in: .horizontal) {
-            batchActionBarContent(showLabels: true)
-            batchActionBarContent(showLabels: false)
-        }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 5)
-        .background(Color.accentColor.opacity(0.06))
-    }
-
     // MARK: - Status toast
 
     @ViewBuilder
@@ -582,7 +532,22 @@ struct GenerationGalleryView: View {
 
     // MARK: - Helpers
 
-    private func batchActionBarContent(showLabels: Bool) -> some View {
+    /// Batch action bar (shown only when 2+ items selected). The Move menu's board
+    /// list arrives from `body` as `sections.map(\.board)`, so the bar doesn't
+    /// trigger another filtered `modelItems` pass.
+    private func batchActionBar(boards: [String]) -> some View {
+        // Prefer the labelled layout; fall back to icon-only when the pane is too
+        // narrow to fit the labels without wrapping.
+        ViewThatFits(in: .horizontal) {
+            batchActionBarContent(showLabels: true, boards: boards)
+            batchActionBarContent(showLabels: false, boards: boards)
+        }
+        .padding(.horizontal, 8)
+        .padding(.vertical, 5)
+        .background(Color.accentColor.opacity(0.06))
+    }
+
+    private func batchActionBarContent(showLabels: Bool, boards: [String]) -> some View {
         let labelStyle = AdaptiveLabelStyle(showTitle: showLabels)
 
         // AdaptiveLabelStyle drops the titles when the bar is narrow, turning these into
@@ -617,7 +582,7 @@ struct GenerationGalleryView: View {
             .buttonStyle(.borderless).help("Upscale all selected images with SeedVR2")
 
             Menu {
-                ForEach(orderedBoards, id: \.self) { board in
+                ForEach(boards, id: \.self) { board in
                     Button(board) { batchMove(to: board) }
                 }
                 Divider()
@@ -753,41 +718,12 @@ struct GenerationGalleryView: View {
         minRating = 0
     }
 
-    /// Lower-cased blob of the sidecar fields the search box matches against:
-    /// prompt text, seed, model, and LoRA names.
     /// Board order for an already-filtered item set, so callers that have one in hand
     /// don't trigger another full `modelItems` pass.
     private func orderedBoards(for items: [GalleryItem]) -> [String] {
         let hasDefault = items.contains { $0.board == "Default" }
         let others = gallery.boards.filter { $0 != "Default" }.sorted()
         return (hasDefault ? ["Default"] : []) + others
-    }
-
-    private func searchHaystack(for item: GalleryItem) -> String {
-        var parts: [String] = [item.filename]
-        if let meta = item.metadata {
-            parts.append(meta.prompt)
-            parts.append(meta.negativePrompt)
-            parts.append(String(meta.seed))
-            parts.append("\(meta.model)")
-            parts.append(contentsOf: meta.loras.map(\.displayName))
-        }
-        if let meta = item.ideogram4Metadata {
-            parts.append(meta.plainPrompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
-        }
-        if let meta = item.krea2Metadata {
-            parts.append(meta.prompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
-        }
-        if let meta = item.zimageMetadata {
-            parts.append(meta.prompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
-        }
-        return parts.joined(separator: " ").lowercased()
     }
 
     // MARK: - Culling (keyboard-driven pick/reject + ratings)

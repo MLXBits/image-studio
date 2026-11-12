@@ -30,7 +30,7 @@ struct GalleryItem: Identifiable, Equatable {
     /// Deliberately not `url.lastPathComponent`: `url` is computed, so that built a
     /// fresh `URL` per access. `modelFamily` calls this for every gallery item on
     /// every layout pass, which made URL parsing the hottest frame in a window resize.
-    var filename: String {
+    nonisolated var filename: String {
         (path as NSString).lastPathComponent
     }
 
@@ -40,7 +40,7 @@ struct GalleryItem: Identifiable, Equatable {
     /// upscale (`seedvr2_…`) isn't a picker family, so it inherits its *source*
     /// image's family (from the sidecar) — the upscale then sits in the same
     /// filtered view and board as the image it was made from.
-    var modelFamily: ModelFamily {
+    nonisolated var modelFamily: ModelFamily {
         let name = filename.lowercased()
         if name.hasPrefix("ideogram") {
             return .ideogram4
