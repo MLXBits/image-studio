@@ -21,12 +21,31 @@ final class SandboxFileAccess: FileAccess {
         case lost
     }
 
+    private struct ExistsProbe {
+        let result: Bool
+        let at: Date
+    }
+
+    /// How long a canReach fileExists probe stays trusted, per path.
+    private static let probeTTL: TimeInterval = 2
+
     private let store: GrantStore
     private let codec: BookmarkCodec
     /// Whether a path can be read without a grant: the app's container, or
     /// Pictures. Tests pass `{ _ in false }` to stand in for the sandbox.
     private let isReadable: (String) -> Bool
+    /// The clock the probe TTL is measured against; injected for tests.
+    private let now: () -> Date
     private var started: [String: Started] = [:]
+    /// The fileExists result behind canReach, per normalized path. The probes
+    /// feed UI affordances ("is lost" badges, lock labels) on the main thread —
+    /// LoraManagerView probes one LoRA per row, per body pass — so a probe is
+    /// trusted for probeTTL: 2 s staleness is imperceptible for badges, and it
+    /// bounds main-thread stat work to one per path per 2 s. The job path
+    /// (start) always stats fresh. No pruning of the table: the distinct local
+    /// paths the UI asks about are session-bounded (LoRA rows, a handful of
+    /// path fields), so an unbounded table is fine.
+    private var existsProbes: [String: ExistsProbe] = [:]
     /// Grants that failed to start: their bookmark no longer resolves to the
     /// path it was made for. They stop counting as access until chosen again.
     private var unusable: Set<String> = []
@@ -38,11 +57,13 @@ final class SandboxFileAccess: FileAccess {
 
     init(
         storeURL: URL, codec: BookmarkCodec = .securityScoped,
-        isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable
+        isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable,
+        now: @escaping () -> Date = Date.init
     ) {
         store = GrantStore(url: storeURL)
         self.codec = codec
         self.isReadable = isReadable
+        self.now = now
     }
 
     func remember(_ url: URL) {
@@ -50,18 +71,20 @@ final class SandboxFileAccess: FileAccess {
         let path = FileAccessPath.normalized(url.path)
         store.set(bookmark, for: path)
         unusable.remove(path)
+        existsProbes.removeValue(forKey: path) // re-choosing a path re-probes it
     }
 
     func forget(_ path: String) {
         let normalized = FileAccessPath.normalized(path)
         store.remove(normalized)
         unusable.remove(normalized)
+        existsProbes.removeValue(forKey: normalized)
     }
 
     func canReach(_ path: String) -> Bool {
         guard FileAccessPath.isLocal(path) else { return false }
         let normalized = FileAccessPath.normalized(path)
-        guard FileManager.default.fileExists(atPath: normalized) else { return false }
+        guard exists(normalized) else { return false }
         if let grant = store.grant(covering: normalized), !unusable.contains(grant.path) {
             return true
         }
@@ -97,6 +120,18 @@ final class SandboxFileAccess: FileAccess {
     func adoptSourceImage(_ path: String, library: String, inputs: URL?) -> String {
         guard let inputs, FileAccessPath.isLocal(path) else { return path }
         return (try? SourceImageImport.adopt(path, library: library, inputs: inputs)) ?? path
+    }
+
+    /// canReach's fileExists probe: the only stat canReach relies on, cached
+    /// behind probeTTL. Grant/unusable/isReadable stay live, so a grant that
+    /// stops resolving flips canReach immediately.
+    private func exists(_ path: String) -> Bool {
+        if let probe = existsProbes[path], now().timeIntervalSince(probe.at) < Self.probeTTL {
+            return probe.result
+        }
+        let result = FileManager.default.fileExists(atPath: path)
+        existsProbes[path] = ExistsProbe(result: result, at: now())
+        return result
     }
 
     private func lease(for keys: [String]) -> FileAccessLease {

@@ -21,10 +21,15 @@ final class FileAccessTests {
 
     /// `isReadable` stands in for the sandbox: pass `{ _ in false }` to deny
     /// every read that no grant covers, as the App Store build does.
+    ///
+    /// Callers pass the clock as `now:`, not as a trailing closure: the
+    /// unlabeled trailing-closure form is deprecated (it warns), and the
+    /// labeled form trips `trailing_closure` — hence the disables below.
     private func sandbox(
-        codec: BookmarkCodec = .securityScoped, isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable
+        codec: BookmarkCodec = .securityScoped, isReadable: @escaping (String) -> Bool = FileAccessPath.isReadable,
+        now: @escaping () -> Date = Date.init
     ) -> SandboxFileAccess {
-        SandboxFileAccess(storeURL: root.appendingPathComponent("grants.json"), codec: codec, isReadable: isReadable)
+        SandboxFileAccess(storeURL: root.appendingPathComponent("grants.json"), codec: codec, isReadable: isReadable, now: now)
     }
 
     @Test func theDMGPassesEverythingThrough() throws {
@@ -152,6 +157,46 @@ final class FileAccessTests {
             try access.beginAccess(to: [lora.path])
         }
         #expect(resolved == 0)
+    }
+
+    /// The canReach probe is cached per path behind a TTL, so a body pass that
+    /// probes every LoRA row doesn't re-stat the disk on each frame.
+    @Test func aProbedPathIsNotRestattedWithinTheTTL() throws {
+        var now = Date()
+        // swiftlint:disable:next trailing_closure
+        let access = sandbox(now: { now })
+        access.remember(lora)
+        #expect(access.canReach(lora.path))
+        try FileManager.default.removeItem(at: lora)
+        #expect(access.canReach(lora.path)) // cached probe, file is gone
+        now += 2 // past the 2 s TTL
+        #expect(!access.canReach(lora.path))
+    }
+
+    @Test func reChoosingAPathInvalidatesItsProbe() throws {
+        var now = Date()
+        // swiftlint:disable:next trailing_closure
+        let access = sandbox(now: { now })
+        access.remember(lora)
+        #expect(access.canReach(lora.path)) // probe: exists @ t0
+        try FileManager.default.removeItem(at: lora)
+        now += 2 // TTL lapses
+        #expect(!access.canReach(lora.path)) // fresh probe: gone
+        try Data("weights".utf8).write(to: lora)
+        #expect(!access.canReach(lora.path)) // cached false, still within TTL
+        access.remember(lora) // Locate… re-chose the file
+        #expect(access.canReach(lora.path)) // remember dropped the stale probe
+    }
+
+    @Test func forgettingAPathDropsItsProbe() throws {
+        let now = Date() // the clock never advances in this test
+        // swiftlint:disable:next trailing_closure
+        let access = sandbox(now: { now })
+        access.remember(lora)
+        #expect(access.canReach(lora.path))
+        try FileManager.default.removeItem(at: lora)
+        access.forget(lora.path)
+        #expect(!access.canReach(lora.path)) // probe dropped → fresh stat
     }
 
     deinit {
