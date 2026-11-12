@@ -22,6 +22,9 @@ struct GalleryItem: Identifiable, Equatable {
     var flag: PickFlag?
     /// 0–5 star rating, persisted as an xattr on the file.
     var rating: Int = 0
+    /// The lowercased search haystack, built once when the item is constructed
+    /// (the scan funnel) so an active search does zero per-item string building.
+    let searchHaystack: String
 
     var url: URL {
         URL(fileURLWithPath: path)
@@ -30,7 +33,7 @@ struct GalleryItem: Identifiable, Equatable {
     /// Deliberately not `url.lastPathComponent`: `url` is computed, so that built a
     /// fresh `URL` per access. `modelFamily` calls this for every gallery item on
     /// every layout pass, which made URL parsing the hottest frame in a window resize.
-    var filename: String {
+    nonisolated var filename: String {
         (path as NSString).lastPathComponent
     }
 
@@ -40,7 +43,7 @@ struct GalleryItem: Identifiable, Equatable {
     /// upscale (`seedvr2_…`) isn't a picker family, so it inherits its *source*
     /// image's family (from the sidecar) — the upscale then sits in the same
     /// filtered view and board as the image it was made from.
-    var modelFamily: ModelFamily {
+    nonisolated var modelFamily: ModelFamily {
         let name = filename.lowercased()
         if name.hasPrefix("ideogram") {
             return .ideogram4
@@ -321,7 +324,14 @@ nonisolated private func scanDirectory(
             zimageMetadata: zimageMeta,
             seedVR2Metadata: seedVR2Meta,
             flag: GalleryCulling.readFlag(path: url.path),
-            rating: GalleryCulling.readRating(path: url.path)
+            rating: GalleryCulling.readRating(path: url.path),
+            searchHaystack: GallerySearch.haystack(
+                filename: (url.path as NSString).lastPathComponent,
+                flux: fluxMeta,
+                ideogram4: ideogramMeta,
+                krea2: krea2Meta,
+                zimage: zimageMeta
+            )
         ))
     }
     return result.sorted { $0.modifiedAt > $1.modifiedAt }
