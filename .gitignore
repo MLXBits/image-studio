@@ -48,3 +48,6 @@ __pycache__/
 # ComfyUI dry-run harness + generated image output (live artifacts, never commit)
 comfy_dry_run_out/
 output/
+
+# Hermes local files
+IDEA.md
