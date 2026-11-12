@@ -71,10 +71,11 @@ final class SandboxFileAccess: FileAccess {
     }
 
     func remember(_ url: URL) {
-        guard let bookmark = try? codec.make(url) else { return }
         let path = FileAccessPath.normalized(url.path)
-        store.set(bookmark, for: path)
-        unusable.remove(path)
+        if let bookmark = try? codec.make(url) {
+            store.set(bookmark, for: path)
+            unusable.remove(path)
+        }
         existsProbes.removeValue(forKey: path) // re-choosing a path re-probes it
     }
 

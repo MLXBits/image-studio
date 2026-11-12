@@ -173,19 +173,32 @@ final class FileAccessTests {
         #expect(!access.canReach(lora.path))
     }
 
+    /// Re-choosing a path drops its cached probe. Negatives are never cached,
+    /// so the only stale value remember can clear is a true probe whose file
+    /// has since disappeared.
     @Test func reChoosingAPathInvalidatesItsProbe() throws {
-        var now = Date()
+        let now = Date() // never advances: only remember can drop the probe
         // swiftlint:disable:next trailing_closure
         let access = sandbox(now: { now })
         access.remember(lora)
-        #expect(access.canReach(lora.path)) // probe: exists @ t0
+        #expect(access.canReach(lora.path)) // cached true
         try FileManager.default.removeItem(at: lora)
-        now += 2 // TTL lapses
-        #expect(!access.canReach(lora.path)) // fresh probe: gone
+        access.remember(lora) // Locate… re-chose the path
+        #expect(!access.canReach(lora.path)) // stale true dropped → fresh stat
+    }
+
+    /// A path probed missing is re-checked fresh on every call — a restored
+    /// path is reachable immediately, no TTL wait (the remount/Retry case
+    /// from the review of #83).
+    @Test func aRestoredPathIsReachableWithinTheTTL() throws {
+        let now = Date() // never advances: no TTL lapse can hide the result
+        // swiftlint:disable:next trailing_closure
+        let access = sandbox(now: { now })
+        access.remember(lora)
+        try FileManager.default.removeItem(at: lora)
+        #expect(!access.canReach(lora.path)) // fresh stat: missing — never cached
         try Data("weights".utf8).write(to: lora)
-        #expect(access.canReach(lora.path)) // negatives are never cached — a restored file is reachable immediately
-        access.remember(lora) // Locate… re-chose the file
-        #expect(access.canReach(lora.path)) // remember dropped the stale probe
+        #expect(access.canReach(lora.path)) // fresh stat again: reachable within the TTL
     }
 
     @Test func forgettingAPathDropsItsProbe() throws {
