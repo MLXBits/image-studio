@@ -153,13 +153,26 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     /// Per-driver-run state shared between the event handler and finalization.
     /// A class so the escaping event closure can mutate it.
-    private final class DriverRunProgress {
+    final class DriverRunProgress {
         var loadEnd: Date?
         var denoiseEnd: Date?
         var lastImageAt: Date?
-        var landed: [(seed: Int, path: String)] = []
+        private(set) var landed: [(seed: Int, path: String)] = []
         /// Paths the driver reported but that hold no complete PNG (a failed save).
         var missing: [String] = []
+
+        /// Records a landed image; false when the seed had already landed. The driver
+        /// retries a failed request from a cold start, re-sending every seed's image,
+        /// and a duplicate here would shift the seed↔path pairing `expandBatchJob` zips.
+        func land(seed: Int, path: String) -> Bool {
+            missing.removeAll { $0 == path }
+            if let i = landed.firstIndex(where: { $0.seed == seed }) {
+                landed[i] = (seed: seed, path: path)
+                return false
+            }
+            landed.append((seed: seed, path: path))
+            return true
+        }
     }
 
     /// A resolved remote target when this job's family is pointed at a ComfyUI server (non-empty URL + required model files), else nil.
@@ -646,7 +659,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 generatedAt: generatedAt, path: path
             )
             progress.lastImageAt = generatedAt
-            progress.landed.append((seed: seed, path: path))
+            guard progress.land(seed: seed, path: path) else { return }
             job.completedSeedsInBatch = progress.landed.count
             if progress.landed.count == 1 {
                 lastCompletedOutputPath = path
