@@ -122,3 +122,74 @@ extension ProfileScopedJobStore {
         jobs = result
     }
 }
+
+/// A job the generic queue drawer can list and the shared queue operations can
+/// re-queue (``Krea2Job``, ``Qwen21Job``).
+@MainActor
+protocol QueueListedJob: GeneratedJob {
+    var prompt: String { get }
+    var displayName: String { get }
+    var steps: Int { get }
+}
+
+/// Queue operations shared by the stores whose jobs are ``QueueListedJob``s.
+extension ProfileScopedJobStore where PersistedJob: QueueListedJob {
+    var pendingJobs: [PersistedJob] {
+        jobs.filter { $0.status == .pending }
+    }
+
+    func add(_ job: PersistedJob) {
+        jobs.insert(job, at: 0)
+        pruneIfNeeded()
+        save()
+    }
+
+    func cancelJob(_ job: PersistedJob) {
+        guard case .pending = job.status else { return }
+        job.status = .cancelled
+        save()
+    }
+
+    func cancelAllPending() {
+        for job in jobs where job.status == .pending {
+            job.status = .cancelled
+        }
+        save()
+    }
+
+    func purgeTerminal() {
+        jobs.removeAll { $0.status.isTerminal }
+        save()
+    }
+
+    func restart(_ job: PersistedJob) {
+        job.status = .pending
+        job.log = ""
+        job.outputPath = nil
+        job.resolvedSeed = nil
+        job.thumbnailData = nil
+        job.currentStep = 0
+        job.totalSteps = job.steps
+        job.startedAt = nil
+        job.completedAt = nil
+        job.latestStepwisePath = nil
+        jobs.removeAll { $0.id == job.id }
+        jobs.insert(job, at: 0)
+        save()
+    }
+}
+
+extension GeneratedJob {
+    /// Turns a fresh copy of `batch` into its `index`-th finished image when a
+    /// multi-seed job is fanned out into one queue row per seed.
+    func markExpanded(from batch: some GeneratedJob, seed: Int, path: String, index: Int) {
+        status = .completed
+        resolvedSeed = seed
+        outputPath = path
+        thumbnailData = batch.outputThumbnails.indices.contains(index) ? batch.outputThumbnails[index] : nil
+        log = batch.log
+        currentStep = totalSteps
+        startedAt = batch.startedAt
+        completedAt = batch.completedAt
+    }
+}

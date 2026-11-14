@@ -116,7 +116,11 @@ struct Krea2ParamsPanelView: View {
         Divider()
 
         SectionContainerView(title: nil, info: nil) {
-            stepsAndSeedRow
+            StepsSeedRow(
+                steps: $params.steps, seed: $params.seed, model: .krea2,
+                stepsInfo: "Krea 2 Turbo is distilled for 8 steps. More steps add compute "
+                    + "with diminishing returns; fewer may reduce quality."
+            )
         }
 
         Divider()
@@ -144,70 +148,6 @@ struct Krea2ParamsPanelView: View {
             }
         )
         .padding(.bottom, 8)
-    }
-
-    // MARK: - Steps + Seed (one row)
-
-    private var stepsAndSeedRow: some View {
-        HStack(alignment: .top, spacing: 12) {
-            Spacer(minLength: 0)
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 3) {
-                    Text("Steps").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
-                    InfoButton(
-                        title: "Denoising Steps",
-                        description: "Krea 2 Turbo is distilled for 8 steps. More steps add compute "
-                            + "with diminishing returns; fewer may reduce quality."
-                    )
-                }
-                Stepper(value: $params.steps, in: 1 ... FluxModelVariant.krea2.maxSteps) {
-                    TextField("", value: $params.steps, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.body, design: .monospaced))
-                        .multilineTextAlignment(.trailing)
-                        .frame(width: 60)
-                        .onSubmit { params.steps = FluxModelVariant.krea2.clampedSteps(params.steps) }
-                }
-                .accessibilityLabel("Steps")
-                .accessibilityValue("\(params.steps)")
-            }
-
-            Divider().frame(height: 44)
-
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 3) {
-                    Text("Seed").font(.caption2).fontWeight(.medium).foregroundStyle(.secondary)
-                    InfoButton(
-                        title: "Random Seed",
-                        description: "The same seed + prompt produces the same image every time. "
-                            + "Use -1 for a unique result each run."
-                    )
-                }
-                HStack(spacing: 4) {
-                    TextField("-1", value: $params.seed, format: .number.grouping(.never))
-                        .textFieldStyle(.roundedBorder)
-                        .font(.system(.body, design: .monospaced))
-                        .frame(width: 100)
-                        .accessibilityLabel("Seed")
-                        .accessibilityHint("Use -1 for random")
-                    Button {
-                        params.seed = Int.random(in: 0 ..< 1_000_000_000)
-                    } label: {
-                        Image(systemName: "dice").font(.caption)
-                    }
-                    .buttonStyle(.iconButton)
-                    .accessibilityLabel("Pick random seed")
-                    Button {
-                        params.seed = -1
-                    } label: {
-                        Image(systemName: "arrow.counterclockwise").font(.caption)
-                    }
-                    .buttonStyle(.iconButton)
-                    .accessibilityLabel("Reset to random (-1)")
-                }
-            }
-            Spacer(minLength: 0)
-        }
     }
 
     // MARK: - Guidance

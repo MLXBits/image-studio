@@ -1,3 +1,4 @@
+import ImageIO
 import SwiftUI
 
 struct ImageMetadataInfo {
@@ -270,6 +271,43 @@ struct ImageMetadataInfo {
         }
     }
 
+    @MainActor init(qwen21Job job: Qwen21Job) {
+        var meta = Qwen21Metadata.from(job: job)
+        meta.seed = job.resolvedSeed ?? job.seed
+        self.init(qwen21: meta, path: job.outputPath)
+        if !job.seeds.isEmpty {
+            generationTime = nil // a batch's start/end span every seed
+        }
+    }
+
+    init?(qwen21Item: GalleryItem) {
+        guard let meta = qwen21Item.qwen21Metadata else { return nil }
+        self.init(qwen21: meta, path: qwen21Item.path)
+    }
+
+    private init(qwen21 meta: Qwen21Metadata, path: String?) {
+        prompt = meta.prompt
+        negativePrompt = ""
+        let refs = meta.editImagePaths?.count ?? 0
+        modelName = FluxModelVariant.qwen21Turbo.displayName + (meta.isEditMode ? " · Edit, \(refs) ref" : "")
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.steps
+        guidance = 1.0
+        loras = meta.loras ?? []
+        filePath = path
+        log = meta.log
+        // An edit that followed its references: the form size isn't the output size.
+        if meta.matchReferenceSize == true, let path, let size = imagePixelSize(at: path) {
+            (width, height) = size
+        }
+        if let started = meta.startedAt {
+            let secs = Int(meta.generatedAt.timeIntervalSince(started))
+            generationTime = "\(secs / 60)m \(secs % 60)s"
+        }
+    }
+
     init(path: String) {
         prompt = ""; negativePrompt = ""; modelName = "Unknown"
         seed = nil; width = 0; height = 0; steps = 0; guidance = 1.0; loras = []
@@ -291,4 +329,13 @@ struct ImageMetadataInfo {
         width *= PidDecode.scaleFactor
         height *= PidDecode.scaleFactor
     }
+}
+
+/// Reads only the file header, not the pixels.
+private func imagePixelSize(at path: String) -> (Int, Int)? {
+    guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
+          let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
+          let w = props[kCGImagePropertyPixelWidth] as? Int,
+          let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
+    return (w, h)
 }

@@ -1,6 +1,7 @@
 import Foundation
 
-/// Persists and manages the Krea 2 Turbo generation queue.
+/// Persists and manages the Krea 2 Turbo generation queue. Queue operations
+/// come from the ``QueueListedJob`` store extension.
 @Observable
 @MainActor
 final class Krea2JobStore: @MainActor ProfileScopedJobStore {
@@ -8,26 +9,6 @@ final class Krea2JobStore: @MainActor ProfileScopedJobStore {
 
     var jobs: [Krea2Job] = []
     var isRunning: Bool = false
-
-    var pendingJobs: [Krea2Job] {
-        jobs.filter { $0.status == .pending }
-    }
-
-    // MARK: - Queue management
-
-    func add(_ job: Krea2Job) {
-        jobs.insert(job, at: 0)
-        pruneIfNeeded()
-        save()
-    }
-
-    func addBatch(_ jobs: [Krea2Job]) {
-        for job in jobs.reversed() {
-            self.jobs.insert(job, at: 0)
-        }
-        pruneIfNeeded()
-        save()
-    }
 
     func expandBatchJob(_ batchJob: Krea2Job) {
         guard let idx = jobs.firstIndex(where: { $0.id == batchJob.id }) else { return }
@@ -47,56 +28,9 @@ final class Krea2JobStore: @MainActor ProfileScopedJobStore {
                 board: batchJob.board,
                 createdAt: batchJob.createdAt
             )
-            job.status = .completed
-            job.resolvedSeed = seed
-            job.outputPath = path
-            job.thumbnailData = batchJob.outputThumbnails.indices.contains(i) ? batchJob.outputThumbnails[i] : nil
-            job.log = batchJob.log
-            job.currentStep = batchJob.steps
-            job.totalSteps = batchJob.steps
-            job.startedAt = batchJob.startedAt
-            job.completedAt = batchJob.completedAt
+            job.markExpanded(from: batchJob, seed: seed, path: path, index: i)
             return job
         }
         jobs.replaceSubrange(idx ... idx, with: expanded)
-    }
-
-    func remove(ids: Set<UUID>) {
-        jobs.removeAll { ids.contains($0.id) }
-        save()
-    }
-
-    func cancelJob(_ job: Krea2Job) {
-        guard case .pending = job.status else { return }
-        job.status = .cancelled
-        save()
-    }
-
-    func cancelAllPending() {
-        for job in jobs where job.status == .pending {
-            job.status = .cancelled
-        }
-        save()
-    }
-
-    func purgeTerminal() {
-        jobs.removeAll { $0.status.isTerminal }
-        save()
-    }
-
-    func restart(_ job: Krea2Job) {
-        job.status = .pending
-        job.log = ""
-        job.outputPath = nil
-        job.resolvedSeed = nil
-        job.thumbnailData = nil
-        job.currentStep = 0
-        job.totalSteps = job.steps
-        job.startedAt = nil
-        job.completedAt = nil
-        job.latestStepwisePath = nil
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(job, at: 0)
-        save()
     }
 }

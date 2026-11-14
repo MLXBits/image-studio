@@ -27,6 +27,8 @@ struct MLXBitsImageStudioApp: App {
     @State private var krea2Runner: Krea2JobRunner
     @State private var zimageStore: ZImageJobStore
     @State private var zimageRunner: ZImageJobRunner
+    @State private var qwen21Store: Qwen21JobStore
+    @State private var qwen21Runner: Qwen21JobRunner
     @State private var seedVR2Store: SeedVR2JobStore
     @State private var seedVR2Runner: SeedVR2JobRunner
     @State private var coordinator: GenerationCoordinator
@@ -56,6 +58,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(krea2Runner)
                 .environment(zimageStore)
                 .environment(zimageRunner)
+                .environment(qwen21Store)
+                .environment(qwen21Runner)
                 .environment(seedVR2Store)
                 .environment(seedVR2Runner)
                 .environment(coordinator)
@@ -150,13 +154,14 @@ struct MLXBitsImageStudioApp: App {
         let ideogram4Store = Ideogram4JobStore()
         let krea2Store = Krea2JobStore()
         let zimageStore = ZImageJobStore()
+        let qwen21Store = Qwen21JobStore()
         let seedVR2Store = SeedVR2JobStore()
         let coordinator = GenerationCoordinator()
         // Before anything else writes settings: the first launch after the
         // profiles update migrates settings.json as the old build left it.
         let profiles = ProfileStore(
             settings: settings,
-            jobStores: [store, ideogram4Store, krea2Store, zimageStore, seedVR2Store],
+            jobStores: [store, ideogram4Store, krea2Store, zimageStore, qwen21Store, seedVR2Store],
             gallery: gallery,
             coordinator: coordinator,
             paths: testHost ? .throwaway() : .live,
@@ -172,6 +177,7 @@ struct MLXBitsImageStudioApp: App {
         let ideogram4Runner = Ideogram4JobRunner()
         let krea2Runner = Krea2JobRunner()
         let zimageRunner = ZImageJobRunner()
+        let qwen21Runner = Qwen21JobRunner()
         let seedVR2Runner = SeedVR2JobRunner()
         runner.driver = driver
         ideogram4Runner.driver = driver
@@ -184,6 +190,7 @@ struct MLXBitsImageStudioApp: App {
         _ideogram4Store = State(initialValue: ideogram4Store)
         _krea2Store = State(initialValue: krea2Store)
         _zimageStore = State(initialValue: zimageStore)
+        _qwen21Store = State(initialValue: qwen21Store)
         _seedVR2Store = State(initialValue: seedVR2Store)
         _coordinator = State(initialValue: coordinator)
         _driverController = State(initialValue: driver)
@@ -191,9 +198,10 @@ struct MLXBitsImageStudioApp: App {
         _ideogram4Runner = State(initialValue: ideogram4Runner)
         _krea2Runner = State(initialValue: krea2Runner)
         _zimageRunner = State(initialValue: zimageRunner)
+        _qwen21Runner = State(initialValue: qwen21Runner)
         _seedVR2Runner = State(initialValue: seedVR2Runner)
         let support = Self.makeSupport(
-            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, seedVR2Runner]
+            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner]
         )
         _support = State(initialValue: support)
         let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }

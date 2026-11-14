@@ -176,6 +176,15 @@ struct ModelDefaultsView: View {
                 .padding(.vertical, 2)
                 .tag(Selection.model(.zimage))
             }
+            Section("Qwen") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(FluxModelVariant.qwen21Turbo.displayName).font(.callout)
+                    Text("Turbo · \(FluxModelVariant.qwen21Turbo.defaultSteps) steps · Generate + Edit · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.qwen21Turbo))
+            }
             Section("Upscale") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("SeedVR2").font(.callout)
@@ -208,6 +217,8 @@ struct ModelDefaultsView: View {
                             .task { await ensureComfyDiscovery() }
                     } else if selectedModel.isZImage {
                         zimageFormContent(model: selectedModel)
+                    } else if selectedModel.isQwen21 {
+                        qwen21FormContent()
                     } else if FluxModelVariant.builtIn.contains(selectedModel) {
                         flux2FormContent(model: selectedModel, defaults: settings.defaults(for: selectedModel), models: comfyModels)
                             .task { await ensureComfyDiscovery() }
