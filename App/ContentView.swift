@@ -89,6 +89,15 @@ struct ContentView: View {
     /// being clipped when the window (or a wide gallery) over-constrains the layout.
     @State private var contentWidth: CGFloat = 0
 
+    /// The running job's ID, whichever family it belongs to.
+    private var activeJobID: UUID? {
+        let ids: [UUID?] = [
+            runner.activeJob?.id, ideogram4Runner.activeJob?.id, krea2Runner.activeJob?.id,
+            zimageRunner.activeJob?.id, qwen21Runner.activeJob?.id, seedVR2Runner.activeJob?.id,
+        ]
+        return ids.lazy.compactMap(\.self).first
+    }
+
     private var isAnyStoreRunning: Bool {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
             || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
@@ -321,6 +330,12 @@ struct ContentView: View {
     /// chain this long, so the queue/runner observers live in a second property.
     private var bodyBase: some View {
         mainContent
+            // At most one family runs at a time (GenerationCoordinator), so one ID covers them all.
+            .onChange(of: activeJobID) { _, id in
+                guard id != nil else { return }
+                selectedGalleryItem = nil
+                restoreActiveJobPreview()
+            }
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(
                     isPresented: $showingOutputDirPrompt,
@@ -429,33 +444,9 @@ struct ContentView: View {
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
             // (the GenerationCoordinator gate), so this is what keeps queued work draining.
-            .onChange(of: store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: ideogram4Store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: krea2Store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: zimageStore.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: qwen21Store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: seedVR2Store.isRunning) {
-                _, running in if !running {
+            // One handler on the union: pumpQueues only starts work once every store is idle.
+            .onChange(of: isAnyStoreRunning) { _, running in
+                if !running {
                     pumpQueues()
                 }
             }
@@ -578,36 +569,6 @@ struct ContentView: View {
                 .environment(settings)
         }
         .modifier(ProfileActionPresenter(action: $profileAction))
-        .onChange(of: runner.activeJob?.id) { _, id in
-            guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeJob(job)
-        }
-        .onChange(of: ideogram4Runner.activeJob?.id) { _, id in
-            guard let id, let job = ideogram4Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeIdeogram4Job(job)
-        }
-        .onChange(of: krea2Runner.activeJob?.id) { _, id in
-            guard let id, let job = krea2Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeKrea2Job(job)
-        }
-        .onChange(of: zimageRunner.activeJob?.id) { _, id in
-            guard let id, let job = zimageStore.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeZImageJob(job)
-        }
-        .onChange(of: qwen21Runner.activeJob?.id) { _, id in
-            guard let id, let job = qwen21Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeQwen21Job(job)
-        }
-        .onChange(of: seedVR2Runner.activeJob?.id) { _, id in
-            guard let id, let job = seedVR2Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeSeedVR2Job(job)
-        }
         .sheet(item: $upscaleTarget) { target in
             SeedVR2UpscaleSheet(
                 sources: target.sources,
