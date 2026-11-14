@@ -191,7 +191,7 @@ final class Krea2ParamsPanelState {
             // warm job (single mflux process, model loaded once).
             job.seeds = RunnerSupport.randomSeeds(count: count)
         } else if !batchSeeds.isEmpty {
-            job.seeds = batchSeeds
+            job.seeds = RunnerSupport.distinctSeeds(batchSeeds)
         }
         return job
     }

@@ -175,6 +175,12 @@ enum RunnerSupport {
         return seeds
     }
 
+    /// `seeds` without repeats, in first-seen order: a typed-in batch can repeat one.
+    static func distinctSeeds(_ seeds: [Int]) -> [Int] {
+        var seen = Set<Int>()
+        return seeds.filter { seen.insert($0).inserted }
+    }
+
     /// The warm driver's explicit per-seed output paths, named the way the CLI names them.
     static func driverOutputs(ctx: JobRunContext, seeds: [Int]) -> [DriverOutput] {
         guard !seeds.isEmpty else { return [DriverOutput(seed: ctx.seed, path: ctx.outputFile)] }

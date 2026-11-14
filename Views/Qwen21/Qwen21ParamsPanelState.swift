@@ -115,7 +115,7 @@ final class Qwen21ParamsPanelState {
             // One process, model loaded once, N random seeds.
             job.seeds = RunnerSupport.randomSeeds(count: count)
         } else if !batchSeeds.isEmpty {
-            job.seeds = batchSeeds
+            job.seeds = RunnerSupport.distinctSeeds(batchSeeds)
         }
         return job
     }

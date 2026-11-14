@@ -154,6 +154,13 @@ struct Qwen21RouteTests {
         #expect(seeds.count == 6 && Set(seeds).count == 6)
     }
 
+    @Test func typedBatchSeedsDropRepeats() {
+        // Ideogram 4's typed seed list is the one way a batch can repeat a seed.
+        let params = Ideogram4ParamsPanelState()
+        params.batchSeeds = [11, 11, 22, 11]
+        #expect(params.makeJob().seeds == [11, 22])
+    }
+
     @Test func makeJobSnapsSizesToMfluxsMultipleOf32() {
         // A saved form or Settings default can predate the 32 px constraint.
         let params = Qwen21ParamsPanelState()
