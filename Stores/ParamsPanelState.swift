@@ -160,7 +160,7 @@ final class ParamsPanelState {
         size: (width: Int, height: Int)? = nil
     ) -> FluxJob {
         let seeds: [Int] = count > 1
-            ? (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+            ? RunnerSupport.randomSeeds(count: count)
             : []
         let finalPrompt: String
         let finalNegative: String

@@ -113,7 +113,7 @@ final class Qwen21ParamsPanelState {
         )
         if count > 1 {
             // One process, model loaded once, N random seeds.
-            job.seeds = (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+            job.seeds = RunnerSupport.randomSeeds(count: count)
         } else if !batchSeeds.isEmpty {
             job.seeds = batchSeeds
         }

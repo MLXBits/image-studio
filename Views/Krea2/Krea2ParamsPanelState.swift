@@ -189,7 +189,7 @@ final class Krea2ParamsPanelState {
         if count > 1 {
             // Matches Flux.2's batch button: auto-generate N random seeds into one
             // warm job (single mflux process, model loaded once).
-            job.seeds = (0 ..< count).map { _ in Int(UInt32.random(in: 0 ..< UInt32.max)) }
+            job.seeds = RunnerSupport.randomSeeds(count: count)
         } else if !batchSeeds.isEmpty {
             job.seeds = batchSeeds
         }

@@ -145,6 +145,15 @@ struct Qwen21RouteTests {
         #expect(LoraBaseModelHeuristic.guess(for: "qwen-image-style.safetensors") == .matched(.krea2))
     }
 
+    @Test func batchSeedsAreDistinct() {
+        // A repeat would share its `_seed_N` file and break the batch's seed↔path pairing.
+        #expect(Set(RunnerSupport.randomSeeds(count: 10)).count == 10)
+        let params = Qwen21ParamsPanelState()
+        params.prompt = "a fox"
+        let seeds = params.makeJob(count: 6).seeds
+        #expect(seeds.count == 6 && Set(seeds).count == 6)
+    }
+
     @Test func makeJobSnapsSizesToMfluxsMultipleOf32() {
         // A saved form or Settings default can predate the 32 px constraint.
         let params = Qwen21ParamsPanelState()

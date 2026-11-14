@@ -161,6 +161,20 @@ enum RunnerSupport {
         return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
     }
 
+    /// `count` distinct random seeds for a batch. A repeated seed would share its
+    /// `_seed_N` output file, and the per-seed pairing of a batch's outputs.
+    static func randomSeeds(count: Int) -> [Int] {
+        var seeds: [Int] = []
+        var seen = Set<Int>()
+        while seeds.count < count {
+            let seed = Int(UInt32.random(in: 0 ..< UInt32.max))
+            if seen.insert(seed).inserted {
+                seeds.append(seed)
+            }
+        }
+        return seeds
+    }
+
     /// The warm driver's explicit per-seed output paths, named the way the CLI names them.
     static func driverOutputs(ctx: JobRunContext, seeds: [Int]) -> [DriverOutput] {
         guard !seeds.isEmpty else { return [DriverOutput(seed: ctx.seed, path: ctx.outputFile)] }
