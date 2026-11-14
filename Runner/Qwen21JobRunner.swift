@@ -4,8 +4,8 @@ import Foundation
 /// which does text-to-image with no references and multi-reference editing
 /// with them. Weights load straight from the mflux-community repo for the
 /// chosen precision (BF16, Q8, Q4): there is no `mflux-save` pass and no
-/// `--quantize`. The warm driver does not serve this family yet, so every job
-/// runs on the one-shot CLI.
+/// `--quantize`. With Keep Model Warm on, jobs run on the warm driver except
+/// low-RAM ones, which stay on the one-shot CLI.
 typealias Qwen21JobRunner = JobRunner<Qwen21RunnerSpec>
 
 extension Qwen21Job: @MainActor QueueListedJob {}
@@ -68,6 +68,39 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         return variant.preQuantizedRepoID(quantize: job.quantize) ?? variant.mfluxModelID
     }
 
+    /// Low-RAM jobs stream blocks from disk, which a resident model defeats, so
+    /// they stay on the one-shot CLI. The driver tiles the VAE decode as the CLI
+    /// does, caches each prompt + references encoding, and evicts the text encoder
+    /// per the warm-TE policy, reloading it only when an encoding misses.
+    static func driverRequest(job: Qwen21Job, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
+        guard !job.lowRam else { return nil }
+        let model = model(job: job)
+        let loras = enabledLoras(job)
+        let references = job.isEditMode ? job.editImagePaths : []
+        let variant = FluxModelVariant.qwen21Turbo
+        return DriverGenerateRequest(
+            id: job.id.uuidString,
+            family: "qwen21",
+            fingerprint: "qwen21|\(model)|\(RunnerSupport.driverLoraKey(loras))",
+            model: model,
+            baseModel: variant.mfluxModelID,
+            loraPaths: loras.map(\.path),
+            loraScales: loras.map(\.strength),
+            prompt: job.prompt,
+            width: job.followsReferenceSize ? nil : job.width,
+            height: job.followsReferenceSize ? nil : job.height,
+            steps: job.steps,
+            guidance: 1.0,
+            imagePaths: references,
+            outputs: RunnerSupport.driverOutputs(ctx: ctx, seeds: job.seeds),
+            stepwiseDir: "", // no previews, as in buildArgs
+            tePolicy: WarmTextEncoderPolicy.keep.rawValue,
+            cacheLimitGb: settings.mlxCacheLimitGB,
+            modelVariantRaw: variant.rawValue,
+            modelLabel: RunnerSupport.modelLabel(custom: job.customModelRepo, fallback: variant.displayName)
+        )
+    }
+
     static func buildArgs(job: Qwen21Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         // --base-model on every run: mflux 0.24.0 has no alias for the `qwen-image-2-1-turbo`
         // repo names (added after it, in mflux #937) and silently runs them on the base
@@ -89,13 +122,13 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             args += ["--lora-paths"] + loras.map(\.path)
             args += ["--lora-scales"] + loras.map { String(format: "%.2f", $0.strength) }
         }
-        if job.lowRam {
-            args.append("--low-ram")
-        }
+        // mflux runs this VAE in fp32: untiled, the decode alone needs ~14 GB at 1344x768.
+        args.append(job.lowRam ? "--low-ram" : "--vae-tiling")
         if settings.mlxCacheLimitGB > 0 {
             args += ["--mlx-cache-limit-gb", String(format: "%.1f", settings.mlxCacheLimitGB)]
         }
-        args += ["--stepwise-image-output-dir", ctx.stepwiseDir.path]
+        // No stepwise previews: they are noise until step 6 of 8, and mflux decodes each
+        // one untiled in fp32 (~11 GB over the tiled decode's peak at 1344x768).
         return args
     }
 

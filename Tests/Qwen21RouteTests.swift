@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Qwen-Image 2.1 Turbo loads the published mflux-community repo for each
-/// precision, always with `--base-model` (mflux 0.24.0 otherwise runs these repo
+/// precision on the CLI and the warm driver alike, always with `--base-model` (mflux 0.24.0 otherwise runs these repo
 /// names on the base model's 40-step config), and sizes an edit from its
 /// references unless the job asks for a size.
 @MainActor
@@ -89,6 +89,53 @@ struct Qwen21RouteTests {
         let args = args(job)
         let start = try #require(args.firstIndex(of: "--seed"))
         #expect(Array(args[(start + 1) ... (start + 3)]) == ["1", "2", "3"])
+    }
+
+    @Test func warmDriverGetsTheSameRouteAsTheCLI() throws {
+        let job = Qwen21Job(isEditMode: true, editImagePaths: ["/subject.png", "/scene.png"], prompt: "combine", quantize: 4)
+        let request = try #require(Qwen21RunnerSpec.driverRequest(job: job, ctx: ctx, settings: settings()))
+        #expect(request.family == "qwen21")
+        #expect(request.model == "mflux-community/qwen-image-2-1-turbo-mflux-q4")
+        #expect(request.baseModel == "qwen-image-2.1-turbo")
+        #expect(request.quantize == nil)
+        #expect(request.imagePaths == ["/subject.png", "/scene.png"])
+        #expect(request.width == nil && request.height == nil)
+    }
+
+    @Test func warmDriverSendsTheSizeInGenerateMode() throws {
+        let job = Qwen21Job(isEditMode: false, editImagePaths: ["/a.png"], prompt: "a fox", width: 1344, height: 768)
+        let request = try #require(Qwen21RunnerSpec.driverRequest(job: job, ctx: ctx, settings: settings()))
+        #expect(request.imagePaths == [])
+        #expect(request.width == 1344 && request.height == 768)
+    }
+
+    @Test func precisionAndLorasChangeTheWarmFingerprint() throws {
+        func fingerprint(_ job: Qwen21Job) throws -> String {
+            try #require(Qwen21RunnerSpec.driverRequest(job: job, ctx: ctx, settings: settings())).fingerprint
+        }
+        let lora = LoraEntry(path: "/loras/qwen21-style.safetensors", strength: 0.8, modelFamily: .qwen21)
+        let q8 = try fingerprint(Qwen21Job(quantize: 8))
+        #expect(try q8 != fingerprint(Qwen21Job(quantize: 4)))
+        #expect(try q8 != fingerprint(Qwen21Job(quantize: 8, loras: [lora])))
+        // Switching Generate and Edit reuses the resident model.
+        #expect(try q8 == fingerprint(Qwen21Job(isEditMode: true, editImagePaths: ["/a.png"], quantize: 8)))
+    }
+
+    @Test func everyCLIRunTilesTheDecode() {
+        #expect(args(Qwen21Job(prompt: "a fox")).contains("--vae-tiling"))
+        // --low-ram implies tiling.
+        let lowRam = args(Qwen21Job(prompt: "a fox", lowRam: true))
+        #expect(lowRam.contains("--low-ram") && !lowRam.contains("--vae-tiling"))
+    }
+
+    @Test func noStepwisePreviewsOnEitherPath() throws {
+        #expect(!args(Qwen21Job(prompt: "a fox")).contains("--stepwise-image-output-dir"))
+        let request = try #require(Qwen21RunnerSpec.driverRequest(job: Qwen21Job(prompt: "a fox"), ctx: ctx, settings: settings()))
+        #expect(request.stepwiseDir.isEmpty)
+    }
+
+    @Test func lowRamStaysOnTheCLI() {
+        #expect(Qwen21RunnerSpec.driverRequest(job: Qwen21Job(lowRam: true), ctx: ctx, settings: settings()) == nil)
     }
 
     @Test func loraNamesForQwen21BeatKrea2sQwenToken() {

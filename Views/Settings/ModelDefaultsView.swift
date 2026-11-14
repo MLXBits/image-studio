@@ -160,6 +160,15 @@ struct ModelDefaultsView: View {
                 .padding(.vertical, 2)
                 .tag(Selection.model(.krea2))
             }
+            Section("Qwen") {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(FluxModelVariant.qwen21Turbo.displayName).font(.callout)
+                    Text("Turbo · \(FluxModelVariant.qwen21Turbo.defaultSteps) steps · Generate + Edit · BF16/Q8/Q4")
+                        .font(.caption2).foregroundStyle(.secondary)
+                }
+                .padding(.vertical, 2)
+                .tag(Selection.model(.qwen21Turbo))
+            }
             Section("Z-Image") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Z-Image Turbo").font(.callout)
@@ -175,15 +184,6 @@ struct ModelDefaultsView: View {
                 }
                 .padding(.vertical, 2)
                 .tag(Selection.model(.zimage))
-            }
-            Section("Qwen") {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(FluxModelVariant.qwen21Turbo.displayName).font(.callout)
-                    Text("Turbo · \(FluxModelVariant.qwen21Turbo.defaultSteps) steps · Generate + Edit · BF16/Q8/Q4")
-                        .font(.caption2).foregroundStyle(.secondary)
-                }
-                .padding(.vertical, 2)
-                .tag(Selection.model(.qwen21Turbo))
             }
             Section("Upscale") {
                 VStack(alignment: .leading, spacing: 2) {

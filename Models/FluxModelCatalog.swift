@@ -22,7 +22,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// All non-custom models shown in Settings → Models. FLUX 3 first: it is the
     /// newest model and the one users will be looking for.
     static var allModels: [Self] {
-        [.flux3Klein, .flux3KleinBase] + builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage, .qwen21Turbo]
+        [.flux3Klein, .flux3KleinBase] + builtIn + [.ideogram4, .krea2, .qwen21Turbo, .zimageTurbo, .zimage]
     }
 
     /// Models the `custom` picker entry can load through: every variant the app

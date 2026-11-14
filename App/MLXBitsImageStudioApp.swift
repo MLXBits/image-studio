@@ -183,6 +183,7 @@ struct MLXBitsImageStudioApp: App {
         ideogram4Runner.driver = driver
         krea2Runner.driver = driver
         zimageRunner.driver = driver
+        qwen21Runner.driver = driver
         _settings = State(initialValue: settings)
         _profiles = State(initialValue: profiles)
         _store = State(initialValue: store)

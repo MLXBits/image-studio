@@ -76,7 +76,7 @@ struct ModelPickerView: View {
                             Text(v.displayName).tag(v)
                         }
                         Divider()
-                        ForEach([FluxModelVariant.ideogram4, .krea2, .zimageTurbo, .zimage, .qwen21Turbo], id: \.self) { v in
+                        ForEach([FluxModelVariant.ideogram4, .krea2, .qwen21Turbo, .zimageTurbo, .zimage], id: \.self) { v in
                             modelPickerRow(v)
                         }
                         Divider()

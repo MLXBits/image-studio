@@ -161,6 +161,17 @@ enum RunnerSupport {
         return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
     }
 
+    /// The warm driver's explicit per-seed output paths, named the way the CLI names them.
+    static func driverOutputs(ctx: JobRunContext, seeds: [Int]) -> [DriverOutput] {
+        guard !seeds.isEmpty else { return [DriverOutput(seed: ctx.seed, path: ctx.outputFile)] }
+        return expandedPaths(from: ctx.outputFile, seeds: seeds).map { DriverOutput(seed: $0.seed, path: $0.path) }
+    }
+
+    /// The LoRA stack's part of a warm-driver fingerprint: a strength change reloads the model.
+    static func driverLoraKey(_ loras: [LoraEntry]) -> String {
+        loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
+    }
+
     static func formatDuration(_ seconds: TimeInterval) -> String {
         if seconds < 60 {
             return String(format: "%.1fs", seconds)
