@@ -18,4 +18,8 @@ struct WarmDriverEligibilityTests {
     @Test func krea2JobsAreOfferedToTheWarmDriver() {
         #expect(request(Krea2RunnerSpec.self, job: Krea2Job(prompt: "a panda")) != nil)
     }
+
+    @Test func qwen21JobsAreOfferedToTheWarmDriver() {
+        #expect(request(Qwen21RunnerSpec.self, job: Qwen21Job(prompt: "a panda")) != nil)
+    }
 }

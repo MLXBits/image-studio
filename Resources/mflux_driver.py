@@ -3,7 +3,7 @@
 Runs inside the mflux tool venv (interpreter discovered from the
 mflux-generate-flux2 shim's shebang) and keeps one model resident between
 jobs so back-to-back generations skip the model load. Supports the flux2,
-krea2, ideogram4, and z_image families (one warm model at a time,
+krea2, ideogram4, z_image, and qwen21 families (one warm model at a time,
 fingerprint-keyed).
 
 Protocol: newline-delimited JSON. Requests on stdin (hello, generate, cancel,
@@ -55,7 +55,9 @@ class WarmModel:
     safe. flux2 gets a driver-side embedding cache (its encoder has none);
     krea2 relies on its native prompt_cache with a reload-on-miss wrapper.
     ideogram4's encoder config is weight-layout-dependent, so its TE is never
-    evicted (its native prompt_cache still skips re-encodes)."""
+    evicted (its native prompt_cache still skips re-encodes). qwen21 gets a
+    driver-side cache keyed by prompt and reference pixels (mflux caches only
+    reference-free prompts), so seed rolls of an edit skip the encoder too."""
 
     def __init__(self, model, fingerprint, family, model_path):
         self.model = model
@@ -63,12 +65,17 @@ class WarmModel:
         self.family = family
         self.model_path = model_path
         self.embed_cache = OrderedDict()
+        # qwen21: drop the encoder as soon as the job's one prompt is encoded.
+        self.evict_after_encode = False
         if family == "flux2":
             self._orig_encode = model._encode_prompt_pair
             model._encode_prompt_pair = self._flux2_cached_encode
         elif family == "krea2":
             self._orig_encode = model._encode_prompts
             model._encode_prompts = self._krea2_ensured_encode
+        elif family == "qwen21":
+            self._orig_encode = model._encode_prompt
+            model._encode_prompt = self._qwen21_cached_encode
 
     def _flux2_cached_encode(self, *, prompt, negative_prompt, guidance):
         import mlx.core as mx
@@ -98,6 +105,47 @@ class WarmModel:
             self.ensure_text_encoder()
             return self._orig_encode(prompt=prompt, negative_prompt=negative_prompt, guidance=guidance)
 
+    def _qwen21_cached_encode(self, prompt, images):
+        import hashlib
+
+        import mlx.core as mx
+
+        # The edit encoder reads the references, so they are part of the key.
+        refs = tuple((im.size, im.mode, hashlib.blake2b(im.tobytes(), digest_size=16).digest()) for im in images)
+        key = (prompt, refs)
+        hit = self.embed_cache.get(key)
+        if hit is not None:
+            self.embed_cache.move_to_end(key)
+            return hit
+        self.ensure_text_encoder()
+        result = self._orig_encode(prompt, images)
+        mx.eval(*result)
+        self.embed_cache[key] = result
+        while len(self.embed_cache) > EMBED_CACHE_LIMIT:
+            self.embed_cache.popitem(last=False)
+        if self.evict_after_encode:
+            self.evict_text_encoder()
+        return result
+
+    def _reload_qwen21_text_encoder(self):
+        # Through mflux's own loader: it normalizes the text-encoder keys, which the
+        # generic single-component path below does not.
+        from mflux.models.common.resolution.path_resolution import PathResolution
+        from mflux.models.qwen21.model.qwen21_text_encoder.text_encoder import QwenImage21TextEncoder
+        from mflux.models.qwen21.qwen21_initializer import Qwen21Initializer
+        from mflux.models.qwen21.weights.qwen_image21_weight_definition import QwenImage21WeightDefinition
+
+        class TextEncoderOnly(QwenImage21WeightDefinition):
+            @staticmethod
+            def get_components():
+                return [c for c in QwenImage21WeightDefinition.get_components() if c.name == "text_encoder"]
+
+        root = PathResolution.resolve(self.model_path, QwenImage21WeightDefinition.get_download_patterns())
+        self.model.text_encoder = QwenImage21TextEncoder(self.model._component_configs["text_encoder"])
+        bits = self.model.bits  # load_components resets it
+        Qwen21Initializer.load_components(self.model, root, TextEncoderOnly, None)
+        self.model.bits = bits
+
     def _te_definition_and_encoder(self):
         if self.family == "flux2":
             from mflux.models.flux2.model.flux2_text_encoder.qwen3_text_encoder import Qwen3TextEncoder
@@ -116,6 +164,9 @@ class WarmModel:
         if getattr(self.model, "text_encoder", None) is not None:
             return
         emit({"event": "loading", "component": "text_encoder"})
+        if self.family == "qwen21":
+            self._reload_qwen21_text_encoder()
+            return
         from mflux.models.common.resolution.path_resolution import PathResolution
         from mflux.models.common.weights.loading.loaded_weights import LoadedWeights, MetaData
         from mflux.models.common.weights.loading.weight_applier import WeightApplier
@@ -204,6 +255,8 @@ def _unload(reason):
         _warm.model._encode_prompt_pair = _warm._orig_encode
     elif _warm.family == "krea2":
         _warm.model._encode_prompts = _warm._orig_encode
+    elif _warm.family == "qwen21":
+        _warm.model._encode_prompt = _warm._orig_encode
     _warm = None
     gc.collect()
     mx.clear_cache()
@@ -245,6 +298,26 @@ def _construct_model(req):
         variant = req.get("model_variant_raw", "z-image-turbo")
         config = ModelConfig.z_image_turbo() if "turbo" in variant else ModelConfig.z_image()
         return ZImage(model_config=config, model_path=req["model"], **kwargs)
+    if family == "qwen21":
+        from mflux.models.common.resolution.config_resolution import ConfigResolution
+        from mflux.models.common.vae.tiling_config import TilingConfig
+        from mflux.models.qwen21.variants.edit.qwen_image_21_edit import QwenImage21Edit
+
+        # The CLI's resolution for a repo or path: weights from it, config from the
+        # named base (the app always sends one; mflux 0.24.0 has no alias for the
+        # published Turbo repos and would otherwise pick the base model's config).
+        config = ConfigResolution.resolve_restricted(
+            req["model"],
+            "qwen-image-2.1",
+            model_path=req["model"],
+            extra_keys=("qwen-image-2.1-turbo",),
+            base_model=req.get("base_model"),
+        )
+        model = QwenImage21Edit(model_config=config, model_path=req["model"], **kwargs)
+        # Tiled decode, as the CLI's --vae-tiling: the fp32 VAE otherwise needs ~14 GB
+        # at 1344x768, more than the Q4 weights.
+        model.tiling_config = TilingConfig(vae_decode_tile_size=512)
+        return model
     raise RuntimeError(f"unknown family: {family}")
 
 
@@ -261,6 +334,10 @@ def _latent_creator(family):
         from mflux.models.z_image.latent_creator import ZImageLatentCreator
 
         return ZImageLatentCreator
+    if family == "qwen21":
+        from mflux.models.qwen21.latent_creator.qwen_image21_latent_creator import QwenImage21LatentCreator
+
+        return QwenImage21LatentCreator
     from mflux.models.flux2.latent_creator.flux2_latent_creator import Flux2LatentCreator
 
     return Flux2LatentCreator
@@ -348,6 +425,18 @@ def _generate_kwargs(req, seed, prompt):
             "image_strength": req.get("image_strength"),
             **pid,
         }
+    if family == "qwen21":
+        # Turbo is guidance-free (guidance 1). With no width/height an edit takes
+        # the last reference's aspect ratio, as the CLI does without --width/--height.
+        return {
+            "seed": seed,
+            "prompt": prompt,
+            "num_inference_steps": req["steps"],
+            "height": req.get("height"),
+            "width": req.get("width"),
+            "guidance": 1.0,
+            "image_paths": req.get("image_paths") or [],
+        }
     # ideogram4: the preset defines steps and guidance schedule; prompt is the
     # caption JSON string (or a plain description).
     return {
@@ -372,8 +461,14 @@ def _generate_once(req):
     if req.get("cache_limit_gb"):
         mx.set_cache_limit(int(req["cache_limit_gb"] * 1e9))
 
+    # MLX's peak is process-lifetime; reset it so `done` reports this job's peak.
+    mx.reset_peak_memory()
     warm = _load_model(req)
     model = warm.model
+    # Evicting mid-job only pays when every output shares one prompt: per-seed
+    # wildcard prompts would reload the encoder for each output.
+    prompts = {out.get("prompt") or req["prompt"] for out in req["outputs"]}
+    warm.evict_after_encode = req.get("te_policy") == "evict" and len(prompts) == 1
 
     model.callbacks = CallbackRegistry()
     model.callbacks.register(_ProgressEmitter(total_steps=req["steps"]))

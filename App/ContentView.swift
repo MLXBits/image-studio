@@ -37,6 +37,8 @@ struct ContentView: View {
     @Environment(Krea2JobRunner.self) private var krea2Runner
     @Environment(ZImageJobStore.self) private var zimageStore
     @Environment(ZImageJobRunner.self) private var zimageRunner
+    @Environment(Qwen21JobStore.self) private var qwen21Store
+    @Environment(Qwen21JobRunner.self) private var qwen21Runner
     @Environment(SeedVR2JobStore.self) private var seedVR2Store
     @Environment(SeedVR2JobRunner.self) private var seedVR2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
@@ -63,6 +65,7 @@ struct ContentView: View {
     @State private var ideogramParams = Ideogram4ParamsPanelState()
     @State private var krea2Params = Krea2ParamsPanelState()
     @State private var zimageParams = ZImageParamsPanelState()
+    @State private var qwen21Params = Qwen21ParamsPanelState()
     /// Armed in `onAppear` when restoring the last-used model will change
     /// `params.model` away from its initial default. Swallows the resulting
     /// `onChange(of: params.model)` so the interactive "switch model → reset to
@@ -86,9 +89,18 @@ struct ContentView: View {
     /// being clipped when the window (or a wide gallery) over-constrains the layout.
     @State private var contentWidth: CGFloat = 0
 
+    /// The running job's ID, whichever family it belongs to.
+    private var activeJobID: UUID? {
+        let ids: [UUID?] = [
+            runner.activeJob?.id, ideogram4Runner.activeJob?.id, krea2Runner.activeJob?.id,
+            zimageRunner.activeJob?.id, qwen21Runner.activeJob?.id, seedVR2Runner.activeJob?.id,
+        ]
+        return ids.lazy.compactMap(\.self).first
+    }
+
     private var isAnyStoreRunning: Bool {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
-            || zimageStore.isRunning || seedVR2Store.isRunning
+            || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
     }
 
     /// Every image currently attached to an img2img / edit drop area, across the
@@ -106,13 +118,16 @@ struct ContentView: View {
         if !zimageParams.imagePath.isEmpty {
             paths.insert(zimageParams.imagePath)
         }
+        if qwen21Params.isEditMode {
+            paths.formUnion(qwen21Params.editImagePaths)
+        }
         return paths
     }
 
     private var paramsPane: some View {
         ParamsPanelView(
             params: params, ideogramParams: ideogramParams,
-            krea2Params: krea2Params, zimageParams: zimageParams,
+            krea2Params: krea2Params, zimageParams: zimageParams, qwen21Params: qwen21Params,
             onQueueScenarioBatch: queueScenarioBatch
         )
         .frame(width: 350)
@@ -133,6 +148,9 @@ struct ContentView: View {
                 if params.model.isZImage {
                     return zimageParams.quantize
                 }
+                if params.model.isQwen21 {
+                    return qwen21Params.quantize
+                }
                 return params.quantize
             },
             set: { v in
@@ -143,6 +161,8 @@ struct ContentView: View {
                     krea2Params.quantize = v
                 } else if params.model.isZImage {
                     zimageParams.quantize = v
+                } else if params.model.isQwen21 {
+                    qwen21Params.quantize = v
                 } else {
                     params.quantize = v
                 }
@@ -220,10 +240,12 @@ struct ContentView: View {
             onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
             onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
             onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
+            onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
+            onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onCancel: {
                 runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
-                zimageRunner.cancel(); seedVR2Runner.cancel()
+                zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
             },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
@@ -308,6 +330,12 @@ struct ContentView: View {
     /// chain this long, so the queue/runner observers live in a second property.
     private var bodyBase: some View {
         mainContent
+            // At most one family runs at a time (GenerationCoordinator), so one ID covers them all.
+            .onChange(of: activeJobID) { _, id in
+                guard id != nil else { return }
+                selectedGalleryItem = nil
+                restoreActiveJobPreview()
+            }
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(
                     isPresented: $showingOutputDirPrompt,
@@ -331,6 +359,7 @@ struct ContentView: View {
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
                 krea2Params.applyDefaults(settings: settings, library: loraLibrary)
                 zimageParams.applyDefaults(settings: settings, library: loraLibrary)
+                qwen21Params.applyDefaults(settings: settings, library: loraLibrary)
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 try? ScenarioExamplePrompts.seedIfNeeded()
@@ -359,6 +388,7 @@ struct ContentView: View {
                 ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
                 krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
                 zimageParams.loras = updated.filter { $0.modelFamily == .zimage }
+                qwen21Params.loras = updated.filter { $0.modelFamily == .qwen21 }
             }
             // A profile switch tears this view down while the outgoing profile
             // is still active, so the unsaved form drafts are kept with it.
@@ -399,6 +429,14 @@ struct ContentView: View {
                 guard count > 1 else { return }
                 gallery.scan(outputDir: settings.outputDir)
             }
+            .onChange(of: qwen21Runner.lastCompletedOutputPath) { _, path in
+                pendingSelectPath = path
+                gallery.scan(outputDir: settings.outputDir)
+            }
+            .onChange(of: qwen21Runner.batchImageLanded) { _, count in
+                guard count > 1 else { return }
+                gallery.scan(outputDir: settings.outputDir)
+            }
             .onChange(of: seedVR2Runner.lastCompletedOutputPath) { _, path in
                 pendingSelectPath = path
                 gallery.scan(outputDir: settings.outputDir)
@@ -406,28 +444,9 @@ struct ContentView: View {
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
             // (the GenerationCoordinator gate), so this is what keeps queued work draining.
-            .onChange(of: store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: ideogram4Store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: krea2Store.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: zimageStore.isRunning) {
-                _, running in if !running {
-                    pumpQueues()
-                }
-            }
-            .onChange(of: seedVR2Store.isRunning) {
-                _, running in if !running {
+            // One handler on the union: pumpQueues only starts work once every store is idle.
+            .onChange(of: isAnyStoreRunning) { _, running in
+                if !running {
                     pumpQueues()
                 }
             }
@@ -550,31 +569,6 @@ struct ContentView: View {
                 .environment(settings)
         }
         .modifier(ProfileActionPresenter(action: $profileAction))
-        .onChange(of: runner.activeJob?.id) { _, id in
-            guard let id, let job = store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeJob(job)
-        }
-        .onChange(of: ideogram4Runner.activeJob?.id) { _, id in
-            guard let id, let job = ideogram4Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeIdeogram4Job(job)
-        }
-        .onChange(of: krea2Runner.activeJob?.id) { _, id in
-            guard let id, let job = krea2Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeKrea2Job(job)
-        }
-        .onChange(of: zimageRunner.activeJob?.id) { _, id in
-            guard let id, let job = zimageStore.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeZImageJob(job)
-        }
-        .onChange(of: seedVR2Runner.activeJob?.id) { _, id in
-            guard let id, let job = seedVR2Store.jobs.first(where: { $0.id == id }) else { return }
-            selectedGalleryItem = nil
-            previewState = .activeSeedVR2Job(job)
-        }
         .sheet(item: $upscaleTarget) { target in
             SeedVR2UpscaleSheet(
                 sources: target.sources,
@@ -739,7 +733,7 @@ struct ContentView: View {
                     .environment(settings)
                     .environment(coordinator)
                 } else if params.modelFamily == .krea2 {
-                    Krea2QueueDrawerView(selectedJob: Binding(
+                    FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: Binding(
                         get: {
                             if case let .activeKrea2Job(j) = previewState {
                                 return j
@@ -754,6 +748,24 @@ struct ContentView: View {
                     ))
                     .environment(krea2Store)
                     .environment(krea2Runner)
+                    .environment(settings)
+                    .environment(coordinator)
+                } else if params.modelFamily == .qwen21 {
+                    FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: Binding(
+                        get: {
+                            if case let .activeQwen21Job(j) = previewState {
+                                return j
+                            }
+                            return nil
+                        },
+                        set: { job in
+                            if let j = job {
+                                previewState = .activeQwen21Job(j)
+                            }
+                        }
+                    ))
+                    .environment(qwen21Store)
+                    .environment(qwen21Runner)
                     .environment(settings)
                     .environment(coordinator)
                 } else if params.modelFamily == .zimage {
@@ -822,6 +834,8 @@ struct ContentView: View {
                     krea2Params.isReadyToGenerate(settings: settings)
                 case .zimage:
                     zimageParams.isReadyToGenerate(settings: settings)
+                case .qwen21:
+                    qwen21Params.canGenerate
                 case .seedvr2:
                     false // upscaler — never the picker-selected family
                 }
@@ -842,6 +856,7 @@ struct ContentView: View {
                     case .ideogram4: ideogramParams.seed == -1
                     case .krea2: krea2Params.seed == -1
                     case .zimage: zimageParams.seed == -1
+                    case .qwen21: qwen21Params.seed == -1
                     case .seedvr2: false
                     }
                     if seedIsRandom {
@@ -912,6 +927,7 @@ struct ContentView: View {
         case .ideogram4: ideogramParams.seed != -1
         case .krea2: krea2Params.seed != -1
         case .zimage: zimageParams.seed != -1
+        case .qwen21: qwen21Params.seed != -1
         case .seedvr2: false
         }
     }
@@ -929,6 +945,7 @@ struct ContentView: View {
                     ideogramParams.seed = -1
                     krea2Params.seed = -1
                     zimageParams.seed = -1
+                    qwen21Params.seed = -1
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
@@ -956,79 +973,19 @@ struct ContentView: View {
             .hidden()
 
             if store.isRunning {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    if let job = runner.activeJob, job.seeds.count > 1 {
-                        let done = job.completedSeedsInBatch
-                        let total = job.seeds.count
-                        Text("\(done)/\(total) images")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let remaining = store.pendingJobs.count + 1
-                        Text("\(remaining) left")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                queueProgress(runner.activeJob, pending: store.pendingJobs.count)
             } else if ideogram4Store.isRunning {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    if let job = ideogram4Runner.activeJob, job.seeds.count > 1 {
-                        let done = job.completedSeedsInBatch
-                        let total = job.seeds.count
-                        Text("\(done)/\(total) images")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let remaining = ideogram4Store.pendingJobs.count + 1
-                        Text("\(remaining) left")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                queueProgress(ideogram4Runner.activeJob, pending: ideogram4Store.pendingJobs.count)
             } else if krea2Store.isRunning {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    if let job = krea2Runner.activeJob, job.seeds.count > 1 {
-                        let done = job.completedSeedsInBatch
-                        let total = job.seeds.count
-                        Text("\(done)/\(total) images")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let remaining = krea2Store.pendingJobs.count + 1
-                        Text("\(remaining) left")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                queueProgress(krea2Runner.activeJob, pending: krea2Store.pendingJobs.count)
             } else if zimageStore.isRunning {
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    if let job = zimageRunner.activeJob, job.seeds.count > 1 {
-                        let done = job.completedSeedsInBatch
-                        let total = job.seeds.count
-                        Text("\(done)/\(total) images")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    } else {
-                        let remaining = zimageStore.pendingJobs.count + 1
-                        Text("\(remaining) left")
-                            .monospacedDigit()
-                            .foregroundStyle(.secondary)
-                    }
-                }
+                queueProgress(zimageRunner.activeJob, pending: zimageStore.pendingJobs.count)
+            } else if qwen21Store.isRunning {
+                queueProgress(qwen21Runner.activeJob, pending: qwen21Store.pendingJobs.count)
             } else if seedVR2Store.isRunning {
                 // SeedVR2 is single-output (no batch), so just show the count of
                 // upscales still queued behind the running one.
-                HStack(spacing: 6) {
-                    ProgressView().controlSize(.small)
-                    let remaining = seedVR2Store.pendingJobs.count + 1
-                    Text("\(remaining) left")
-                        .monospacedDigit()
-                        .foregroundStyle(.secondary)
-                }
+                queueProgress(nil as SeedVR2Job?, pending: seedVR2Store.pendingJobs.count)
             } else {
                 Label("Queue", systemImage: "list.bullet")
             }
@@ -1066,8 +1023,30 @@ struct ContentView: View {
         return (idx > 0, idx < items.count - 1)
     }
 
+    /// "3/10 images" while a batch job runs, else how many jobs are left including the running one.
+    private func queueProgress(_ job: (some GeneratedJob)?, pending: Int) -> some View {
+        HStack(spacing: 6) {
+            ProgressView().controlSize(.small)
+            Group {
+                if let job, job.seeds.count > 1 {
+                    Text("\(job.completedSeedsInBatch)/\(job.seeds.count) images")
+                } else {
+                    Text("\(pending + 1) left")
+                }
+            }
+            .monospacedDigit()
+            .foregroundStyle(.secondary)
+        }
+    }
+
     private func useInImg2Img(_ path: String) {
-        if params.isEditMode {
+        // Qwen has no img2img: the image becomes the next edit reference.
+        if params.modelFamily == .qwen21 {
+            qwen21Params.isEditMode = true
+            if !qwen21Params.editImagePaths.contains(path), qwen21Params.editImagePaths.count < Qwen21Job.maxReferences {
+                qwen21Params.editImagePaths.append(path)
+            }
+        } else if params.isEditMode {
             if !params.editImagePaths.contains(path) {
                 params.editImagePaths.append(path)
             }
@@ -1109,6 +1088,11 @@ struct ContentView: View {
                 : saved
             return true
         }
+        if m.isQwen21 {
+            let saved = settings.lastQwen21?.loras ?? []
+            qwen21Params.loras = saved.isEmpty ? loraLibrary.defaultLoras(for: .qwen21) : saved
+            return true
+        }
         return false
     }
 
@@ -1142,6 +1126,11 @@ struct ContentView: View {
     private func applyZImage(_ meta: ZImageMetadata, newSeed: Bool) {
         selectFamily(meta.resolvedVariant, customRepo: meta.customModelRepo)
         zimageParams.apply(metadata: meta, newSeed: newSeed)
+    }
+
+    private func applyQwen21(_ meta: Qwen21Metadata, newSeed: Bool) {
+        selectFamily(.qwen21Turbo, customRepo: meta.customModelRepo)
+        qwen21Params.apply(metadata: meta, newSeed: newSeed)
     }
 
     /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
@@ -1196,6 +1185,8 @@ struct ContentView: View {
             previewState = .activeKrea2Job(j)
         } else if let j = zimageRunner.activeJob {
             previewState = .activeZImageJob(j)
+        } else if let j = qwen21Runner.activeJob {
+            previewState = .activeQwen21Job(j)
         } else if let j = seedVR2Runner.activeJob {
             previewState = .activeSeedVR2Job(j)
         } else {
@@ -1350,6 +1341,7 @@ struct ContentView: View {
         settings.lastLoras = params.loras
         settings.lastKrea2 = krea2Params.snapshot()
         settings.lastZImage = zimageParams.snapshot()
+        settings.lastQwen21 = qwen21Params.snapshot()
     }
 
     /// One Generate press. `scenarioPrompts`, when supplied, is a batch of prompts
@@ -1443,6 +1435,9 @@ struct ContentView: View {
         case .zimage:
             generateZImage(count: count, scenarioPrompts: scenarioPrompts)
 
+        case .qwen21:
+            generateQwen21(count: count, scenarioPrompts: scenarioPrompts)
+
         case .seedvr2:
             break // upscaler — never the picker-selected family; started via startUpscale
         }
@@ -1508,6 +1503,56 @@ struct ContentView: View {
         if wasIdle, let firstJob = jobs.first {
             selectedGalleryItem = nil
             previewState = .activeKrea2Job(firstJob)
+        }
+    }
+
+    /// Enqueues Qwen-Image 2.1 jobs for one Generate press. Wildcards fan out like
+    /// Krea 2's; an edit's references and size choice ride along unchanged.
+    private func generateQwen21(count: Int, scenarioPrompts: [String]? = nil) {
+        guard qwen21Params.canGenerate || scenarioPrompts?.isEmpty == false else { return }
+        settings.lastModel = params.model == .custom ? .custom : .qwen21Turbo
+        settings.lastQwen21 = qwen21Params.snapshot()
+        qwen21Params.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
+        if scenarioPrompts == nil {
+            settings.recordPromptUse(qwen21Params.prompt)
+        }
+        let wasIdle = !isAnyStoreRunning
+        let repo = params.effectiveCustomRepo
+        // One (prompt, size) per job: scenario prompts, wildcard variants, or the field itself.
+        let sized = { (text: String) -> (String, (width: Int, height: Int)?) in
+            let directive = AspectDirective.extract(from: text)
+            let size = AspectDirective.size(
+                ratio: directive.ratio, width: qwen21Params.width, height: qwen21Params.height, constraints: .qwen21
+            )
+            return (directive.prompt, size)
+        }
+        let jobs: [Qwen21Job]
+        if let scenarioPrompts, !scenarioPrompts.isEmpty {
+            jobs = scenarioPrompts.map {
+                let (text, size) = sized($0)
+                return qwen21Params.makeJob(customModelRepo: repo, resolvedPrompt: collapseWildcards((text, "")).positive, size: size)
+            }
+        } else {
+            let (text, size) = sized(qwen21Params.prompt)
+            let variants = min(WildcardExpander.variantCount(text), 10)
+            if variants > 1 {
+                jobs = WildcardExpander.expandVariants(text, count: count > 1 ? count : variants).map {
+                    qwen21Params.makeJob(customModelRepo: repo, resolvedPrompt: $0, size: size)
+                }
+            } else {
+                let job = qwen21Params.makeJob(
+                    count: count, customModelRepo: repo, resolvedPrompt: collapseWildcards((text, "")).positive, size: size
+                )
+                jobs = [job]
+            }
+        }
+        for job in jobs {
+            qwen21Store.add(job)
+        }
+        qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
+        if wasIdle, let firstJob = jobs.first {
+            selectedGalleryItem = nil
+            previewState = .activeQwen21Job(firstJob)
         }
     }
 
@@ -1781,6 +1826,7 @@ struct ContentView: View {
         case .flux: params.prompt
         case .krea2: krea2Params.prompt
         case .zimage: zimageParams.prompt
+        case .qwen21: qwen21Params.prompt
         case .ideogram4, .seedvr2: nil
         }
     }
@@ -1813,6 +1859,9 @@ struct ContentView: View {
         } else if !zimageStore.pendingJobs.isEmpty {
             driverController.eject(reason: "model_switch")
             zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
+        } else if !qwen21Store.pendingJobs.isEmpty {
+            driverController.eject(reason: "model_switch")
+            qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
         } else if !seedVR2Store.pendingJobs.isEmpty {
             // Free any warm generative model before the upscale — SeedVR2 loads its own
             // weights in a fresh CLI process, and holding both risks OOM.

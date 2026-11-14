@@ -419,6 +419,11 @@ class AppSettings {
         didSet { saveProfile() }
     }
 
+    /// Last-used Qwen-Image 2.1 form, restored on next launch.
+    var lastQwen21: Qwen21FormState? {
+        didSet { saveProfile() }
+    }
+
     // MARK: - SeedVR2 upscale defaults
 
     /// Default SeedVR2 model size: false = 3B (fast), true = 7B (quality).

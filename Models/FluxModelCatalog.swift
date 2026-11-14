@@ -11,6 +11,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     case krea2
     case zimageTurbo = "z-image-turbo"
     case zimage = "z-image"
+    case qwen21Turbo = "qwen-image-2.1-turbo"
     case custom
 
     /// Flux.2 variants only — used for base-model pickers and LoRA sections.
@@ -21,7 +22,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// All non-custom models shown in Settings → Models. FLUX 3 first: it is the
     /// newest model and the one users will be looking for.
     static var allModels: [Self] {
-        [.flux3Klein, .flux3KleinBase] + builtIn + [.ideogram4, .krea2, .zimageTurbo, .zimage]
+        [.flux3Klein, .flux3KleinBase] + builtIn + [.ideogram4, .krea2, .qwen21Turbo, .zimageTurbo, .zimage]
     }
 
     /// Models the `custom` picker entry can load through: every variant the app
@@ -93,8 +94,12 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         self == .zimageTurbo
     }
 
+    var isQwen21: Bool {
+        self == .qwen21Turbo
+    }
+
     var isFlux: Bool {
-        !isIdeogram4 && !isKrea2 && !isZImage && self != .custom
+        !isIdeogram4 && !isKrea2 && !isZImage && !isQwen21 && self != .custom
     }
 
     nonisolated var displayName: String {
@@ -107,6 +112,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "Krea 2 Turbo"
         case .zimageTurbo: "Z-Image Turbo"
         case .zimage: "Z-Image"
+        case .qwen21Turbo: "Qwen-Image 2.1 Turbo"
         case .flux3Klein: "FLUX.3 Klein"
         case .flux3KleinBase: "FLUX.3 Klein Base"
         case .custom: "Custom Model"
@@ -114,7 +120,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     var isDistilled: Bool {
-        self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo || self == .flux3Klein
+        self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo || self == .flux3Klein || self == .qwen21Turbo
     }
 
     /// Both FLUX 3 Image Klein variants. They share the `.flux` pipeline but run
@@ -130,6 +136,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 8 // turbo reference default
         case .zimageTurbo: 9 // mflux z-image-turbo default
         case .zimage: 50 // mflux z-image default
+        case .qwen21Turbo: 8 // distilled; the checkpoint ships an 8-sigma schedule
         case .flux3Klein: 16 // distilled Klein is designed for ~16 steps (mflux default)
         default: isDistilled ? 4 : 50 // flux3KleinBase lands here at 50, its CFG default
         }
@@ -138,7 +145,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// Upper bound of the Steps field for this model's family.
     var maxSteps: Int {
         switch self {
-        case .krea2: 50
+        case .krea2, .qwen21Turbo: 50
         case .zimage, .zimageTurbo: 100
         default: 150
         }
@@ -177,7 +184,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 1024 // krea/Krea-2 qwen3vl tokenizer, max_length=1024
         case .zimageTurbo, .zimage: 512 // Qwen3-4B encoder at max_sequence_length=512
         case .flux3Klein, .flux3KleinBase: 4096 // mflux ModelConfig max_sequence_length for FLUX 3
-        case .ideogram4, .custom: nil
+        case .ideogram4, .qwen21Turbo, .custom: nil
         }
     }
 
@@ -189,6 +196,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
         case .zimageTurbo, .zimage: 20.0 // 6.15B DiT + Qwen3-4B encoder + VAE, bf16
         case .flux3Klein, .flux3KleinBase: 18.5 // mflux-community BF16 repo (text encoder + transformer + VAE)
+        case .qwen21Turbo: 32.5 // mflux-community BF16 repo (17.5 GB of it is the Qwen3-VL text encoder)
         case .custom: 0
         }
     }
@@ -226,6 +234,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .ideogram4: .ideogram4
         case .krea2: .krea2
         case .zimageTurbo, .zimage: .zimage
+        case .qwen21Turbo: .qwen21
         case .flux2Klein4B, .flux2Klein9B, .flux2KleinBase4B, .flux2KleinBase9B,
              .flux3Klein, .flux3KleinBase, .custom: .flux
         }
@@ -242,6 +251,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .zimageTurbo: .zImageTurbo
         case .zimage: .zImage
         case .flux3Klein, .flux3KleinBase: .flux3
+        case .qwen21Turbo: .qwen21Edit
         case .custom: nil
         }
     }
@@ -266,6 +276,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .zimage: "Tongyi-MAI/Z-Image"
         case .flux3Klein: "mflux-community/flux-3-image-klein-mflux-bf16"
         case .flux3KleinBase: "mflux-community/flux-3-image-klein-base-mflux-bf16"
+        case .qwen21Turbo: "mflux-community/qwen-image-2-1-turbo-mflux-bf16"
         case .custom: nil
         }
     }
@@ -283,6 +294,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .zimage: "tongyi-mai--z-image"
         case .flux3Klein: "flux-3-image-klein"
         case .flux3KleinBase: "flux-3-image-klein-base"
+        case .qwen21Turbo: "qwen-image-2-1-turbo"
         case .custom: ""
         }
     }
@@ -333,6 +345,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case (.flux3KleinBase, 0): "mflux-community/flux-3-image-klein-base-mflux-bf16"
         case (.flux3KleinBase, 8): "mflux-community/flux-3-image-klein-base-mflux-q8"
         case (.flux3KleinBase, 4): "mflux-community/flux-3-image-klein-base-mflux-q4"
+        case (.qwen21Turbo, 0): "mflux-community/qwen-image-2-1-turbo-mflux-bf16"
+        case (.qwen21Turbo, 8): "mflux-community/qwen-image-2-1-turbo-mflux-q8"
+        case (.qwen21Turbo, 4): "mflux-community/qwen-image-2-1-turbo-mflux-q4"
         default: nil
         }
     }
@@ -375,6 +390,14 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
             default: return 18.5
             }
         }
+        // Measured sizes of the three mflux-community repos (the q8/q4 ones quantize the text encoder too).
+        if isQwen21 {
+            switch quantize {
+            case 4: return 10.0
+            case 8: return 17.8
+            default: return 32.5
+            }
+        }
         let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
         return approximateBF16SizeGB * factor
     }
@@ -384,8 +407,10 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     func isOnDisk(quantize: Int, savedIn cacheDir: URL, hubDir: URL) -> Bool {
         // Ideogram Q8/Q4 load pre-quantized weights straight from the HF cache; the
         // legacy mflux-save dir is never used for them and may be stale, so ignore it
-        // and report on-disk purely from the published repo's cache.
-        if isIdeogram4, quantize > 0, preQuantizedRepoID(quantize: quantize) != nil {
+        // and report on-disk purely from the published repo's cache. Qwen-Image 2.1
+        // loads a published repo at every precision, BF16 included.
+        let publishedOnly = isQwen21 || (isIdeogram4 && quantize > 0)
+        if publishedOnly, preQuantizedRepoID(quantize: quantize) != nil {
             return isOnDisk(quantize: quantize, hubDir: hubDir)
         }
         let savePath = savedModelPath(quantize: quantize, in: cacheDir)

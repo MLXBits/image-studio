@@ -8,6 +8,7 @@ enum PreviewState {
     case activeIdeogram4Job(Ideogram4Job)
     case activeKrea2Job(Krea2Job)
     case activeZImageJob(ZImageJob)
+    case activeQwen21Job(Qwen21Job)
     case activeSeedVR2Job(SeedVR2Job)
     case galleryItem(GalleryItem)
 }
@@ -25,6 +26,8 @@ struct PreviewPaneView: View {
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     var onRemixZImage: ((ZImageMetadata) -> Void)?
     var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
+    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -107,23 +110,49 @@ struct PreviewPaneView: View {
                 case let .activeKrea2Job(job):
                     switch job.status {
                     case .running:
-                        Krea2StepwisePreviewView(job: job, onCancel: onCancel)
+                        JobStepwisePreviewView(job: job, onCancel: onCancel)
 
                     case .completed:
-                        Krea2CompletedPreviewView(
+                        JobCompletedPreviewView(
                             job: job,
+                            metadataOf: { Krea2Metadata.from(job: $0) },
+                            infoOf: { ImageMetadataInfo(krea2Job: $0) },
                             onRemix: onRemixKrea2,
                             onApplySettings: onApplyKrea2Settings
                         )
 
                     case let .failed(msg):
-                        krea2FailedView(message: msg, job: job)
+                        logFailedView(message: msg, log: job.log)
 
                     case .cancelled:
                         cancelledView
 
                     case .pending:
-                        krea2PendingView(job: job)
+                        queuedView(displayName: job.displayName)
+                    }
+
+                case let .activeQwen21Job(job):
+                    switch job.status {
+                    case .running:
+                        JobStepwisePreviewView(job: job, onCancel: onCancel)
+
+                    case .completed:
+                        JobCompletedPreviewView(
+                            job: job,
+                            metadataOf: { Qwen21Metadata.from(job: $0) },
+                            infoOf: { ImageMetadataInfo(qwen21Job: $0) },
+                            onRemix: onRemixQwen21,
+                            onApplySettings: onApplyQwen21Settings
+                        )
+
+                    case let .failed(msg):
+                        logFailedView(message: msg, log: job.log)
+
+                    case .cancelled:
+                        cancelledView
+
+                    case .pending:
+                        queuedView(displayName: job.displayName)
                     }
 
                 case let .activeZImageJob(job):
@@ -177,6 +206,8 @@ struct PreviewPaneView: View {
                         onApplyKrea2Settings: onApplyKrea2Settings,
                         onRemixZImage: onRemixZImage,
                         onApplyZImageSettings: onApplyZImageSettings,
+                        onRemixQwen21: onRemixQwen21,
+                        onApplyQwen21Settings: onApplyQwen21Settings,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
@@ -271,6 +302,12 @@ struct PreviewPaneView: View {
             return true
 
         case let .activeZImageJob(job):
+            if case .running = job.status {
+                return false
+            }
+            return true
+
+        case let .activeQwen21Job(job):
             if case .running = job.status {
                 return false
             }
@@ -453,7 +490,8 @@ struct PreviewPaneView: View {
         }
     }
 
-    private func krea2FailedView(message: String, job: Krea2Job) -> some View {
+    /// A failed run's log (or its error when there is no log), scrolled to the end.
+    private func logFailedView(message: String, log: String) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
@@ -466,7 +504,7 @@ struct PreviewPaneView: View {
             Divider()
             ScrollViewReader { proxy in
                 ScrollView {
-                    Text(job.log.isEmpty ? message : job.log)
+                    Text(log.isEmpty ? message : log)
                         .font(.system(.caption, design: .monospaced))
                         .foregroundStyle(.secondary)
                         .textSelection(.enabled)
@@ -480,7 +518,7 @@ struct PreviewPaneView: View {
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
-    private func krea2PendingView(job: Krea2Job) -> some View {
+    private func queuedView(displayName: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
                 .font(.system(size: 40))
@@ -488,7 +526,7 @@ struct PreviewPaneView: View {
             Text("Waiting in queue")
                 .font(.title3)
                 .foregroundStyle(.secondary)
-            Text(job.displayName)
+            Text(displayName)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

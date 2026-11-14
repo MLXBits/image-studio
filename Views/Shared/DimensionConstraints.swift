@@ -22,6 +22,10 @@ struct DimensionConstraints: Equatable {
     /// renders while keeping the floor above the model's minimum.
     static let zimage = Self(range: 256 ... 2048, step: 16, maxArea: nil)
 
+    /// Qwen-Image 2.1: multiples of 32 (mflux rejects anything else). The model card
+    /// renders up to 2048×2048; Turbo blurs fine detail into a grid below ~1024.
+    static let qwen21 = Self(range: 256 ... 2048, step: 32, maxArea: nil)
+
     /// FLUX.2 (all variants — distilled *klein* and dev *klein-base*, 4B and 9B —
     /// share one architecture and the same ~4 MP ceiling). Multiples of 32 to match
     /// the FLUX.2 VAE stride. The per-axis ceiling is generous (4096) so wide aspect

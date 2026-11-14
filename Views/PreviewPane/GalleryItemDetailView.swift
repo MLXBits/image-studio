@@ -11,6 +11,8 @@ struct GalleryItemDetailView: View {
     var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
     var onRemixZImage: ((ZImageMetadata) -> Void)?
     var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
+    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
@@ -28,6 +30,8 @@ struct GalleryItemDetailView: View {
             ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else if item.zimageMetadata != nil {
             ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.qwen21Metadata != nil {
+            ImageMetadataInfo(qwen21Item: item) ?? ImageMetadataInfo(path: item.path)
         } else if item.seedVR2Metadata != nil {
             ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
         } else {
@@ -82,6 +86,11 @@ struct GalleryItemDetailView: View {
                     Divider()
                     Button("Apply Settings") { onApplyZImageSettings?(correctedZImage(meta)) }
                     Button("Remix (new seed)") { onRemixZImage?(meta) }
+                } else if let meta = item.qwen21Metadata {
+                    Divider()
+                    Button("Apply Settings") { onApplyQwen21Settings?(correctedQwen21(meta)) }
+                    Button("Remix (new seed)") { onRemixQwen21?(meta) }
+                    Button("Use as Edit Reference") { onUseInImg2Img(item.path) }
                 }
                 if let onUpscale {
                     Divider()
@@ -108,7 +117,7 @@ struct GalleryItemDetailView: View {
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
                 onUseInImg2Img: item.ideogram4Metadata == nil && item.krea2Metadata == nil
-                    && item.zimageMetadata == nil
+                    && item.zimageMetadata == nil && item.qwen21Metadata == nil
                     ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
@@ -178,6 +187,9 @@ struct GalleryItemDetailView: View {
         if let meta = item.zimageMetadata, let fn = onApplyZImageSettings {
             return { fn(correctedZImage(meta)) }
         }
+        if let meta = item.qwen21Metadata, let fn = onApplyQwen21Settings {
+            return { fn(correctedQwen21(meta)) }
+        }
         // SeedVR2 upscale: replay from the source generation metadata folded into the
         // upscale's sidecar, so an upscale is as re-applicable as its original.
         if let src = item.seedVR2Metadata {
@@ -214,6 +226,9 @@ struct GalleryItemDetailView: View {
         if let meta = item.zimageMetadata, let fn = onRemixZImage {
             return { fn(meta) }
         }
+        if let meta = item.qwen21Metadata, let fn = onRemixQwen21 {
+            return { fn(meta) }
+        }
         if let src = item.seedVR2Metadata {
             if let meta = src.sourceFlux {
                 return { onRemix(meta) }
@@ -247,6 +262,12 @@ struct GalleryItemDetailView: View {
     }
 
     private func correctedKrea2(_ meta: Krea2Metadata) -> Krea2Metadata {
+        var corrected = meta
+        corrected.board = item.board == "Default" ? nil : item.board
+        return corrected
+    }
+
+    private func correctedQwen21(_ meta: Qwen21Metadata) -> Qwen21Metadata {
         var corrected = meta
         corrected.board = item.board == "Default" ? nil : item.board
         return corrected

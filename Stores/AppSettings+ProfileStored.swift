@@ -31,6 +31,7 @@ extension AppSettings {
         var lastIdeogramSeed: Int?
         var lastKrea2: Krea2FormState?
         var lastZImage: ZImageFormState?
+        var lastQwen21: Qwen21FormState?
         var lastScenarioOutline: String?
         /// Gallery boards the user collapsed (was a global UserDefaults key).
         var galleryCollapsedBoards: [String]?
@@ -56,6 +57,7 @@ extension AppSettings {
             lastIdeogramSeed = settings.lastIdeogramSeed
             lastKrea2 = settings.lastKrea2
             lastZImage = settings.lastZImage
+            lastQwen21 = settings.lastQwen21
             lastScenarioOutline = settings.lastScenarioOutline
             galleryCollapsedBoards = settings.galleryCollapsedBoards
         }
@@ -78,6 +80,7 @@ extension AppSettings {
             lastIdeogramSeed = try? c.decode(Int.self, forKey: .lastIdeogramSeed)
             lastKrea2 = try? c.decode(Krea2FormState.self, forKey: .lastKrea2)
             lastZImage = try? c.decode(ZImageFormState.self, forKey: .lastZImage)
+            lastQwen21 = try? c.decode(Qwen21FormState.self, forKey: .lastQwen21)
             lastScenarioOutline = try? c.decode(String.self, forKey: .lastScenarioOutline)
             galleryCollapsedBoards = try? c.decode([String].self, forKey: .galleryCollapsedBoards)
         }
@@ -99,6 +102,7 @@ extension AppSettings {
         lastIdeogramSeed = stored.lastIdeogramSeed
         lastKrea2 = stored.lastKrea2
         lastZImage = stored.lastZImage
+        lastQwen21 = stored.lastQwen21
         lastScenarioOutline = stored.lastScenarioOutline ?? ""
         galleryCollapsedBoards = stored.galleryCollapsedBoards ?? []
     }

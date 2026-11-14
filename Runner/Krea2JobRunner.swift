@@ -7,7 +7,7 @@ import Foundation
 /// loads the saved dir on subsequent runs. BF16 loads the repo directly.
 typealias Krea2JobRunner = JobRunner<Krea2RunnerSpec>
 
-extension Krea2Job: @MainActor GeneratedJob {}
+extension Krea2Job: @MainActor QueueListedJob {}
 extension Krea2JobStore: @MainActor GenerationJobStore {}
 
 enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
@@ -106,17 +106,12 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
         let (model, quantizeArg) = resolveModel(job: job, settings: settings)
 
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }
-        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
-        let outputs: [DriverOutput] = job.seeds.isEmpty
-            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
-            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
-            .map { DriverOutput(seed: $0.seed, path: $0.path) }
         let trimmedNegative = job.negativePrompt.trimmingCharacters(in: .whitespaces)
 
         return DriverGenerateRequest(
             id: job.id.uuidString,
             family: "krea2",
-            fingerprint: "krea2|\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            fingerprint: "krea2|\(model)|q\(quantizeArg ?? 0)|\(RunnerSupport.driverLoraKey(loras))",
             model: model,
             quantize: quantizeArg,
             loraPaths: loras.map(\.path),
@@ -134,7 +129,7 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
             cfgEnd: nil,
             pidDecode: job.pidDecode,
             pidDegradeSigma: job.pidDegradeSigma,
-            outputs: outputs,
+            outputs: RunnerSupport.driverOutputs(ctx: ctx, seeds: job.seeds),
             stepwiseDir: ctx.stepwiseDir.path,
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
