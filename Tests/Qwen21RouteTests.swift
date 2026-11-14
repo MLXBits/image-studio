@@ -145,6 +145,35 @@ struct Qwen21RouteTests {
         #expect(LoraBaseModelHeuristic.guess(for: "qwen-image-style.safetensors") == .matched(.krea2))
     }
 
+    @Test func makeJobSnapsSizesToMfluxsMultipleOf32() {
+        // A saved form or Settings default can predate the 32 px constraint.
+        let params = Qwen21ParamsPanelState()
+        params.prompt = "a fox"
+        params.width = 1040
+        params.height = 200
+        let job = params.makeJob()
+        #expect(job.width % 32 == 0 && job.height % 32 == 0)
+        #expect(job.height == 256) // the Qwen minimum
+        let directed = params.makeJob(size: (width: 1000, height: 1000))
+        #expect(directed.width % 32 == 0 && directed.height % 32 == 0)
+    }
+
+    @Test func anUpscaleKeepsItsQwenSourceRecipe() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appendingPathComponent("qwen21_20261114_seed_7.png").path
+        var meta = Qwen21Metadata.from(job: Qwen21Job(prompt: "a fox in snow", steps: 8, width: 1344, height: 768))
+        meta.seed = 7
+        MetadataSidecar.writeQwen21(meta, for: source)
+
+        let resolved = SeedVR2Metadata.resolveSource(for: source)
+        #expect(resolved.qwen21?.prompt == "a fox in snow")
+        let fields = try #require(SeedVR2DisplayFields(source: resolved))
+        #expect(fields.sourceModel == "Qwen-Image 2.1 Turbo")
+        #expect(fields.seed == 7 && fields.width == 1344 && fields.height == 768)
+    }
+
     @Test func oldHistoryEntriesDecodeWithDefaults() throws {
         let json = #"{"id":"6F9619FF-8B86-D011-B42D-00C04FC964FF","prompt":"a fox"}"#
         let decoder = JSONDecoder()

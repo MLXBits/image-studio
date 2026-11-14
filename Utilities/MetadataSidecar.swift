@@ -245,6 +245,7 @@ nonisolated struct SeedVR2Source {
     var ideogram4: Ideogram4Metadata?
     var krea2: Krea2Metadata?
     var zimage: ZImageMetadata?
+    var qwen21: Qwen21Metadata?
 }
 
 /// Source-forward display fields for a SeedVR2 upscale, derived from the source
@@ -302,6 +303,16 @@ nonisolated struct SeedVR2DisplayFields {
             seed = s.seed
             width = s.width
             height = s.height
+        } else if let s = source.qwen21 {
+            prompt = s.prompt
+            negativePrompt = ""
+            sourceModel = FluxModelVariant.qwen21Turbo.displayName
+            steps = s.steps
+            guidance = 1.0
+            loras = s.loras ?? []
+            seed = s.seed
+            width = s.width
+            height = s.height
         } else {
             return nil
         }
@@ -327,7 +338,8 @@ nonisolated struct SeedVR2Metadata: Codable {
             sourceFlux: source.flux,
             sourceIdeogram4: source.ideogram4,
             sourceKrea2: source.krea2,
-            sourceZImage: source.zimage
+            sourceZImage: source.zimage,
+            sourceQwen21: source.qwen21
         )
     }
 
@@ -348,6 +360,9 @@ nonisolated struct SeedVR2Metadata: Codable {
         if name.hasPrefix("krea2"), let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
             return SeedVR2Source(krea2: krea2)
         }
+        if name.hasPrefix("qwen21"), let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
+            return SeedVR2Source(qwen21: qwen21)
+        }
         if let flux = MetadataSidecar.read(for: sourcePath) {
             return SeedVR2Source(flux: flux)
         }
@@ -365,7 +380,8 @@ nonisolated struct SeedVR2Metadata: Codable {
                 flux: priorUpscale.sourceFlux,
                 ideogram4: priorUpscale.sourceIdeogram4,
                 krea2: priorUpscale.sourceKrea2,
-                zimage: priorUpscale.sourceZImage
+                zimage: priorUpscale.sourceZImage,
+                qwen21: priorUpscale.sourceQwen21
             )
         }
         return SeedVR2Source()
@@ -391,6 +407,7 @@ nonisolated struct SeedVR2Metadata: Codable {
     var sourceIdeogram4: Ideogram4Metadata?
     var sourceKrea2: Krea2Metadata?
     var sourceZImage: ZImageMetadata?
+    var sourceQwen21: Qwen21Metadata?
 }
 
 enum MetadataSidecar {

@@ -162,18 +162,18 @@ extension ModelDefaultsView {
         }
     }
 
-    func widthPicker(model: FluxModelVariant, current: Int?) -> some View {
+    func widthPicker(model: FluxModelVariant, current: Int?, constraints: DimensionConstraints = .legacy) -> some View {
         dimensionRow(
-            label: "Width", model: model, current: current,
+            label: "Width", model: model, current: current, constraints: constraints,
             get: \.width,
             set: { var d = settings.defaults(for: model); d.width = $0; settings.updateDefaults(d, for: model) },
             reset: { var d = settings.defaults(for: model); d.width = nil; settings.updateDefaults(d, for: model) }
         )
     }
 
-    func heightPicker(model: FluxModelVariant, current: Int?) -> some View {
+    func heightPicker(model: FluxModelVariant, current: Int?, constraints: DimensionConstraints = .legacy) -> some View {
         dimensionRow(
-            label: "Height", model: model, current: current,
+            label: "Height", model: model, current: current, constraints: constraints,
             get: \.height,
             set: { var d = settings.defaults(for: model); d.height = $0; settings.updateDefaults(d, for: model) },
             reset: { var d = settings.defaults(for: model); d.height = nil; settings.updateDefaults(d, for: model) }
@@ -182,7 +182,7 @@ extension ModelDefaultsView {
 
     // swiftlint:disable:next function_parameter_count
     private func dimensionRow(
-        label: String, model: FluxModelVariant, current: Int?,
+        label: String, model: FluxModelVariant, current: Int?, constraints: DimensionConstraints,
         get _: KeyPath<ModelDefaults, Int?>,
         set: @escaping (Int) -> Void,
         reset: @escaping () -> Void
@@ -192,7 +192,7 @@ extension ModelDefaultsView {
             set: { set($0) }
         )
         return HStack {
-            DimensionSliderRow(label: label, value: bound)
+            DimensionSliderRow(label: label, value: bound, range: constraints.range, step: constraints.step)
             if current != nil {
                 resetButton(reset)
             }

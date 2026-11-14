@@ -336,6 +336,10 @@ struct ContentView: View {
                 selectedGalleryItem = nil
                 restoreActiveJobPreview()
             }
+            // References change after launch too; keep them undeletable in the gallery.
+            .onChange(of: img2imgLockedPaths) { _, paths in
+                gallery.lockedPaths = paths
+            }
             .sheet(isPresented: $showingOutputDirPrompt) {
                 OutputDirectoryPromptView(
                     isPresented: $showingOutputDirPrompt,
@@ -1509,7 +1513,8 @@ struct ContentView: View {
     /// Enqueues Qwen-Image 2.1 jobs for one Generate press. Wildcards fan out like
     /// Krea 2's; an edit's references and size choice ride along unchanged.
     private func generateQwen21(count: Int, scenarioPrompts: [String]? = nil) {
-        guard qwen21Params.canGenerate || scenarioPrompts?.isEmpty == false else { return }
+        let hasReferences = !qwen21Params.isEditMode || !qwen21Params.editImagePaths.isEmpty
+        guard qwen21Params.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return }
         settings.lastModel = params.model == .custom ? .custom : .qwen21Turbo
         settings.lastQwen21 = qwen21Params.snapshot()
         qwen21Params.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam

@@ -209,6 +209,9 @@ struct GalleryItemDetailView: View {
             if let meta = src.sourceZImage, let fn = onApplyZImageSettings {
                 return { fn(correctedZImage(meta)) }
             }
+            if let meta = src.sourceQwen21, let fn = onApplyQwen21Settings {
+                return { fn(correctedQwen21(meta)) }
+            }
         }
         return nil
     }
@@ -240,6 +243,9 @@ struct GalleryItemDetailView: View {
                 return { fn(meta) }
             }
             if let meta = src.sourceZImage, let fn = onRemixZImage {
+                return { fn(meta) }
+            }
+            if let meta = src.sourceQwen21, let fn = onRemixQwen21 {
                 return { fn(meta) }
             }
         }

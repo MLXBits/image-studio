@@ -210,7 +210,8 @@ struct ImageMetadataInfo {
         // Source-forward: surface the original prompt/loras/recipe (it's the same
         // image, just larger) with the upscale noted in the model line.
         let source = SeedVR2Source(
-            flux: meta.sourceFlux, ideogram4: meta.sourceIdeogram4, krea2: meta.sourceKrea2
+            flux: meta.sourceFlux, ideogram4: meta.sourceIdeogram4, krea2: meta.sourceKrea2,
+            zimage: meta.sourceZImage, qwen21: meta.sourceQwen21
         )
         if let src = SeedVR2DisplayFields(source: source) {
             prompt = src.prompt

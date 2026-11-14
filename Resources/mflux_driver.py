@@ -116,9 +116,14 @@ class WarmModel:
         hit = self.embed_cache.get(key)
         if hit is not None:
             self.embed_cache.move_to_end(key)
+            if self.evict_after_encode:
+                self.evict_text_encoder()  # still resident from an earlier keep-policy job
             return hit
         self.ensure_text_encoder()
         result = self._orig_encode(prompt, images)
+        # mflux also keeps reference-free prompts in its own unbounded prompt_cache;
+        # ours is in front of it and bounded, so drop the duplicate.
+        self.model.prompt_cache.pop(prompt, None)
         mx.eval(*result)
         self.embed_cache[key] = result
         while len(self.embed_cache) > EMBED_CACHE_LIMIT:

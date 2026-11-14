@@ -50,7 +50,6 @@ struct EditImageListView: View {
                     ForEach(Array(paths.enumerated()), id: \.offset) { idx, path in
                         row(path: path, index: idx)
                     }
-                    .onMove { from, to in paths.move(fromOffsets: from, toOffset: to) }
                 }
             }
 
@@ -98,9 +97,9 @@ struct EditImageListView: View {
 
     private func row(path: String, index: Int) -> some View {
         HStack(spacing: 8) {
-            Image(systemName: "line.3.horizontal")
-                .font(.caption).foregroundStyle(.tertiary)
-                .help("Drag to reorder")
+            if paths.count > 1 {
+                reorderButtons(index: index)
+            }
             if let img = NSImage(contentsOfFile: path) {
                 Image(nsImage: img)
                     .resizable()
@@ -125,10 +124,37 @@ struct EditImageListView: View {
         .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 6))
     }
 
+    /// Up/down for the row. `onMove` only reorders inside a `List`, which this
+    /// compact panel isn't, so a drag handle here did nothing.
+    private func reorderButtons(index: Int) -> some View {
+        VStack(spacing: 0) {
+            Button {
+                paths.swapAt(index, index - 1)
+            } label: {
+                Image(systemName: "chevron.up").font(.caption2)
+            }
+            .buttonStyle(.iconButtonCompact)
+            .disabled(index == 0)
+            .accessibilityLabel("Move image \(index + 1) up")
+            Button {
+                paths.swapAt(index, index + 1)
+            } label: {
+                Image(systemName: "chevron.down").font(.caption2)
+            }
+            .buttonStyle(.iconButtonCompact)
+            .disabled(index == paths.count - 1)
+            .accessibilityLabel("Move image \(index + 1) down")
+        }
+    }
+
     /// Adopts and appends new images, skipping duplicates and anything past `maxCount`.
     private func append(_ added: [String]) {
-        for path in added.map({ settings.adoptSourceImage($0) }) where !paths.contains(path) && !isFull {
-            paths.append(path)
+        // Capacity first: in the App Store build, adoption copies the file into the library.
+        for source in added where !isFull {
+            let path = settings.adoptSourceImage(source)
+            if !paths.contains(path) {
+                paths.append(path)
+            }
         }
     }
 

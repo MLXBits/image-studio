@@ -70,6 +70,9 @@ struct GalleryItem: Identifiable, Equatable {
             if seedVR2Metadata?.sourceZImage != nil {
                 return .zimage
             }
+            if seedVR2Metadata?.sourceQwen21 != nil {
+                return .qwen21
+            }
             if seedVR2Metadata?.sourceFlux != nil {
                 return .flux
             }

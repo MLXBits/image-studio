@@ -102,8 +102,10 @@ final class Qwen21ParamsPanelState {
             customModelRepo: customModelRepo,
             steps: Self.model.clampedSteps(steps),
             quantize: quantize,
-            width: size?.width ?? width,
-            height: size?.height ?? height,
+            // mflux rejects sizes that aren't multiples of 32; a saved form or Settings
+            // default can predate the constraint.
+            width: DimensionConstraints.qwen21.snap(Double(size?.width ?? width)),
+            height: DimensionConstraints.qwen21.snap(Double(size?.height ?? height)),
             seed: seed,
             loras: loras,
             lowRam: lowRam,
