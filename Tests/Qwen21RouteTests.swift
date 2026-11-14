@@ -161,6 +161,15 @@ struct Qwen21RouteTests {
         #expect(params.makeJob().seeds == [11, 22])
     }
 
+    @Test func aSingleTypedSeedRunsAsAPlainJob() {
+        // mflux adds `_seed_N` only for 2+ seeds, so a one-seed "batch" would be looked for under the wrong name.
+        let params = Ideogram4ParamsPanelState()
+        params.batchSeeds = [11, 11]
+        let job = params.makeJob()
+        #expect(job.seeds.isEmpty)
+        #expect(job.seed == 11)
+    }
+
     @Test func makeJobSnapsSizesToMfluxsMultipleOf32() {
         // A saved form or Settings default can predate the 32 px constraint.
         let params = Qwen21ParamsPanelState()
@@ -188,6 +197,17 @@ struct Qwen21RouteTests {
         let fields = try #require(SeedVR2DisplayFields(source: resolved))
         #expect(fields.sourceModel == "Qwen-Image 2.1 Turbo")
         #expect(fields.seed == 7 && fields.width == 1344 && fields.height == 768)
+    }
+
+    @Test func aRenamedQwenSourceStillResolves() throws {
+        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        let source = dir.appendingPathComponent("portrait.png").path
+        MetadataSidecar.writeQwen21(Qwen21Metadata.from(job: Qwen21Job(prompt: "renamed")), for: source)
+        let resolved = SeedVR2Metadata.resolveSource(for: source)
+        #expect(resolved.qwen21?.prompt == "renamed")
+        #expect(resolved.krea2 == nil && resolved.zimage == nil && resolved.flux == nil)
     }
 
     @Test func oldHistoryEntriesDecodeWithDefaults() throws {

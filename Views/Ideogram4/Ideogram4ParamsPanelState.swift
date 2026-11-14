@@ -98,7 +98,13 @@ final class Ideogram4ParamsPanelState {
             // warm job (single mflux process, model loaded once).
             job.seeds = RunnerSupport.randomSeeds(count: count)
         } else if !batchSeeds.isEmpty {
-            job.seeds = RunnerSupport.distinctSeeds(batchSeeds)
+            let typed = RunnerSupport.distinctSeeds(batchSeeds)
+            // mflux suffixes `_seed_N` only for 2+ seeds; one seed is a plain single-seed run.
+            if typed.count == 1 {
+                job.seed = typed[0]
+            } else {
+                job.seeds = typed
+            }
         }
         return job
     }

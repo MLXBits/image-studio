@@ -375,6 +375,10 @@ nonisolated struct SeedVR2Metadata: Codable {
         if let zimage = MetadataSidecar.readZImage(for: sourcePath) {
             return SeedVR2Source(zimage: zimage)
         }
+        // Unambiguous without the prefix: it has no `guidance`, which Krea 2 and Z-Image require.
+        if let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
+            return SeedVR2Source(qwen21: qwen21)
+        }
         if let priorUpscale = MetadataSidecar.readSeedVR2(for: sourcePath) {
             return SeedVR2Source(
                 flux: priorUpscale.sourceFlux,
