@@ -329,16 +329,19 @@ private struct Ideogram4QueueJobRow: View {
     }
 }
 
-// MARK: - Krea2QueueDrawerView
+// MARK: - FamilyQueueDrawerView
 
-struct Krea2QueueDrawerView: View {
-    @Environment(Krea2JobStore.self) private var store
-    @Environment(Krea2JobRunner.self) private var runner
+/// Queue drawer for a family whose jobs are ``QueueListedJob``s (Krea 2,
+/// Qwen-Image 2.1), driven by that family's runner spec.
+struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
+    where Spec.Job: QueueListedJob, Spec.Store: ProfileScopedJobStore & Observable, Spec.Store.PersistedJob == Spec.Job {
+    @Environment(Spec.Store.self) private var store
+    @Environment(JobRunner<Spec>.self) private var runner
     @Environment(AppSettings.self) private var settings
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
 
-    @Binding var selectedJob: Krea2Job?
+    @Binding var selectedJob: Spec.Job?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -393,7 +396,7 @@ struct Krea2QueueDrawerView: View {
             set: { id in selectedJob = store.jobs.first { $0.id == id } }
         )) {
             ForEach(store.jobs) { job in
-                Krea2QueueJobRow(
+                FamilyQueueJobRow(
                     job: job,
                     onRestart: isRestartable(job) ? { restart(job) } : nil,
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
@@ -414,26 +417,26 @@ struct Krea2QueueDrawerView: View {
         }
     }
 
-    private func isRestartable(_ job: Krea2Job) -> Bool {
+    private func isRestartable(_ job: Spec.Job) -> Bool {
         switch job.status {
         case .failed, .cancelled: true
         default: false
         }
     }
 
-    private func isCancellable(_ job: Krea2Job) -> Bool {
+    private func isCancellable(_ job: Spec.Job) -> Bool {
         switch job.status {
         case .pending, .running: true
         default: false
         }
     }
 
-    private func restart(_ job: Krea2Job) {
+    private func restart(_ job: Spec.Job) {
         store.restart(job)
         runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
     }
 
-    private func cancelJob(_ job: Krea2Job) {
+    private func cancelJob(_ job: Spec.Job) {
         if case .running = job.status {
             runner.cancel()
         } else {
@@ -442,10 +445,10 @@ struct Krea2QueueDrawerView: View {
     }
 }
 
-// MARK: - Krea2QueueJobRow
+// MARK: - FamilyQueueJobRow
 
-private struct Krea2QueueJobRow: View {
-    let job: Krea2Job
+private struct FamilyQueueJobRow<Job: QueueListedJob>: View {
+    let job: Job
     var onRestart: (() -> Void)?
     var onCancel: (() -> Void)?
 
@@ -647,7 +650,7 @@ private struct ZImageQueueJobRow: View {
 
 // MARK: - SeedVR2QueueDrawerView
 
-/// Queue drawer for the SeedVR2 upscaler. Mirrors ``Krea2QueueDrawerView`` but is
+/// Queue drawer for the SeedVR2 upscaler. Mirrors ``FamilyQueueDrawerView`` but is
 /// backed by ``SeedVR2JobStore`` / ``SeedVR2JobRunner``. SeedVR2 is not a
 /// picker-selected family — upscales are an action applied to an existing image —
 /// so the queue sheet surfaces this drawer whenever an upscale is running or the

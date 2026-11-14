@@ -37,6 +37,8 @@ DEFINITIONS = {
     "ideogram4": ("mflux.models.ideogram4.weights.ideogram4_weight_definition", "Ideogram4WeightDefinition"),
     "krea2": ("mflux.models.krea2.weights.krea2_weight_definition", "Krea2WeightDefinition"),
     "z-image": ("mflux.models.z_image.weights.z_image_weight_definition", "ZImageWeightDefinition"),
+    # The edit pipeline's definition: the app runs both modes through mflux-generate-qwen-2.1-edit.
+    "qwenimage2.1": ("mflux.models.qwen21.weights.qwen_image21_weight_definition", "QwenImage21WeightDefinition"),
 }
 
 

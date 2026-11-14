@@ -1,10 +1,9 @@
 import SwiftUI
 
-/// Live stepwise preview for a running Krea 2 job. Concrete copy of
-/// ``StepwisePreviewView`` (the codebase keeps one per model family) bound to
-/// ``Krea2Job``.
-struct Krea2StepwisePreviewView: View {
-    let job: Krea2Job
+/// Live stepwise preview for a running job of any family built on
+/// ``GeneratedJob`` (Krea 2, Qwen-Image 2.1).
+struct JobStepwisePreviewView<Job: GeneratedJob>: View {
+    let job: Job
     let onCancel: () -> Void
 
     @Environment(AppSettings.self) private var settings
@@ -120,13 +119,16 @@ struct Krea2StepwisePreviewView: View {
     }
 }
 
-/// Completed-image preview for a Krea 2 job. Krea 2 has no metadata re-apply yet,
-/// so this shows the image plus reveal/log affordances only. (In practice the
+/// Completed-image preview for a job of any family built on ``GeneratedJob``:
+/// the image, its metadata panel, and Remix / Apply Settings. (In practice the
 /// preview flips to the gallery item on completion; this is the queue-reselect path.)
-struct Krea2CompletedPreviewView: View {
-    let job: Krea2Job
-    var onRemix: ((Krea2Metadata) -> Void)?
-    var onApplySettings: ((Krea2Metadata) -> Void)?
+struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
+    let job: Job
+    /// The job's metadata for replay, and its metadata-panel contents.
+    let metadataOf: (Job) -> Meta
+    let infoOf: (Job) -> ImageMetadataInfo
+    var onRemix: ((Meta) -> Void)?
+    var onApplySettings: ((Meta) -> Void)?
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
@@ -169,7 +171,7 @@ struct Krea2CompletedPreviewView: View {
             }
 
             ImageMetadataPanel(
-                info: ImageMetadataInfo(krea2Job: job),
+                info: infoOf(job),
                 onApplySettings: onApplySettings.map { fn in { fn(metadata) } },
                 onRemix: onRemix.map { fn in { fn(metadata) } },
                 onUseInImg2Img: nil,
@@ -185,8 +187,8 @@ struct Krea2CompletedPreviewView: View {
         .sheet(isPresented: $showingLog) { logSheet }
     }
 
-    private var metadata: Krea2Metadata {
-        Krea2Metadata.from(job: job)
+    private var metadata: Meta {
+        metadataOf(job)
     }
 
     private var logSheet: some View {

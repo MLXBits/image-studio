@@ -10,7 +10,8 @@ nonisolated enum GallerySearch {
         flux: GenerationMetadata?,
         ideogram4: Ideogram4Metadata?,
         krea2: Krea2Metadata?,
-        zimage: ZImageMetadata?
+        zimage: ZImageMetadata?,
+        qwen21: Qwen21Metadata? = nil
     ) -> String {
         var parts: [String] = [filename]
         if let meta = flux {
@@ -25,15 +26,19 @@ nonisolated enum GallerySearch {
             parts.append(String(meta.seed))
             parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
         }
+        func appendBasics(_ prompt: String, _ seed: Int, _ loras: [LoraEntry]?) {
+            parts.append(prompt)
+            parts.append(String(seed))
+            parts.append(contentsOf: (loras ?? []).map(\.displayName))
+        }
         if let meta = krea2 {
-            parts.append(meta.prompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
+            appendBasics(meta.prompt, meta.seed, meta.loras)
         }
         if let meta = zimage {
-            parts.append(meta.prompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
+            appendBasics(meta.prompt, meta.seed, meta.loras)
+        }
+        if let meta = qwen21 {
+            appendBasics(meta.prompt, meta.seed, meta.loras)
         }
         return parts.joined(separator: " ").lowercased()
     }
@@ -46,7 +51,8 @@ nonisolated enum GallerySearch {
             flux: item.metadata,
             ideogram4: item.ideogram4Metadata,
             krea2: item.krea2Metadata,
-            zimage: item.zimageMetadata
+            zimage: item.zimageMetadata,
+            qwen21: item.qwen21Metadata
         )
     }
 

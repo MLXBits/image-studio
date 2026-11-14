@@ -29,8 +29,8 @@ struct DriverOutput: Codable {
 struct DriverGenerateRequest: Codable {
     var cmd: String = "generate"
     var id: String
-    /// Model family adapter in the driver: "flux2", "krea2", "ideogram4", or
-    /// "z_image" (Turbo vs base resolved from `modelVariantRaw`).
+    /// Model family adapter in the driver: "flux2", "krea2", "ideogram4",
+    /// "z_image" (Turbo vs base resolved from `modelVariantRaw`), or "qwen21".
     var family: String
     /// Warm-instance identity: family + resolved model + quantize + LoRA
     /// stack. A mismatch makes the driver unload before loading (never two
@@ -41,17 +41,22 @@ struct DriverGenerateRequest: Codable {
     var model: String
     /// Present only when falling back to in-memory quantization (BF16 base).
     var quantize: Int?
+    /// Qwen-Image 2.1 only: the registry entry whose config the repo loads as (`--base-model`).
+    var baseModel: String?
     var loraPaths: [String]
     var loraScales: [Double]
     var prompt: String
     /// Krea 2 only; nil elsewhere (FLUX.2 rejects it, Ideogram has none).
     var negativePrompt: String?
-    var width: Int
-    var height: Int
+    /// Nil only for a Qwen-Image 2.1 edit that takes its size from the last reference.
+    var width: Int?
+    var height: Int?
     var steps: Int
     var guidance: Double
     var imagePath: String?
     var imageStrength: Double?
+    /// Qwen-Image 2.1 edit references, in prompt order.
+    var imagePaths: [String]?
     /// Ideogram 4 only: sampler preset name, strict caption validation, and
     /// CFG truncation point.
     var preset: String?
@@ -59,9 +64,9 @@ struct DriverGenerateRequest: Codable {
     var cfgEnd: Double?
     /// Decode with PiD's pixel-diffusion decoder instead of the VAE; the saved
     /// image is 4x `width`x`height`. Encoded as `pid_decode`.
-    var pidDecode: Bool
+    var pidDecode = false
     /// Latent degradation for PiD (0.0-0.8). Encoded as `pid_degrade_sigma`.
-    var pidDegradeSigma: Double
+    var pidDegradeSigma = 0.0
     /// Explicit per-seed output paths — the driver saves exactly here and
     /// emits an `image` event per path, so no filesystem reconciliation.
     var outputs: [DriverOutput]

@@ -9,6 +9,7 @@ mflux-generate-ideogram4
 mflux-generate-krea2
 mflux-generate-z-image
 mflux-generate-z-image-turbo
+mflux-generate-qwen-2.1-edit
 mflux-upscale-seedvr2
 mflux-save
 hf

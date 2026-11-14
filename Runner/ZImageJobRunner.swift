@@ -116,16 +116,11 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
     static func driverRequest(job: ZImageJob, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
         let (model, quantizeArg) = resolveModel(job: job, settings: settings)
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .zimage }
-        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
-        let outputs: [DriverOutput] = job.seeds.isEmpty
-            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
-            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
-            .map { DriverOutput(seed: $0.seed, path: $0.path) }
 
         return DriverGenerateRequest(
             id: job.id.uuidString,
             family: "z_image",
-            fingerprint: "z_image|\(job.modelVariant.rawValue)|\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            fingerprint: "z_image|\(job.modelVariant.rawValue)|\(model)|q\(quantizeArg ?? 0)|\(RunnerSupport.driverLoraKey(loras))",
             model: model,
             quantize: quantizeArg,
             loraPaths: loras.map(\.path),
@@ -143,7 +138,7 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
             cfgEnd: nil,
             pidDecode: job.pidDecode,
             pidDegradeSigma: job.pidDegradeSigma,
-            outputs: outputs,
+            outputs: RunnerSupport.driverOutputs(ctx: ctx, seeds: job.seeds),
             stepwiseDir: ctx.stepwiseDir.path,
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,

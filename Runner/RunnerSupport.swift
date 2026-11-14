@@ -161,6 +161,37 @@ enum RunnerSupport {
         return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
     }
 
+    /// `count` distinct random seeds for a batch. A repeated seed would share its
+    /// `_seed_N` output file, and the per-seed pairing of a batch's outputs.
+    static func randomSeeds(count: Int) -> [Int] {
+        var seeds: [Int] = []
+        var seen = Set<Int>()
+        while seeds.count < count {
+            let seed = Int(UInt32.random(in: 0 ..< UInt32.max))
+            if seen.insert(seed).inserted {
+                seeds.append(seed)
+            }
+        }
+        return seeds
+    }
+
+    /// `seeds` without repeats, in first-seen order: a typed-in batch can repeat one.
+    static func distinctSeeds(_ seeds: [Int]) -> [Int] {
+        var seen = Set<Int>()
+        return seeds.filter { seen.insert($0).inserted }
+    }
+
+    /// The warm driver's explicit per-seed output paths, named the way the CLI names them.
+    static func driverOutputs(ctx: JobRunContext, seeds: [Int]) -> [DriverOutput] {
+        guard !seeds.isEmpty else { return [DriverOutput(seed: ctx.seed, path: ctx.outputFile)] }
+        return expandedPaths(from: ctx.outputFile, seeds: seeds).map { DriverOutput(seed: $0.seed, path: $0.path) }
+    }
+
+    /// The LoRA stack's part of a warm-driver fingerprint: a strength change reloads the model.
+    static func driverLoraKey(_ loras: [LoraEntry]) -> String {
+        loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
+    }
+
     static func formatDuration(_ seconds: TimeInterval) -> String {
         if seconds < 60 {
             return String(format: "%.1fs", seconds)

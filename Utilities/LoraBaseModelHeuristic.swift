@@ -51,6 +51,11 @@ enum LoraBaseModelHeuristic {
     static let signatures: [(family: ModelFamily, tokens: [String])] = [
         (.flux, ["flax", "flux1", "flux-2", "flux_2", "flux2", "flick", "a-pix"]),
         (.ideogram4, ["ideogram"]),
+        // Ahead of Krea 2, whose list claims the bare "qwen-image" (its VAE's name).
+        (.qwen21, [
+            "qwen-image-2.1", "qwen_image_2.1", "qwen-image-2-1", "qwen_image_2_1",
+            "qwen-image-21", "qwenimage21", "qwen21", "qwen-2.1",
+        ]),
         (.krea2, ["qwen-image", "krea2", "krea_2", "krea 2", "krea2-realism", "krea"]),
         (.zimage, ["zimage-turbo", "z-image", "z_image", "zi_turbo"]),
     ]

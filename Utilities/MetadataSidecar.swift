@@ -245,6 +245,7 @@ nonisolated struct SeedVR2Source {
     var ideogram4: Ideogram4Metadata?
     var krea2: Krea2Metadata?
     var zimage: ZImageMetadata?
+    var qwen21: Qwen21Metadata?
 }
 
 /// Source-forward display fields for a SeedVR2 upscale, derived from the source
@@ -302,6 +303,16 @@ nonisolated struct SeedVR2DisplayFields {
             seed = s.seed
             width = s.width
             height = s.height
+        } else if let s = source.qwen21 {
+            prompt = s.prompt
+            negativePrompt = ""
+            sourceModel = FluxModelVariant.qwen21Turbo.displayName
+            steps = s.steps
+            guidance = 1.0
+            loras = s.loras ?? []
+            seed = s.seed
+            width = s.width
+            height = s.height
         } else {
             return nil
         }
@@ -327,7 +338,8 @@ nonisolated struct SeedVR2Metadata: Codable {
             sourceFlux: source.flux,
             sourceIdeogram4: source.ideogram4,
             sourceKrea2: source.krea2,
-            sourceZImage: source.zimage
+            sourceZImage: source.zimage,
+            sourceQwen21: source.qwen21
         )
     }
 
@@ -348,6 +360,9 @@ nonisolated struct SeedVR2Metadata: Codable {
         if name.hasPrefix("krea2"), let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
             return SeedVR2Source(krea2: krea2)
         }
+        if name.hasPrefix("qwen21"), let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
+            return SeedVR2Source(qwen21: qwen21)
+        }
         if let flux = MetadataSidecar.read(for: sourcePath) {
             return SeedVR2Source(flux: flux)
         }
@@ -360,12 +375,17 @@ nonisolated struct SeedVR2Metadata: Codable {
         if let zimage = MetadataSidecar.readZImage(for: sourcePath) {
             return SeedVR2Source(zimage: zimage)
         }
+        // Unambiguous without the prefix: it has no `guidance`, which Krea 2 and Z-Image require.
+        if let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
+            return SeedVR2Source(qwen21: qwen21)
+        }
         if let priorUpscale = MetadataSidecar.readSeedVR2(for: sourcePath) {
             return SeedVR2Source(
                 flux: priorUpscale.sourceFlux,
                 ideogram4: priorUpscale.sourceIdeogram4,
                 krea2: priorUpscale.sourceKrea2,
-                zimage: priorUpscale.sourceZImage
+                zimage: priorUpscale.sourceZImage,
+                qwen21: priorUpscale.sourceQwen21
             )
         }
         return SeedVR2Source()
@@ -391,92 +411,71 @@ nonisolated struct SeedVR2Metadata: Codable {
     var sourceIdeogram4: Ideogram4Metadata?
     var sourceKrea2: Krea2Metadata?
     var sourceZImage: ZImageMetadata?
+    var sourceQwen21: Qwen21Metadata?
 }
 
 enum MetadataSidecar {
     static func write(_ metadata: GenerationMetadata, for imagePath: String) {
-        let url = sidecarURL(for: imagePath)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
-        try? data.write(to: url, options: .atomic)
+        writeJSON(metadata, for: imagePath)
     }
 
     static func writeIdeogram4(_ metadata: Ideogram4Metadata, for imagePath: String) {
-        let url = sidecarURL(for: imagePath)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
-        try? data.write(to: url, options: .atomic)
+        writeJSON(metadata, for: imagePath)
     }
 
     static func writeKrea2(_ metadata: Krea2Metadata, for imagePath: String) {
-        let url = sidecarURL(for: imagePath)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
-        try? data.write(to: url, options: .atomic)
+        writeJSON(metadata, for: imagePath)
     }
 
     static func writeZImage(_ metadata: ZImageMetadata, for imagePath: String) {
-        let url = sidecarURL(for: imagePath)
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
-        encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
-        try? data.write(to: url, options: .atomic)
+        writeJSON(metadata, for: imagePath)
     }
 
     static func writeSeedVR2(_ metadata: SeedVR2Metadata, for imagePath: String) {
-        let url = sidecarURL(for: imagePath)
+        writeJSON(metadata, for: imagePath)
+    }
+
+    nonisolated static func read(for imagePath: String) -> GenerationMetadata? {
+        readJSON(for: imagePath)
+    }
+
+    nonisolated static func readIdeogram4(for imagePath: String) -> Ideogram4Metadata? {
+        readJSON(for: imagePath)
+    }
+
+    nonisolated static func readKrea2(for imagePath: String) -> Krea2Metadata? {
+        readJSON(for: imagePath)
+    }
+
+    nonisolated static func readZImage(for imagePath: String) -> ZImageMetadata? {
+        readJSON(for: imagePath)
+    }
+
+    nonisolated static func readSeedVR2(for imagePath: String) -> SeedVR2Metadata? {
+        readJSON(for: imagePath)
+    }
+
+    static func writeQwen21(_ metadata: Qwen21Metadata, for imagePath: String) {
+        writeJSON(metadata, for: imagePath)
+    }
+
+    nonisolated static func readQwen21(for imagePath: String) -> Qwen21Metadata? {
+        readJSON(for: imagePath)
+    }
+
+    private static func writeJSON(_ metadata: some Encodable, for imagePath: String) {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
         guard let data = try? encoder.encode(metadata) else { return }
-        try? data.write(to: url, options: .atomic)
+        try? data.write(to: sidecarURL(for: imagePath), options: .atomic)
     }
 
-    nonisolated static func read(for imagePath: String) -> GenerationMetadata? {
-        let url = sidecarURL(for: imagePath)
-        guard let data = try? Data(contentsOf: url) else { return nil }
+    nonisolated private static func readJSON<T: Decodable>(for imagePath: String) -> T? {
+        guard let data = try? Data(contentsOf: sidecarURL(for: imagePath)) else { return nil }
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(GenerationMetadata.self, from: data)
-    }
-
-    nonisolated static func readIdeogram4(for imagePath: String) -> Ideogram4Metadata? {
-        let url = sidecarURL(for: imagePath)
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(Ideogram4Metadata.self, from: data)
-    }
-
-    nonisolated static func readKrea2(for imagePath: String) -> Krea2Metadata? {
-        let url = sidecarURL(for: imagePath)
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(Krea2Metadata.self, from: data)
-    }
-
-    nonisolated static func readZImage(for imagePath: String) -> ZImageMetadata? {
-        let url = sidecarURL(for: imagePath)
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(ZImageMetadata.self, from: data)
-    }
-
-    nonisolated static func readSeedVR2(for imagePath: String) -> SeedVR2Metadata? {
-        let url = sidecarURL(for: imagePath)
-        guard let data = try? Data(contentsOf: url) else { return nil }
-        let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
-        return try? decoder.decode(SeedVR2Metadata.self, from: data)
+        return try? decoder.decode(T.self, from: data)
     }
 
     nonisolated static func sidecarURL(for imagePath: String) -> URL {

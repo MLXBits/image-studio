@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Live progress preview for a running SeedVR2 upscale. Modeled on
-/// ``Krea2StepwisePreviewView`` (the codebase keeps one per model family), bound
+/// ``JobStepwisePreviewView``, bound
 /// to ``SeedVR2Job``. SeedVR2 often runs in a single step, so the bar spends most
 /// of its time indeterminate during model load + the decode.
 struct SeedVR2StepwisePreviewView: View {

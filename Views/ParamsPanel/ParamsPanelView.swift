@@ -21,6 +21,7 @@ struct ParamsPanelView: View {
     @Bindable var ideogramParams: Ideogram4ParamsPanelState
     @Bindable var krea2Params: Krea2ParamsPanelState
     @Bindable var zimageParams: ZImageParamsPanelState
+    @Bindable var qwen21Params: Qwen21ParamsPanelState
     /// Turns a batch of scenario-generated prompts into one image job apiece.
     /// Owned by ContentView (which holds the stores and runners) and forwarded to
     /// whichever family's panel is showing.
@@ -32,7 +33,6 @@ struct ParamsPanelView: View {
 
     @State private var isImageDropTargeted: Bool = false
     @State private var pasteError: String?
-    @State private var isEditDropTargeted: Bool = false
     @State private var showingTemplatePicker: Bool = false
     @StateObject private var clipboardMonitor =
         ClipboardImageMonitor(imageExtensions: ["png", "jpg", "jpeg", "webp"])
@@ -66,6 +66,8 @@ struct ParamsPanelView: View {
                     Krea2ParamsPanelView(params: krea2Params, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .zimage:
                     ZImageParamsPanelView(params: zimageParams, onQueueScenarioBatch: onQueueScenarioBatch)
+                case .qwen21:
+                    Qwen21ParamsPanelView(params: qwen21Params, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .seedvr2:
                     EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }
@@ -135,7 +137,7 @@ struct ParamsPanelView: View {
                     "primary subject first. Prompt describes the edit — " +
                     "e.g. \"make her wear the glasses\"."
             ) {
-                editImagesSection
+                EditImageListView(paths: $params.editImagePaths, clipboardHasImage: clipboardMonitor.hasImage)
             }
         } else if params.model.isFlux3 {
             SectionContainerView(
@@ -542,74 +544,6 @@ struct ParamsPanelView: View {
         }
     }
 
-    // MARK: - Edit images section (multi-image list)
-
-    private var editImagesSection: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 4) {
-                if !params.editImagePaths.isEmpty {
-                    Button {
-                        params.editImagePaths = []
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
-                    .buttonStyle(.iconButton)
-                    .accessibilityLabel("Remove all images")
-                }
-            }
-
-            if !params.editImagePaths.isEmpty {
-                VStack(spacing: 4) {
-                    ForEach(Array(params.editImagePaths.enumerated()), id: \.offset) { idx, path in
-                        editImageRow(path: path, index: idx)
-                    }
-                    .onMove { from, to in params.editImagePaths.move(fromOffsets: from, toOffset: to) }
-                }
-            }
-
-            HStack(spacing: 6) {
-                Button {
-                    browseEditImages()
-                } label: {
-                    HStack {
-                        Image(systemName: "photo.badge.plus")
-                        Text(params.editImagePaths.isEmpty ? "Choose Image…" : "Add Image…")
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 6)
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .accessibilityLabel("Add reference image")
-
-                if clipboardMonitor.hasImage {
-                    Button { pasteEditImage() } label: {
-                        Image(systemName: "doc.on.clipboard")
-                            .padding(.vertical, 6)
-                            .padding(.horizontal, 4)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .keyboardShortcut(KeyboardShortcutCatalog.pasteImage)
-                    .accessibilityLabel("Paste image from clipboard")
-                    .help("Paste image from clipboard (\(KeyboardShortcutCatalog.pasteImage.symbols))")
-                }
-            }
-        }
-        .imageDropTarget(
-            extensions: Self.imageExtensions,
-            isTargeted: $isEditDropTargeted,
-            allowsMultiple: true
-        ) { paths in
-            for path in paths.map({ settings.adoptSourceImage($0) }) where !params.editImagePaths.contains(path) {
-                params.editImagePaths.append(path)
-            }
-        }
-        .dropHighlight(isEditDropTargeted)
-    }
-
     private func styleChip(name: String, templateID: UUID?) -> some View {
         HStack(spacing: 3) {
             Text(name)
@@ -691,58 +625,6 @@ struct ParamsPanelView: View {
             if Self.imageExtensions.contains(ext) {
                 params.imagePath = settings.adoptSourceImage(url.path)
             }
-        }
-    }
-
-    private func editImageRow(path: String, index: Int) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "line.3.horizontal")
-                .font(.caption).foregroundStyle(.tertiary)
-                .help("Drag to reorder")
-            if let img = NSImage(contentsOfFile: path) {
-                Image(nsImage: img)
-                    .resizable()
-                    .scaledToFill()
-                    .frame(width: 36, height: 36)
-                    .clipShape(RoundedRectangle(cornerRadius: 4))
-                    .thumbnailHoverPreview(imagePath: path)
-            }
-            Text(URL(fileURLWithPath: path).lastPathComponent)
-                .font(.caption).lineLimit(1).truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-            Button {
-                params.editImagePaths.remove(at: index)
-            } label: {
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.secondary)
-            }
-            .buttonStyle(.iconButton)
-            .accessibilityLabel("Remove image")
-        }
-        .padding(.horizontal, 6)
-        .padding(.vertical, 4)
-        .background(.fill.quaternary, in: RoundedRectangle(cornerRadius: 6))
-    }
-
-    private func browseEditImages() {
-        let panel = NSOpenPanel()
-        panel.allowedContentTypes = []
-        panel.allowsOtherFileTypes = true
-        panel.allowsMultipleSelection = true
-        panel.title = "Select Images"
-        panel.startInLibrary(settings.outputDir)
-        if panel.runModal() == .OK {
-            let valid = panel.urls.filter { Self.imageExtensions.contains($0.pathExtension.lowercased()) }
-            for path in valid.map({ settings.adoptSourceImage($0.path) }) where !params.editImagePaths.contains(path) {
-                params.editImagePaths.append(path)
-            }
-        }
-    }
-
-    private func pasteEditImage() {
-        guard let pasted = imagePathFromPasteboard(tempPrefix: "pasted-edit") else { return }
-        let path = settings.adoptSourceImage(pasted)
-        if !params.editImagePaths.contains(path) {
-            params.editImagePaths.append(path)
         }
     }
 }

@@ -8,6 +8,9 @@ enum ModelFamily: String, CaseIterable, Codable {
     /// share one generation pipeline (see ``ZImageJobRunner``). The specific
     /// variant a job used is carried on ``ZImageJob/modelVariant``.
     case zimage = "Z-Image"
+    /// Qwen-Image 2.1 Turbo: text-to-image and multi-reference edit through one
+    /// CLI (`mflux-generate-qwen-2.1-edit`; no references = text-to-image).
+    case qwen21 = "Qwen Image 2.1"
     /// SeedVR2 upscaler. Not a model-picker family — it's an action applied to an
     /// existing image (see ``SeedVR2JobRunner``). Present only so its runner has a
     /// distinct ``GenerationCoordinator`` gate identity (serializes against the
@@ -15,7 +18,7 @@ enum ModelFamily: String, CaseIterable, Codable {
     case seedvr2 = "SeedVR2"
 
     /// Families the user can pick and generate with (excludes the upscaler).
-    static let generative: [Self] = [.flux, .ideogram4, .krea2, .zimage]
+    static let generative: [Self] = [.flux, .ideogram4, .krea2, .zimage, .qwen21]
     /// Stable, machine-safe identifier for use as a persisted-dictionary key (the
     /// `rawValue`s above are human display strings and contain spaces). The ComfyUI
     /// checkpoint store is keyed by this so the settings UI and the runner agree.

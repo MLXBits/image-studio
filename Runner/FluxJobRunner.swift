@@ -106,16 +106,11 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         }
 
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
-        let loraKey = loras.map { "\($0.path)@\(String(format: "%.2f", $0.strength))" }.joined(separator: ",")
-        let outputs: [DriverOutput] = job.seeds.isEmpty
-            ? [DriverOutput(seed: ctx.seed, path: ctx.outputFile)]
-            : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: job.seeds)
-            .map { DriverOutput(seed: $0.seed, path: $0.path) }
 
         return DriverGenerateRequest(
             id: job.id.uuidString,
             family: "flux2",
-            fingerprint: "flux2|\(model)|q\(quantizeArg ?? 0)|\(loraKey)",
+            fingerprint: "flux2|\(model)|q\(quantizeArg ?? 0)|\(RunnerSupport.driverLoraKey(loras))",
             model: model,
             quantize: quantizeArg,
             loraPaths: loras.map(\.path),
@@ -133,7 +128,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
             cfgEnd: nil,
             pidDecode: job.pidDecode,
             pidDegradeSigma: job.pidDegradeSigma,
-            outputs: outputs,
+            outputs: RunnerSupport.driverOutputs(ctx: ctx, seeds: job.seeds),
             stepwiseDir: ctx.stepwiseDir.path,
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,

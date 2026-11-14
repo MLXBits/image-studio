@@ -47,6 +47,7 @@ FAMILIES = {
         "Krea2WeightDefinition", "model_name=None", '["raw.safetensors" if "raw" in model_name.lower() else "turbo.safetensors"]'
     ),
     "z_image/weights/z_image_weight_definition.py": ("ZImageWeightDefinition", "", '["vae/*.safetensors"]'),
+    "qwen21/weights/qwen_image21_weight_definition.py": ("QwenImage21WeightDefinition", "", '["vae/*.safetensors"]'),
 }
 WITHOUT_ZIMAGE = {path: family for path, family in FAMILIES.items() if not path.startswith("z_image/")}
 

@@ -68,8 +68,8 @@ the Python driver and `Runner/DriverProtocol.swift`.
 
 ## Naming conventions
 
-Five model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
-`krea2`, `zimage`, `seedvr2`. Files follow the family name exactly:
+Six model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
+`krea2`, `zimage`, `qwen21`, `seedvr2`. Files follow the family name exactly:
 
 | Concern | Path |
 |---|---|
@@ -130,7 +130,7 @@ next load.
 
 When adding a parameter, prefer extending the family's `buildArgs` over touching
 `JobRunner` itself. If a change needs `JobRunner` edits, it probably belongs to
-all five families.
+all six families.
 
 Every Python tool runs through `Utilities/Toolchain.swift`:
 `<interpreter> Resources/run_tool.py <tool> <args>`, on the bundled runtime or
@@ -165,6 +165,15 @@ Adding Z-Image touched 24 files. In dependency order:
     picked up automatically — no manifest change needed.
 
 Grepping for `ZImage` is the fastest way to find any touchpoint this list misses.
+
+Don't copy Krea 2's or Z-Image's per-family store, queue drawer, or preview views:
+CI fails a PR that raises jscpd's duplicated-token share by more than 0.1 points.
+Conform the job to `QueueListedJob` (`Stores/JobHistoryFile.swift`) and use the
+shared pieces, as Krea 2 and Qwen-Image 2.1 do: the store extension's queue
+operations, `FamilyQueueDrawerView<Spec>`, `JobStepwisePreviewView` and
+`JobCompletedPreviewView` (`Views/Shared/JobPreviewViews.swift`), `StepsSeedRow`,
+and `EditImageListView` for a reference list. Those families have no
+`<Family>PreviewViews.swift`.
 
 ## Icon buttons and hit targets
 
