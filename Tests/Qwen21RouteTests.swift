@@ -154,6 +154,26 @@ struct Qwen21RouteTests {
         #expect(request.stepwiseDir.isEmpty)
     }
 
+    /// The RAM label shows the measured peak for the path the job runs on; download sizes are untouched.
+    @Test func ramLabelFollowsTheRunPath() {
+        let model = FluxModelVariant.qwen21Turbo
+        let settings = settings()
+        settings.keepModelWarm = false
+        settings.warmTextEncoderPolicy = .auto
+        settings.updateDefaults(ModelDefaults(), for: model)
+        #expect(model.approximateRAMGB(quantize: 4, settings: settings) == 10.3) // CLI, the default
+        settings.keepModelWarm = true
+        #expect(model.approximateRAMGB(quantize: 8, settings: settings) == 24.4) // warm, Automatic keeps the encoder
+        settings.warmTextEncoderPolicy = .evict
+        #expect(model.approximateRAMGB(quantize: 0, settings: settings) == 33.2)
+        var lowRam = settings.defaults(for: model)
+        lowRam.lowRam = true
+        settings.updateDefaults(lowRam, for: model)
+        #expect(model.approximateRAMGB(quantize: 0, settings: settings) == 24.8) // low RAM stays on the CLI
+        #expect(model.approximateSizeGB(quantize: 0) == 32.5)
+        #expect(FluxModelVariant.krea2.approximateRAMGB(quantize: 8, settings: settings) == 21)
+    }
+
     @Test func lowRamStaysOnTheCLI() {
         #expect(Qwen21RunnerSpec.driverRequest(job: Qwen21Job(lowRam: true), ctx: ctx, settings: settings()) == nil)
     }

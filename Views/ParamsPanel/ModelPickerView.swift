@@ -230,7 +230,7 @@ struct ModelPickerView: View {
     private var vramEstimate: VRAMEstimate? {
         // A Settings override names an arbitrary repo/path of unknown size — no estimate.
         guard model != .custom, settingsOverride == nil else { return nil }
-        let gb = model.approximateSizeGB(quantize: quantize)
+        let gb = model.approximateRAMGB(quantize: quantize, settings: settings)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
         // Color relative to this machine's physical memory, not fixed GB cutoffs:
