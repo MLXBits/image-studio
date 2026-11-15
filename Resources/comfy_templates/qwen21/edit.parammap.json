@@ -50,5 +50,9 @@
   "save_subfolder": {
     "node": "461",
     "input": "filename_prefix"
+  },
+  "reference_resolution": {
+    "node": "459:509",
+    "input": "resolution"
   }
 }

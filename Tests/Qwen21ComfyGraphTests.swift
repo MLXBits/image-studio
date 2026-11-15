@@ -1,10 +1,18 @@
 import Foundation
+import ImageIO
 @testable import MLXBits_Image_Studio
 import Testing
 
+/// Answers uploads like `StubUploadProtocol` without writing its request log: the FLUX.2 suite counts that
+/// log, and the two suites run in parallel.
+nonisolated private final class QuietUploadProtocol: StubUploadProtocol {
+    override func startLoading() {
+        respondUploaded()
+    }
+}
+
 /// ``Qwen21RunnerSpec/comfyGraph(job:settings:client:)`` against the bundled qwen21 templates.
-/// Serialized: the edit tests share `StubUploadProtocol`'s static request log with the FLUX.2 suite.
-@Suite("Qwen21RunnerSpec.comfyGraph", .serialized)
+@Suite("Qwen21RunnerSpec.comfyGraph")
 struct Qwen21ComfyGraphTests {
     private static let familyID = ModelFamily.qwen21.id
 
@@ -22,7 +30,7 @@ struct Qwen21ComfyGraphTests {
 
     private static func stubClient() -> ComfyUIClient {
         let cfg = URLSessionConfiguration.default
-        cfg.protocolClasses = [StubUploadProtocol.self]
+        cfg.protocolClasses = [QuietUploadProtocol.self]
         return ComfyUIClient(config: .init(baseURL: "http://127.0.0.1:1"), session: URLSession(configuration: cfg))
     }
 
@@ -51,9 +59,17 @@ struct Qwen21ComfyGraphTests {
         }
     }
 
-    private static func tempImage() throws -> String {
+    /// A real PNG of the given size: the edit size is read from the last reference's pixels.
+    private static func tempImage(width: Int = 64, height: Int = 64) throws -> String {
         let url = FileManager.default.temporaryDirectory.appendingPathComponent("qwen21-test-\(UUID().uuidString).png")
-        try Data("test-image".utf8).write(to: url)
+        let context = try #require(CGContext(
+            data: nil, width: width, height: height, bitsPerComponent: 8, bytesPerRow: 0,
+            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue
+        ))
+        let image = try #require(context.makeImage())
+        let destination = try #require(CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil))
+        CGImageDestinationAddImage(destination, image, nil)
+        #expect(CGImageDestinationFinalize(destination))
         return url.path
     }
 
@@ -118,22 +134,45 @@ struct Qwen21ComfyGraphTests {
     }
 
     @Test func editWiresEveryReferenceIntoEncoderAndEnhancer() async throws {
-        let paths = try (0 ..< 3).map { _ in try Self.tempImage() }
+        // The last reference is 2:1, unlike the first: the edit is sized from the last, as on local mflux.
+        let paths = try [Self.tempImage(), Self.tempImage(), Self.tempImage(width: 96, height: 48)]
         defer { paths.forEach { try? FileManager.default.removeItem(atPath: $0) } }
         let job = Qwen21Job(isEditMode: true, editImagePaths: paths, prompt: "swap the hats", enhancePrompt: true)
         let graph = try await Self.graph(job, Self.settings(enhancer: true))
 
         #expect(Self.ids(ofClass: "LoadImage", in: graph).count == 3)
         let encoder = Self.inputs(graph, "459:509")
-        let batch = Self.inputs(graph, "459:508")
+        let enhancer = Self.inputs(graph, "459:500")
+        #expect(Self.ids(ofClass: "BatchImagesNode", in: graph).isEmpty)
+        #expect((enhancer["images.image1"] as? [Any])?.first as? String == "470")
         for n in 2 ... 3 {
             #expect((encoder["images.image_\(n)"] as? [Any])?.first as? String == "ref_\(n)")
-            #expect((batch["images.image\(n - 1)"] as? [Any])?.first as? String == "ref_\(n)")
+            #expect((enhancer["images.image\(n)"] as? [Any])?.first as? String == "ref_\(n)")
         }
         #expect(Self.inputs(graph, "459:500")["prompt"] as? String == "swap the hats")
         #expect(Self.inputs(graph, "459:477")["clip_name"] as? String == "pe.safetensors")
-        #expect(Self.inputs(graph, "459:468")["switch"] as? Bool == false) // follows the reference size
+        // 2:1 at about 1024², in multiples of 32 (mflux's rule), sampled from the empty latent.
+        #expect(Self.inputs(graph, "459:468")["switch"] as? Bool == true)
+        #expect(Self.inputs(graph, "459:456")["width"] as? Int == 1440)
+        #expect(Self.inputs(graph, "459:456")["height"] as? Int == 736)
+        #expect(Self.inputs(graph, "459:509")["resolution"] as? Int == 1024)
         Self.expectNoDanglingRefs(graph)
+    }
+
+    /// A chosen size encodes the references at about the output's area.
+    @Test func editAtAChosenSizeEncodesReferencesAtItsArea() throws {
+        let job = Qwen21Job(isEditMode: true, editImagePaths: ["/unused.png"], matchReferenceSize: false, width: 1344, height: 768)
+        let size = try Qwen21RunnerSpec.editSize(job: job)
+        #expect(size.width == 1344)
+        #expect(size.height == 768)
+        #expect(size.referenceResolution == 1024) // √(1344 × 768) ≈ 1016, to a multiple of 32
+    }
+
+    @Test func unreadableLastReferenceFailsTheJob() {
+        let job = Qwen21Job(isEditMode: true, editImagePaths: ["/nonexistent/ref.png"])
+        #expect(throws: Qwen21ComfyGraphError.unreadableReference) {
+            _ = try Qwen21RunnerSpec.editSize(job: job)
+        }
     }
 
     @Test func loraChainFeedsTheCacheNode() async throws {

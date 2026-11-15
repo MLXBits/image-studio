@@ -64,7 +64,7 @@ struct Qwen21ParamsPanelView: View {
                         ? "Describe the change to the reference images" : "Describe the image you want to generate",
                     tokenSoftCap: FluxModelVariant.qwen21Turbo.promptTokenSoftCap
                 )
-                if settings.comfyBackendEnabled[ModelFamily.qwen21.id] == true {
+                if Qwen21RunnerSpec.routesToComfy(settings: settings) {
                     Toggle("Enhance prompt on ComfyUI", isOn: $params.enhancePrompt)
                         .font(.caption)
                         .help(

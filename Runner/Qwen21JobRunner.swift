@@ -15,6 +15,13 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Qwen21Job
     typealias Store = Qwen21JobStore
 
+    /// A ComfyUI edit's output size, and the resolution the encoder resizes references to.
+    struct EditSize: Equatable {
+        let width: Int
+        let height: Int
+        let referenceResolution: Int
+    }
+
     static let family: ModelFamily = .qwen21
     static let stepwiseSubdir = "stepwise-qwen21"
     static let outputPrefix = "qwen21"
@@ -111,9 +118,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     /// Settings, else the job runs on local mflux. With Enhance prompt on, the template's enhancer rewrites the
     /// prompt first; off, the enhancer branch is pruned and the prompt goes straight to the encoder.
     static func comfyGraph(job: Qwen21Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
-        let id = family.id
-        let files = [settings.comfyUNet[id], settings.comfyClip[id], settings.comfyVae[id]].map { $0 ?? "" }
-        guard !files.contains(where: \.isEmpty) else { return nil }
+        guard let files = comfyFiles(settings: settings) else { return nil }
         let enhancerClip = settings.comfyClip[enhancerClipKey] ?? ""
         if job.enhancePrompt, enhancerClip.isEmpty {
             throw Qwen21ComfyGraphError.noEnhancerClip
@@ -146,8 +151,14 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             try await uploaded.append(client.uploadKreaImage(localPath: path))
         }
         if let first = uploaded.first {
+            // ComfyUI's encoder sizes its own latent from the FIRST reference; mflux sizes from the last. The
+            // app sizes the edit the mflux way and always samples the empty latent at that size.
+            let size = try editSize(job: job)
             params["source_image"] = first
-            params["custom_size"] = !job.followsReferenceSize
+            params["custom_size"] = true
+            params["width"] = size.width
+            params["height"] = size.height
+            params["reference_resolution"] = size.referenceResolution
         }
         let loras = enabledLoras(job).map { ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength) }
         var graph = try template.render(map: map, params: params, loras: loras)
@@ -156,6 +167,39 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             comfyPruneUnreachable(&graph)
         }
         return .seeded(graph, map: map, totalSteps: job.steps)
+    }
+
+    /// The UNet, CLIP and VAE files from Settings, or nil when any is unset (the job then runs locally).
+    static func comfyFiles(settings: AppSettings) -> [String]? {
+        let id = family.id
+        let files = [settings.comfyUNet[id], settings.comfyClip[id], settings.comfyVae[id]].map { $0 ?? "" }
+        return files.contains(where: \.isEmpty) ? nil : files
+    }
+
+    /// A Qwen job runs on ComfyUI: the backend segment is set, there's a server URL, and all three files are set.
+    static func routesToComfy(settings: AppSettings) -> Bool {
+        settings.comfyBackendEnabled[family.id] == true
+            && !settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && comfyFiles(settings: settings) != nil
+    }
+
+    /// An edit's output size, and the resolution the encoder resizes references to. Following the references
+    /// uses mflux's rule: the last reference's aspect ratio at about 1024², in multiples of 32. The encoder's
+    /// resolution keeps the references at about the output's area, so a lone reference lines up with the latent
+    /// (any other size shifts the edit) and a large photo isn't encoded at full size.
+    static func editSize(job: Qwen21Job) throws -> EditSize {
+        func snap(_ value: Double) -> Int {
+            max(32, Int((value / 32).rounded()) * 32)
+        }
+        guard job.followsReferenceSize else {
+            return EditSize(width: job.width, height: job.height, referenceResolution: snap(Double(job.width * job.height).squareRoot()))
+        }
+        guard let last = job.editImagePaths.last, let (w, h) = imagePixelSize(at: last), w > 0, h > 0 else {
+            throw Qwen21ComfyGraphError.unreadableReference
+        }
+        let ratio = Double(w) / Double(h)
+        let width = (1024 * 1024 * ratio).squareRoot()
+        return EditSize(width: snap(width), height: snap(width / ratio), referenceResolution: 1024)
     }
 
     /// The ManualSigmas value for `steps`: the 8-step schedule as is, else resampled linearly to steps + 1 points.
@@ -171,22 +215,20 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     }
 
     /// Edit references 2…N: a LoadImage each, wired into the encoder's `images.image_<n>` and the enhancer's
-    /// batch `images.image<n-1>`. The two nodes number their inputs from 1 and 0, as exported.
+    /// `images.image<n>`. Separate enhancer inputs, not a batch: batching crops every image to the first one's shape.
     private static func addReferences(_ graph: inout [String: Any], names: ArraySlice<String>, map: ComfyParamMap) throws {
         guard !names.isEmpty else { return }
         guard let load = map.params["source_image"]?.node, let loadNode = graph[load] as? [String: Any],
-              let encoder = map.params["encoder_prompt"]?.node
-        else { throw ComfyTemplateError.missingNode("LoadImage/TextEncodeQwenImage21") }
-        let batch = graph.first { ($0.value as? [String: Any])?["class_type"] as? String == "BatchImagesNode" }?.key
+              let encoder = map.params["encoder_prompt"]?.node, let enhancer = map.params["enhance_prompt"]?.node
+        else { throw ComfyTemplateError.missingNode("LoadImage/TextEncodeQwenImage21/TextGenerateV2") }
         for (offset, name) in names.enumerated() {
             let n = offset + 2 // reference 1 is the template's own LoadImage
             var node = loadNode
             node["inputs"] = ["image": name]
             graph["ref_\(n)"] = node
             comfySetInput(&graph, node: encoder, input: "images.image_\(n)", value: ["ref_\(n)", 0])
-            if let batch {
-                comfySetInput(&graph, node: batch, input: "images.image\(n - 1)", value: ["ref_\(n)", 0])
-            }
+            // The enhancer is pruned afterwards when it's off.
+            comfySetInput(&graph, node: enhancer, input: "images.image\(n)", value: ["ref_\(n)", 0])
         }
     }
 
@@ -229,8 +271,15 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
 /// A Qwen-Image 2.1 remote job the bundled templates can't run.
 enum Qwen21ComfyGraphError: LocalizedError, Equatable {
     case noEnhancerClip
+    /// The last reference's pixel size, which sizes the edit, couldn't be read.
+    case unreadableReference
 
     var errorDescription: String? {
-        "Enhance prompt needs the prompt enhancer's CLIP file, set in Settings ▸ Models ▸ Qwen-Image 2.1 Turbo."
+        switch self {
+        case .noEnhancerClip:
+            "Enhance prompt needs the prompt enhancer's CLIP file, set in Settings ▸ Models ▸ Qwen-Image 2.1 Turbo."
+        case .unreadableReference:
+            "Couldn't read the last reference image's size, which sets the edit's size."
+        }
     }
 }
