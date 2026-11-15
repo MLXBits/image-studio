@@ -175,12 +175,35 @@ private func exciseRefTarget(_ value: Any?) -> String? {
 }
 
 private func exciseSetRef(_ graph: inout [String: Any], node: String, input: String, to target: String) {
+    comfySetInput(&graph, node: node, input: input, value: [target, 0])
+}
+
+// MARK: - Shared graph edits
+
+/// Sets one input on a wire-form node; a no-op when the node or its inputs are missing.
+func comfySetInput(_ graph: inout [String: Any], node: String, input: String, value: Any) {
     guard var nodeDict = graph[node] as? [String: Any],
           var ins = nodeDict["inputs"] as? [String: Any]
     else {
         return
     }
-    ins[input] = [target, 0]
+    ins[input] = value
     nodeDict["inputs"] = ins
     graph[node] = nodeDict
+}
+
+/// Removes every node that no `SaveImage*` node depends on. ComfyUI runs every output node it is sent,
+/// so a branch the graph no longer uses (and the files it loads) must leave the graph, not just lose its consumer.
+func comfyPruneUnreachable(_ graph: inout [String: Any]) {
+    var keep = Set(graph.keys.filter {
+        ((graph[$0] as? [String: Any])?["class_type"] as? String)?.hasPrefix("SaveImage") == true
+    })
+    var stack = Array(keep)
+    while let id = stack.popLast() {
+        for value in exciseInputs(graph, id).values {
+            guard let src = exciseRefTarget(value), graph[src] != nil, keep.insert(src).inserted else { continue }
+            stack.append(src)
+        }
+    }
+    graph = graph.filter { keep.contains($0.key) }
 }

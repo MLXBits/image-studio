@@ -370,17 +370,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         } else {
             base = rendered
         }
-        return ComfyGraph(totalNodes: base.count, totalSteps: job.steps) { seed in
-            var graph = base
-            if let target = map.params["seed"],
-               var node = graph[target.node] as? [String: Any],
-               var inputs = node["inputs"] as? [String: Any] {
-                inputs[target.input] = seed
-                node["inputs"] = inputs
-                graph[target.node] = node
-            }
-            return graph
-        }
+        return .seeded(base, map: map, totalSteps: job.steps)
     }
 
     /// The param-map values for one FLUX.2 job: its prompt/size/steps plus the per-variant model files from

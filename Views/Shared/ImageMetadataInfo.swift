@@ -333,10 +333,12 @@ struct ImageMetadataInfo {
 }
 
 /// Reads only the file header, not the pixels.
-private func imagePixelSize(at path: String) -> (Int, Int)? {
+/// An image's pixel size as displayed: EXIF orientations 5–8 (rotated 90°) swap width and height.
+func imagePixelSize(at path: String) -> (Int, Int)? {
     guard let source = CGImageSourceCreateWithURL(URL(fileURLWithPath: path) as CFURL, nil),
           let props = CGImageSourceCopyPropertiesAtIndex(source, 0, nil) as? [CFString: Any],
           let w = props[kCGImagePropertyPixelWidth] as? Int,
           let h = props[kCGImagePropertyPixelHeight] as? Int else { return nil }
-    return (w, h)
+    let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
+    return orientation >= 5 ? (h, w) : (w, h)
 }

@@ -17,6 +17,7 @@ nonisolated struct Qwen21Metadata: Codable {
             loras: job.loras.isEmpty ? nil : job.loras,
             lowRam: job.lowRam ? true : nil,
             board: job.board.isEmpty ? nil : job.board,
+            enhancePrompt: job.enhancePrompt ? true : nil,
             generatedAt: job.completedAt ?? Date(),
             startedAt: job.startedAt,
             log: job.log.isEmpty ? nil : job.log
@@ -38,6 +39,8 @@ nonisolated struct Qwen21Metadata: Codable {
     var loras: [LoraEntry]?
     var lowRam: Bool?
     var board: String?
+    /// The ComfyUI prompt enhancer rewrote `prompt` before encoding.
+    var enhancePrompt: Bool?
     var generatedAt: Date
     var startedAt: Date?
     var log: String?

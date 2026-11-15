@@ -218,7 +218,8 @@ struct ModelDefaultsView: View {
                     } else if selectedModel.isZImage {
                         zimageFormContent(model: selectedModel)
                     } else if selectedModel.isQwen21 {
-                        qwen21FormContent()
+                        qwen21FormContent(models: comfyModels)
+                            .task { await ensureComfyDiscovery() }
                     } else if FluxModelVariant.builtIn.contains(selectedModel) {
                         flux2FormContent(model: selectedModel, defaults: settings.defaults(for: selectedModel), models: comfyModels)
                             .task { await ensureComfyDiscovery() }

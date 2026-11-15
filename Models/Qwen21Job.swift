@@ -39,6 +39,8 @@ final class Qwen21Job: Identifiable {
     var lowRam: Bool
     /// Output subfolder within the global output directory. Empty string = root.
     var board: String
+    /// ComfyUI only: the template's prompt enhancer rewrites the prompt before encoding. Local mflux has none.
+    var enhancePrompt: Bool
 
     var status: JobStatus
     var log: String
@@ -88,6 +90,7 @@ final class Qwen21Job: Identifiable {
         loras: [LoraEntry] = [],
         lowRam: Bool = false,
         board: String = "Default",
+        enhancePrompt: Bool = false,
         createdAt: Date = Date()
     ) {
         self.id = id
@@ -105,6 +108,7 @@ final class Qwen21Job: Identifiable {
         self.loras = loras
         self.lowRam = lowRam
         self.board = board
+        self.enhancePrompt = enhancePrompt
         status = .pending
         log = ""
         currentStep = 0
@@ -116,7 +120,7 @@ final class Qwen21Job: Identifiable {
 extension Qwen21Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, isEditMode, editImagePaths, matchReferenceSize, prompt, customModelRepo
-        case steps, quantize, width, height, seed, seeds, loras, lowRam, board
+        case steps, quantize, width, height, seed, seeds, loras, lowRam, board, enhancePrompt
         case status, log, outputPath, resolvedSeed, thumbnailData
         case currentStep, totalSteps, createdAt, startedAt, completedAt
     }
@@ -140,6 +144,7 @@ extension Qwen21Job: Codable {
             loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
             lowRam: c.decodeIfPresent(Bool.self, forKey: .lowRam) ?? false,
             board: c.decodeIfPresent(String.self, forKey: .board) ?? "Default",
+            enhancePrompt: c.decodeIfPresent(Bool.self, forKey: .enhancePrompt) ?? false,
             createdAt: c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         )
         status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
@@ -170,6 +175,7 @@ extension Qwen21Job: Codable {
         try c.encode(loras, forKey: .loras)
         try c.encode(lowRam, forKey: .lowRam)
         try c.encode(board, forKey: .board)
+        try c.encode(enhancePrompt, forKey: .enhancePrompt)
         try c.encode(status, forKey: .status)
         try c.encode(log, forKey: .log)
         try c.encode(currentStep, forKey: .currentStep)
