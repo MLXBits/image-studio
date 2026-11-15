@@ -405,7 +405,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     /// The "≈N GB RAM" label's figure: the measured peak for the path the job will run where it is known
     /// (Qwen-Image 2.1), else the weight size. ``approximateSizeGB(quantize:)`` stays the download size.
     func approximateRAMGB(quantize: Int, settings: AppSettings) -> Double {
-        guard isQwen21 else { return approximateSizeGB(quantize: quantize) }
+        // A ComfyUI-routed job runs on the server, so no local peak applies: keep the weight size, as other models do.
+        guard isQwen21, !Qwen21RunnerSpec.routesToComfy(settings: settings) else { return approximateSizeGB(quantize: quantize) }
         // MLX peaks measured 2026-11-15 on mflux 0.24.0: the heavier of a 1024² Generate and a ~1 MP
         // one-reference Edit at 8 steps. Columns: one-shot CLI (it frees the text encoder before denoising),
         // warm driver keeping the encoder, warm driver evicting it.

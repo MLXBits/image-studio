@@ -158,6 +158,7 @@ struct Qwen21RouteTests {
     @Test func ramLabelFollowsTheRunPath() {
         let model = FluxModelVariant.qwen21Turbo
         let settings = settings()
+        settings.comfyBackendEnabled[ModelFamily.qwen21.id] = false
         settings.keepModelWarm = false
         settings.warmTextEncoderPolicy = .auto
         settings.updateDefaults(ModelDefaults(), for: model)
@@ -172,6 +173,14 @@ struct Qwen21RouteTests {
         #expect(model.approximateRAMGB(quantize: 0, settings: settings) == 24.8) // low RAM stays on the CLI
         #expect(model.approximateSizeGB(quantize: 0) == 32.5)
         #expect(FluxModelVariant.krea2.approximateRAMGB(quantize: 8, settings: settings) == 21)
+
+        // Routed to ComfyUI, the server's memory is what counts: the label falls back to the weight size.
+        settings.comfyBackendEnabled[ModelFamily.qwen21.id] = true
+        settings.comfyURL = "http://127.0.0.1:1"
+        settings.comfyUNet[ModelFamily.qwen21.id] = "unet.safetensors"
+        settings.comfyClip[ModelFamily.qwen21.id] = "clip.safetensors"
+        settings.comfyVae[ModelFamily.qwen21.id] = "vae.safetensors"
+        #expect(model.approximateRAMGB(quantize: 8, settings: settings) == 17.8)
     }
 
     @Test func lowRamStaysOnTheCLI() {
