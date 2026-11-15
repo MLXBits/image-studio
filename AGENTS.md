@@ -166,10 +166,10 @@ Adding Z-Image touched 24 files. In dependency order:
 
 Grepping for `ZImage` is the fastest way to find any touchpoint this list misses.
 
-Don't copy Krea 2's or Z-Image's per-family store, queue drawer, or preview views:
+Don't write a per-family store, queue drawer, or preview views for a new family:
 CI fails a PR that raises jscpd's duplicated-token share by more than 0.1 points.
 Conform the job to `QueueListedJob` (`Stores/JobHistoryFile.swift`) and use the
-shared pieces, as Krea 2 and Qwen-Image 2.1 do: the store extension's queue
+shared pieces, as Krea 2, Qwen-Image 2.1 and Z-Image do: the store extension's queue
 operations, `FamilyQueueDrawerView<Spec>`, `JobStepwisePreviewView` and
 `JobCompletedPreviewView` (`Views/Shared/JobPreviewViews.swift`), `StepsSeedRow`,
 and `EditImageListView` for a reference list. Those families have no

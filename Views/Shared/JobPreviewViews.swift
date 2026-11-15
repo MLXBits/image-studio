@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Live stepwise preview for a running job of any family built on
-/// ``GeneratedJob`` (Krea 2, Qwen-Image 2.1).
+/// ``GeneratedJob`` (Krea 2, Qwen-Image 2.1, Z-Image).
 struct JobStepwisePreviewView<Job: GeneratedJob>: View {
     let job: Job
     let onCancel: () -> Void

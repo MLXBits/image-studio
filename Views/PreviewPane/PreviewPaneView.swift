@@ -158,23 +158,25 @@ struct PreviewPaneView: View {
                 case let .activeZImageJob(job):
                     switch job.status {
                     case .running:
-                        ZImageStepwisePreviewView(job: job, onCancel: onCancel)
+                        JobStepwisePreviewView(job: job, onCancel: onCancel)
 
                     case .completed:
-                        ZImageCompletedPreviewView(
+                        JobCompletedPreviewView(
                             job: job,
+                            metadataOf: { ZImageMetadata.from(job: $0) },
+                            infoOf: { ImageMetadataInfo(zimageJob: $0) },
                             onRemix: onRemixZImage,
                             onApplySettings: onApplyZImageSettings
                         )
 
                     case let .failed(msg):
-                        zimageFailedView(message: msg, job: job)
+                        logFailedView(message: msg, log: job.log, repoURL: job.modelVariant.hfRepoURL(quantize: job.quantize))
 
                     case .cancelled:
                         cancelledView
 
                     case .pending:
-                        zimagePendingView(job: job)
+                        queuedView(displayName: job.displayName)
                     }
 
                 case let .activeSeedVR2Job(job):
@@ -490,15 +492,23 @@ struct PreviewPaneView: View {
         }
     }
 
-    /// A failed run's log (or its error when there is no log), scrolled to the end.
-    private func logFailedView(message: String, log: String) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
+    /// A failed run's log (or its error when there is no log), scrolled to the end. With `repoURL`, a
+    /// gated-repo failure also links to the model page, where the user accepts its license.
+    private func logFailedView(message: String, log: String, repoURL: URL? = nil) -> some View {
+        let combined = message + "\n" + log
+        let isGatedRepo = ["private or gated repo", "GatedRepoError", "is restricted", "403 Client Error", "401 Client Error"]
+            .contains { combined.contains($0) }
+        return VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: 8) {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(.red)
                 Text("Generation failed")
                     .font(.headline)
                 Spacer()
+                if isGatedRepo, let repoURL {
+                    Link("Open on HuggingFace", destination: repoURL)
+                        .font(.caption)
+                }
             }
             .padding()
             Divider()
@@ -527,58 +537,6 @@ struct PreviewPaneView: View {
                 .font(.title3)
                 .foregroundStyle(.secondary)
             Text(displayName)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func zimageFailedView(message: String, job: ZImageJob) -> some View {
-        let combined = message + "\n" + job.log
-        let isGatedRepo = combined.contains("private or gated repo")
-            || combined.contains("GatedRepoError")
-            || combined.contains("is restricted")
-            || combined.contains("403 Client Error")
-            || combined.contains("401 Client Error")
-
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text("Generation failed")
-                    .font(.headline)
-                Spacer()
-                if isGatedRepo, let url = job.modelVariant.hfRepoURL(quantize: job.quantize) {
-                    Link("Open on HuggingFace", destination: url)
-                        .font(.caption)
-                }
-            }
-            .padding()
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(job.log.isEmpty ? message : job.log)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                    Color.clear.frame(height: 1).id("errEnd")
-                }
-                .onAppear { proxy.scrollTo("errEnd") }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
-    private func zimagePendingView(job: ZImageJob) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Waiting in queue")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text(job.displayName)
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }

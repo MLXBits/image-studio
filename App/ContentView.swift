@@ -773,7 +773,7 @@ struct ContentView: View {
                     .environment(settings)
                     .environment(coordinator)
                 } else if params.modelFamily == .zimage {
-                    ZImageQueueDrawerView(selectedJob: Binding(
+                    FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: Binding(
                         get: {
                             if case let .activeZImageJob(j) = previewState {
                                 return j

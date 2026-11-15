@@ -61,7 +61,6 @@
 		2471B94524D33EBA00254C01 /* run_tool.py in Resources */ = {isa = PBXBuildFile; fileRef = D49F253E7F154C0A4D4D3FBE /* run_tool.py */; };
 		28A278E311B31F4464A171CC /* LogTextView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB287891C14528C187C1AC45 /* LogTextView.swift */; };
 		2B1DBF0BA62DC080B51D9BF8 /* BBoxGeometryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41C451A131125F4F21A38D20 /* BBoxGeometryTests.swift */; };
-		2C0FA92FCF531F12169659A1 /* ZImagePreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = D42B1614835EBFF337B14199 /* ZImagePreviewViews.swift */; };
 		2C2107249D1FC87AFF119DAC /* PreviewPaneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 529F6252BB3465DC42AC9B18 /* PreviewPaneView.swift */; };
 		2CE5231419CEA80AC78A2EEB /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0DFB6BA799C59DAA55470EC3 /* ContentView.swift */; };
 		2D4D25652D94083934260EC4 /* SupportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85DB88D6B84C411325D139CB /* SupportView.swift */; };
@@ -562,7 +561,6 @@
 		CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfySeedVR2WorkflowTests.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
 		D2A3301917579F0C64EE2A07 /* Qwen21ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Qwen21ParamsPanelView.swift; sourceTree = "<group>"; };
-		D42B1614835EBFF337B14199 /* ZImagePreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImagePreviewViews.swift; sourceTree = "<group>"; };
 		D49F253E7F154C0A4D4D3FBE /* run_tool.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = run_tool.py; sourceTree = "<group>"; };
 		D51EBA77E02C1913782FF6B2 /* ScenarioGeneratorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGeneratorView.swift; sourceTree = "<group>"; };
 		D5D2FD8DEBBBCA654DADD17E /* ModelDefaultsView+Qwen21Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Qwen21Form.swift"; sourceTree = "<group>"; };
@@ -992,7 +990,6 @@
 			children = (
 				050EE7381BE7F16200F99AD6 /* ZImageParamsPanelState.swift */,
 				6F07AFF0DD77A3B5CD7EFFDF /* ZImageParamsPanelView.swift */,
-				D42B1614835EBFF337B14199 /* ZImagePreviewViews.swift */,
 			);
 			path = ZImage;
 			sourceTree = "<group>";
@@ -1486,7 +1483,6 @@
 				48494188DF57F0CB46800729 /* ZImageJobStore.swift in Sources */,
 				ED4DDCD94B96DF5BCF8E8F61 /* ZImageParamsPanelState.swift in Sources */,
 				E644615EFBDA336E54EF04EE /* ZImageParamsPanelView.swift in Sources */,
-				2C0FA92FCF531F12169659A1 /* ZImagePreviewViews.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
