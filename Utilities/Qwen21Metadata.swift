@@ -39,7 +39,7 @@ nonisolated struct Qwen21Metadata: Codable {
     var loras: [LoraEntry]?
     var lowRam: Bool?
     var board: String?
-    /// The ComfyUI prompt enhancer rewrote `prompt` before encoding.
+    /// A prompt enhancer (ComfyUI's, or mflux's for an edit) rewrote `prompt` before encoding.
     var enhancePrompt: Bool?
     var generatedAt: Date
     var startedAt: Date?

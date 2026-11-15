@@ -38,9 +38,9 @@ final class Qwen21ParamsPanelState {
     var lowRam: Bool = false
     var loras: [LoraEntry] = []
     var board: String = ""
-    /// ComfyUI only: rewrite the prompt with the template's enhancer before encoding.
+    /// Rewrite the prompt before encoding (ComfyUI: any job; local mflux: edits only).
     var enhancePrompt: Bool = false
-    /// Qwen runs on ComfyUI. ContentView sets it at submit, so a local job never carries `enhancePrompt`.
+    /// Qwen runs on ComfyUI. ContentView sets it at submit: locally, only an edit can carry `enhancePrompt`.
     var routesToComfy: Bool = false
 
     var canGenerate: Bool {
@@ -117,7 +117,7 @@ final class Qwen21ParamsPanelState {
             loras: loras,
             lowRam: lowRam,
             board: board,
-            enhancePrompt: enhancePrompt && routesToComfy
+            enhancePrompt: enhancePrompt && (routesToComfy || isEditMode)
         )
         if count > 1 {
             // One process, model loaded once, N random seeds.

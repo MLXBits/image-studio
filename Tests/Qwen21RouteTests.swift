@@ -102,6 +102,26 @@ struct Qwen21RouteTests {
         #expect(request.width == nil && request.height == nil)
     }
 
+    @Test func enhancedEditAsksMfluxToRewriteOnBothPaths() throws {
+        let job = Qwen21Job(isEditMode: true, editImagePaths: ["/subject.png"], prompt: "make it night", enhancePrompt: true)
+        #expect(args(job).contains("--enhance-prompt"))
+        #expect(try #require(Qwen21RunnerSpec.driverRequest(job: job, ctx: ctx, settings: settings())).enhancePrompt == true)
+        #expect(!args(Qwen21Job(isEditMode: true, editImagePaths: ["/subject.png"])).contains("--enhance-prompt"))
+    }
+
+    /// mflux rejects `--enhance-prompt` without a reference, so a Generate job queued for ComfyUI's enhancer that
+    /// falls back to local drops the flag, while an edit keeps it.
+    @Test func localFallbackKeepsTheEnhancerOnlyForEdits() {
+        let generate = Qwen21Job(prompt: "a fox", enhancePrompt: true)
+        Qwen21RunnerSpec.willRunLocally(job: generate)
+        #expect(!generate.enhancePrompt)
+        #expect(!args(generate).contains("--enhance-prompt"))
+
+        let edit = Qwen21Job(isEditMode: true, editImagePaths: ["/subject.png"], enhancePrompt: true)
+        Qwen21RunnerSpec.willRunLocally(job: edit)
+        #expect(edit.enhancePrompt)
+    }
+
     @Test func warmDriverSendsTheSizeInGenerateMode() throws {
         let job = Qwen21Job(isEditMode: false, editImagePaths: ["/a.png"], prompt: "a fox", width: 1344, height: 768)
         let request = try #require(Qwen21RunnerSpec.driverRequest(job: job, ctx: ctx, settings: settings()))

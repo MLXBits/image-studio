@@ -98,6 +98,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             steps: job.steps,
             guidance: 1.0,
             imagePaths: references,
+            enhancePrompt: job.enhancePrompt ? true : nil,
             outputs: RunnerSupport.driverOutputs(ctx: ctx, seeds: job.seeds),
             stepwiseDir: "", // no previews, as in buildArgs
             tePolicy: WarmTextEncoderPolicy.keep.rawValue,
@@ -107,15 +108,21 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         )
     }
 
-    // MARK: - ComfyUI remote routing
+    /// Local mflux enhances only edits: it rewrites the instruction against the references with the Qwen3-VL
+    /// text encoder it already holds. ComfyUI's template enhancer also covers Generate.
+    static func canEnhanceLocally(job: Qwen21Job) -> Bool {
+        job.isEditMode && !job.editImagePaths.isEmpty
+    }
 
-    /// The enhancer exists only on ComfyUI. A job queued for it can still run locally if Settings changed meanwhile.
+    /// A Generate job queued for ComfyUI's enhancer can still run locally if Settings changed meanwhile.
     static func willRunLocally(job: Qwen21Job) {
-        if job.enhancePrompt {
+        if job.enhancePrompt, !canEnhanceLocally(job: job) {
             job.enhancePrompt = false
-            job.log += "Enhance prompt skipped: this job runs on local mflux, which has no enhancer.\n"
+            job.log += "Enhance prompt skipped: local mflux enhances only edits.\n"
         }
     }
+
+    // MARK: - ComfyUI remote routing
 
     /// Remote graph from the bundled t2i or edit template. The UNet, CLIP and VAE files must all be set in
     /// Settings, else the job runs on local mflux. With Enhance prompt on, the template's enhancer rewrites the
@@ -245,6 +252,9 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
 
         if job.isEditMode, !job.editImagePaths.isEmpty {
             args += ["--image-paths"] + job.editImagePaths
+            if job.enhancePrompt {
+                args.append("--enhance-prompt")
+            }
         }
         // With no size, mflux sizes an edit from the last reference.
         if !job.followsReferenceSize {
