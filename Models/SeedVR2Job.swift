@@ -63,7 +63,8 @@ final class SeedVR2Job: Identifiable {
 
     /// Single-output upscale: never a multi-seed batch.
     var seeds: [Int] {
-        []
+        get { [] }
+        set {} // swiftlint:disable:this unused_setter_value
     }
 
     var progressFraction: Double {

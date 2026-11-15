@@ -15,7 +15,8 @@ protocol GeneratedJob: AnyObject, Identifiable {
     var currentStep: Int { get set }
     var totalSteps: Int { get set }
     var seed: Int { get }
-    var seeds: [Int] { get }
+    /// Batch seeds. The runner trims it to the seeds that landed, so `expandBatchJob` zips each with its own path.
+    var seeds: [Int] { get set }
     var resolvedSeed: Int? { get set }
     var quantize: Int { get }
     var board: String { get }
@@ -120,6 +121,19 @@ struct ComfyGraph {
     let totalSteps: Int
     /// The `/prompt` graph for one seed.
     let build: (_ seed: Int) -> Any
+}
+
+extension ComfyGraph {
+    /// A graph rendered once, with only the param map's `seed` target swapped per seed.
+    static func seeded(_ base: [String: Any], map: ComfyParamMap, totalSteps: Int) -> Self {
+        Self(totalNodes: base.count, totalSteps: totalSteps) { seed in
+            var graph = base
+            if let target = map.params["seed"] {
+                comfySetInput(&graph, node: target.node, input: target.input, value: seed)
+            }
+            return graph
+        }
+    }
 }
 
 /// Per-run values handed to ``JobRunnerSpec/buildArgs(job:ctx:settings:)``.
@@ -709,6 +723,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
             lastCompletedOutputPath = paths[0]
             job.log += "▸ Saved to: \(paths[0])  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
         } else {
+            job.seeds = progress.landed.map(\.seed)
             job.outputPaths = paths
             job.outputThumbnails = await RunnerSupport.makeThumbnails(for: paths)
             job.outputPath = paths.first
@@ -879,6 +894,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
         do {
             var landedPaths: [String] = []
+            var landedSeeds: [Int] = []
             // Per-image timing window, mirroring the local mflux path's perImageStartTime/imageGeneratedAt. The first seed spans run-start
             // -> its landing; each subsequent seed spans the previous seed's landing -> its own. Capturing generatedAt once up front (the
             // old behavior) made every sidecar report ~0s because it was stamped before any image existed.
@@ -931,6 +947,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 Spec.writeMetadata(job: job, seed: seed, startedAt: perSeedStartTime, generatedAt: imageGeneratedAt, path: local)
                 perSeedStartTime = imageGeneratedAt
                 landedPaths.append(local)
+                landedSeeds.append(seed)
 
                 // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
                 // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
@@ -950,9 +967,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             if seedsToRun.count == 1 {
                 job.outputPath = landedPaths[0]
             } else {
-                // Keep outputPaths in sync incrementally so expandBatchJob (which zips job.seeds with
-                // job.outputPaths) sees a consistent set even mid-batch; final count may be less than
-                // requested if some seeds failed to download.
+                // expandBatchJob zips job.seeds with job.outputPaths: a seed whose download failed must
+                // leave both lists, or every later image is labelled with the previous seed.
+                job.seeds = landedSeeds
                 job.outputPaths = landedPaths
                 job.outputPath = landedPaths.first
                 lastCompletedOutputPath = landedPaths.last

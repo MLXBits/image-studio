@@ -14,6 +14,7 @@ struct Qwen21FormState: Codable {
     var quantize: Int?
     var loras: [LoraEntry]?
     var board: String?
+    var enhancePrompt: Bool?
 }
 
 /// Observable form state for the Qwen-Image 2.1 Turbo params panel.
@@ -37,6 +38,10 @@ final class Qwen21ParamsPanelState {
     var lowRam: Bool = false
     var loras: [LoraEntry] = []
     var board: String = ""
+    /// ComfyUI only: rewrite the prompt with the template's enhancer before encoding.
+    var enhancePrompt: Bool = false
+    /// Qwen runs on ComfyUI. ContentView sets it at submit, so a local job never carries `enhancePrompt`.
+    var routesToComfy: Bool = false
 
     var canGenerate: Bool {
         !prompt.trimmingCharacters(in: .whitespaces).isEmpty && (!isEditMode || !editImagePaths.isEmpty)
@@ -55,6 +60,7 @@ final class Qwen21ParamsPanelState {
         steps = Self.model.clampedSteps(s.steps ?? d.steps)
         quantize = s.quantize ?? d.quantize
         board = s.board ?? settings.defaultBoard
+        enhancePrompt = s.enhancePrompt ?? false
         loras = (s.loras ?? []).isEmpty ? library.defaultLoras(for: .qwen21) : s.loras ?? []
         seed = -1
     }
@@ -63,7 +69,7 @@ final class Qwen21ParamsPanelState {
         Qwen21FormState(
             prompt: prompt, isEditMode: isEditMode, editImagePaths: editImagePaths,
             matchReferenceSize: matchReferenceSize, width: width, height: height,
-            steps: steps, quantize: quantize, loras: loras, board: board
+            steps: steps, quantize: quantize, loras: loras, board: board, enhancePrompt: enhancePrompt
         )
     }
 
@@ -81,6 +87,7 @@ final class Qwen21ParamsPanelState {
             loras = saved
         }
         board = meta.board ?? ""
+        enhancePrompt = meta.enhancePrompt ?? false
         batchSeeds = []
         seed = newSeed ? -1 : meta.seed
     }
@@ -109,7 +116,8 @@ final class Qwen21ParamsPanelState {
             seed: seed,
             loras: loras,
             lowRam: lowRam,
-            board: board
+            board: board,
+            enhancePrompt: enhancePrompt && routesToComfy
         )
         if count > 1 {
             // One process, model loaded once, N random seeds.

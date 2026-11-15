@@ -216,6 +216,7 @@
 		AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */; };
 		AC9AD7964BAF89229631A385 /* SupportLinks.swift in Sources */ = {isa = PBXBuildFile; fileRef = 810CDAAAB15FA7881F12035C /* SupportLinks.swift */; };
 		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
+		AEA333C40794A9E66A6ADE26 /* Qwen21ComfyGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E189076704105D2F5B1DBC17 /* Qwen21ComfyGraphTests.swift */; };
 		AED653E3BC8E5A6D984E295D /* StorageSettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230A5E0F0E02CA6ED9B8976C /* StorageSettingsRows.swift */; };
 		B03C0AC9840CDD3F79D00434 /* ComfyProgressDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */; };
 		B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */; };
@@ -578,6 +579,7 @@
 		DFDF82C6CF821F889C1B0CAA /* GalleryCollectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCollectionView.swift; sourceTree = "<group>"; };
 		DFE44A40E11389E274BB9806 /* AppStore.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = AppStore.xcconfig; sourceTree = "<group>"; };
 		E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4JobRunner.swift; sourceTree = "<group>"; };
+		E189076704105D2F5B1DBC17 /* Qwen21ComfyGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Qwen21ComfyGraphTests.swift; sourceTree = "<group>"; };
 		E29C4BD5FBC92A1C2C0C6DE9 /* StepClampTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepClampTests.swift; sourceTree = "<group>"; };
 		E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageJobRunner.swift; sourceTree = "<group>"; };
 		E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraManagerView.swift; sourceTree = "<group>"; };
@@ -815,6 +817,7 @@
 				F8528218ED691462B19A8F04 /* ProfileStoreTests.swift */,
 				431C403A29EFDB5D3336D11F /* PromptBatchSplitterTests.swift */,
 				CD95ADD5D2C2E7652E42DEA5 /* PythonToolTests.swift */,
+				E189076704105D2F5B1DBC17 /* Qwen21ComfyGraphTests.swift */,
 				18580CE78EC74154C464C418 /* Qwen21RouteTests.swift */,
 				2F6325B3C3F37C272F06328B /* RunnerSupportTests.swift */,
 				184D74615C4C4AD52CD2F287 /* RuntimeSelfTestTests.swift */,
@@ -1549,6 +1552,7 @@
 				D854B54FAE94758AF945BDBD /* ProfileStoredMigrationTests.swift in Sources */,
 				6729FCCF7E160269D567C1F3 /* PromptBatchSplitterTests.swift in Sources */,
 				E9A31A5F22F720F6F3F282EF /* PythonToolTests.swift in Sources */,
+				AEA333C40794A9E66A6ADE26 /* Qwen21ComfyGraphTests.swift in Sources */,
 				33FC763E4AF029DF4F864579 /* Qwen21RouteTests.swift in Sources */,
 				1015DBB3CE3250DAF1ED5749 /* RecordingFileAccess.swift in Sources */,
 				0D07E483A86332FC85422E90 /* RunnerSupportTests.swift in Sources */,

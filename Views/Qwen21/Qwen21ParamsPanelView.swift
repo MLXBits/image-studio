@@ -55,13 +55,24 @@ struct Qwen21ParamsPanelView: View {
                 + "Wildcards: {red|black|white} makes Generate run one job per option "
                 + "(up to 10), in order. Smaller groups cycle; a batch count overrides."
         ) {
-            GrowingPromptField(
-                text: $params.prompt,
-                placeholder: params.isEditMode ? "Describe the edit…" : "Describe your image…",
-                label: "Prompt",
-                hint: params.isEditMode ? "Describe the change to the reference images" : "Describe the image you want to generate",
-                tokenSoftCap: FluxModelVariant.qwen21Turbo.promptTokenSoftCap
-            )
+            VStack(alignment: .leading, spacing: 8) {
+                GrowingPromptField(
+                    text: $params.prompt,
+                    placeholder: params.isEditMode ? "Describe the edit…" : "Describe your image…",
+                    label: "Prompt",
+                    hint: params.isEditMode
+                        ? "Describe the change to the reference images" : "Describe the image you want to generate",
+                    tokenSoftCap: FluxModelVariant.qwen21Turbo.promptTokenSoftCap
+                )
+                if settings.comfyBackendEnabled[ModelFamily.qwen21.id] == true {
+                    Toggle("Enhance prompt on ComfyUI", isOn: $params.enhancePrompt)
+                        .font(.caption)
+                        .help(
+                            "The server's prompt enhancer rewrites the prompt before encoding. "
+                                + "Slower, and results differ from local mflux."
+                        )
+                }
+            }
         } accessory: {
             HStack(spacing: 6) {
                 ScenarioGeneratorButton(onSelect: { params.prompt = $0 }, onQueue: onQueueScenarioBatch)

@@ -1518,6 +1518,7 @@ struct ContentView: View {
         settings.lastModel = params.model == .custom ? .custom : .qwen21Turbo
         settings.lastQwen21 = qwen21Params.snapshot()
         qwen21Params.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
+        qwen21Params.routesToComfy = settings.comfyBackendEnabled[ModelFamily.qwen21.id] == true
         if scenarioPrompts == nil {
             settings.recordPromptUse(qwen21Params.prompt)
         }

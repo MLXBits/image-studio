@@ -167,17 +167,7 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
         // Render once (seed 0, the old builder's convention): a stale param map throws here and fails the job
         // loudly instead of per seed. The per-seed closure then swaps only the KSampler seed.
         let base = try template.render(map: map, params: params, loras: loras)
-        return ComfyGraph(totalNodes: template.nodes.count + loras.count, totalSteps: job.steps) { seed in
-            var graph = base
-            if let target = map.params["seed"],
-               var node = graph[target.node] as? [String: Any],
-               var inputs = node["inputs"] as? [String: Any] {
-                inputs[target.input] = seed
-                node["inputs"] = inputs
-                graph[target.node] = node
-            }
-            return graph
-        }
+        return .seeded(base, map: map, totalSteps: job.steps)
     }
 
     /// The param-map values for one Krea 2 job: its prompt/size/steps plus the per-family model files from

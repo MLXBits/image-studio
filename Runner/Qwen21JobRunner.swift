@@ -19,6 +19,10 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     static let stepwiseSubdir = "stepwise-qwen21"
     static let outputPrefix = "qwen21"
     static let encodingLabel = "Generating"
+    /// The `comfyClip` key for the prompt enhancer's CLIP, beside the family's own encoder entry.
+    static let enhancerClipKey = "qwen21.enhancer"
+    /// Turbo's 8-step sigma schedule, as the bundled ComfyUI templates carry it.
+    static let turboSigmas = [1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0]
 
     static func tool(job _: Qwen21Job) -> PythonTool {
         .qwen21Edit
@@ -101,6 +105,91 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         )
     }
 
+    // MARK: - ComfyUI remote routing
+
+    /// Remote graph from the bundled t2i or edit template. The UNet, CLIP and VAE files must all be set in
+    /// Settings, else the job runs on local mflux. With Enhance prompt on, the template's enhancer rewrites the
+    /// prompt first; off, the enhancer branch is pruned and the prompt goes straight to the encoder.
+    static func comfyGraph(job: Qwen21Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
+        let id = family.id
+        let files = [settings.comfyUNet[id], settings.comfyClip[id], settings.comfyVae[id]].map { $0 ?? "" }
+        guard !files.contains(where: \.isEmpty) else { return nil }
+        let enhancerClip = settings.comfyClip[enhancerClipKey] ?? ""
+        if job.enhancePrompt, enhancerClip.isEmpty {
+            throw Qwen21ComfyGraphError.noEnhancerClip
+        }
+
+        let refs = job.isEditMode ? job.editImagePaths : []
+        let key = refs.isEmpty ? "qwen21/t2i" : "qwen21/edit"
+        let template = try ComfyTemplate.load(familyFlowKey: key)
+        let map = try ComfyParamMap.load(familyFlowKey: key)
+        var params: [String: Any] = [
+            "seed": 0, // set per seed by the render closure
+            "sigmas": comfySigmas(steps: job.steps),
+            "width": job.width,
+            "height": job.height,
+            "unet_name": files[0],
+            "clip_name": files[1],
+            "vae_name": files[2],
+            // SaveImage's prefix must be `mlxbits/<family>`: ComfyUI splits it into subfolder + filename.
+            "save_subfolder": "mlxbits/\(outputPrefix)",
+        ]
+        if job.enhancePrompt {
+            params["enhance_prompt"] = job.prompt
+            params["pe_clip_name"] = enhancerClip
+        } else {
+            params["encoder_prompt"] = job.prompt
+        }
+        // Upload once and reuse the server filenames across seeds. A failed upload fails the job.
+        var uploaded: [String] = []
+        for path in refs {
+            try await uploaded.append(client.uploadKreaImage(localPath: path))
+        }
+        if let first = uploaded.first {
+            params["source_image"] = first
+            params["custom_size"] = !job.followsReferenceSize
+        }
+        let loras = enabledLoras(job).map { ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength) }
+        var graph = try template.render(map: map, params: params, loras: loras)
+        try addReferences(&graph, names: uploaded.dropFirst(), map: map)
+        if !job.enhancePrompt {
+            comfyPruneUnreachable(&graph)
+        }
+        return .seeded(graph, map: map, totalSteps: job.steps)
+    }
+
+    /// The ManualSigmas value for `steps`: the 8-step schedule as is, else resampled linearly to steps + 1 points.
+    static func comfySigmas(steps: Int) -> String {
+        let last = Double(turboSigmas.count - 1)
+        let count = max(steps, 1)
+        return (0 ... count).map { i in
+            let x = Double(i) * last / Double(count)
+            let lo = min(Int(x), turboSigmas.count - 2)
+            let sigma = turboSigmas[lo] + (turboSigmas[lo + 1] - turboSigmas[lo]) * (x - Double(lo))
+            return String(format: "%g", sigma)
+        }.joined(separator: ", ")
+    }
+
+    /// Edit references 2…N: a LoadImage each, wired into the encoder's `images.image_<n>` and the enhancer's
+    /// batch `images.image<n-1>`. The two nodes number their inputs from 1 and 0, as exported.
+    private static func addReferences(_ graph: inout [String: Any], names: ArraySlice<String>, map: ComfyParamMap) throws {
+        guard !names.isEmpty else { return }
+        guard let load = map.params["source_image"]?.node, let loadNode = graph[load] as? [String: Any],
+              let encoder = map.params["encoder_prompt"]?.node
+        else { throw ComfyTemplateError.missingNode("LoadImage/TextEncodeQwenImage21") }
+        let batch = graph.first { ($0.value as? [String: Any])?["class_type"] as? String == "BatchImagesNode" }?.key
+        for (offset, name) in names.enumerated() {
+            let n = offset + 2 // reference 1 is the template's own LoadImage
+            var node = loadNode
+            node["inputs"] = ["image": name]
+            graph["ref_\(n)"] = node
+            comfySetInput(&graph, node: encoder, input: "images.image_\(n)", value: ["ref_\(n)", 0])
+            if let batch {
+                comfySetInput(&graph, node: batch, input: "images.image\(n - 1)", value: ["ref_\(n)", 0])
+            }
+        }
+    }
+
     static func buildArgs(job: Qwen21Job, ctx: JobRunContext, settings: AppSettings) -> [String] {
         // --base-model on every run: mflux 0.24.0 has no alias for the `qwen-image-2-1-turbo`
         // repo names (added after it, in mflux #937) and silently runs them on the base
@@ -134,5 +223,14 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
 
     private static func enabledLoras(_ job: Qwen21Job) -> [LoraEntry] {
         job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .qwen21 }
+    }
+}
+
+/// A Qwen-Image 2.1 remote job the bundled templates can't run.
+enum Qwen21ComfyGraphError: LocalizedError, Equatable {
+    case noEnhancerClip
+
+    var errorDescription: String? {
+        "Enhance prompt needs the prompt enhancer's CLIP file, set in Settings ▸ Models ▸ Qwen-Image 2.1 Turbo."
     }
 }

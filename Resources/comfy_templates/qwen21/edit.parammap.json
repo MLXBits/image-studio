@@ -1,0 +1,54 @@
+{
+  "encoder_prompt": {
+    "node": "459:509",
+    "input": "prompt"
+  },
+  "enhance_prompt": {
+    "node": "459:500",
+    "input": "prompt"
+  },
+  "pe_clip_name": {
+    "node": "459:477",
+    "input": "clip_name"
+  },
+  "source_image": {
+    "node": "470",
+    "input": "image"
+  },
+  "custom_size": {
+    "node": "459:468",
+    "input": "switch"
+  },
+  "seed": {
+    "node": "459:504",
+    "input": "noise_seed"
+  },
+  "sigmas": {
+    "node": "459:502",
+    "input": "sigmas"
+  },
+  "width": {
+    "node": "459:456",
+    "input": "width"
+  },
+  "height": {
+    "node": "459:456",
+    "input": "height"
+  },
+  "unet_name": {
+    "node": "459:451",
+    "input": "unet_name"
+  },
+  "clip_name": {
+    "node": "459:453",
+    "input": "clip_name"
+  },
+  "vae_name": {
+    "node": "459:454",
+    "input": "vae_name"
+  },
+  "save_subfolder": {
+    "node": "461",
+    "input": "filename_prefix"
+  }
+}

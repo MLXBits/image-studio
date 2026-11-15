@@ -9,7 +9,7 @@ import Testing
 /// test session injected through ``ComfyUIClient/init(config:session:)``; `canInit` matches only
 /// `http://127.0.0.1/upload/image`, so any other request on that session passes through to the real
 /// transport.
-nonisolated private final class StubUploadProtocol: URLProtocol {
+nonisolated final class StubUploadProtocol: URLProtocol {
     /// The server filename every upload "lands" as.
     static let uploadedName = "uploaded_ref.png"
     /// Backing store for ``requestedPaths``. URLSession writes it from its own thread while tests

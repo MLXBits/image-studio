@@ -386,30 +386,40 @@ nonisolated extension ComfyTemplate {
         }
     }
 
-    /// The Krea 2 path: `LoraLoaderModelOnly` nodes chained between the UNETLoader and the
-    /// KSampler.model.
+    /// The Krea 2 and Qwen-Image 2.1 path: `LoraLoaderModelOnly` nodes chained after the UNETLoader. The
+    /// tail feeds `KSampler.model` when there is a KSampler (Krea 2), else every UNETLoader consumer (Qwen's
+    /// CFGGuider graphs feed the UNET to a cache node).
     private func insertModelOnlyLoras(_ graph: inout [String: [String: Any]], _ loras: [ComfyLora]) throws {
+        let ks = graph.first { $0.value["class_type"] as? String == "KSampler" }?.key
         guard let unet = graph.first(where: { $0.value["class_type"] as? String == "UNETLoader" })?.key,
-              let ks = graph.first(where: { $0.value["class_type"] as? String == "KSampler" })?.key,
-              var ksNode = graph[ks]
+              ks != nil || graph.values.contains(where: { references($0, unet) })
         else {
-            // No UNETLoader/KSampler to chain between: a silent wrong graph would run the job without
-            // the user's LoRAs and show no error — fail loudly.
+            // Nothing to chain between: a silent wrong graph would run the job without the user's LoRAs and
+            // show no error — fail loudly.
             throw ComfyTemplateError.missingNode("UNETLoader/KSampler")
         }
-        var ksInputs = ksNode["inputs"] as? [String: Any] ?? [:]
-        var prev: Any = [unet, 0]
+        var tail = (id: unet, slot: 0)
         for (i, lora) in loras.enumerated() {
             let id = "lora_ins_\(i)"
             graph[id] = [
                 "class_type": "LoraLoaderModelOnly",
-                "inputs": ["model": prev, "lora_name": lora.name, "strength_model": lora.strength],
+                "inputs": ["model": [tail.id, tail.slot], "lora_name": lora.name, "strength_model": lora.strength],
             ]
-            prev = [id, 0]
+            tail = (id, 0)
         }
-        ksInputs["model"] = prev
-        ksNode["inputs"] = ksInputs
-        graph[ks] = ksNode
+        if let ks, var ksNode = graph[ks] {
+            var ksInputs = ksNode["inputs"] as? [String: Any] ?? [:]
+            ksInputs["model"] = [tail.id, tail.slot]
+            ksNode["inputs"] = ksInputs
+            graph[ks] = ksNode
+        } else {
+            rewireConsumers(&graph, skipping: Set(loras.indices.map { "lora_ins_\($0)" }), tails: [unet: tail])
+        }
+    }
+
+    /// True when one of `node`'s inputs is a ref to `source`.
+    private func references(_ node: [String: Any], _ source: String) -> Bool {
+        (node["inputs"] as? [String: Any])?.values.contains { ($0 as? [Any])?.first as? String == source } == true
     }
 
     /// The FLUX.2 path: `LoraLoader` nodes with both model + clip streams, chained after the
