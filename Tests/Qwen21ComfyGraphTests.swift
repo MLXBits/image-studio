@@ -159,13 +159,24 @@ struct Qwen21ComfyGraphTests {
         Self.expectNoDanglingRefs(graph)
     }
 
-    /// A chosen size encodes the references at about the output's area.
-    @Test func editAtAChosenSizeEncodesReferencesAtItsArea() throws {
-        let job = Qwen21Job(isEditMode: true, editImagePaths: ["/unused.png"], matchReferenceSize: false, width: 1344, height: 768)
-        let size = try Qwen21RunnerSpec.editSize(job: job)
-        #expect(size.width == 1344)
-        #expect(size.height == 768)
-        #expect(size.referenceResolution == 1024) // √(1344 × 768) ≈ 1016, to a multiple of 32
+    /// A chosen size is kept even when its aspect ratio differs from the references', and the references still
+    /// encode at 1024 in their own shape, as on local mflux.
+    @Test func editAtAChosenSizeKeepsItAndTheReferenceResolution() async throws {
+        let square = try Self.tempImage()
+        defer { try? FileManager.default.removeItem(atPath: square) }
+        let job = Qwen21Job(isEditMode: true, editImagePaths: [square], matchReferenceSize: false, prompt: "x", width: 1344, height: 768)
+        let graph = try await Self.graph(job, Self.settings())
+        #expect(Self.inputs(graph, "459:456")["width"] as? Int == 1344)
+        #expect(Self.inputs(graph, "459:456")["height"] as? Int == 768)
+        #expect(Self.inputs(graph, "459:509")["resolution"] as? Int == 1024)
+    }
+
+    /// Settings changed while the job was queued: it runs locally, and the sidecar must not claim the enhancer ran.
+    @Test func localFallbackClearsEnhancePrompt() {
+        let job = Qwen21Job(prompt: "a cat", enhancePrompt: true)
+        Qwen21RunnerSpec.willRunLocally(job: job)
+        #expect(!job.enhancePrompt)
+        #expect(Qwen21Metadata.from(job: job).enhancePrompt == nil)
     }
 
     @Test func unreadableLastReferenceFailsTheJob() {

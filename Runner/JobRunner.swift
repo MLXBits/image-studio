@@ -97,6 +97,9 @@ protocol JobRunnerSpec {
     /// route can't be prepared (e.g. the source upload fails), failing the job rather than silently running it locally.
     /// Default: nil.
     static func comfyGraph(job: Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph?
+    /// Called once the runner settles on local execution, which settings changed while the job was queued can
+    /// cause. Clears what only the remote route honours, so the sidecar records what ran. Default: nothing.
+    static func willRunLocally(job: Job)
 }
 
 extension JobRunnerSpec {
@@ -111,6 +114,8 @@ extension JobRunnerSpec {
     static func comfyGraph(job _: Job, settings _: AppSettings, client _: ComfyUIClient) async throws -> ComfyGraph? {
         nil
     }
+
+    static func willRunLocally(job _: Job) {}
 }
 
 /// A job's remote ComfyUI workflow, prepared once per job and rendered per seed.
@@ -372,6 +377,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
             await runViaComfyUI(target, job: job, ctx: ctx, stepDir: stepDir)
             return
         }
+        Spec.willRunLocally(job: job)
 
         let tool = Spec.tool(job: job)
         let command: ToolCommand

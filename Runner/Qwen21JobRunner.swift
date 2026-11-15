@@ -15,19 +15,14 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Qwen21Job
     typealias Store = Qwen21JobStore
 
-    /// A ComfyUI edit's output size, and the resolution the encoder resizes references to.
-    struct EditSize: Equatable {
-        let width: Int
-        let height: Int
-        let referenceResolution: Int
-    }
-
     static let family: ModelFamily = .qwen21
     static let stepwiseSubdir = "stepwise-qwen21"
     static let outputPrefix = "qwen21"
     static let encodingLabel = "Generating"
     /// The `comfyClip` key for the prompt enhancer's CLIP, beside the family's own encoder entry.
     static let enhancerClipKey = "qwen21.enhancer"
+    /// The size the encoder resizes each reference to, keeping its aspect ratio: mflux's `output_resolution`.
+    static let referenceResolution = 1024
     /// Turbo's 8-step sigma schedule, as the bundled ComfyUI templates carry it.
     static let turboSigmas = [1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0]
 
@@ -114,6 +109,14 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
 
     // MARK: - ComfyUI remote routing
 
+    /// The enhancer exists only on ComfyUI. A job queued for it can still run locally if Settings changed meanwhile.
+    static func willRunLocally(job: Qwen21Job) {
+        if job.enhancePrompt {
+            job.enhancePrompt = false
+            job.log += "Enhance prompt skipped: this job runs on local mflux, which has no enhancer.\n"
+        }
+    }
+
     /// Remote graph from the bundled t2i or edit template. The UNet, CLIP and VAE files must all be set in
     /// Settings, else the job runs on local mflux. With Enhance prompt on, the template's enhancer rewrites the
     /// prompt first; off, the enhancer branch is pruned and the prompt goes straight to the encoder.
@@ -158,7 +161,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             params["custom_size"] = true
             params["width"] = size.width
             params["height"] = size.height
-            params["reference_resolution"] = size.referenceResolution
+            params["reference_resolution"] = referenceResolution
         }
         let loras = enabledLoras(job).map { ComfyLora(name: resolverServerLoraName($0.path), strength: $0.strength) }
         var graph = try template.render(map: map, params: params, loras: loras)
@@ -183,23 +186,23 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             && comfyFiles(settings: settings) != nil
     }
 
-    /// An edit's output size, and the resolution the encoder resizes references to. Following the references
-    /// uses mflux's rule: the last reference's aspect ratio at about 1024², in multiples of 32. The encoder's
-    /// resolution keeps the references at about the output's area, so a lone reference lines up with the latent
-    /// (any other size shifts the edit) and a large photo isn't encoded at full size.
-    static func editSize(job: Qwen21Job) throws -> EditSize {
+    /// An edit's output size. Following the references uses mflux's rule: the last reference's aspect ratio at
+    /// about 1024², in multiples of 32, so a lone reference encodes at exactly the latent's size. A chosen size
+    /// with another aspect ratio can shift the edit, as on local mflux, which also keeps each reference's shape.
+    static func editSize(job: Qwen21Job) throws -> (width: Int, height: Int) {
         func snap(_ value: Double) -> Int {
             max(32, Int((value / 32).rounded()) * 32)
         }
         guard job.followsReferenceSize else {
-            return EditSize(width: job.width, height: job.height, referenceResolution: snap(Double(job.width * job.height).squareRoot()))
+            return (job.width, job.height)
         }
         guard let last = job.editImagePaths.last, let (w, h) = imagePixelSize(at: last), w > 0, h > 0 else {
             throw Qwen21ComfyGraphError.unreadableReference
         }
         let ratio = Double(w) / Double(h)
-        let width = (1024 * 1024 * ratio).squareRoot()
-        return EditSize(width: snap(width), height: snap(width / ratio), referenceResolution: 1024)
+        let side = Double(referenceResolution)
+        let width = (side * side * ratio).squareRoot()
+        return (snap(width), snap(width / ratio))
     }
 
     /// The ManualSigmas value for `steps`: the 8-step schedule as is, else resampled linearly to steps + 1 points.
