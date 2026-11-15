@@ -402,6 +402,25 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         return approximateBF16SizeGB * factor
     }
 
+    /// The "≈N GB RAM" label's figure: the measured peak for the path the job will run where it is known
+    /// (Qwen-Image 2.1), else the weight size. ``approximateSizeGB(quantize:)`` stays the download size.
+    func approximateRAMGB(quantize: Int, settings: AppSettings) -> Double {
+        // A ComfyUI-routed job runs on the server, so no local peak applies: keep the weight size, as other models do.
+        guard isQwen21, !Qwen21RunnerSpec.routesToComfy(settings: settings) else { return approximateSizeGB(quantize: quantize) }
+        // MLX peaks measured 2026-11-15 on mflux 0.24.0: the heavier of a 1024² Generate and a ~1 MP
+        // one-reference Edit at 8 steps. Columns: one-shot CLI (it frees the text encoder before denoising),
+        // warm driver keeping the encoder, warm driver evicting it.
+        let peaks: [Double] = switch quantize {
+        case 4: [10.3, 16.5, 11.4]
+        case 8: [13.8, 24.4, 18.5]
+        default: [24.8, 43.3, 33.2]
+        }
+        // Low-RAM jobs always run on the CLI, which their block streaming only lowers further.
+        guard settings.keepModelWarm, !settings.resolvedDefaults(for: self).lowRam else { return peaks[0] }
+        // Automatic keeps the encoder until a job peaks above 70% of RAM, so it shows the keep figure.
+        return settings.warmTextEncoderPolicy == .evict ? peaks[2] : peaks[1]
+    }
+
     /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
     /// then falling back to the HuggingFace hub cache.
     func isOnDisk(quantize: Int, savedIn cacheDir: URL, hubDir: URL) -> Bool {

@@ -230,7 +230,9 @@ struct ModelPickerView: View {
     private var vramEstimate: VRAMEstimate? {
         // A Settings override names an arbitrary repo/path of unknown size — no estimate.
         guard model != .custom, settingsOverride == nil else { return nil }
-        let gb = model.approximateSizeGB(quantize: quantize)
+        let gb = model.approximateRAMGB(quantize: quantize, settings: settings)
+        // The disk pill is the download size, which the run path doesn't change.
+        let diskGB = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
         // Color relative to this machine's physical memory, not fixed GB cutoffs:
@@ -249,8 +251,8 @@ struct ModelPickerView: View {
         // neutral "download" otherwise. Size-based warning colors live on the RAM
         // pill only, so a not-yet-downloaded model never looks like a warning.
         let diskLabel = onDisk
-            ? "≈\(String(format: "%.0f", gb)) GB cached"
-            : "≈\(String(format: "%.0f", gb)) GB to download"
+            ? "≈\(String(format: "%.0f", diskGB)) GB cached"
+            : "≈\(String(format: "%.0f", diskGB)) GB to download"
         let diskColor: Color = onDisk ? .green : .secondary
         let diskIcon = onDisk ? "internaldrive" : "arrow.down.circle"
         let quantName = quantize == 0 ? model.baseWeightLabel : "Q\(quantize)"
@@ -261,7 +263,7 @@ struct ModelPickerView: View {
         default: ""
         }
         let diskInfoTitle = "\(model.displayName) \(quantName)"
-        let diskInfoBody = "\(quantName) weights cached locally (~\(Int(gb)) GB). \(qualityNote)"
+        let diskInfoBody = "\(quantName) weights cached locally (~\(Int(diskGB)) GB). \(qualityNote)"
         return VRAMEstimate(
             label: label, color: color,
             diskLabel: diskLabel, diskColor: diskColor, diskIcon: diskIcon,

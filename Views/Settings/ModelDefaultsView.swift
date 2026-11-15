@@ -241,7 +241,7 @@ struct ModelDefaultsView: View {
             quantize = settings.defaults(for: selectedModel).quantize ?? selectedModel.recommendedQuantize
             typeLabel = selectedModel.isDistilled ? "Distilled" : "Base model"
         }
-        let vramGB = selectedModel.approximateSizeGB(quantize: quantize)
+        let vramGB = selectedModel.approximateRAMGB(quantize: quantize, settings: settings)
         let quantLabel = quantize == 0 ? selectedModel.baseWeightLabel : "Q\(quantize)"
         let vramColor: Color = vramGB > 30 ? .orange : vramGB > 18 ? .yellow : .green
 
