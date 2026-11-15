@@ -441,6 +441,8 @@ def _generate_kwargs(req, seed, prompt):
             "width": req.get("width"),
             "guidance": 1.0,
             "image_paths": req.get("image_paths") or [],
+            # Passed only when on, like pid: an mflux without the parameter keeps working.
+            **({"enhance_prompt": True} if req.get("enhance_prompt") else {}),
         }
     # ideogram4: the preset defines steps and guidance schedule; prompt is the
     # caption JSON string (or a plain description).
@@ -486,8 +488,16 @@ def _generate_once(req):
             )
         )
 
+    rewritten = set()
     for out in req["outputs"]:
         prompt = out.get("prompt") or req["prompt"]
+        if req.get("enhance_prompt") and prompt not in rewritten:
+            # mflux rewrites with the text encoder; evicted, the rewrite fails and it
+            # silently keeps the original prompt. Once a prompt is rewritten, mflux's
+            # rewrite cache and our encode cache serve its later seeds, so reload only
+            # for the first.
+            warm.ensure_text_encoder()
+            rewritten.add(prompt)
         image = model.generate_image(**_generate_kwargs(req, out["seed"], prompt))
         ImageUtil.save_image(image=image, path=out["path"], export_json_metadata=False)
         emit({"event": "image", "seed": out["seed"], "path": out["path"]})

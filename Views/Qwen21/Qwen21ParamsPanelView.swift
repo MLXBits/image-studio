@@ -64,12 +64,15 @@ struct Qwen21ParamsPanelView: View {
                         ? "Describe the change to the reference images" : "Describe the image you want to generate",
                     tokenSoftCap: FluxModelVariant.qwen21Turbo.promptTokenSoftCap
                 )
-                if Qwen21RunnerSpec.routesToComfy(settings: settings) {
-                    Toggle("Enhance prompt on ComfyUI", isOn: $params.enhancePrompt)
+                // Local mflux enhances only edits; ComfyUI's template enhancer also covers Generate.
+                let onComfy = Qwen21RunnerSpec.routesToComfy(settings: settings)
+                if onComfy || params.isEditMode {
+                    Toggle("Enhance prompt", isOn: $params.enhancePrompt)
                         .font(.caption)
                         .help(
-                            "The server's prompt enhancer rewrites the prompt before encoding. "
-                                + "Slower, and results differ from local mflux."
+                            onComfy
+                                ? "The server's prompt enhancer rewrites the prompt before encoding. Slower."
+                                : "Qwen3-VL rewrites the edit instruction against the references before encoding. Slower."
                         )
                 }
             }

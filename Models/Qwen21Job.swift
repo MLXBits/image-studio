@@ -39,7 +39,7 @@ final class Qwen21Job: Identifiable {
     var lowRam: Bool
     /// Output subfolder within the global output directory. Empty string = root.
     var board: String
-    /// ComfyUI only: the template's prompt enhancer rewrites the prompt before encoding. Local mflux has none.
+    /// Rewrite the prompt before encoding: ComfyUI's template enhancer, or locally (edits only) mflux's Qwen3-VL.
     var enhancePrompt: Bool
 
     var status: JobStatus

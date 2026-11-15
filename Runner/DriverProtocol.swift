@@ -57,6 +57,8 @@ struct DriverGenerateRequest: Codable {
     var imageStrength: Double?
     /// Qwen-Image 2.1 edit references, in prompt order.
     var imagePaths: [String]?
+    /// Qwen-Image 2.1 edits only: rewrite the instruction with the resident Qwen3-VL first. Encoded as `enhance_prompt`.
+    var enhancePrompt: Bool?
     /// Ideogram 4 only: sampler preset name, strict caption validation, and
     /// CFG truncation point.
     var preset: String?
