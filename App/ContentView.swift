@@ -773,7 +773,7 @@ struct ContentView: View {
                     .environment(settings)
                     .environment(coordinator)
                 } else if params.modelFamily == .zimage {
-                    ZImageQueueDrawerView(selectedJob: Binding(
+                    FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: Binding(
                         get: {
                             if case let .activeZImageJob(j) = previewState {
                                 return j
@@ -1678,11 +1678,13 @@ struct ContentView: View {
 
     /// ComfyUI residency pill: shows "Resident · ~X GB" when VRAM is meaningfully below the idle baseline,
     /// or just "ComfyUI" (no size) while the server is reachable but the baseline hasn't locked yet. Eject
-    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident. Hidden while no family
-    /// routes to ComfyUI, even if a poll that was in flight when routing changed reports the server reachable.
+    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident. Shown only while the
+    /// selected family routes to ComfyUI, so a local family's warm-driver pill has the header to itself; the
+    /// `activeComfyURL` check also hides a reachable report from a poll that was in flight when routing changed.
     @ViewBuilder
     private func comfyBackendPill() -> some View {
-        if settings.activeComfyURL != nil && backendModels.comfy.reachable {
+        if settings.activeComfyURL != nil, settings.comfyBackendEnabled[params.modelFamily.id] == true,
+           backendModels.comfy.reachable {
             let gb = backendModels.comfyResidentGB
             HStack(spacing: 6) {
                 Image(systemName: "server.rack")

@@ -124,7 +124,7 @@ extension ProfileScopedJobStore {
 }
 
 /// A job the generic queue drawer can list and the shared queue operations can
-/// re-queue (``Krea2Job``, ``Qwen21Job``).
+/// re-queue (``Krea2Job``, ``Qwen21Job``, ``ZImageJob``).
 @MainActor
 protocol QueueListedJob: GeneratedJob {
     var prompt: String { get }

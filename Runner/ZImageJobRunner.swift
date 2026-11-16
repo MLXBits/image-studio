@@ -9,7 +9,7 @@ import Foundation
 /// BF16 loads the repo directly.
 typealias ZImageJobRunner = JobRunner<ZImageRunnerSpec>
 
-extension ZImageJob: @MainActor GeneratedJob {}
+extension ZImageJob: @MainActor QueueListedJob {}
 extension ZImageJobStore: @MainActor GenerationJobStore {}
 
 enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
