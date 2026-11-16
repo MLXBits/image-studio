@@ -8,7 +8,9 @@ enum AspectPreset: String, CaseIterable, Identifiable {
     case w16h9 = "16:9"
     case w3h2 = "3:2"
     case w4h3 = "4:3"
+    case w5h4 = "5:4"
     case sq1h1 = "1:1"
+    case w4h5 = "4:5"
     case w3h4 = "3:4"
     case w2h3 = "2:3"
     case w9h16 = "9:16"
@@ -36,7 +38,9 @@ enum AspectPreset: String, CaseIterable, Identifiable {
         case .w16h9: 16.0 / 9.0
         case .w3h2: 3.0 / 2.0
         case .w4h3: 4.0 / 3.0
+        case .w5h4: 5.0 / 4.0
         case .sq1h1: 1.0
+        case .w4h5: 4.0 / 5.0
         case .w3h4: 3.0 / 4.0
         case .w2h3: 2.0 / 3.0
         case .w9h16: 9.0 / 16.0
@@ -51,7 +55,9 @@ enum AspectPreset: String, CaseIterable, Identifiable {
         case .w16h9: .w9h16
         case .w3h2: .w2h3
         case .w4h3: .w3h4
+        case .w5h4: .w4h5
         case .sq1h1: .sq1h1
+        case .w4h5: .w5h4
         case .w3h4: .w4h3
         case .w2h3: .w3h2
         case .w9h16: .w16h9
@@ -73,6 +79,7 @@ enum AspectPreset: String, CaseIterable, Identifiable {
 private let dimSoloPreset: AspectPreset = .sq1h1
 
 private let dimPresetPairs: [(AspectPreset, AspectPreset)] = [
+    (.w5h4, .w4h5),
     (.w3h2, .w2h3),
     (.w16h9, .w9h16),
     (.w4h3, .w3h4),
@@ -161,12 +168,13 @@ struct DimensionPickerView: View {
     /// the section container's 8pt side padding. Overflow here is not clipped locally:
     /// the panel's content column grows past the pane, the fixed-width frame centres it,
     /// and *every* label in the panel loses its leading edge. Measure before adding to
-    /// this row (currently 295pt).
+    /// this row (currently 300pt).
     private var headerRow: some View {
-        HStack(alignment: .center, spacing: 5) {
+        // Matches the pair columns' spacing so 1:1 reads as one more column.
+        HStack(alignment: .center, spacing: 3) {
             presetPill(dimSoloPreset)
 
-            HStack(alignment: .center, spacing: 4) {
+            HStack(alignment: .center, spacing: 3) {
                 ForEach(dimPresetPairs.indices, id: \.self) { idx in
                     let (top, bottom) = dimPresetPairs[idx]
                     VStack(spacing: 3) {
@@ -176,15 +184,16 @@ struct DimensionPickerView: View {
                 }
             }
 
-            Spacer(minLength: 4)
+            Spacer(minLength: 2)
 
             HStack(alignment: .center, spacing: 6) {
                 // Utility controls in a 2×2 block to save horizontal width: at the 28pt
                 // icon-button standard a single row of four would cost 124pt, and even
                 // the info button hanging off the end of this HStack put the row 18pt
                 // over budget.
-                VStack(alignment: .leading, spacing: 3) {
-                    HStack(spacing: 4) {
+                // Zero gaps: the 28pt targets already carry the visual breathing room.
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 0) {
                         Button { aspectLocked.toggle() } label: {
                             Image(systemName: aspectLocked ? "lock.fill" : "lock.open")
                                 .font(.caption)
@@ -201,7 +210,7 @@ struct DimensionPickerView: View {
                         .help("Swap width and height")
                     }
 
-                    HStack(spacing: 4) {
+                    HStack(spacing: 0) {
                         Button(action: toggleHalfRes) {
                             Image(systemName: "bolt.fill")
                                 .font(.caption)
@@ -325,9 +334,9 @@ struct DimensionPickerView: View {
                 .fontWeight(isActive ? .semibold : .regular)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .padding(.horizontal, 7)
+                .padding(.horizontal, 4)
                 .padding(.vertical, 3)
-                .frame(minWidth: 32)
+                .frame(minWidth: 28)
                 .foregroundStyle(isActive ? .white : .primary)
                 .background {
                     if isActive {

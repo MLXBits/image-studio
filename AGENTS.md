@@ -226,7 +226,7 @@ Budget for a row inside a `SectionContainerView`: **305pt** — 350 less the pan
 12pt side padding, the scroll view's 5pt trailing content margin, and the
 container's 8pt side padding. Outside a section container it is 321pt.
 
-Widest rows today: the dimension picker header (295) and steps + seed (301). Both
+Widest rows today: the dimension picker header (300) and steps + seed (301). Both
 are near the line, so measure rather than eyeball when adding to either — a
 `NSHostingController(rootView:).sizeThatFits(in:)` probe on the row is enough.
 This is what four 28pt icon buttons in the dimension row cost the first time.
