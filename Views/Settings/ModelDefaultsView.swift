@@ -14,7 +14,6 @@ struct ModelDefaultsView: View {
     }
 
     @Environment(AppSettings.self) var settings
-    @Environment(LoraLibraryStore.self) private var loraLibrary
     @Environment(WeightDownloadStore.self) private var weightDownloads
     @State private var selection: Selection = .model(.builtIn[0])
 
@@ -30,11 +29,8 @@ struct ModelDefaultsView: View {
     /// Changes when weights are deleted here; downloads bump the store's revision.
     @State private var cacheRevision = UUID()
     @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
-    /// Discovered ComfyUI model lists, bound to the Krea 2 and SeedVR2 forms. Refreshed when a server URL is set.
-    @State private var comfyModels = ComfyModelStore()
-    /// True once the auto-catalog callback has been wired for this view instance, so `.onAppear` doesn't re-install it on every appearance
-    /// (the closure captures `loraLibrary`; one install per live store is enough and idempotent cataloging makes re-runs harmless anyway).
-    @State private var catalogWired = false
+    /// Discovered ComfyUI model lists, bound to the remote-capable forms. Owned by ``SettingsView``, which shares it with the LoRAs tab.
+    @Environment(ComfyModelStore.self) private var comfyModels
 
     var body: some View {
         HStack(spacing: 0) {
@@ -45,16 +41,6 @@ struct ModelDefaultsView: View {
             // Right: settings for selected model
             modelForm
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        .onAppear {
-            guard !catalogWired else { return }
-            catalogWired = true
-            // Race-free auto-cataloging: the store invokes this in the same task that stores `info.loras` after a
-            // successful discovery pass, so the library is updated before any picker observes it. Idempotent inside the
-            // store (deduped by path), so repeated discoveries never clobber user edits to existing entries.
-            comfyModels.onLorasDiscovered = { names in
-                loraLibrary.catalogServerLoras(names: names)
-            }
         }
         // Ask mflux which models are downloaded (#19) on open, after each
         // download or deletion, and when the models folder moves.
