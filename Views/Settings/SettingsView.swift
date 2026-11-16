@@ -27,6 +27,7 @@ struct SettingsView: View {
     @Environment(ProfileStore.self) private var profiles
     @Environment(GalleryStore.self) private var gallery
     @Environment(MfluxDriverController.self) private var driverController
+    @Environment(LoraLibraryStore.self) private var loraLibrary
     @Environment(\.openWindow) private var openWindow
     @State private var selectedTab: SettingsTab = .generation
     @State private var showingOutputDirPrompt: Bool = false
@@ -34,6 +35,8 @@ struct SettingsView: View {
     @State private var loraTabMode: LoraTabMode = .library
     @State private var hfTokenDraft: String = ""
     @State private var libraryError: String?
+    /// ComfyUI discovery shared by the Models tab (file pickers) and the LoRAs tab (which server LoRAs still exist).
+    @State private var comfyModels = ComfyModelStore()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -55,6 +58,14 @@ struct SettingsView: View {
                 .tag(SettingsTab.advanced)
         }
         .frame(width: 560, height: 460)
+        .environment(comfyModels)
+        .onAppear {
+            // Runs in the discovery task right after the lists are stored. Cataloging is idempotent (deduped by
+            // path), so a rediscovery never clobbers edits; it also records which server LoRAs still exist.
+            comfyModels.onLorasDiscovered = { names, baseURL in
+                loraLibrary.catalogServerLoras(names: names, baseURL: baseURL)
+            }
+        }
         .onExitCommand { NSApp.keyWindow?.performClose(nil) }
         .onReceive(NotificationCenter.default.publisher(for: .openSettingsAdvancedTab)) { _ in
             selectedTab = .advanced
@@ -213,17 +224,35 @@ struct SettingsView: View {
 
     private var lorasTab: some View {
         VStack(alignment: .leading, spacing: 8) {
-            Picker("", selection: $loraTabMode) {
-                ForEach(LoraTabMode.allCases) { Text($0.rawValue).tag($0) }
-            }
-            .pickerStyle(.segmented)
-            .labelsHidden()
+            // The family is a menu, not a segmented control: five equal-width segments sized to
+            // "Qwen Image 2.1" overflow the 560pt window, which centres the column and clips both edges.
+            HStack {
+                Picker("", selection: $loraTabMode) {
+                    ForEach(LoraTabMode.allCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .fixedSize()
 
-            Picker("", selection: $loraFamily) {
-                ForEach(ModelFamily.generative, id: \.self) { Text($0.rawValue).tag($0) }
+                Spacer()
+
+                if settings.comfyBackendEnabled[loraFamily.id] == true {
+                    Button {
+                        refreshServerLoras()
+                    } label: {
+                        Image(systemName: "arrow.clockwise")
+                    }
+                    .buttonStyle(.iconButton)
+                    .disabled(comfyModels.status == .loading)
+                    .help("Re-read the server's LoRA list: adds new files, and marks removed ones so you can remove them here")
+                }
+
+                Picker("Model family", selection: $loraFamily) {
+                    ForEach(ModelFamily.generative, id: \.self) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.menu)
+                .fixedSize()
             }
-            .pickerStyle(.segmented)
-            .labelsHidden()
 
             switch loraTabMode {
             case .library:
@@ -236,6 +265,8 @@ struct SettingsView: View {
         // Stacks state) the VStack would otherwise float to the vertical center.
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding()
+        // Re-read on every visit, so a file removed on the server shows as removable without a trip to Models.
+        .onAppear { refreshServerLoras() }
     }
 
     // MARK: - Advanced
@@ -416,5 +447,12 @@ struct SettingsView: View {
             access: profiles.fileAccess
         ) else { return }
         libraryError = profiles.changeActiveLibrary(to: path)?.message
+    }
+
+    /// Re-reads the server's model and LoRA lists when any family routes to ComfyUI.
+    private func refreshServerLoras() {
+        let url = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard settings.comfyBackendEnabled.values.contains(true), !url.isEmpty else { return }
+        comfyModels.refresh(baseURL: url)
     }
 }

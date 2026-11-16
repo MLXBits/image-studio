@@ -28,7 +28,7 @@ final class ComfyModelStore {
     /// Set by the owning view (e.g. ``ModelDefaultsView``) to receive the LoRA name list once a discovery pass succeeds — race-free, called
     /// in the same task that stored it. `nil` when no cataloging is wanted (e.g. preview contexts). The store deliberately does NOT hold a
     /// reference to any other store; this callback keeps it dependency-free.
-    var onLorasDiscovered: (([String]) -> Void)?
+    var onLorasDiscovered: ((_ names: [String], _ baseURL: String) -> Void)?
 
     /// True when lists are already loaded for this exact (normalized) base URL. Lets the form trigger an
     /// initial discovery on first appear without hammering the server on every navigation.
@@ -63,9 +63,8 @@ final class ComfyModelStore {
                 // Hand the freshly-discovered LoRA names to the owner for auto-cataloging. Guarded so a missing
                 // callback (preview / non-cataloging contexts) is harmless; the closure runs on this task, after
                 // state is stored, so there's no ordering race with the UI observing `status`.
-                if !info.loras.isEmpty {
-                    self?.onLorasDiscovered?(info.loras)
-                }
+                // Called even for an empty list: it is also how the library learns a server LoRA is gone.
+                self?.onLorasDiscovered?(info.loras, url)
             } catch is CancellationError {
                 // Superseded by a newer fetch; leave state for the new task.
             } catch {

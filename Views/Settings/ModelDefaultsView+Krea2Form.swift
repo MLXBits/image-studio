@@ -88,13 +88,15 @@ extension ModelDefaultsView {
     func comfyServerRow(models: ComfyModelStore) -> some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 8) {
-                TextField("http://192.168.x.x:8188", text: Binding(
+                // In a grouped Form a TextField's title renders as a row label, so it goes in `prompt` instead.
+                TextField("ComfyUI server URL", text: Binding(
                     get: { settings.comfyURL },
                     set: { settings.comfyURL = $0 }
-                ))
-                .textFieldStyle(.roundedBorder)
-                .font(.caption)
-                .autocorrectionDisabled()
+                ), prompt: Text("http://192.168.x.x:8188"))
+                    .labelsHidden()
+                    .textFieldStyle(.roundedBorder)
+                    .font(.caption)
+                    .autocorrectionDisabled()
                 Button {
                     let trimmed = settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines)
                     if !trimmed.isEmpty {
@@ -163,11 +165,16 @@ extension ModelDefaultsView {
                     .lineLimit(1)
                     .truncationMode(.middle)
                     .foregroundStyle(value.wrappedValue.isEmpty ? .secondary : .primary)
-                    .frame(width: 320, alignment: .leading)
+                    // Fixed, and narrower than the form column: at 320 the row overflowed by ~14pt and
+                    // shifted the whole Models tab sideways; 280 leaves room for a legacy scroll bar.
+                    // Do not make this flexible: any `.frame(maxWidth:)` on this Menu label crashes
+                    // SwiftUI (EXC_BAD_ACCESS in `initializeWithCopy for Menu`) when the form renders.
+                    .frame(width: 280, alignment: .leading)
             }
             .menuStyle(.button)
         } else {
-            TextField(placeholder, text: value)
+            TextField(placeholder, text: value, prompt: Text(placeholder))
+                .labelsHidden()
                 .textFieldStyle(.roundedBorder)
                 .font(.caption)
                 .autocorrectionDisabled()

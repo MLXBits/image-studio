@@ -14,6 +14,13 @@ final class LoraLibraryStore {
         var stacks: [LoraStack]?
     }
 
+    /// The LoRA names one server's `/models/loras` returned, keyed by that server's normalized base URL so a list from one
+    /// server is never read as another's.
+    struct ServerLoraInventory: Equatable {
+        let baseURL: String
+        let names: Set<String>
+    }
+
     private static let fileURL: URL =
         AppSettings.appSupportURL.appendingPathComponent("lora-library.json")
 
@@ -40,6 +47,14 @@ final class LoraLibraryStore {
     /// Checks every entry for the path, since a hand-edited entry can share it with the server's.
     static func isMissingFromServer(_ member: LoraEntry, family: ModelFamily, library: [LibraryLora]) -> Bool {
         !library.contains { $0.path == member.path && $0.isServerLoRA && $0.modelFamily == family }
+    }
+
+    /// True for a server LoRA that the configured server's latest discovery pass no longer lists — the file was removed or
+    /// renamed there. False with no inventory, or one taken from a different server than `configuredURL` (normalized): an
+    /// unreachable or just-changed server never marks entries gone, and never hides removal on another server's list.
+    static func isGoneFromServer(_ entry: LibraryLora, inventory: ServerLoraInventory?, configuredURL: String) -> Bool {
+        guard entry.isServerLoRA, let inventory, !configuredURL.isEmpty, inventory.baseURL == configuredURL else { return false }
+        return !inventory.names.contains(entry.path)
     }
 
     /// `library` without entry `id`, and `stacks` without the members that used its path — unless another entry (a twin at a
@@ -88,6 +103,10 @@ final class LoraLibraryStore {
     var stacks: [LoraStack] {
         didSet { save() }
     }
+
+    /// What the latest successful `/models/loras` pass returned, and from which server; `nil` until one runs this session.
+    /// Not persisted: it only decides which server entries may be removed (see ``isGoneFromServer(_:configuredURL:)``).
+    private(set) var serverLoraInventory: ServerLoraInventory?
 
     /// Set to a human-readable message when ``save()`` fails; cleared on the next
     /// successful save.
@@ -170,7 +189,8 @@ final class LoraLibraryStore {
     /// have never been cataloged are inserted here, with a sensible default strength and an `.unrated` rating to nudge the
     /// user to classify content they'll actually use. Returns the number of *new* entries added (0 when everything is known).
     @discardableResult
-    func catalogServerLoras(names: [String]) -> Int {
+    func catalogServerLoras(names: [String], baseURL: String) -> Int {
+        serverLoraInventory = ServerLoraInventory(baseURL: baseURL, names: Set(names))
         var added = 0
         for name in names {
             guard !name.isEmpty else { continue }
@@ -195,6 +215,13 @@ final class LoraLibraryStore {
             added += 1
         }
         return added
+    }
+
+    /// `rawURL` is the URL as configured in settings; it is normalized the way discovery normalizes it.
+    func isGoneFromServer(_ entry: LibraryLora, configuredURL rawURL: String) -> Bool {
+        Self.isGoneFromServer(
+            entry, inventory: serverLoraInventory, configuredURL: ComfyUIClient.Config.normalize(rawURL)
+        )
     }
 
     // MARK: - Mutations

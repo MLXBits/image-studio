@@ -1,46 +1,5 @@
 import SwiftUI
 
-// MARK: - Shared helpers
-
-/// Splits a comma-separated tag field into trimmed, non-empty tags.
-private func parseTags(_ raw: String) -> [String] {
-    raw.split(separator: ",")
-        .map { $0.trimmingCharacters(in: .whitespaces) }
-        .filter { !$0.isEmpty }
-}
-
-private struct RatingChip: View {
-    let rating: LoraRating
-    var body: some View {
-        if rating != .unrated {
-            Text(rating.label)
-                .font(.caption2.weight(.medium))
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(color.opacity(0.2), in: Capsule())
-                .foregroundStyle(color)
-        }
-    }
-
-    private var color: Color {
-        rating == .nsfw ? .pink : .green
-    }
-}
-
-private struct TagChips: View {
-    let tags: [String]
-    var body: some View {
-        ForEach(tags, id: \.self) { tag in
-            Text(tag)
-                .font(.caption2)
-                .padding(.horizontal, 5)
-                .padding(.vertical, 1)
-                .background(.fill.tertiary, in: Capsule())
-                .foregroundStyle(.secondary)
-        }
-    }
-}
-
 // MARK: - Library editor
 
 /// Manages the curated ``LibraryLora`` entries for a single model family.
@@ -78,9 +37,8 @@ struct LoraLibraryEditorView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack(alignment: .top) {
                 Text(
-                    "Your catalog of \(family.rawValue) LoRAs. Toggle **Default** to "
-                        + "auto-apply one to every new generation; add any to a job or "
-                        + "Stack from the LoRA picker."
+                    "Your catalog of \(family.rawValue) LoRAs. Switch one on to auto-apply it "
+                        + "to every new generation; add any to a job or Stack from the LoRA picker."
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -130,9 +88,11 @@ struct LoraLibraryEditorView: View {
                     libraryStore.upsert(updated)
                 }
             )) {
-                Text("Default").font(.caption2)
+                Text("Default") // VoiceOver label; the tooltip explains it to sighted users
             }
-            .toggleStyle(.checkbox)
+            .labelsHidden()
+            .toggleStyle(.switch)
+            .controlSize(.small)
             .help("Auto-apply to every new \(family.rawValue) generation")
 
             VStack(alignment: .leading, spacing: 3) {
@@ -142,12 +102,13 @@ struct LoraLibraryEditorView: View {
                         .lineLimit(1)
                         .truncationMode(.middle)
                     if entry.isServerLoRA {
-                        Text("Server")
+                        let gone = libraryStore.isGoneFromServer(entry, configuredURL: settings.comfyURL)
+                        Text(gone ? "Not on server" : "Server")
                             .font(.caption2.weight(.medium))
                             .padding(.horizontal, 5)
                             .padding(.vertical, 1)
-                            .background(Color.blue.opacity(0.2), in: Capsule())
-                            .foregroundStyle(.blue)
+                            .background((gone ? Color.orange : .blue).opacity(0.2), in: Capsule())
+                            .foregroundStyle(gone ? .orange : .blue)
                     }
                     RatingChip(rating: entry.rating)
                     TagChips(tags: entry.tags)
@@ -172,12 +133,13 @@ struct LoraLibraryEditorView: View {
             .frame(maxWidth: .infinity, alignment: .leading)
             Button("Edit") { editing = entry }
                 .controlSize(.small)
-            Button {
-                deleting = entry
-            } label: {
-                Image(systemName: "xmark.circle.fill").foregroundStyle(.red)
-            }
-            .buttonStyle(.iconButtonCompact)
+            // A server LoRA is removable only once the server no longer lists it: removing one that is still there
+            // leaves the file alone and rediscovery re-adds it. Hidden, not omitted, so Edit stays aligned.
+            let removable = !entry.isServerLoRA || libraryStore.isGoneFromServer(entry, configuredURL: settings.comfyURL)
+            Button { deleting = entry } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(.red) }
+                .buttonStyle(.iconButtonCompact)
+                .opacity(removable ? 1 : 0)
+                .disabled(!removable)
         }
         .padding(8)
         .background(.fill.secondary, in: RoundedRectangle(cornerRadius: 8))
