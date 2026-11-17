@@ -206,8 +206,9 @@ struct Krea2ParamsPanelView: View {
                         }
                         .buttonStyle(.bordered)
                         .controlSize(.small)
+                        .keyboardShortcut(KeyboardShortcutCatalog.pasteImage)
                         .accessibilityLabel("Paste image from clipboard")
-                        .help("Paste image from clipboard")
+                        .help("Paste image from clipboard (\(KeyboardShortcutCatalog.pasteImage.symbols))")
                     }
                 }
             } else {
@@ -246,8 +247,7 @@ struct Krea2ParamsPanelView: View {
         }
         .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
             guard let path = paths.first else { return }
-            params.imagePath = settings.adoptSourceImage(path)
-            params.adoptResolvedPromptForImg2Img(at: path)
+            params.adoptImg2ImgSource(path, settings: settings)
         }
         .dropHighlight(isImageDropTargeted)
     }
@@ -257,7 +257,7 @@ struct Krea2ParamsPanelView: View {
     private func pasteImage() {
         do {
             if let path = try ImagePasteboard.pastedImagePath(tempPrefix: "pasted-krea2", extensions: Self.imageExtensions) {
-                params.imagePath = settings.adoptSourceImage(path)
+                params.adoptImg2ImgSource(path, settings: settings)
             }
         } catch {
             pasteError = "The pasted image could not be saved: \(error.localizedDescription)"

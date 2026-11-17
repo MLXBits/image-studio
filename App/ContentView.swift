@@ -1057,24 +1057,27 @@ struct ContentView: View {
         switch params.modelFamily {
         case .flux:
             if params.isEditMode {
-                if !params.editImagePaths.contains(path) {
-                    params.editImagePaths.append(path)
+                let adopted = settings.adoptSourceImage(path)
+                if !params.editImagePaths.contains(adopted) {
+                    params.editImagePaths.append(adopted)
                 }
             } else {
                 params.imagePath = settings.adoptSourceImage(path)
                 params.adoptResolvedPromptForImg2Img(at: path)
             }
         case .krea2:
-            krea2Params.imagePath = settings.adoptSourceImage(path)
-            krea2Params.adoptResolvedPromptForImg2Img(at: path)
+            krea2Params.adoptImg2ImgSource(path, settings: settings)
         case .zimage:
-            zimageParams.imagePath = settings.adoptSourceImage(path)
-            zimageParams.adoptResolvedPromptForImg2Img(at: path)
+            zimageParams.adoptImg2ImgSource(path, settings: settings)
         case .qwen21:
             // Qwen has no img2img: the image becomes the next edit reference.
             qwen21Params.isEditMode = true
-            if !qwen21Params.editImagePaths.contains(path), qwen21Params.editImagePaths.count < Qwen21Job.maxReferences {
-                qwen21Params.editImagePaths.append(path)
+            // Capacity first: in the App Store build, adoption copies the file into the library.
+            if qwen21Params.editImagePaths.count < Qwen21Job.maxReferences {
+                let adopted = settings.adoptSourceImage(path)
+                if !qwen21Params.editImagePaths.contains(adopted) {
+                    qwen21Params.editImagePaths.append(adopted)
+                }
             }
         case .ideogram4, .seedvr2:
             break

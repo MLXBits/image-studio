@@ -145,6 +145,13 @@ final class ZImageParamsPanelState {
         return s
     }
 
+    /// The one adoption path for a new img2img source (drop, paste, "Use in img2img"):
+    /// routes `path` through `settings.adoptSourceImage(_:)`, then adopts its resolved prompt.
+    func adoptImg2ImgSource(_ path: String, settings: AppSettings) {
+        imagePath = settings.adoptSourceImage(path)
+        adoptResolvedPromptForImg2Img(at: path)
+    }
+
     /// Adopts a generated candidate's resolved prompt when it becomes the
     /// img2img reference and the prompt box still holds wildcards, so
     /// refinement varies the exact base instead of re-sampling.
