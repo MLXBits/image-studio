@@ -87,41 +87,46 @@ nonisolated extension TextChunkDecoder {
     /// open would otherwise keep it alive); that replaces its `terminationHandler`.
     static func stream(reading pipe: Pipe, endingWith process: Process? = nil) -> AsyncStream<String> {
         AsyncStream<String> { continuation in
-            // Guards the decoder and, with `finished`, the stream's completion: every finish()
-            // goes through this one locked path, so the last yield always precedes finish() no
-            // matter which thread (the EOF pump or the termination backstop) completes it.
+            // Guards the decoder, the stream's completion, and the yield that publishes each
+            // decoded chunk: decode+yield and flush+yield+finish each run under one lock section,
+            // so completion can't overtake an active read (a finished stream drops later yields).
             let state = OSAllocatedUnfairLock(initialState: (decoder: TextChunkDecoder(), finished: false))
-            @Sendable func finish() {
-                let first = state.withLock { state -> Bool in
-                    let shouldFinish = !state.finished
-                    if shouldFinish {
-                        state.finished = true
-                    }
-                    return shouldFinish
-                }
-                guard first else { return }
-                pipe.fileHandleForReading.readabilityHandler = nil
-                // flush() clears the tail, so EOF and the backstop can't both emit it.
-                if let rest = state.withLock({ $0.decoder.flush() }) {
-                    continuation.yield(rest)
-                }
-                continuation.finish()
-            }
             pipe.fileHandleForReading.readabilityHandler = { handle in
                 let data = handle.availableData
-                if data.isEmpty {
-                    finish()
-                } else {
-                    let text = state.withLock { $0.decoder.decode(data) }
-                    if !text.isEmpty {
-                        continuation.yield(text)
+                state.withLock { state in
+                    if data.isEmpty {
+                        guard !state.finished else { return }
+                        state.finished = true
+                        pipe.fileHandleForReading.readabilityHandler = nil
+                        // flush() clears the tail, so EOF and the backstop can't both emit it.
+                        if let rest = state.decoder.flush() {
+                            continuation.yield(rest)
+                        }
+                        continuation.finish()
+                    } else {
+                        guard !state.finished else { return }
+                        let text = state.decoder.decode(data)
+                        if !text.isEmpty {
+                            continuation.yield(text)
+                        }
                     }
                 }
             }
             process?.terminationHandler = { _ in
                 // Grace period: a normal exit's pipe drains before this fires, so only a
                 // grandchild holding the pipe open needs the backstop to end the stream.
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05, execute: finish)
+                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
+                    state.withLock { state in
+                        guard !state.finished else { return }
+                        state.finished = true
+                        pipe.fileHandleForReading.readabilityHandler = nil
+                        // flush() clears the tail, so EOF and the backstop can't both emit it.
+                        if let rest = state.decoder.flush() {
+                            continuation.yield(rest)
+                        }
+                        continuation.finish()
+                    }
+                }
             }
         }
     }
