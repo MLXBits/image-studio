@@ -13,6 +13,12 @@ struct GenerationGalleryView: View {
     let onApplySettings: (GenerationMetadata) -> Void
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
+    var onRemixKrea2: ((Krea2Metadata) -> Void)?
+    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
+    var onRemixZImage: ((ZImageMetadata) -> Void)?
+    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
+    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onUpscale: (([String]) -> Void)?
     var onSelectBoard: ((String) -> Void)?
@@ -35,6 +41,9 @@ struct GenerationGalleryView: View {
     // anchorItemId is the "preview" item shown in the right pane.
     @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
+    /// Set just before a deletion clears the preview, so the preview observer
+    /// keeps the surviving selection instead of treating it as an external clear.
+    @State private var previewClearedByDeletion = false
     // Transient confirmation toast (e.g. after stripping metadata).
     @State private var statusMessage: String?
     @State private var statusDismissTask: Task<Void, Never>?
@@ -167,6 +176,12 @@ struct GenerationGalleryView: View {
                     onApplySettings: { _, meta in onApplySettings(meta) },
                     onRemixIdeogram: onRemixIdeogram,
                     onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
+                    onRemixKrea2: onRemixKrea2,
+                    onApplyKrea2Settings: onApplyKrea2Settings,
+                    onRemixZImage: onRemixZImage,
+                    onApplyZImageSettings: onApplyZImageSettings,
+                    onRemixQwen21: onRemixQwen21,
+                    onApplyQwen21Settings: onApplyQwen21Settings,
                     onUseInImg2Img: onUseInImg2Img,
                     onUpscale: { path in
                         // Upscale the whole selection when the right-clicked item is
@@ -239,11 +254,14 @@ struct GenerationGalleryView: View {
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
             guard let id = newId else {
-                // Preview was cleared externally (the pane's ✕, Escape, or a restore to the
-                // active job). Drop our own selection too so the highlighted cell doesn't
-                // linger out of sync with the now-empty preview pane.
-                selection = []
-                anchorItemId = nil
+                let cleared = GallerySelectionState(
+                    selection: selection,
+                    anchorId: anchorItemId,
+                    selectedId: nil
+                ).previewCleared(byDeletion: previewClearedByDeletion)
+                previewClearedByDeletion = false
+                selection = cleared.selection
+                anchorItemId = cleared.anchorId
                 return
             }
             guard anchorItemId != id else { return }
@@ -656,8 +674,17 @@ struct GenerationGalleryView: View {
         let rejects = allRejects
         guard !rejects.isEmpty else { return }
         let ids = Set(rejects.map(\.id))
-        if let anchorId = anchorItemId, ids.contains(anchorId) {
-            clearSelection(nextItem: nil)
+        let pruned = GallerySelectionState(
+            selection: selection,
+            anchorId: anchorItemId,
+            selectedId: selectedItem?.id
+        ).removing(ids)
+        selection = pruned.selection
+        anchorItemId = pruned.anchorId
+        if pruned.selectedId == nil, selectedItem != nil {
+            // The preview observer must keep the surviving selection for this clear.
+            previewClearedByDeletion = true
+            selectedItem = nil
         }
         gallery.deleteItems(rejects, outputDir: settings.outputDir)
     }

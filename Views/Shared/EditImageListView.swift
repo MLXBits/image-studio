@@ -9,6 +9,26 @@ import SwiftUI
 struct EditImageListView: View {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
 
+    /// The one adopt-dedupe-cap path for an edit-reference list. Capacity is checked before
+    /// each adoption: in the App Store build, adoption copies the file into the library, and
+    /// a copy that is then discarded would be wasted. Duplicates (by adopted path) are skipped.
+    static func appendAdopted(
+        _ sources: [String],
+        to paths: inout [String],
+        maxCount: Int?,
+        adopt: (String) -> String
+    ) {
+        for source in sources {
+            if let maxCount, paths.count >= maxCount {
+                break
+            }
+            let adopted = adopt(source)
+            if !paths.contains(adopted) {
+                paths.append(adopted)
+            }
+        }
+    }
+
     @Binding var paths: [String]
     /// Most images the model accepts; nil = no cap.
     var maxCount: Int?
@@ -149,13 +169,7 @@ struct EditImageListView: View {
 
     /// Adopts and appends new images, skipping duplicates and anything past `maxCount`.
     private func append(_ added: [String]) {
-        // Capacity first: in the App Store build, adoption copies the file into the library.
-        for source in added where !isFull {
-            let path = settings.adoptSourceImage(source)
-            if !paths.contains(path) {
-                paths.append(path)
-            }
-        }
+        Self.appendAdopted(added, to: &paths, maxCount: maxCount, adopt: settings.adoptSourceImage)
     }
 
     private func browse() {

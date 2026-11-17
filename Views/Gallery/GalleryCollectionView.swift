@@ -825,6 +825,60 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(ratingItem)
         }
 
+        /// Apply Settings / Remix (and, where the family has a source-image input, the
+        /// img2img item) for the family whose sidecar the item carries.
+        private func addFamilyMenuItems(to menu: NSMenu, for item: GalleryItem) {
+            let boardOverride: String? = item.board == "Default" ? nil : item.board
+            if let meta = item.metadata {
+                addSettingsItems(to: menu, apply: { [weak self] in
+                    var corrected = meta
+                    corrected.board = boardOverride
+                    self?.parent.onApplySettings(item, corrected)
+                }, remix: { [weak self] in self?.parent.onRemix(meta) })
+                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
+            } else if let meta = item.ideogram4Metadata {
+                addSettingsItems(to: menu, apply: { [weak self] in
+                    var corrected = meta
+                    corrected.board = boardOverride
+                    self?.parent.onApplyIdeogramSettings(item, corrected)
+                }, remix: { [weak self] in self?.parent.onRemixIdeogram(meta) })
+            } else if let meta = item.krea2Metadata {
+                addSettingsItems(to: menu, apply: { [weak self] in
+                    var corrected = meta
+                    corrected.board = boardOverride
+                    self?.parent.onApplyKrea2Settings?(corrected)
+                }, remix: { [weak self] in self?.parent.onRemixKrea2?(meta) })
+                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
+            } else if let meta = item.zimageMetadata {
+                addSettingsItems(to: menu, apply: { [weak self] in
+                    var corrected = meta
+                    corrected.board = boardOverride
+                    self?.parent.onApplyZImageSettings?(corrected)
+                }, remix: { [weak self] in self?.parent.onRemixZImage?(meta) })
+                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
+            } else if let meta = item.qwen21Metadata {
+                addSettingsItems(to: menu, apply: { [weak self] in
+                    var corrected = meta
+                    corrected.board = boardOverride
+                    self?.parent.onApplyQwen21Settings?(corrected)
+                }, remix: { [weak self] in self?.parent.onRemixQwen21?(meta) })
+                addUseAsSourceItem(to: menu, for: item, title: "Use as Edit Reference")
+            } else {
+                return
+            }
+            menu.addItem(.separator())
+        }
+
+        private func addSettingsItems(to menu: NSMenu, apply: @escaping () -> Void, remix: @escaping () -> Void) {
+            menu.addItem(.separator())
+            menu.addItem(menuItem("Apply Settings", action: apply))
+            menu.addItem(menuItem("Remix (new seed)", action: remix))
+        }
+
+        private func addUseAsSourceItem(to menu: NSMenu, for item: GalleryItem, title: String) {
+            menu.addItem(menuItem(title) { [weak self] in self?.parent.onUseInImg2Img(item.path) })
+        }
+
         private func buildMenu(for item: GalleryItem) -> NSMenu {
             let menu = NSMenu()
 
@@ -840,28 +894,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(menuItem("Compare") { [weak self] in self?.parent.onCompareItem(item) })
             menu.addItem(menuItem("Upscale…") { [weak self] in self?.parent.onUpscale(item.path) })
 
-            if let meta = item.metadata {
-                menu.addItem(.separator())
-                menu.addItem(menuItem("Apply Settings") { [weak self] in
-                    var corrected = meta
-                    corrected.board = item.board == "Default" ? nil : item.board
-                    self?.parent.onApplySettings(item, corrected)
-                })
-                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemix(meta) })
-                menu.addItem(menuItem("Use as Img2Img Input") { [weak self] in
-                    self?.parent.onUseInImg2Img(item.path)
-                })
-                menu.addItem(.separator())
-            } else if let meta = item.ideogram4Metadata {
-                menu.addItem(.separator())
-                menu.addItem(menuItem("Apply Settings") { [weak self] in
-                    var corrected = meta
-                    corrected.board = item.board == "Default" ? nil : item.board
-                    self?.parent.onApplyIdeogramSettings(item, corrected)
-                })
-                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onRemixIdeogram(meta) })
-                menu.addItem(.separator())
-            }
+            addFamilyMenuItems(to: menu, for: item)
 
             let allBoards = sections.map(\.board)
             let boardsMenu = NSMenu(title: "Move to…")
@@ -924,6 +957,12 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
     var onRemixIdeogram: (Ideogram4Metadata) -> Void
     var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
+    var onRemixKrea2: ((Krea2Metadata) -> Void)?
+    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
+    var onRemixZImage: ((ZImageMetadata) -> Void)?
+    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
+    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
     var onUseInImg2Img: (String) -> Void
     var onUpscale: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void

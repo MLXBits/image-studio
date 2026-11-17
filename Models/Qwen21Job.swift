@@ -115,7 +115,31 @@ final class Qwen21Job: Identifiable {
         totalSteps = steps
         self.createdAt = createdAt
     }
+
+    /// A fresh pending job with a new id, running only `seed`, and every
+    /// user-settable field of this one. Used to split a multi-seed batch.
+    func copy(seed: Int) -> Qwen21Job {
+        Qwen21Job(
+            isEditMode: isEditMode,
+            editImagePaths: editImagePaths,
+            matchReferenceSize: matchReferenceSize,
+            prompt: prompt,
+            customModelRepo: customModelRepo,
+            steps: steps,
+            quantize: quantize,
+            width: width,
+            height: height,
+            seed: seed,
+            loras: loras,
+            lowRam: lowRam,
+            board: board,
+            enhancePrompt: enhancePrompt,
+            createdAt: createdAt
+        )
+    }
 }
+
+extension Qwen21Job: @MainActor SeedSplittableJob {}
 
 extension Qwen21Job: Codable {
     enum CodingKeys: String, CodingKey {

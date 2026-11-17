@@ -104,7 +104,32 @@ final class Ideogram4Job: Identifiable {
         self.totalSteps = preset.stepCount
         self.createdAt = createdAt
     }
+
+    /// A fresh pending job with a new id, running only `seed`, and every
+    /// user-settable field of this one. Used to split a multi-seed batch.
+    func copy(seed: Int) -> Ideogram4Job {
+        Ideogram4Job(
+            customModelRepo: customModelRepo,
+            preset: preset,
+            caption: caption,
+            usePlainPrompt: usePlainPrompt,
+            plainPrompt: plainPrompt,
+            width: width,
+            height: height,
+            seed: seed,
+            quantize: quantize,
+            lowRam: lowRam,
+            strictValidation: strictValidation,
+            loras: loras,
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma,
+            createdAt: createdAt
+        )
+    }
 }
+
+extension Ideogram4Job: @MainActor SeedSplittableJob {}
 
 extension Ideogram4Job: Codable {
     enum CodingKeys: String, CodingKey {

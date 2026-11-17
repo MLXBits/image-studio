@@ -126,7 +126,33 @@ final class Krea2Job: Identifiable {
         totalSteps = steps
         self.createdAt = createdAt
     }
+
+    /// A fresh pending job with a new id, running only `seed`, and every
+    /// user-settable field of this one. Used to split a multi-seed batch.
+    func copy(seed: Int) -> Krea2Job {
+        Krea2Job(
+            customModelRepo: customModelRepo,
+            prompt: prompt,
+            negativePrompt: negativePrompt,
+            width: width,
+            height: height,
+            seed: seed,
+            steps: steps,
+            guidance: guidance,
+            quantize: quantize,
+            lowRam: lowRam,
+            loras: loras,
+            imagePath: imagePath,
+            imageStrength: imageStrength,
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma,
+            createdAt: createdAt
+        )
+    }
 }
+
+extension Krea2Job: @MainActor SeedSplittableJob {}
 
 extension Krea2Job: Codable {
     enum CodingKeys: String, CodingKey {

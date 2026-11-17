@@ -184,7 +184,37 @@ final class FluxJob: Identifiable {
         self.totalSteps = steps
         self.createdAt = createdAt
     }
+
+    /// A fresh pending job with a new id, running only `seed`, and every
+    /// user-settable field of this one. Used to split a multi-seed batch.
+    func copy(seed: Int) -> FluxJob {
+        FluxJob(
+            model: model,
+            customModelRepo: customModelRepo,
+            customBaseModel: customBaseModel,
+            prompt: prompt,
+            negativePrompt: negativePrompt,
+            width: width,
+            height: height,
+            seed: seed,
+            steps: steps,
+            guidance: guidance,
+            loras: loras,
+            quantize: quantize,
+            lowRam: lowRam,
+            imagePath: imagePath,
+            imageStrength: imageStrength,
+            isEditMode: isEditMode,
+            editImagePaths: editImagePaths,
+            board: board,
+            pidDecode: pidDecode,
+            pidDegradeSigma: pidDegradeSigma,
+            createdAt: createdAt
+        )
+    }
 }
+
+extension FluxJob: @MainActor SeedSplittableJob {}
 
 extension FluxJob: Codable {
     enum CodingKeys: String, CodingKey {

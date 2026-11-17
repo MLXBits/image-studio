@@ -66,13 +66,14 @@ struct ContentView: View {
     @State private var krea2Params = Krea2ParamsPanelState()
     @State private var zimageParams = ZImageParamsPanelState()
     @State private var qwen21Params = Qwen21ParamsPanelState()
-    /// Armed in `onAppear` when restoring the last-used model will change
-    /// `params.model` away from its initial default. Swallows the resulting
-    /// `onChange(of: params.model)` so the interactive "switch model → reset to
-    /// that model's defaults" path doesn't clobber the last-used LoRAs that
-    /// `applyDefaults` just restored. Consumed exactly once.
-    @State private var suppressModelResetOnRestore = false
+    /// Model-picker handlers whose next reset to defaults must be skipped,
+    /// because a programmatic change has just written the form itself. That
+    /// change is either the launch-time restore of the last-used model or a
+    /// gallery replay (Apply Settings / Remix). Each handler consumes its own
+    /// entry once. See ``ModelChangeObserver``.
+    @State private var suppressedModelObservers: Set<ModelChangeObserver> = []
     @State private var fullSizeImage: NSImage?
+    @State private var fullSizeLoadTask: Task<Void, Never>?
     /// Takes the window into real full-screen while `fullSizeImage` is up, so the
     /// viewer owns the whole screen and leaves no titlebar to drag.
     @State private var viewerFullScreen = ViewerFullScreenController()
@@ -187,12 +188,10 @@ struct ContentView: View {
             driverController.modelPickerChanged(
                 to: m == .custom ? params.customBaseModel.rawValue : m.rawValue
             )
-            // The launch-time restore in `onAppear` seeds `params.model` from
-            // `lastModel`, which fires this handler before any user interaction.
-            // Skip the defaults reset that one time so it doesn't overwrite the
-            // last-used LoRAs `applyDefaults` just restored.
-            if suppressModelResetOnRestore {
-                suppressModelResetOnRestore = false
+            // The launch-time restore and gallery replays write the form right
+            // after moving the picker. Skip the defaults reset for that change so it
+            // doesn't overwrite the restored or replayed LoRAs and settings.
+            if suppressedModelObservers.remove(.model) != nil {
                 return
             }
             if adoptFamilyForm(m) {
@@ -221,6 +220,9 @@ struct ContentView: View {
         .onChange(of: params.customBaseModel) { _, target in
             guard params.model == .custom else { return }
             driverController.modelPickerChanged(to: target.rawValue)
+            if suppressedModelObservers.remove(.customBase) != nil {
+                return
+            }
             _ = adoptFamilyForm(target)
             // Same as a direct switch: FLUX 3 targets can't take an init image.
             if target.isFlux3 {
@@ -232,8 +234,8 @@ struct ContentView: View {
     private var previewPaneView: some View {
         PreviewPaneView(
             state: previewState,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
+            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
@@ -277,13 +279,19 @@ struct ContentView: View {
         GenerationGalleryView(
             selectedItem: $selectedGalleryItem,
             modelFilter: params.modelFamily,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
+            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
+            onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
+            onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
+            onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
+            onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
+            onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
+            onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onUpscale: { paths in promptUpscale(paths: paths) },
-            onSelectBoard: { name in params.board = name },
+            onSelectBoard: setActiveBoard,
             onClearPreview: clearPreview,
             onCompare: { select, candidate in
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -358,7 +366,7 @@ struct ContentView: View {
                 // the model (and thus fire onChange). If lastModel already equals
                 // the initial default, onChange won't fire and the flag must stay
                 // down so the next genuine user switch isn't swallowed.
-                suppressModelResetOnRestore = settings.lastModel != params.model
+                suppressedModelObservers = settings.lastModel != params.model ? [.model] : []
                 params.applyDefaults(from: settings, library: loraLibrary)
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
                 krea2Params.applyDefaults(settings: settings, library: loraLibrary)
@@ -526,7 +534,11 @@ struct ContentView: View {
             if let img = fullSizeImage {
                 FullSizeImageView(
                     image: img,
-                    onDismiss: { withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil } },
+                    onDismiss: {
+                        fullSizeLoadTask?.cancel()
+                        fullSizeLoadTask = nil
+                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil }
+                    },
                     hasPrev: galleryNavInfo.hasPrev,
                     hasNext: galleryNavInfo.hasNext,
                     onNavigatePrev: { navigateGallery(-1) },
@@ -592,15 +604,16 @@ struct ContentView: View {
                 return
             }
             previewState = .galleryItem(item)
+            fullSizeLoadTask?.cancel()
+            fullSizeLoadTask = nil
             if fullSizeImage != nil {
                 let url = item.url
-                Task.detached(priority: .userInitiated) {
-                    let img = NSImage(contentsOf: url)
-                    await MainActor.run {
-                        if let img {
-                            self.fullSizeImage = img
-                        }
-                    }
+                fullSizeLoadTask = Task {
+                    let img = await Task.detached(priority: .userInitiated) {
+                        NSImage(contentsOf: url)
+                    }.value
+                    guard !Task.isCancelled, selectedGalleryItem?.id == item.id, let img else { return }
+                    fullSizeImage = img
                 }
             }
         }
@@ -1043,20 +1056,45 @@ struct ContentView: View {
         }
     }
 
+    /// Routes a gallery image to the active family's source-image input: the img2img
+    /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Qwen-Image 2.1).
+    /// Families without one (`ModelFamily.acceptsSourceImage`) ignore it. Paths go
+    /// through `settings.adoptSourceImage(_:)` like the panels' own drop handlers.
     private func useInImg2Img(_ path: String) {
-        // Qwen has no img2img: the image becomes the next edit reference.
-        if params.modelFamily == .qwen21 {
+        switch params.modelFamily {
+        case .flux:
+            if params.isEditMode {
+                EditImageListView.appendAdopted(
+                    [path], to: &params.editImagePaths, maxCount: nil, adopt: settings.adoptSourceImage
+                )
+            } else {
+                params.adoptImg2ImgSource(path, settings: settings)
+            }
+        case .krea2:
+            krea2Params.adoptImg2ImgSource(path, settings: settings)
+        case .zimage:
+            zimageParams.adoptImg2ImgSource(path, settings: settings)
+        case .qwen21:
+            // Qwen has no img2img: the image becomes the next edit reference.
             qwen21Params.isEditMode = true
-            if !qwen21Params.editImagePaths.contains(path), qwen21Params.editImagePaths.count < Qwen21Job.maxReferences {
-                qwen21Params.editImagePaths.append(path)
-            }
-        } else if params.isEditMode {
-            if !params.editImagePaths.contains(path) {
-                params.editImagePaths.append(path)
-            }
-        } else {
-            params.imagePath = path
-            params.adoptResolvedPromptForImg2Img(at: path)
+            EditImageListView.appendAdopted(
+                [path], to: &qwen21Params.editImagePaths, maxCount: Qwen21Job.maxReferences,
+                adopt: settings.adoptSourceImage
+            )
+        case .ideogram4, .seedvr2:
+            break
+        }
+    }
+
+    /// Puts a new group's name on the active family's board.
+    private func setActiveBoard(_ name: String) {
+        switch params.modelFamily {
+        case .flux: params.board = name
+        case .ideogram4: ideogramParams.board = name
+        case .krea2: krea2Params.board = name
+        case .zimage: zimageParams.board = name
+        case .qwen21: qwen21Params.board = name
+        case .seedvr2: break
         }
     }
 
@@ -1109,6 +1147,11 @@ struct ContentView: View {
     /// image came from a custom checkpoint — so replaying a custom run restores the
     /// checkpoint, not the stock model of the same family.
     private func selectFamily(_ target: FluxModelVariant, customRepo: String?) {
+        let isCustom = customRepo.map { !$0.isEmpty } ?? false
+        armReplayGuard(
+            model: isCustom ? .custom : target,
+            customBase: isCustom ? target : params.customBaseModel
+        )
         if let repo = customRepo, !repo.isEmpty {
             params.customModelRepo = repo
             params.customBaseModel = target
@@ -1116,6 +1159,22 @@ struct ContentView: View {
         } else {
             params.model = target
         }
+    }
+
+    /// Arms the model-picker handlers that moving to `model`/`customBase` will
+    /// fire, so a replay's settings survive their reset to defaults.
+    private func armReplayGuard(model: FluxModelVariant, customBase: FluxModelVariant) {
+        suppressedModelObservers = ModelChangeObserver.firing(
+            from: (params.model, params.customBaseModel),
+            to: (model, customBase)
+        )
+    }
+
+    /// Replays a completed Flux generation's settings, which also moves the
+    /// picker to the model (or custom checkpoint) the image was made with.
+    private func applyFlux(_ meta: GenerationMetadata, newSeed: Bool) {
+        armReplayGuard(model: meta.model, customBase: meta.customBaseModel)
+        params.apply(metadata: meta, newSeed: newSeed)
     }
 
     /// Switches the params panel to the Krea 2 family and replays a completed

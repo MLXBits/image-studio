@@ -14,7 +14,7 @@ nonisolated struct Qwen21Metadata: Codable {
             width: job.width,
             height: job.height,
             seed: job.resolvedSeed ?? job.seed,
-            loras: job.loras.isEmpty ? nil : job.loras,
+            loras: job.loras,
             lowRam: job.lowRam ? true : nil,
             board: job.board.isEmpty ? nil : job.board,
             enhancePrompt: job.enhancePrompt ? true : nil,
@@ -36,6 +36,8 @@ nonisolated struct Qwen21Metadata: Codable {
     var width: Int
     var height: Int
     var seed: Int
+    /// The LoRA stack, written even when empty so a replay clears the form's
+    /// stack. `nil` means a sidecar from before the field: replay keeps the form's.
     var loras: [LoraEntry]?
     var lowRam: Bool?
     var board: String?

@@ -29,38 +29,6 @@ final class Ideogram4JobStore: @MainActor ProfileScopedJobStore {
         save()
     }
 
-    func expandBatchJob(_ batchJob: Ideogram4Job) {
-        guard let idx = jobs.firstIndex(where: { $0.id == batchJob.id }) else { return }
-        let expanded = zip(batchJob.seeds, batchJob.outputPaths).enumerated().map { i, pair in
-            let (seed, path) = pair
-            let job = Ideogram4Job(
-                preset: batchJob.preset,
-                caption: batchJob.caption,
-                usePlainPrompt: batchJob.usePlainPrompt,
-                plainPrompt: batchJob.plainPrompt,
-                width: batchJob.width,
-                height: batchJob.height,
-                seed: seed,
-                quantize: batchJob.quantize,
-                lowRam: batchJob.lowRam,
-                strictValidation: batchJob.strictValidation,
-                board: batchJob.board,
-                createdAt: batchJob.createdAt
-            )
-            job.status = .completed
-            job.resolvedSeed = seed
-            job.outputPath = path
-            job.thumbnailData = batchJob.outputThumbnails.indices.contains(i) ? batchJob.outputThumbnails[i] : nil
-            job.log = batchJob.log
-            job.currentStep = batchJob.preset.stepCount
-            job.totalSteps = batchJob.preset.stepCount
-            job.startedAt = batchJob.startedAt
-            job.completedAt = batchJob.completedAt
-            return job
-        }
-        jobs.replaceSubrange(idx ... idx, with: expanded)
-    }
-
     func remove(ids: Set<UUID>) {
         jobs.removeAll { ids.contains($0.id) }
         save()
