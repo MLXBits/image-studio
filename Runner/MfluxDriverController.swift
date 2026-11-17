@@ -76,6 +76,9 @@ final class MfluxDriverController {
     /// Peak MLX memory (GB) reported by the last completed job; drives the
     /// `auto` text-encoder policy.
     private var lastPeakGB: Double?
+    /// True while a teardown (Stop write failed, hard kill, interpreter switch) is in
+    /// flight, until the dying process exits; ``ensureRunning()`` returns false then.
+    private var isTearingDown = false
 
     var isLoaded: Bool {
         loadedFingerprint != nil
@@ -102,6 +105,10 @@ final class MfluxDriverController {
             retire()
             availability = .unknown
         }
+        // A teardown is in flight; the dying process is still "running" until it exits.
+        if isTearingDown {
+            return false
+        }
         if case .unavailable = availability {
             return false
         }
@@ -119,11 +126,11 @@ final class MfluxDriverController {
         }
     }
 
-    /// Stops the driver now, for a restart on another interpreter. Its state is
-    /// cleared here; the termination callback that follows is ignored because
-    /// `process` no longer points at it.
+    /// Stops the driver now, for a restart on another interpreter; the termination
+    /// callback that follows is ignored because `process` no longer points at it.
+    /// Skipped while a teardown is in flight, so it doesn't clear the run's state.
     private func retire() {
-        guard let proc = process else { return }
+        guard let proc = process, !isTearingDown else { return }
         processDied(proc)
         proc.terminate()
     }
@@ -232,6 +239,8 @@ final class MfluxDriverController {
         loadedMemoryGB = nil
         idleTask?.cancel()
         resolveHandshake(false, reason: "Driver exited during startup")
+        // Teardown (if any) is over: the dying process has exited.
+        isTearingDown = false
         guard wasGenerating else { return }
         if cancelled {
             // Intentional hard kill: settle as cancelled and stay available so
@@ -334,6 +343,7 @@ final class MfluxDriverController {
     private func hardKill() {
         guard let process, process.isRunning else { return }
         intentionalKill = true
+        isTearingDown = true
         process.terminate()
     }
 
@@ -471,22 +481,16 @@ final class MfluxDriverController {
         }
     }
 
-    /// The driver's stdin is gone (it died or closed the pipe). Logs the error,
-    /// fails the pending run instead of leaving it to wait for an event that will
-    /// never come, and terminates the process so ``processDied(_:)`` clears the
-    /// loaded-model state. As in ``processDied(_:)``, only a failure mid-job marks
-    /// the driver unavailable. An idle write (an unload) or one during a user Stop
-    /// leaves it available, so the next job starts a fresh driver.
+    /// The driver's stdin is gone (it died or closed the pipe). Logs the error and
+    /// keeps the controller in teardown until the dying process actually exits —
+    /// ``processDied(_:)`` then settles the run (``.cancelled`` when a user Stop was
+    /// in flight, else a crash/exit failure) and clears the loaded-model state. The
+    /// warm model can't survive a broken stdin, so there is no warm path to preserve.
     private func writeFailed(_ error: any Error) {
         let reason = "Could not write to the warm driver: \(error.localizedDescription)"
         onLog?(reason + "\n")
-        if finishRun != nil, !isStopping {
-            availability = .unavailable(reason)
-        }
-        stdinHandle = nil
-        resolveHandshake(false, reason: reason)
-        // A write that fails while a user Stop is in flight is the Stop, not a failure.
-        finishRun?(isStopping ? .cancelled : .failed(reason))
+        isTearingDown = true
+        // Leave the run and handshake pending: processDied settles them on exit.
         process?.terminate()
     }
 }

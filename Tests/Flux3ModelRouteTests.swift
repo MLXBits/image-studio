@@ -10,7 +10,7 @@ import Testing
 struct Flux3ModelRouteTests {
     private let ctx = JobRunContext(
         seed: 1, outputFile: "/tmp/out.png",
-        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil
+        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil, python: nil
     )
 
     /// `AppSettings()` loads the developer's real settings.json. Clear its per-model

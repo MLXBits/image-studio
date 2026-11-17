@@ -38,11 +38,12 @@ struct MfluxProbesTests {
     func fluxArgsUseTheProbeTheJobAwaited() async throws {
         let settings = AppSettings()
         settings.suspendPersistence()
-        settings.customPythonPath = try interpreter(printing: "1")
+        let python = try interpreter(printing: "1")
+        settings.customPythonPath = python
         let job = FluxJob(model: .custom, customModelRepo: "org/fine-tune")
-        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, settings: settings).isEmpty)
-        await FluxRunnerSpec.prepareArgs(job: job, settings: settings)
-        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, settings: settings)
+        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, python: python).isEmpty)
+        await FluxRunnerSpec.prepareArgs(job: job, settings: settings, python: python)
+        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, python: python)
             == ["--base-model", FluxModelVariant.flux2Klein9B.mfluxModelID])
     }
 

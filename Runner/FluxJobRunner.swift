@@ -10,7 +10,7 @@ extension JobStore: @MainActor GenerationJobStore {}
 
 /// Where a job's weights come from, which decides its `--model` value and whether
 /// `--base-model` rides along. Chosen once by ``FluxRunnerSpec/modelRoute(job:settings:)`` for both
-/// ``FluxRunnerSpec/modelArgs(job:settings:)`` and ``FluxRunnerSpec/prepareArgs(job:settings:)``.
+/// ``FluxRunnerSpec/modelArgs(job:settings:python:)`` and ``FluxRunnerSpec/prepareArgs(job:settings:python:)``.
 enum FluxModelRoute {
     /// A custom checkpoint (repo id or local path), loaded as `base`.
     case custom(repo: String, base: FluxModelVariant)
@@ -181,22 +181,23 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     /// version-gated: package metadata lies on editable installs and no release boundary marks
     /// when the option landed, so ask the parser — pre-option releases reject it with exit 2.
     ///
-    /// Reads only the probe's cached answer: buildArgs runs on the main actor, and a cold probe
-    /// imports mflux for seconds. ``prepareArgs(job:settings:)`` awaits the probe first, so the
-    /// cache is warm here; were it still cold, the flag is left off as on a pre-option mflux.
-    static func baseModelArgs(base: FluxModelVariant, settings: AppSettings) -> [String] {
-        let python = try? settings.toolchain.mfluxInterpreter()
+    /// Reads only the probe's cached answer (keyed on the run's captured `python`): buildArgs
+    /// runs on the main actor, and a cold probe imports mflux for seconds.
+    /// ``prepareArgs(job:settings:python:)`` awaited the probe for that interpreter first, so
+    /// the cache is warm here; were it still cold, the flag is left off as on a pre-option mflux.
+    static func baseModelArgs(base: FluxModelVariant, python: String?) -> [String] {
         guard MfluxProbes.cachedSupportsBaseModel(python: python) == true else { return [] }
         return ["--base-model", base.mfluxModelID]
     }
 
-    /// Awaits the `--base-model` probe off the main actor, so ``baseModelArgs(base:settings:)``
-    /// finds its answer cached. Returns at once for a route that never asks the probe (see
-    /// ``FluxModelRoute/needsBaseModelProbe``). Usually instant otherwise: the probe is warmed at
-    /// launch and whenever the interpreter changes (``AppSettings/refreshToolchain()``).
-    static func prepareArgs(job: FluxJob, settings: AppSettings) async {
+    /// Awaits the `--base-model` probe off the main actor (keyed on the run's captured
+    /// `python`), so ``baseModelArgs(base:python:)`` finds its answer cached. Returns at once
+    /// for a route that never asks the probe (see ``FluxModelRoute/needsBaseModelProbe``).
+    /// Usually instant otherwise: the probe is warmed at launch and whenever the interpreter
+    /// changes (``AppSettings/refreshToolchain()``).
+    static func prepareArgs(job: FluxJob, settings: AppSettings, python: String?) async {
         guard modelRoute(job: job, settings: settings).needsBaseModelProbe else { return }
-        _ = await MfluxProbes.supportsBaseModel(python: try? settings.toolchain.mfluxInterpreter())
+        _ = await MfluxProbes.supportsBaseModel(python: python)
     }
 
     /// Picks the job's ``FluxModelRoute`` in priority order: custom checkpoint, user override,
@@ -228,7 +229,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     /// a pre-saved repo or saved weights, so no quantize flag rides along; FLUX 3 publishes
     /// one at every precision including BF16, so its gated BFL source is never downloaded by
     /// the app.
-    static func modelArgs(job: FluxJob, settings: AppSettings) -> [String] {
+    static func modelArgs(job: FluxJob, settings: AppSettings, python: String?) -> [String] {
         switch modelRoute(job: job, settings: settings) {
         case let .custom(repo, base):
             // `--model` carries the checkpoint. `--base-model` names the Flux.2 architecture
@@ -243,9 +244,9 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
                 // mflux guessing the architecture from a name that matches no alias.
                 return ["--model", repo, "--base-model", base.mfluxModelID]
             }
-            return ["--model", repo] + baseModelArgs(base: base, settings: settings)
+            return ["--model", repo] + baseModelArgs(base: base, python: python)
         case let .override(override):
-            return ["--model", override] + baseModelArgs(base: job.model, settings: settings)
+            return ["--model", override] + baseModelArgs(base: job.model, python: python)
         case let .published(repo, baseKey):
             if let baseKey {
                 // FLUX 3's repo name matches no alias mflux can infer from, so the root config
@@ -254,10 +255,10 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
                 // slow interpreter would break every generation with "Cannot infer base_model".
                 return ["--model", repo, "--base-model", baseKey]
             }
-            return ["--model", repo] + baseModelArgs(base: job.model, settings: settings)
+            return ["--model", repo] + baseModelArgs(base: job.model, python: python)
         case let .saved(savedPath):
             // A bare local path carries no architecture, so name it explicitly.
-            return ["--model", savedPath.path] + baseModelArgs(base: job.model, settings: settings)
+            return ["--model", savedPath.path] + baseModelArgs(base: job.model, python: python)
         case .registry:
             // Omitting --model would silently fall back to the CLI's default.
             return ["--model", job.model.mfluxModelID]
@@ -265,7 +266,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     }
 
     static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
-        var args = modelArgs(job: job, settings: settings)
+        var args = modelArgs(job: job, settings: settings, python: ctx.python)
         args += ["--prompt", job.prompt]
         // A custom checkpoint inherits its target's capabilities, so judge prompt and
         // guidance support on the variant that actually runs. FLUX 3 rejects

@@ -10,7 +10,7 @@ import Testing
 struct Ideogram4ModelRouteTests {
     private let ctx = JobRunContext(
         seed: 1, outputFile: "/tmp/out.png",
-        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil
+        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil, python: nil
     )
 
     private func settings() -> AppSettings {

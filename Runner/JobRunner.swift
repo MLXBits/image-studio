@@ -81,8 +81,10 @@ protocol JobRunnerSpec {
     static func makePromptFile(job: Job) -> URL?
     static func buildArgs(job: Job, ctx: JobRunContext, settings: AppSettings) -> [String]
     /// Awaited just before ``buildArgs(job:ctx:settings:)`` on the one-shot CLI path, for work that
-    /// must not run on the main actor there (Flux awaits its `--base-model` probe). Default: nothing.
-    static func prepareArgs(job: Job, settings: AppSettings) async
+    /// must not run on the main actor there (Flux awaits its `--base-model` probe), keyed on the
+    /// interpreter captured at run start (`python`) so the probe and the flag it gates key off the
+    /// same interpreter. Default: nothing.
+    static func prepareArgs(job: Job, settings: AppSettings, python: String?) async
     /// Whether a tqdm total belongs to this job's denoise loop (rejects other bars,
     /// e.g. weight-download progress).
     static func acceptsProgressTotal(_ total: Int, job: Job) -> Bool
@@ -118,7 +120,7 @@ extension JobRunnerSpec {
         nil
     }
 
-    static func prepareArgs(job _: Job, settings _: AppSettings) async {}
+    static func prepareArgs(job _: Job, settings _: AppSettings, python _: String?) async {}
 
     static func willRunLocally(job _: Job) {}
 }
@@ -153,6 +155,10 @@ struct JobRunContext {
     let stepwiseDir: URL
     /// Auxiliary prompt file from ``JobRunnerSpec/makePromptFile(job:)``, if any.
     let promptFile: URL?
+    /// The mflux interpreter captured when the run started, so command selection,
+    /// the `--base-model` probe, and the flag all key off the same one even if the
+    /// Custom Python changes while the job is in flight. Defaults to nil for tests.
+    let python: String?
 }
 
 // MARK: - JobRunner
@@ -357,9 +363,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let promptFile = Spec.makePromptFile(job: job)
         defer { promptFile.flatMap { try? FileManager.default.removeItem(at: $0) } }
 
+        // Capture the mflux interpreter once so the command, the `--base-model` probe, and the
+        // flag key off the same one even if the Custom Python changes while the job is in flight.
+        let python = try? settings.toolchain.mfluxInterpreter()
         let ctx = JobRunContext(
             seed: effectiveSeed, outputFile: outputTemplate,
-            stepwiseDir: stepDir, promptFile: promptFile
+            stepwiseDir: stepDir, promptFile: promptFile, python: python
         )
 
         // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server and its spec can build the graph, generate there
@@ -386,7 +395,14 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let tool = Spec.tool(job: job)
         let command: ToolCommand
         do {
-            command = try settings.toolchain.command(tool)
+            var cmd = try settings.toolchain.command(tool)
+            // The mflux tool runs on the interpreter captured above (ctx.python), not a re-read
+            // of the settings: a Custom Python changed while the job queued can't split the
+            // command from the base-model probe and flag that key off the same interpreter.
+            if tool.isMflux, let python = ctx.python {
+                cmd = ToolCommand(executable: python, arguments: cmd.arguments)
+            }
+            command = cmd
         } catch {
             settings.refreshToolchain() // so the banner shows what went missing
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
@@ -445,7 +461,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         }
 
-        await Spec.prepareArgs(job: job, settings: settings)
+        await Spec.prepareArgs(job: job, settings: settings, python: ctx.python)
         // cancel() may have cancelled runTask during an earlier await that ignores it (e.g. a save's output tail).
         if Task.isCancelled {
             finishJob(job, status: .cancelled, stepDir: stepDir)
