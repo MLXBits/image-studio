@@ -533,7 +533,11 @@ struct ContentView: View {
             if let img = fullSizeImage {
                 FullSizeImageView(
                     image: img,
-                    onDismiss: { withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil } },
+                    onDismiss: {
+                        fullSizeLoadTask?.cancel()
+                        fullSizeLoadTask = nil
+                        withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = nil }
+                    },
                     hasPrev: galleryNavInfo.hasPrev,
                     hasNext: galleryNavInfo.hasNext,
                     onNavigatePrev: { navigateGallery(-1) },

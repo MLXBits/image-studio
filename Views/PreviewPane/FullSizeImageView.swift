@@ -379,7 +379,7 @@ struct FullSizeImageView: View {
     /// SwiftUI `.global` space (top-left origin) so it lines up with
     /// `containerFrame`. Returns nil when the pointer is outside the image area.
     private func cursorInGlobalSpace(for event: NSEvent) -> CGPoint? {
-        EventLocationHitTest.globalPoint(of: event, inside: containerFrame)
+        EventLocationHitTest.globalPoint(of: event, in: hostWindow, inside: containerFrame)
     }
 }
 

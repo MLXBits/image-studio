@@ -8,9 +8,10 @@ enum EventLocationHitTest {
     }
 
     /// The event's location in SwiftUI `.global` space when it falls inside `frame`
-    /// (also in `.global` space); nil when the pointer is outside it.
-    static func globalPoint(of event: NSEvent, inside frame: CGRect) -> CGPoint? {
-        guard let contentView = (event.window ?? NSApp.keyWindow)?.contentView else { return nil }
+    /// (also in `.global` space); nil when the event belongs to another window
+    /// or the pointer is outside the frame.
+    static func globalPoint(of event: NSEvent, in host: WindowRef, inside frame: CGRect) -> CGPoint? {
+        guard host.owns(event), let contentView = (event.window ?? NSApp.keyWindow)?.contentView else { return nil }
         let point = globalPoint(windowPoint: event.locationInWindow, contentHeight: contentView.bounds.height)
         return frame.contains(point) ? point : nil
     }

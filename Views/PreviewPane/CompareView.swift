@@ -359,9 +359,10 @@ struct CompareView: View {
 
     private func installScrollMonitor() {
         guard scrollMonitor == nil else { return }
+        let host = hostWindow
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { event in
             // Only act on (and consume) events over this view; everything else passes through.
-            guard EventLocationHitTest.globalPoint(of: event, inside: viewFrame) != nil else { return event }
+            guard EventLocationHitTest.globalPoint(of: event, in: host, inside: viewFrame) != nil else { return event }
             let factor: CGFloat
             if event.type == .magnify {
                 factor = 1 + event.magnification
