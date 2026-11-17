@@ -66,11 +66,11 @@ extension ComfyUIClient {
         static func payloadData(from message: URLSessionWebSocketTask.Message) -> Data? {
             switch message {
             case let .data(data):
-                return data
+                data
             case let .string(text):
-                return text.data(using: .utf8)
+                text.data(using: .utf8)
             @unknown default:
-                return nil
+                nil
             }
         }
 

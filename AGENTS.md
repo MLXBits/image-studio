@@ -28,7 +28,7 @@ swiftlint lint --config .swiftlint.yml --baseline .swiftlint-baseline.json --str
 methods. Run both before building, too: the pre-build SwiftFormat pass rewrites
 files and would hide what `--lint` catches.
 
-CI pins **SwiftFormat 0.64.1** and **SwiftLint 0.65.1** (the lint job in
+CI pins **SwiftFormat 0.64.7** and **SwiftLint 0.65.1** (the lint job in
 `.github/workflows/ci.yml`). Check yours with `swiftformat --version` and
 `swiftlint version`: versions disagree on some rules, so a different one can
 pass locally and fail in CI, or the reverse. To bump, lint `main` with the new
