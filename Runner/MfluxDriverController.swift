@@ -472,13 +472,17 @@ final class MfluxDriverController {
     }
 
     /// The driver's stdin is gone (it died or closed the pipe). Logs the error,
-    /// marks the driver unavailable, fails the pending run instead of leaving it
-    /// to wait for an event that will never come, and terminates the process so
-    /// ``processDied(_:)`` clears the loaded-model state.
+    /// fails the pending run instead of leaving it to wait for an event that will
+    /// never come, and terminates the process so ``processDied(_:)`` clears the
+    /// loaded-model state. As in ``processDied(_:)``, only a failure mid-job marks
+    /// the driver unavailable. An idle write (an unload) or one during a user Stop
+    /// leaves it available, so the next job starts a fresh driver.
     private func writeFailed(_ error: any Error) {
         let reason = "Could not write to the warm driver: \(error.localizedDescription)"
         onLog?(reason + "\n")
-        availability = .unavailable(reason)
+        if finishRun != nil, !isStopping {
+            availability = .unavailable(reason)
+        }
         stdinHandle = nil
         resolveHandshake(false, reason: reason)
         // A write that fails while a user Stop is in flight is the Stop, not a failure.

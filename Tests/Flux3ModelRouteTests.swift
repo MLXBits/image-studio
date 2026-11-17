@@ -13,9 +13,14 @@ struct Flux3ModelRouteTests {
         stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil
     )
 
+    /// `AppSettings()` loads the developer's real settings.json. Clear its per-model
+    /// overrides and point the cache at an empty temp folder, so a repo override or
+    /// locally saved weights on this machine can't change which route a job takes.
     private func settings() -> AppSettings {
         let s = AppSettings()
         s.suspendPersistence()
+        s.modelDefaults = [:]
+        s.mfluxCacheDir = FakeRuntime.tempDirectory("route-defaults").path
         return s
     }
 
