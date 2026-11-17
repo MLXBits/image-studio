@@ -12,6 +12,7 @@ struct DimensionConstraintsTests {
     private static let ratios: [(label: String, value: Double)] = [
         ("1:1", 1.0), ("16:9", 16.0 / 9.0), ("9:16", 9.0 / 16.0), ("3:2", 1.5),
         ("2:3", 2.0 / 3.0), ("4:3", 4.0 / 3.0), ("21:9", 21.0 / 9.0), ("9:21", 9.0 / 21.0),
+        ("5:4", 1.25), ("4:5", 0.8),
     ]
 
     // MARK: - Targets
