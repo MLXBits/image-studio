@@ -342,17 +342,16 @@ final class JobRunner<Spec: JobRunnerSpec> {
         }
         defer { access.end() }
         let isMultiSeed = !job.seeds.isEmpty
-        guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
-            finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
-            return
-        }
-
         let effectiveSeed: Int
         if isMultiSeed {
             effectiveSeed = job.seeds[0]
         } else {
             effectiveSeed = job.seed >= 0 ? job.seed : Int(UInt32.random(in: 0 ..< UInt32.max))
             job.resolvedSeed = effectiveSeed
+        }
+        guard let outputTemplate = buildOutputPath(job: job, settings: settings, seed: effectiveSeed) else {
+            finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
+            return
         }
 
         let promptFile = Spec.makePromptFile(job: job)
@@ -838,7 +837,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     // MARK: - Finish / utilities
 
-    private func buildOutputPath(job: Job, settings: AppSettings, multiSeed: Bool) -> String? {
+    private func buildOutputPath(job: Job, settings: AppSettings, seed: Int) -> String? {
         let useBoard = !job.board.isEmpty && job.board != "Default"
         let dir = useBoard ? "\(settings.outputDir)/\(job.board)" : settings.outputDir
         do {
@@ -846,14 +845,21 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 at: URL(fileURLWithPath: dir), withIntermediateDirectories: true
             )
         } catch { return nil }
-        let ts = Int(Date().timeIntervalSince1970)
-        if multiSeed {
-            // No {seed} placeholder — mflux rewrites multi-seed output paths itself:
-            // it appends _seed_{seed} to the stem, so image_ts.png → image_ts_seed_42.png
-            return "\(dir)/\(Spec.outputPrefix)_\(ts).png"
+        // Multi-seed: no {seed} placeholder — mflux rewrites the path itself (it appends _seed_{seed} to the stem,
+        // so image_ts.png → image_ts_seed_42.png), so the guard checks every expanded path.
+        let seeds = job.seeds
+        return RunnerSupport.uniqueOutputPath(
+            dir: dir, prefix: Spec.outputPrefix, timestamp: Int(Date().timeIntervalSince1970),
+            seed: seeds.isEmpty ? seed : nil
+        ) { candidate in
+            let paths = seeds.isEmpty
+                ? [candidate]
+                : RunnerSupport.expandedPaths(from: candidate, seeds: seeds).map(\.path)
+            return paths.contains { path in
+                let fm = FileManager.default
+                return fm.fileExists(atPath: path) || fm.fileExists(atPath: MetadataSidecar.sidecarURL(for: path).path)
+            }
         }
-        let seedLabel = job.seed == -1 ? "rnd" : "\(job.seed)"
-        return "\(dir)/\(Spec.outputPrefix)_\(ts)_\(seedLabel).png"
     }
 
     private func finishJob(_ job: Job, status: JobStatus, stepDir: URL) {

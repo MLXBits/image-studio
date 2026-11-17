@@ -146,6 +146,22 @@ enum RunnerSupport {
         return seeds.map { seed in (seed: seed, path: "\(dir)/\(stem)_seed_\(seed).\(ext)") }
     }
 
+    /// Output path `dir/prefix_timestamp[_seed].png`, with `_2`, `_3`, … inserted before the extension until `exists`
+    /// reports no clash. `seed` is nil for multi-seed templates (mflux appends `_seed_N` itself). The timestamp has
+    /// one-second resolution, so same-second jobs rely on this guard rather than the name alone.
+    nonisolated static func uniqueOutputPath(
+        dir: String, prefix: String, timestamp: Int, seed: Int?, exists: (String) -> Bool
+    ) -> String {
+        let base = seed.map { "\(prefix)_\(timestamp)_\($0)" } ?? "\(prefix)_\(timestamp)"
+        var candidate = "\(dir)/\(base).png"
+        var n = 2
+        while exists(candidate) {
+            candidate = "\(dir)/\(base)_\(n).png"
+            n += 1
+        }
+        return candidate
+    }
+
     /// `count` distinct random seeds for a batch. A repeated seed would share its
     /// `_seed_N` output file, and the per-seed pairing of a batch's outputs.
     static func randomSeeds(count: Int) -> [Int] {

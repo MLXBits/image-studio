@@ -1,4 +1,5 @@
 import Foundation
+import os
 
 /// Lightroom-style pick/reject verdict for a gallery image. A missing value means
 /// "unflagged". Persisted per file as an extended attribute (see ``GalleryCulling``)
@@ -46,6 +47,7 @@ enum FlagFilter: String, CaseIterable, Identifiable {
 nonisolated enum GalleryCulling {
     static let flagAttr = "com.mlxbits.imagestudio.flag"
     static let ratingAttr = "com.mlxbits.imagestudio.rating"
+    private static let logger = Logger(subsystem: "com.mlxbits.image-studio", category: "GalleryRating")
 
     nonisolated static func readFlag(path: String) -> PickFlag? {
         readXattr(flagAttr, path: path).flatMap(PickFlag.init(rawValue:))
@@ -56,7 +58,9 @@ nonisolated enum GalleryCulling {
         return min(5, max(0, value))
     }
 
-    nonisolated static func writeFlag(_ flag: PickFlag?, path: String) {
+    /// Returns `false` (and logs) when the attribute could not be written; call sites may ignore it.
+    @discardableResult
+    nonisolated static func writeFlag(_ flag: PickFlag?, path: String) -> Bool {
         if let flag {
             writeXattr(flagAttr, value: flag.rawValue, path: path)
         } else {
@@ -64,13 +68,14 @@ nonisolated enum GalleryCulling {
         }
     }
 
-    nonisolated static func writeRating(_ rating: Int, path: String) {
+    /// Returns `false` (and logs) when the attribute could not be written; call sites may ignore it.
+    @discardableResult
+    nonisolated static func writeRating(_ rating: Int, path: String) -> Bool {
         let clamped = min(5, max(0, rating))
         if clamped == 0 {
-            removeXattr(ratingAttr, path: path)
-        } else {
-            writeXattr(ratingAttr, value: String(clamped), path: path)
+            return removeXattr(ratingAttr, path: path)
         }
+        return writeXattr(ratingAttr, value: String(clamped), path: path)
     }
 
     // MARK: - xattr primitives
@@ -86,14 +91,27 @@ nonisolated enum GalleryCulling {
         return String(data: data.prefix(read), encoding: .utf8)
     }
 
-    nonisolated private static func writeXattr(_ name: String, value: String, path: String) {
+    nonisolated private static func writeXattr(_ name: String, value: String, path: String) -> Bool {
         let data = Data(value.utf8)
-        _ = data.withUnsafeBytes { buffer in
+        let result = data.withUnsafeBytes { buffer in
             setxattr(path, name, buffer.baseAddress, data.count, 0, 0)
         }
+        return report(result, action: "set", name: name, path: path)
     }
 
-    nonisolated private static func removeXattr(_ name: String, path: String) {
-        _ = removexattr(path, name, 0)
+    /// A missing attribute (`ENOATTR`) already means "removed", so it counts as success.
+    nonisolated private static func removeXattr(_ name: String, path: String) -> Bool {
+        let result = removexattr(path, name, 0)
+        if result == -1, errno == ENOATTR {
+            return true
+        }
+        return report(result, action: "remove", name: name, path: path)
+    }
+
+    nonisolated private static func report(_ result: Int32, action: String, name: String, path: String) -> Bool {
+        guard result == -1 else { return true }
+        let code = errno
+        logger.error("xattr \(action) \(name) failed for \(path): \(String(cString: strerror(code))) (errno \(code))")
+        return false
     }
 }
