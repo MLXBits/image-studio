@@ -56,9 +56,8 @@ final class MfluxDriverController {
     /// Resolver for the in-flight `run(request:)` continuation, so a hard
     /// cancel (or crash) can settle it without a driver event.
     private var finishRun: ((DriverRunResult) -> Void)?
-    /// Set when `cancel()` terminates the process, so `processDied` reports the
-    /// interrupted run as cancelled rather than a crash and keeps the driver
-    /// available for the next job.
+    /// Set when a run is intentionally ended (`hardKill`, or a Stop-write failure) so
+    /// `processDied` reports it as cancelled rather than a crash and stays available.
     private var intentionalKill = false
     /// True between the driver's `phase: denoise` and `phase: decode` events —
     /// the only stretch where the driver polls the cancel flag.
@@ -76,9 +75,11 @@ final class MfluxDriverController {
     /// Peak MLX memory (GB) reported by the last completed job; drives the
     /// `auto` text-encoder policy.
     private var lastPeakGB: Double?
-    /// True while a teardown (Stop write failed, hard kill, interpreter switch) is in
-    /// flight, until the dying process exits; ``ensureRunning()`` returns false then.
+    /// True while a teardown (Stop write failed, hard kill, interpreter switch) is
+    /// in flight until the process exits; ``ensureRunning()`` waits out the exit first.
     private var isTearingDown = false
+    /// Continuations from ``ensureRunning()`` awaiting the teardown's exit; resumed by ``processDied(_:)``.
+    private var teardownResolvers: [CheckedContinuation<Void, Never>] = []
 
     var isLoaded: Bool {
         loadedFingerprint != nil
@@ -94,9 +95,8 @@ final class MfluxDriverController {
 
     // MARK: - Lifecycle
 
-    /// Starts the driver process (if needed) and completes the hello/ready
-    /// handshake. Returns false — without throwing — when the driver can't be
-    /// used, so callers fall back to the CLI subprocess.
+    /// Starts the driver (if needed) and completes the hello/ready handshake. Returns false —
+    /// without throwing — when the driver can't be used, so callers fall back to the CLI.
     func ensureRunning() async -> Bool {
         // A changed Custom Python retires the current driver, and re-arms one
         // that failed on the old interpreter: the next job must run on the new one.
@@ -105,8 +105,13 @@ final class MfluxDriverController {
             retire()
             availability = .unknown
         }
-        // A teardown is in flight; the dying process is still "running" until it exits.
+        // A teardown is in flight and the dying process is still resident until it exits.
+        // Wait for the exit so the one-shot fallback can't load a model while the warm
+        // driver still has one resident, then fall back as usual.
         if isTearingDown {
+            await withCheckedContinuation { (cont: CheckedContinuation<Void, Never>) in
+                teardownResolvers.append(cont)
+            }
             return false
         }
         if case .unavailable = availability {
@@ -188,8 +193,7 @@ final class MfluxDriverController {
         }
 
         send(["cmd": "hello"])
-        // First import inside the venv can be slow (bytecode compile); the
-        // timeout only guards against a wedged interpreter.
+        // The first venv import can be slow; the timeout only guards a wedged interpreter.
         let ready = await withCheckedContinuation { (cont: CheckedContinuation<Bool, Never>) in
             handshake = cont
             Task { [weak self] in
@@ -239,8 +243,13 @@ final class MfluxDriverController {
         loadedMemoryGB = nil
         idleTask?.cancel()
         resolveHandshake(false, reason: "Driver exited during startup")
-        // Teardown (if any) is over: the dying process has exited.
+        // Teardown (if any) is over: release the ensureRunning() waiters now the process is gone.
         isTearingDown = false
+        let teardownResolvers = self.teardownResolvers
+        self.teardownResolvers = []
+        for resolver in teardownResolvers {
+            resolver.resume()
+        }
         guard wasGenerating else { return }
         if cancelled {
             // Intentional hard kill: settle as cancelled and stay available so
@@ -316,17 +325,14 @@ final class MfluxDriverController {
         }
     }
 
-    /// Cancels the in-flight generate, preferring the cooperative path so the
-    /// warm model survives. Returns true when the driver was asked to abort
-    /// rather than killed outright.
+    /// Cancels the in-flight generate, preferring the cooperative path so the warm model
+    /// survives. Returns true when the driver was asked to abort rather than killed outright.
     ///
-    /// MLX compute can't be interrupted from another thread, so the driver can
-    /// only notice the cancel flag between denoise steps. Inside that window
-    /// (bracketed by the `phase` events) an abort is guaranteed within one step
-    /// and the model stays resident. Outside it — model load, prompt encode,
-    /// VAE decode — nothing would observe the flag, so SIGTERM is the only way
-    /// to stop, and a second Stop press means the user wants out now rather
-    /// than at the next step. Both lose the warm model, as before.
+    /// MLX compute can't be interrupted from another thread, so the driver only notices the
+    /// cancel flag between denoise steps (the `phase` window); an abort there is guaranteed
+    /// within one step and the model stays resident. Outside it — load, encode, decode —
+    /// SIGTERM is the only way to stop, and a second Stop press means the user wants out now.
+    /// Both lose the warm model, as before.
     @discardableResult
     func cancel() -> Bool {
         guard isGenerating, let process, process.isRunning else { return false }
@@ -347,9 +353,8 @@ final class MfluxDriverController {
         process.terminate()
     }
 
-    /// Backstop for a wedged driver, not for a slow step: the user's second
-    /// Stop press is the escape hatch when an abort is simply taking a while,
-    /// so this window can afford to be generous.
+    /// Backstop for a wedged driver, not a slow step: the user's second Stop press is the
+    /// escape hatch when an abort is taking a while, so this window can be generous.
     private func armCancelWatchdog() {
         cancelWatchdog?.cancel()
         let token = runID
@@ -369,9 +374,8 @@ final class MfluxDriverController {
         send(["cmd": "unload", "reason": reason])
     }
 
-    /// Pattern 5: switching models in the picker proactively evicts a warm
-    /// model with a different variant (debounced so flipping through the
-    /// picker doesn't thrash). Never evicts mid-generation.
+    /// Pattern 5: switching models proactively evicts a warm model with a different variant
+    /// (debounced so flipping through the picker doesn't thrash). Never evicts mid-generation.
     func modelPickerChanged(to variantRaw: String) {
         switchEvictTask?.cancel()
         guard let loadedRaw = loadedModelVariantRaw, loadedRaw != variantRaw, !isGenerating else { return }
@@ -395,10 +399,9 @@ final class MfluxDriverController {
         }
     }
 
-    /// Resolves the text-encoder policy for the next request. `auto` keeps
-    /// the encoder until a measured peak crowds physical RAM (>70%), then
-    /// evicts after every encode (embeddings are memoized driver-side, so the
-    /// encoder is only reloaded when the prompt changes).
+    /// Resolves the text-encoder policy for the next request. `auto` keeps the encoder until a
+    /// measured peak crowds physical RAM (>70%), then evicts after every encode (embeddings are
+    /// memoized driver-side, so the encoder is only reloaded when the prompt changes).
     private func resolvedTEPolicy() -> WarmTextEncoderPolicy {
         switch settings?.warmTextEncoderPolicy ?? .auto {
         case .keep: return .keep
@@ -446,8 +449,7 @@ final class MfluxDriverController {
             loadedModelLabel = nil
             loadedMemoryGB = nil
             idleTask?.cancel()
-        // Mid-job refingerprint unloads are internal; the following
-        // loading/loaded events repopulate the state.
+        // Mid-job refingerprint unloads are internal; the loading/loaded events that follow repopulate state.
         case "pong":
             if let memory = event.memoryGb {
                 loadedMemoryGB = memory
@@ -481,14 +483,15 @@ final class MfluxDriverController {
         }
     }
 
-    /// The driver's stdin is gone (it died or closed the pipe). Logs the error and
-    /// keeps the controller in teardown until the dying process actually exits —
-    /// ``processDied(_:)`` then settles the run (``.cancelled`` when a user Stop was
-    /// in flight, else a crash/exit failure) and clears the loaded-model state. The
-    /// warm model can't survive a broken stdin, so there is no warm path to preserve.
+    /// The driver's stdin is gone (it died or closed the pipe). Logs the error and stays in
+    /// teardown until the process exits; ``processDied(_:)`` then settles the run (``.cancelled``
+    /// when a user Stop was in flight, else a crash/exit failure) and clears the model state.
     private func writeFailed(_ error: any Error) {
         let reason = "Could not write to the warm driver: \(error.localizedDescription)"
         onLog?(reason + "\n")
+        // Preserve the Stop intent in processDied's classification: a write that fails while a
+        // user Stop is in flight settles as cancelled; an unsolicited failure stays a failure.
+        intentionalKill = isStopping
         isTearingDown = true
         // Leave the run and handshake pending: processDied settles them on exit.
         process?.terminate()
