@@ -22,9 +22,11 @@ struct DimensionConstraints: Equatable {
     /// renders while keeping the floor above the model's minimum.
     static let zimage = Self(range: 256 ... 2048, step: 16, maxArea: nil)
 
-    /// Qwen-Image 2.1: multiples of 32 (mflux rejects anything else). The model card
-    /// renders up to 2048×2048; Turbo blurs fine detail into a grid below ~1024.
-    static let qwen21 = Self(range: 256 ... 2048, step: 32, maxArea: nil)
+    /// Qwen-Image 2.1: multiples of 32 (mflux rejects anything else; it sets no upper
+    /// bound). Area-limited like FLUX.2: ~4 MP renders cleanly at any aspect ratio, so a
+    /// per-axis 2048 cap would hold wide outputs well under that. Turbo blurs fine detail
+    /// into a grid below ~1024.
+    static let qwen21 = Self(range: 256 ... 4096, step: 32, maxArea: 2048 * 2048)
 
     /// FLUX.2 (all variants — distilled *klein* and dev *klein-base*, 4B and 9B —
     /// share one architecture and the same ~4 MP ceiling). Multiples of 32 to match
@@ -100,6 +102,72 @@ struct DimensionConstraints: Equatable {
         let best = ratioError(byWidth, target: ratio) <= ratioError(byHeight, target: ratio)
             ? byWidth : byHeight
         return fit(width: best.width, height: best.height, preserveRatio: true)
+    }
+
+    /// The size a locked `ratio` gives when the width slider sets `width`. `nil` when no
+    /// height fits. See ``lockedSize(lead:partnerRatio:)``.
+    func lockedSize(width: Int, ratio: Double) -> (width: Int, height: Int)? {
+        lockedSize(lead: width, partnerRatio: 1 / ratio).map { ($0.lead, $0.partner) }
+    }
+
+    /// The size a locked `ratio` gives when the height slider sets `height`. `nil` when no
+    /// width fits. See ``lockedSize(lead:partnerRatio:)``.
+    func lockedSize(height: Int, ratio: Double) -> (width: Int, height: Int)? {
+        lockedSize(lead: height, partnerRatio: ratio).map { ($0.partner, $0.lead) }
+    }
+
+    /// Where each slider ends with `ratio` locked: the widest width and the tallest height
+    /// among the sizes either slider can reach within the area cap. Swapping the ratio
+    /// swaps the result.
+    func lockedLimits(ratio: Double) -> (width: Int, height: Int) {
+        guard ratio.isFinite, ratio > 0 else { return (range.upperBound, range.upperBound) }
+        var best = (width: range.lowerBound, height: range.lowerBound)
+        for value in stride(from: range.lowerBound, through: range.upperBound, by: step) {
+            for size in [lockedSize(width: value, ratio: ratio), lockedSize(height: value, ratio: ratio)] {
+                guard let size else { continue }
+                best = (max(best.width, size.width), max(best.height, size.height))
+            }
+        }
+        return best
+    }
+
+    /// One axis (`lead`) set by its slider, and the other axis (`partner = lead × partnerRatio`)
+    /// at the nearest step. When that breaks the area cap, the partner steps down — but only
+    /// while the lead is still the partner's own nearest step, so the size is one the other
+    /// slider produces too. Both sliders reach the same sizes, and the result treats the two
+    /// axes the same way.
+    private func lockedSize(lead: Int, partnerRatio: Double) -> (lead: Int, partner: Int)? {
+        guard partnerRatio.isFinite, partnerRatio > 0 else { return nil }
+        let v = snap(Double(lead))
+        // Unclamped: a partner pinned to the range edge would no longer hold the ratio.
+        var p = nearestStep(Double(v) * partnerRatio)
+        if fits(v, p) {
+            return (v, p)
+        }
+        while p - step >= range.lowerBound, nearestStep(Double(p - step) / partnerRatio) == v {
+            p -= step
+            if fits(v, p) {
+                return (v, p)
+            }
+        }
+        return nil
+    }
+
+    /// `value` rounded to the nearest `step`, outside `range` if that is where it lands.
+    private func nearestStep(_ value: Double) -> Int {
+        Int((value / Double(step)).rounded()) * step
+    }
+
+    /// Whether a size is inside the per-axis range and the area cap.
+    private func fits(_ width: Int, _ height: Int) -> Bool {
+        range.contains(width) && range.contains(height) && maxArea.map { width * height <= $0 } ?? true
+    }
+
+    /// The largest on-step value for one axis while the other stays at `other`. With the
+    /// aspect ratio unlocked, the area cap ends each slider here.
+    func maxSide(other: Int) -> Int {
+        guard let maxArea, other > 0 else { return range.upperBound }
+        return snapDown(Double(maxArea) / Double(other))
     }
 
     /// Relative distance between a candidate size's aspect and the one asked for.

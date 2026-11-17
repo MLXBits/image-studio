@@ -101,6 +101,11 @@ final class Qwen21ParamsPanelState {
         resolvedPrompt: String? = nil,
         size: (width: Int, height: Int)? = nil
     ) -> Qwen21Job {
+        // mflux rejects sizes that aren't multiples of 32, and a saved form or Settings
+        // default can predate the constraint; fit also applies the area cap.
+        let dims = DimensionConstraints.qwen21.fit(
+            width: size?.width ?? width, height: size?.height ?? height, preserveRatio: true
+        )
         let job = Qwen21Job(
             isEditMode: isEditMode,
             editImagePaths: isEditMode ? editImagePaths : [],
@@ -109,10 +114,8 @@ final class Qwen21ParamsPanelState {
             customModelRepo: customModelRepo,
             steps: Self.model.clampedSteps(steps),
             quantize: quantize,
-            // mflux rejects sizes that aren't multiples of 32; a saved form or Settings
-            // default can predate the constraint.
-            width: DimensionConstraints.qwen21.snap(Double(size?.width ?? width)),
-            height: DimensionConstraints.qwen21.snap(Double(size?.height ?? height)),
+            width: dims.width,
+            height: dims.height,
             seed: seed,
             loras: loras,
             lowRam: lowRam,

@@ -125,6 +125,17 @@ struct DimensionPickerView: View {
         return Double(width) / Double(max(height, 1))
     }
 
+    /// Where the area cap stops each axis. Both sliders keep the full per-axis scale, so
+    /// the thumbs still show the aspect ratio; the cap is a marker on the track instead.
+    /// The rows never end below the current value, so a size is always reachable again.
+    private var widthLimit: Int {
+        effectiveRatio.map { constraints.lockedLimits(ratio: $0).width } ?? constraints.maxSide(other: height)
+    }
+
+    private var heightLimit: Int {
+        effectiveRatio.map { constraints.lockedLimits(ratio: $0).height } ?? constraints.maxSide(other: width)
+    }
+
     private var dimensionsInfoText: String {
         var text = "Output image size. Preset buttons set common aspect ratios at"
             + " \(mpText(settings.targetMegapixels)) MP —"
@@ -141,8 +152,14 @@ struct DimensionPickerView: View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 10) {
                 headerRow
-                DimensionSliderRow(label: "Width", value: widthBinding, range: constraints.range, step: constraints.step)
-                DimensionSliderRow(label: "Height", value: heightBinding, range: constraints.range, step: constraints.step)
+                DimensionSliderRow(
+                    label: "Width", value: widthBinding, range: constraints.range, step: constraints.step,
+                    limit: max(widthLimit, width)
+                )
+                DimensionSliderRow(
+                    label: "Height", value: heightBinding, range: constraints.range, step: constraints.step,
+                    limit: max(heightLimit, height)
+                )
             }
             // Lives here rather than beside the picker because the megapixel field
             // needs the aspect lock, which is this view's own state.
@@ -265,8 +282,13 @@ struct DimensionPickerView: View {
         Binding(
             get: { width },
             set: { newVal in
-                let h = effectiveRatio.map { constraints.snap(Double(newVal) / $0) } ?? height
-                applyDimensions(width: newVal, height: h, preserveRatio: effectiveRatio != nil)
+                if let ratio = effectiveRatio {
+                    let size = constraints.lockedSize(width: newVal, ratio: ratio)
+                        ?? (newVal, constraints.snap(Double(newVal) / ratio))
+                    applyDimensions(width: size.width, height: size.height, preserveRatio: true)
+                } else {
+                    applyDimensions(width: newVal, height: height, preserveRatio: false)
+                }
             }
         )
     }
@@ -276,8 +298,9 @@ struct DimensionPickerView: View {
             get: { height },
             set: { newVal in
                 if let ratio = effectiveRatio {
-                    let w = constraints.snap(Double(newVal) * ratio)
-                    applyDimensions(width: w, height: newVal, preserveRatio: true)
+                    let size = constraints.lockedSize(height: newVal, ratio: ratio)
+                        ?? (constraints.snap(Double(newVal) * ratio), newVal)
+                    applyDimensions(width: size.width, height: size.height, preserveRatio: true)
                 } else {
                     applyDimensions(width: width, height: newVal, preserveRatio: false, reduceHeight: true)
                 }
