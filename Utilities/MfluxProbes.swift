@@ -1,4 +1,84 @@
 import Foundation
+import os
+
+/// Memoises an ``MfluxProbes`` probe per interpreter path. The probe spawns a process, so it
+/// must not run on every view body evaluation.
+nonisolated final class ProbeCache<Value: Sendable>: Sendable {
+    private struct State {
+        var results: [String: Value] = [:]
+        /// Bumped by ``remove(_:)``. A probe already running when its key is
+        /// removed returns its answer but doesn't cache it.
+        var generations: [String: Int] = [:]
+        /// The asynchronous probe running per key, which later callers join.
+        var inFlight: [String: Task<Value, Never>] = [:]
+    }
+
+    private let state = OSAllocatedUnfairLock(initialState: State())
+
+    /// The cached answer for `key`, or nil when it hasn't been asked yet.
+    func cached(_ key: String) -> Value? {
+        state.withLock { $0.results[key] }
+    }
+
+    /// Blocks the caller while `compute` runs. Never call it from the main actor
+    /// for a cold key: the probe takes seconds.
+    func value(for key: String, compute: () -> Value) -> Value {
+        let start: (hit: Value?, generation: Int) = state.withLock {
+            ($0.results[key], $0.generations[key, default: 0])
+        }
+        if let hit = start.hit {
+            return hit
+        }
+        let computed = compute()
+        store(computed, for: key, generation: start.generation)
+        return computed
+    }
+
+    /// Runs `compute` on a background task and suspends until it answers.
+    /// Concurrent callers for one key share a single run, so one interpreter
+    /// gets one probe process however many jobs and warm-ups ask at once.
+    func value(for key: String, compute: @escaping @Sendable () -> Value) async -> Value {
+        if let hit = cached(key) {
+            return hit
+        }
+        let task: Task<Value, Never> = state.withLock { s in
+            // Answered between the check above and here: hand back a finished task.
+            if let hit = s.results[key] {
+                return Task { hit }
+            }
+            if let running = s.inFlight[key] {
+                return running
+            }
+            let generation = s.generations[key, default: 0]
+            // The task stores its own answer, so it lands even when every waiter has gone.
+            let task = Task.detached(priority: .utility) { [self] in
+                let computed = compute()
+                store(computed, for: key, generation: generation)
+                return computed
+            }
+            s.inFlight[key] = task
+            return task
+        }
+        return await task.value
+    }
+
+    func remove(_ key: String) {
+        state.withLock {
+            $0.results[key] = nil
+            $0.inFlight[key] = nil
+            $0.generations[key, default: 0] += 1
+        }
+    }
+
+    /// Caches `value` unless ``remove(_:)`` ran since its probe began.
+    private func store(_ value: Value, for key: String, generation: Int) {
+        state.withLock {
+            guard $0.generations[key, default: 0] == generation else { return }
+            $0.results[key] = value
+            $0.inFlight[key] = nil
+        }
+    }
+}
 
 // Nonisolated: process probes, callable off the main actor.
 /// Questions asked of the interpreter mflux runs on: its mflux version, and
@@ -6,40 +86,6 @@ import Foundation
 /// spawns that interpreter once and is cached by its path for the rest of the
 /// launch, so choosing another Custom Python asks again.
 nonisolated enum MfluxProbes {
-    /// Memoises a probe per interpreter path. The probe spawns a process, so it
-    /// must not run on every view body evaluation.
-    private final class ProbeCache<Value: Sendable>: @unchecked Sendable {
-        private let lock = NSLock()
-        private var results: [String: Value] = [:]
-        /// Bumped by ``remove(_:)``. A probe already running when its key is
-        /// removed returns its answer but doesn't cache it.
-        private var generations: [String: Int] = [:]
-
-        func value(for key: String, compute: () -> Value) -> Value {
-            lock.lock()
-            if let hit = results[key] {
-                lock.unlock()
-                return hit
-            }
-            let generation = generations[key, default: 0]
-            lock.unlock()
-            let computed = compute()
-            lock.lock()
-            if generations[key, default: 0] == generation {
-                results[key] = computed
-            }
-            lock.unlock()
-            return computed
-        }
-
-        func remove(_ key: String) {
-            lock.lock()
-            results[key] = nil
-            generations[key, default: 0] += 1
-            lock.unlock()
-        }
-    }
-
     private static let pidDecodeCache = ProbeCache<Bool>()
     private static let versionCache = ProbeCache<String?>()
     private static let baseModelCache = ProbeCache<Bool>()
@@ -101,10 +147,11 @@ nonisolated enum MfluxProbes {
     /// while carrying every registry key), no release boundary marks when the option landed, and
     /// this answers exactly what the gate needs — whether sending the flag would be rejected.
     /// Cached per interpreter like ``supportsPidDecode(python:)``: one process spawn per
-    /// interpreter per launch.
-    static func supportsBaseModel(python: String?) -> Bool {
+    /// interpreter per launch. The probe imports mflux (seconds), so it runs on a background
+    /// task; concurrent callers for one interpreter share that one run.
+    static func supportsBaseModel(python: String?) async -> Bool {
         guard let python else { return false }
-        return baseModelCache.value(for: python) {
+        return await baseModelCache.value(for: python) {
             runProbe(python: python, code: """
             import sys
             ok = False
@@ -116,6 +163,24 @@ nonisolated enum MfluxProbes {
                 pass
             sys.stdout.write("1" if ok else "0")
             """) == "1"
+        }
+    }
+
+    /// ``supportsBaseModel(python:)``'s cached answer, or nil until that probe has
+    /// answered for `python`. Never spawns a process, so the main actor can ask.
+    static func cachedSupportsBaseModel(python: String?) -> Bool? {
+        guard let python else { return false }
+        return baseModelCache.cached(python)
+    }
+
+    /// Starts the probes that job argument building depends on for `python`, in
+    /// the background, so the first job doesn't wait on them. Called at launch and
+    /// whenever the interpreter changes; a probe already cached or running is not
+    /// started again.
+    static func warmUp(python: String?) {
+        guard let python else { return }
+        Task.detached(priority: .utility) {
+            _ = await supportsBaseModel(python: python)
         }
     }
 
@@ -138,9 +203,9 @@ nonisolated enum MfluxProbes {
 
     /// Runs `python -c code` with the toolchain environment and returns its
     /// trimmed stdout, or nil when the process cannot start, writes nothing, or
-    /// outlives `timeout`. Some callers wait on the main actor (the Flux argument
-    /// builder), so a wedged interpreter must not hold them indefinitely. The 60 s
-    /// default clears a cold `import mflux` (~25 s even on idle hardware): a probe
+    /// outlives `timeout`. Callers wait on it (a Flux job awaits the base-model
+    /// probe before building its arguments), so a wedged interpreter must not
+    /// hold them indefinitely. The 60 s default clears a cold `import mflux` (~25 s even on idle hardware): a probe
     /// that times out is cached as "unsupported" for its interpreter, silently
     /// dropping flags like `--base-model` from every later job in the session.
     static func runProbe(python: String, code: String, timeout: TimeInterval = 60) -> String? {

@@ -130,6 +130,7 @@ struct PythonSettingsSection: View {
         // there since, and re-picking the path is how to say so.
         let version = await Task.detached(priority: .utility) {
             MfluxProbes.forget(python: python)
+            MfluxProbes.warmUp(python: python) // re-ask what jobs depend on, in the background
             return MfluxProbes.mfluxVersion(python: python)
         }.value
         // The path changed while the probe ran: a newer check owns the status.

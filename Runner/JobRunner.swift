@@ -80,6 +80,9 @@ protocol JobRunnerSpec {
     /// (Ideogram 4 structured captions). Default: none.
     static func makePromptFile(job: Job) -> URL?
     static func buildArgs(job: Job, ctx: JobRunContext, settings: AppSettings) -> [String]
+    /// Awaited just before ``buildArgs(job:ctx:settings:)`` on the one-shot CLI path, for work that
+    /// must not run on the main actor there (Flux awaits its `--base-model` probe). Default: nothing.
+    static func prepareArgs(job: Job, settings: AppSettings) async
     /// Whether a tqdm total belongs to this job's denoise loop (rejects other bars,
     /// e.g. weight-download progress).
     static func acceptsProgressTotal(_ total: Int, job: Job) -> Bool
@@ -114,6 +117,8 @@ extension JobRunnerSpec {
     static func comfyGraph(job _: Job, settings _: AppSettings, client _: ComfyUIClient) async throws -> ComfyGraph? {
         nil
     }
+
+    static func prepareArgs(job _: Job, settings _: AppSettings) async {}
 
     static func willRunLocally(job _: Job) {}
 }
@@ -441,6 +446,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         }
 
+        await Spec.prepareArgs(job: job, settings: settings)
         // cancel() may have cancelled runTask during an earlier await that ignores it (e.g. a save's output tail).
         if Task.isCancelled {
             finishJob(job, status: .cancelled, stepDir: stepDir)

@@ -152,9 +152,21 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     /// Probed per interpreter (cached; see ``MfluxProbes/supportsBaseModel(python:)``) rather than
     /// version-gated: package metadata lies on editable installs and no release boundary marks
     /// when the option landed, so ask the parser — pre-option releases reject it with exit 2.
+    ///
+    /// Reads only the probe's cached answer: buildArgs runs on the main actor, and a cold probe
+    /// imports mflux for seconds. ``prepareArgs(job:settings:)`` awaits the probe first, so the
+    /// cache is warm here; were it still cold, the flag is left off as on a pre-option mflux.
     static func baseModelArgs(base: FluxModelVariant, settings: AppSettings) -> [String] {
-        guard MfluxProbes.supportsBaseModel(python: try? settings.toolchain.mfluxInterpreter()) else { return [] }
+        let python = try? settings.toolchain.mfluxInterpreter()
+        guard MfluxProbes.cachedSupportsBaseModel(python: python) == true else { return [] }
         return ["--base-model", base.mfluxModelID]
+    }
+
+    /// Awaits the `--base-model` probe off the main actor, so ``baseModelArgs(base:settings:)``
+    /// finds its answer cached. Usually instant: the probe is warmed at launch and whenever the
+    /// interpreter changes (``AppSettings/refreshToolchain()``).
+    static func prepareArgs(job _: FluxJob, settings: AppSettings) async {
+        _ = await MfluxProbes.supportsBaseModel(python: try? settings.toolchain.mfluxInterpreter())
     }
 
     /// Resolves the `--model` value per job source, in priority order: custom checkpoint,

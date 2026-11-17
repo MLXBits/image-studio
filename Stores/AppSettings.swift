@@ -611,6 +611,10 @@ class AppSettings {
     /// Set when the profile registry can't be read: nothing is written until the
     /// user fixes or removes it, so no data is overwritten while it's unreadable.
     @ObservationIgnored private var persistenceSuspended = false
+    /// Set by ``startProbeWarmUps()``: ``refreshToolchain()`` then probes each new
+    /// interpreter in the background. Off by default, so tests that build their
+    /// own settings never spawn the real Python.
+    @ObservationIgnored private var warmsProbes = false
     /// The Custom Python came from the legacy `mfluxBinaryDir` this launch and isn't
     /// saved yet. ``ProfileStore`` saves it, so the migration runs only once.
     @ObservationIgnored private(set) var customPythonMigrationUnsaved = false
@@ -729,6 +733,16 @@ class AppSettings {
             customPython: BuildFlavor.isAppStore ? "" : customPythonPath
         )
         refreshAvailableModels()
+        if warmsProbes {
+            MfluxProbes.warmUp(python: try? toolchain.mfluxInterpreter())
+        }
+    }
+
+    /// Warms the interpreter probes jobs depend on (see ``MfluxProbes/warmUp(python:)``)
+    /// now and after every toolchain change, so a job's first run doesn't wait on them.
+    func startProbeWarmUps() {
+        warmsProbes = true
+        MfluxProbes.warmUp(python: try? toolchain.mfluxInterpreter())
     }
 
     /// Re-checks which families the current toolchain can run.
