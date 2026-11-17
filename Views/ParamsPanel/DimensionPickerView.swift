@@ -127,12 +127,13 @@ struct DimensionPickerView: View {
 
     /// Where the area cap stops each axis. Both sliders keep the full per-axis scale, so
     /// the thumbs still show the aspect ratio; the cap is a marker on the track instead.
+    /// The rows never end below the current value, so a size is always reachable again.
     private var widthLimit: Int {
-        effectiveRatio.map { constraints.maxDimensions(ratio: $0).width } ?? constraints.maxSide(other: height)
+        effectiveRatio.map { constraints.lockedLimits(ratio: $0).width } ?? constraints.maxSide(other: height)
     }
 
     private var heightLimit: Int {
-        effectiveRatio.map { constraints.maxDimensions(ratio: $0).height } ?? constraints.maxSide(other: width)
+        effectiveRatio.map { constraints.lockedLimits(ratio: $0).height } ?? constraints.maxSide(other: width)
     }
 
     private var dimensionsInfoText: String {
@@ -152,10 +153,12 @@ struct DimensionPickerView: View {
             VStack(alignment: .leading, spacing: 10) {
                 headerRow
                 DimensionSliderRow(
-                    label: "Width", value: widthBinding, range: constraints.range, step: constraints.step, limit: widthLimit
+                    label: "Width", value: widthBinding, range: constraints.range, step: constraints.step,
+                    limit: max(widthLimit, width)
                 )
                 DimensionSliderRow(
-                    label: "Height", value: heightBinding, range: constraints.range, step: constraints.step, limit: heightLimit
+                    label: "Height", value: heightBinding, range: constraints.range, step: constraints.step,
+                    limit: max(heightLimit, height)
                 )
             }
             // Lives here rather than beside the picker because the megapixel field
@@ -290,8 +293,9 @@ struct DimensionPickerView: View {
             get: { height },
             set: { newVal in
                 if let ratio = effectiveRatio {
-                    let w = constraints.snap(Double(newVal) * ratio)
-                    applyDimensions(width: w, height: newVal, preserveRatio: true)
+                    let size = constraints.lockedSize(height: newVal, ratio: ratio)
+                        ?? (constraints.snap(Double(newVal) * ratio), newVal)
+                    applyDimensions(width: size.width, height: size.height, preserveRatio: true)
                 } else {
                     applyDimensions(width: width, height: newVal, preserveRatio: false, reduceHeight: true)
                 }

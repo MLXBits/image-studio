@@ -104,19 +104,45 @@ struct DimensionConstraints: Equatable {
         return fit(width: best.width, height: best.height, preserveRatio: true)
     }
 
-    /// The largest on-step size at `ratio` that both the per-axis range and the area cap
-    /// allow. With the aspect ratio locked, this is where each slider really ends.
-    func maxDimensions(ratio: Double) -> (width: Int, height: Int) {
-        guard ratio.isFinite, ratio > 0 else { return (range.upperBound, range.upperBound) }
-        let ceiling = Double(range.upperBound)
-        var w = min(ceiling, ceiling * ratio)
-        var h = w / ratio
-        if let maxArea, w * h > Double(maxArea) {
-            let scale = (Double(maxArea) / (w * h)).squareRoot()
-            w *= scale
-            h *= scale
+    /// The size a locked `ratio` gives for a width: that width on its step, with the
+    /// nearest on-step height. Dragging the width slider produces exactly these sizes.
+    func lockedSize(width: Int, ratio: Double) -> (width: Int, height: Int) {
+        let w = snap(Double(width))
+        return (w, snap(Double(w) / ratio))
+    }
+
+    /// The size a locked `ratio` gives for a height, chosen from the sizes `lockedSize(width:)`
+    /// produces when the nearest width would break the area cap, so either slider can
+    /// return to a size the other one reached. `nil` when no width fits at this height.
+    func lockedSize(height: Int, ratio: Double) -> (width: Int, height: Int)? {
+        let h = snap(Double(height))
+        var w = snap(Double(h) * ratio)
+        guard !fits(w, h) else { return (w, h) }
+        while w > range.lowerBound, lockedSize(width: w - step, ratio: ratio).height == h {
+            w -= step
+            if fits(w, h) {
+                return (w, h)
+            }
         }
-        return (snapDown(w), snapDown(h))
+        return nil
+    }
+
+    /// Where each slider ends with `ratio` locked: the widest width and the tallest height
+    /// among the sizes the width slider can reach within the area cap.
+    func lockedLimits(ratio: Double) -> (width: Int, height: Int) {
+        guard ratio.isFinite, ratio > 0 else { return (range.upperBound, range.upperBound) }
+        var best = (width: range.lowerBound, height: range.lowerBound)
+        for w in stride(from: range.lowerBound, through: range.upperBound, by: step) {
+            let size = lockedSize(width: w, ratio: ratio)
+            guard fits(size.width, size.height) else { continue }
+            best = (max(best.width, size.width), max(best.height, size.height))
+        }
+        return best
+    }
+
+    /// Whether a size is inside the per-axis range and the area cap.
+    private func fits(_ width: Int, _ height: Int) -> Bool {
+        range.contains(width) && range.contains(height) && maxArea.map { width * height <= $0 } ?? true
     }
 
     /// The largest on-step value for one axis while the other stays at `other`. With the

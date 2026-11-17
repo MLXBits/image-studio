@@ -87,17 +87,31 @@ struct DimensionConstraintsTests {
         #expect(DimensionConstraints.qwen21.fit(width: 4096, height: 4096, preserveRatio: true) == (2048, 2048))
     }
 
-    /// The slider ends: the largest size at a ratio fits the area cap, and an unlocked
-    /// axis ends where the cap meets the other side. Without a cap, the ceiling binds.
+    /// The slider ends: with a ratio locked, the largest width and height the width slider
+    /// reaches within the cap; unlocked, where the cap meets the other side.
     @Test func sliderEndsFollowTheAreaCap() {
-        let (w, h) = DimensionConstraints.qwen21.maxDimensions(ratio: 4.0 / 5.0)
-        #expect((w, h) == (1824, 2272))
-        #expect(DimensionConstraints.qwen21.maxDimensions(ratio: 21.0 / 9.0).width <= 4096)
+        #expect(DimensionConstraints.qwen21.lockedLimits(ratio: 4.0 / 5.0) == (1824, 2272))
+        #expect(DimensionConstraints.qwen21.lockedLimits(ratio: 21.0 / 9.0) == (3104, 1344))
+        #expect(DimensionConstraints.krea2.lockedLimits(ratio: 1) == (4096, 4096))
+        #expect(DimensionConstraints.legacy.lockedLimits(ratio: 16.0 / 9.0) == (2048, 1152))
         #expect(DimensionConstraints.qwen21.maxSide(other: 1024) == 4096)
         #expect(DimensionConstraints.qwen21.maxSide(other: 2048) == 2048)
-        #expect(DimensionConstraints.krea2.maxDimensions(ratio: 1) == (4096, 4096))
-        #expect(DimensionConstraints.legacy.maxDimensions(ratio: 16.0 / 9.0) == (2048, 1152))
         #expect(DimensionConstraints.krea2.maxSide(other: 4096) == 4096)
+    }
+
+    /// 21:9 locked: width 3104 gives 3104×1344, inside the cap. Stepping height down to
+    /// 1312 gives 3072×1312, and stepping it back up must reach 3104×1344 again — the
+    /// nearest width for 1344 (3136) would break the cap.
+    @Test func lockedHeightReturnsToASizeTheWidthReached() throws {
+        let ratio = 21.0 / 9.0
+        let q = DimensionConstraints.qwen21
+        #expect(q.lockedSize(width: 3104, ratio: ratio) == (3104, 1344))
+        let down = try #require(q.lockedSize(height: 1312, ratio: ratio))
+        #expect(down == (3072, 1312))
+        #expect(q.lockedLimits(ratio: ratio).height >= 1344)
+        let back = try #require(q.lockedSize(height: 1344, ratio: ratio))
+        #expect(back == (3104, 1344))
+        #expect(back.width * back.height <= 2048 * 2048)
     }
 
     /// Targets past the settings bounds are clamped rather than trusted.
