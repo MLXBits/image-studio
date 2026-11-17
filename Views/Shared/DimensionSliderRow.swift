@@ -7,6 +7,9 @@ struct DimensionSliderRow: View {
     @Binding var value: Int
     var range: ClosedRange<Int> = 64 ... 2048
     var step: Int = 16
+    /// The highest value allowed, when lower than the end of `range` (an area cap). The
+    /// track keeps the full range and shows a marker here.
+    var limit: Int?
 
     // Typing is buffered here so intermediate keystrokes never reach `value`.
     // Committing every digit lets coupled logic (locked-ratio recompute, area
@@ -29,6 +32,7 @@ struct DimensionSliderRow: View {
                 ),
                 in: Double(range.lowerBound) ... Double(range.upperBound)
             )
+            .overlay { limitMarker }
             .accessibilityLabel(label)
             .accessibilityValue("\(value) pixels")
             .accessibilityHint("Drag to resize. Snaps to nearest \(step) pixels.")
@@ -36,7 +40,7 @@ struct DimensionSliderRow: View {
             // Number box with stepper arrows — label IS the text field
             Stepper(
                 value: $value,
-                in: range,
+                in: allowed,
                 step: step
             ) {
                 TextField("", text: $text)
@@ -66,6 +70,29 @@ struct DimensionSliderRow: View {
         .onAppear { text = String(value) }
     }
 
+    /// `range`, ended early by `limit`.
+    private var allowed: ClosedRange<Int> {
+        guard let limit else { return range }
+        return range.lowerBound ... max(range.lowerBound, min(limit, range.upperBound))
+    }
+
+    /// A tick on the track where `limit` ends it. The native knob is 20pt wide, so its
+    /// centre travels from 10pt to 10pt short of the trailing edge.
+    @ViewBuilder private var limitMarker: some View {
+        if allowed.upperBound < range.upperBound {
+            GeometryReader { geo in
+                let fraction = Double(allowed.upperBound - range.lowerBound)
+                    / Double(range.upperBound - range.lowerBound)
+                let x = 10 + (geo.size.width - 20) * fraction
+                Capsule()
+                    .fill(Color.secondary)
+                    .frame(width: 2, height: 14)
+                    .position(x: x, y: geo.size.height / 2)
+            }
+            .allowsHitTesting(false)
+        }
+    }
+
     private func commitText() {
         let digits = text.filter(\.isNumber)
         value = snap(Int(digits) ?? value)
@@ -73,9 +100,9 @@ struct DimensionSliderRow: View {
     }
 
     private func snap(_ n: Int) -> Int {
-        let clamped = n.clamped(to: range)
+        let clamped = n.clamped(to: allowed)
         let snapped = range.lowerBound + ((clamped - range.lowerBound + step / 2) / step) * step
-        return snapped.clamped(to: range)
+        return snapped.clamped(to: allowed)
     }
 }
 
