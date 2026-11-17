@@ -104,6 +104,28 @@ struct DimensionConstraints: Equatable {
         return fit(width: best.width, height: best.height, preserveRatio: true)
     }
 
+    /// The largest on-step size at `ratio` that both the per-axis range and the area cap
+    /// allow. With the aspect ratio locked, this is where each slider really ends.
+    func maxDimensions(ratio: Double) -> (width: Int, height: Int) {
+        guard ratio.isFinite, ratio > 0 else { return (range.upperBound, range.upperBound) }
+        let ceiling = Double(range.upperBound)
+        var w = min(ceiling, ceiling * ratio)
+        var h = w / ratio
+        if let maxArea, w * h > Double(maxArea) {
+            let scale = (Double(maxArea) / (w * h)).squareRoot()
+            w *= scale
+            h *= scale
+        }
+        return (snapDown(w), snapDown(h))
+    }
+
+    /// The largest on-step value for one axis while the other stays at `other`. With the
+    /// aspect ratio unlocked, the area cap ends each slider here.
+    func maxSide(other: Int) -> Int {
+        guard let maxArea, other > 0 else { return range.upperBound }
+        return snapDown(Double(maxArea) / Double(other))
+    }
+
     /// Relative distance between a candidate size's aspect and the one asked for.
     private func ratioError(_ dims: (width: Int, height: Int), target: Double) -> Double {
         abs(Double(dims.width) / Double(dims.height) - target) / target

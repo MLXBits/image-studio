@@ -125,6 +125,18 @@ struct DimensionPickerView: View {
         return Double(width) / Double(max(height, 1))
     }
 
+    /// Slider ranges end where the area cap really stops each axis, not at the per-axis
+    /// ceiling, so a thumb never halts partway along its track.
+    private var widthRange: ClosedRange<Int> {
+        let cap = effectiveRatio.map { constraints.maxDimensions(ratio: $0).width } ?? constraints.maxSide(other: height)
+        return constraints.range.lowerBound ... max(cap, width, constraints.range.lowerBound)
+    }
+
+    private var heightRange: ClosedRange<Int> {
+        let cap = effectiveRatio.map { constraints.maxDimensions(ratio: $0).height } ?? constraints.maxSide(other: width)
+        return constraints.range.lowerBound ... max(cap, height, constraints.range.lowerBound)
+    }
+
     private var dimensionsInfoText: String {
         var text = "Output image size. Preset buttons set common aspect ratios at"
             + " \(mpText(settings.targetMegapixels)) MP —"
@@ -141,8 +153,8 @@ struct DimensionPickerView: View {
         VStack(alignment: .leading, spacing: 6) {
             VStack(alignment: .leading, spacing: 10) {
                 headerRow
-                DimensionSliderRow(label: "Width", value: widthBinding, range: constraints.range, step: constraints.step)
-                DimensionSliderRow(label: "Height", value: heightBinding, range: constraints.range, step: constraints.step)
+                DimensionSliderRow(label: "Width", value: widthBinding, range: widthRange, step: constraints.step)
+                DimensionSliderRow(label: "Height", value: heightBinding, range: heightRange, step: constraints.step)
             }
             // Lives here rather than beside the picker because the megapixel field
             // needs the aspect lock, which is this view's own state.

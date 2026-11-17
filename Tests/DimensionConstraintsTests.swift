@@ -87,6 +87,19 @@ struct DimensionConstraintsTests {
         #expect(DimensionConstraints.qwen21.fit(width: 4096, height: 4096, preserveRatio: true) == (2048, 2048))
     }
 
+    /// The slider ends: the largest size at a ratio fits the area cap, and an unlocked
+    /// axis ends where the cap meets the other side. Without a cap, the ceiling binds.
+    @Test func sliderEndsFollowTheAreaCap() {
+        let (w, h) = DimensionConstraints.qwen21.maxDimensions(ratio: 4.0 / 5.0)
+        #expect((w, h) == (1824, 2272))
+        #expect(DimensionConstraints.qwen21.maxDimensions(ratio: 21.0 / 9.0).width <= 4096)
+        #expect(DimensionConstraints.qwen21.maxSide(other: 1024) == 4096)
+        #expect(DimensionConstraints.qwen21.maxSide(other: 2048) == 2048)
+        #expect(DimensionConstraints.krea2.maxDimensions(ratio: 1) == (4096, 4096))
+        #expect(DimensionConstraints.legacy.maxDimensions(ratio: 16.0 / 9.0) == (2048, 1152))
+        #expect(DimensionConstraints.krea2.maxSide(other: 4096) == 4096)
+    }
+
     /// Targets past the settings bounds are clamped rather than trusted.
     @Test func megapixelTargetsAreClamped() {
         #expect(DimensionConstraints.clampMegapixels(.nan) == 1.0)
