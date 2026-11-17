@@ -22,14 +22,21 @@ struct GallerySelectionPruningTests {
     }
 
     /// Select A and B with B previewed, and only B rejected. Deleting B clears
-    /// the preview, and the preview observer must keep A selected.
+    /// the preview, and the preview observer must keep A selected. The anchor
+    /// moves to A so the cull keys still act on it.
     @Test func deletingThePreviewKeepsSurvivingSelectionThroughObserver() {
         let a = UUID(), b = UUID()
         let pruned = GallerySelectionState(selection: [a, b], anchorId: b, selectedId: b).removing([b])
         #expect(pruned.selectedId == nil)
         let afterObserver = pruned.previewCleared(byDeletion: true)
         #expect(afterObserver.selection == [a])
-        #expect(afterObserver.anchorId == nil)
+        #expect(afterObserver.anchorId == a)
+    }
+
+    @Test func deletedAnchorMovesToASurvivingSelectedItem() {
+        let a = UUID(), b = UUID(), c = UUID()
+        let result = GallerySelectionState(selection: [a, b, c], anchorId: c, selectedId: c).removing([c])
+        #expect(result.anchorId.map { [a, b].contains($0) } == true)
     }
 
     @Test func externalPreviewClearDropsWholeSelection() {

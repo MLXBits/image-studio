@@ -6,12 +6,14 @@ struct GallerySelectionState: Equatable {
     var anchorId: UUID?
     var selectedId: UUID?
 
-    /// Drops every deleted id from the selection, and clears the anchor and the
-    /// previewed item if either was deleted.
+    /// Drops every deleted id from the selection and clears the previewed item if
+    /// it was deleted. A deleted anchor moves to a surviving selected item, as a
+    /// Cmd-click deselect does, so the cull keys still have a target.
     func removing(_ deletedIds: Set<UUID>) -> Self {
-        Self(
-            selection: selection.subtracting(deletedIds),
-            anchorId: anchorId.flatMap { deletedIds.contains($0) ? nil : $0 },
+        let remaining = selection.subtracting(deletedIds)
+        return Self(
+            selection: remaining,
+            anchorId: anchorId.flatMap { deletedIds.contains($0) ? remaining.first : $0 },
             selectedId: selectedId.flatMap { deletedIds.contains($0) ? nil : $0 }
         )
     }
