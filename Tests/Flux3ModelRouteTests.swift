@@ -168,4 +168,38 @@ struct Flux3ModelRouteTests {
         #expect(FluxModelVariant.flux3Klein.family == .flux)
         #expect(FluxModelVariant.flux3KleinBase.family == .flux)
     }
+
+    // MARK: - Which routes wait for the --base-model probe
+
+    /// FLUX 3 routes pass --base-model unconditionally and the bare registry name never
+    /// passes it, so neither waits on the probe after launch or an interpreter change.
+    @Test func routesThatNeverAskTheProbeDoNotWaitOnIt() {
+        let s = settings()
+        #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux2Klein9B, quantize: 0), settings: s).needsBaseModelProbe)
+        #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux3Klein, quantize: 8), settings: s).needsBaseModelProbe)
+        #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux3KleinBase, quantize: 0), settings: s).needsBaseModelProbe)
+        let flux3Custom = FluxJob(model: .custom, customModelRepo: "org/tune", customBaseModel: .flux3Klein)
+        #expect(!FluxRunnerSpec.modelRoute(job: flux3Custom, settings: s).needsBaseModelProbe)
+    }
+
+    @Test func routesGatedByTheProbeWaitOnIt() throws {
+        let s = settings()
+        let flux2Custom = FluxJob(model: .custom, customModelRepo: "org/tune", customBaseModel: .flux2Klein4B)
+        #expect(FluxRunnerSpec.modelRoute(job: flux2Custom, settings: s).needsBaseModelProbe)
+        // A pre-quantized klein repo has no baseKey, so it's probe-gated.
+        #expect(FluxRunnerSpec.modelRoute(job: job(model: .flux2Klein9B, quantize: 8), settings: s).needsBaseModelProbe)
+
+        // Locally saved weights.
+        let cache = FakeRuntime.tempDirectory("route")
+        s.mfluxCacheDir = cache.path
+        let saved = FluxModelVariant.flux2KleinBase4B.savedModelPath(quantize: 4, in: s.effectiveMfluxCacheDir)
+        try FileManager.default.createDirectory(at: saved, withIntermediateDirectories: true)
+        try Data().write(to: saved.appendingPathComponent("model.safetensors"))
+        #expect(FluxRunnerSpec.modelRoute(job: job(model: .flux2KleinBase4B, quantize: 4), settings: s).needsBaseModelProbe)
+
+        var defaults = s.defaults(for: .flux2Klein4B)
+        defaults.modelRepoOverride = "org/klein-override"
+        s.updateDefaults(defaults, for: .flux2Klein4B)
+        #expect(FluxRunnerSpec.modelRoute(job: job(model: .flux2Klein4B, quantize: 0), settings: s).needsBaseModelProbe)
+    }
 }

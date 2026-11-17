@@ -32,11 +32,14 @@ struct MfluxProbesTests {
 
     /// A Flux job awaits the probe before its arguments are built, and the builder
     /// only reads the cache: cold, it leaves the flag off rather than spawn Python.
-    @Test func fluxArgsUseTheProbeTheJobAwaited() async throws {
+    /// The App Store flavor ignores the Custom Python (spec §3), so the fake interpreter
+    /// can't be installed there; CI tests the DMG scheme.
+    @Test(.enabled(if: !BuildFlavor.isAppStore))
+    func fluxArgsUseTheProbeTheJobAwaited() async throws {
         let settings = AppSettings()
         settings.suspendPersistence()
         settings.customPythonPath = try interpreter(printing: "1")
-        let job = FluxJob()
+        let job = FluxJob(model: .custom, customModelRepo: "org/fine-tune")
         #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, settings: settings).isEmpty)
         await FluxRunnerSpec.prepareArgs(job: job, settings: settings)
         #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, settings: settings)
@@ -171,6 +174,35 @@ struct ProbeCacheTests {
         }
         #expect(probe.runCount == 1)
         #expect(cache.cached("/py") == 1)
+    }
+
+    /// A stopped job stops waiting at once, while the shared probe runs on and
+    /// still answers, and caches for, the callers that remain.
+    @Test func aCancelledWaiterLeavesAtOnceAndTheProbeRunsOn() async throws {
+        let cache = ProbeCache<Int>()
+        let probe = GatedProbe()
+        let stopped = Task { await cache.value(for: "/py") { probe.run() } }
+        try await probe.waitForRuns(1)
+        let staying = Task { await cache.value(for: "/py") { probe.run() } }
+        stopped.cancel()
+        #expect(await stopped.value == nil)
+        #expect(cache.cached("/py") == nil)
+        probe.release(1)
+        #expect(await staying.value == 1)
+        #expect(probe.runCount == 1)
+        #expect(cache.cached("/py") == 1)
+    }
+
+    /// Cancelled before it starts waiting: returns nil without hanging.
+    @Test func anAlreadyCancelledWaiterReturnsAtOnce() async {
+        let cache = ProbeCache<Int>()
+        let probe = GatedProbe()
+        let waiter = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            return await cache.value(for: "/py") { probe.run() }
+        }
+        #expect(await waiter.value == nil)
+        probe.release(1)
     }
 
     @Test func eachInterpreterGetsItsOwnProbe() async {

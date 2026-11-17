@@ -13,6 +13,49 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
         var inFlight: [String: Task<Value, Never>] = [:]
     }
 
+    /// One wait on a shared probe: resumed by the probe's answer or by the
+    /// waiter's cancellation, whichever comes first.
+    private enum Wait {
+        case pending
+        case waiting(CheckedContinuation<Value?, Never>)
+        case finished
+    }
+
+    /// `task.value`, or nil as soon as the calling task is cancelled. Awaiting an
+    /// unstructured task's value directly ignores the waiter's cancellation, so a
+    /// stopped job would sit until the probe ends. The task itself is not
+    /// cancelled: other callers may still be waiting on it.
+    private static func waitCancellably(for task: Task<Value, Never>) async -> Value? {
+        let wait = OSAllocatedUnfairLock(initialState: Wait.pending)
+        // Takes the continuation exactly once; later calls find `.finished` and do nothing.
+        let finish: @Sendable (Value?) -> Void = { value in
+            let continuation: CheckedContinuation<Value?, Never>? = wait.withLock { state in
+                defer { state = .finished }
+                if case let .waiting(continuation) = state {
+                    return continuation
+                }
+                return nil
+            }
+            continuation?.resume(returning: value)
+        }
+        return await withTaskCancellationHandler {
+            await withCheckedContinuation { continuation in
+                let cancelledAlready: Bool = wait.withLock {
+                    guard case .pending = $0 else { return true }
+                    $0 = .waiting(continuation)
+                    return false
+                }
+                if cancelledAlready {
+                    continuation.resume(returning: nil)
+                    return
+                }
+                Task.detached { await finish(task.value) }
+            }
+        } onCancel: {
+            finish(nil)
+        }
+    }
+
     private let state = OSAllocatedUnfairLock(initialState: State())
 
     /// The cached answer for `key`, or nil when it hasn't been asked yet.
@@ -37,7 +80,9 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
     /// Runs `compute` on a background task and suspends until it answers.
     /// Concurrent callers for one key share a single run, so one interpreter
     /// gets one probe process however many jobs and warm-ups ask at once.
-    func value(for key: String, compute: @escaping @Sendable () -> Value) async -> Value {
+    /// A cancelled caller stops waiting at once and gets nil; the probe runs on
+    /// for the other callers and still caches its answer.
+    func value(for key: String, compute: @escaping @Sendable () -> Value) async -> Value? {
         if let hit = cached(key) {
             return hit
         }
@@ -59,7 +104,7 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
             s.inFlight[key] = task
             return task
         }
-        return await task.value
+        return await Self.waitCancellably(for: task)
     }
 
     func remove(_ key: String) {
@@ -148,10 +193,11 @@ nonisolated enum MfluxProbes {
     /// this answers exactly what the gate needs — whether sending the flag would be rejected.
     /// Cached per interpreter like ``supportsPidDecode(python:)``: one process spawn per
     /// interpreter per launch. The probe imports mflux (seconds), so it runs on a background
-    /// task; concurrent callers for one interpreter share that one run.
+    /// task; concurrent callers for one interpreter share that one run. A cancelled caller
+    /// stops waiting at once and gets false, which isn't cached.
     static func supportsBaseModel(python: String?) async -> Bool {
         guard let python else { return false }
-        return await baseModelCache.value(for: python) {
+        let supported = await baseModelCache.value(for: python) {
             runProbe(python: python, code: """
             import sys
             ok = False
@@ -164,6 +210,7 @@ nonisolated enum MfluxProbes {
             sys.stdout.write("1" if ok else "0")
             """) == "1"
         }
+        return supported ?? false
     }
 
     /// ``supportsBaseModel(python:)``'s cached answer, or nil until that probe has
