@@ -10,7 +10,7 @@ struct WarmDriverEligibilityTests {
         settings.suspendPersistence()
         let ctx = JobRunContext(
             seed: 1, outputFile: "/tmp/out.png",
-            stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil, python: nil
+            stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil, python: nil, baseModelSupported: nil
         )
         return S.driverRequest(job: job, ctx: ctx, settings: settings)
     }

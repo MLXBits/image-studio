@@ -83,8 +83,10 @@ protocol JobRunnerSpec {
     /// Awaited just before ``buildArgs(job:ctx:settings:)`` on the one-shot CLI path, for work that
     /// must not run on the main actor there (Flux awaits its `--base-model` probe), keyed on the
     /// interpreter captured at run start (`python`) so the probe and the flag it gates key off the
-    /// same interpreter. Default: nothing.
-    static func prepareArgs(job: Job, settings: AppSettings, python: String?) async
+    /// same interpreter. Returns the capability answer (Flux's base-model support), stored on the
+    /// context so the builder uses the awaited result rather than re-reading a cache that may have
+    /// been invalidated while the probe ran. Default: nil (no capability probe).
+    static func prepareArgs(job: Job, settings: AppSettings, python: String?) async -> Bool?
     /// Whether a tqdm total belongs to this job's denoise loop (rejects other bars,
     /// e.g. weight-download progress).
     static func acceptsProgressTotal(_ total: Int, job: Job) -> Bool
@@ -120,7 +122,9 @@ extension JobRunnerSpec {
         nil
     }
 
-    static func prepareArgs(job _: Job, settings _: AppSettings, python _: String?) async {}
+    static func prepareArgs(job _: Job, settings _: AppSettings, python _: String?) async -> Bool? {
+        nil
+    }
 
     static func willRunLocally(job _: Job) {}
 }
@@ -159,6 +163,10 @@ struct JobRunContext {
     /// the `--base-model` probe, and the flag all key off the same one even if the
     /// Custom Python changes while the job is in flight. Defaults to nil for tests.
     let python: String?
+    /// The base-model probe answer captured by ``JobRunnerSpec/prepareArgs(job:settings:python:)``,
+    /// so ``JobRunnerSpec/buildArgs(job:ctx:settings:)`` uses the answer the run awaited rather than
+    /// re-reading a cache that may have been invalidated while the probe was in flight.
+    var baseModelSupported: Bool?
 }
 
 // MARK: - JobRunner
@@ -366,9 +374,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
         // Capture the mflux interpreter once so the command, the `--base-model` probe, and the
         // flag key off the same one even if the Custom Python changes while the job is in flight.
         let python = try? settings.toolchain.mfluxInterpreter()
-        let ctx = JobRunContext(
+        var ctx = JobRunContext(
             seed: effectiveSeed, outputFile: outputTemplate,
-            stepwiseDir: stepDir, promptFile: promptFile, python: python
+            stepwiseDir: stepDir, promptFile: promptFile, python: python, baseModelSupported: nil
         )
 
         // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server and its spec can build the graph, generate there
@@ -461,7 +469,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         }
 
-        await Spec.prepareArgs(job: job, settings: settings, python: ctx.python)
+        // Capture the awaited answer on the context so buildArgs uses it directly, not a
+        // cache that a probe reset during the wait may have invalidated.
+        ctx.baseModelSupported = await Spec.prepareArgs(job: job, settings: settings, python: ctx.python)
         // cancel() may have cancelled runTask during an earlier await that ignores it (e.g. a save's output tail).
         if Task.isCancelled {
             finishJob(job, status: .cancelled, stepDir: stepDir)

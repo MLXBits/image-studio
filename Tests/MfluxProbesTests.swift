@@ -30,10 +30,10 @@ struct MfluxProbesTests {
         #expect(MfluxProbes.cachedSupportsBaseModel(python: nil) == false)
     }
 
-    /// A Flux job awaits the probe before its arguments are built, and the builder
-    /// only reads the cache: cold, it leaves the flag off rather than spawn Python.
-    /// The App Store flavor ignores the Custom Python (spec §3), so the fake interpreter
-    /// can't be installed there; CI tests the DMG scheme.
+    /// A Flux job awaits the probe before its arguments are built and uses the answer it got
+    /// directly: with no answer yet (nil) it leaves the flag off, and once the run captured the
+    /// answer the builder passes it through. The App Store flavor ignores the Custom Python
+    /// (spec §3), so the fake interpreter can't be installed there; CI tests the DMG scheme.
     @Test(.enabled(if: !BuildFlavor.isAppStore))
     func fluxArgsUseTheProbeTheJobAwaited() async throws {
         let settings = AppSettings()
@@ -41,9 +41,10 @@ struct MfluxProbesTests {
         let python = try interpreter(printing: "1")
         settings.customPythonPath = python
         let job = FluxJob(model: .custom, customModelRepo: "org/fine-tune")
-        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, python: python).isEmpty)
-        await FluxRunnerSpec.prepareArgs(job: job, settings: settings, python: python)
-        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, python: python)
+        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, baseModelSupported: nil).isEmpty)
+        let supported = await FluxRunnerSpec.prepareArgs(job: job, settings: settings, python: python)
+        #expect(supported == true)
+        #expect(FluxRunnerSpec.baseModelArgs(base: .flux2Klein9B, baseModelSupported: supported)
             == ["--base-model", FluxModelVariant.flux2Klein9B.mfluxModelID])
     }
 
