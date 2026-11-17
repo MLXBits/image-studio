@@ -281,9 +281,15 @@ struct ContentView: View {
             onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
+            onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
+            onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
+            onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
+            onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
+            onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
+            onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
             onUpscale: { paths in promptUpscale(paths: paths) },
-            onSelectBoard: { name in params.board = name },
+            onSelectBoard: setActiveBoard,
             onClearPreview: clearPreview,
             onCompare: { select, candidate in
                 withAnimation(.easeInOut(duration: 0.2)) {
@@ -1043,20 +1049,47 @@ struct ContentView: View {
         }
     }
 
+    /// Routes a gallery image to the active family's source-image input: the img2img
+    /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Qwen-Image 2.1).
+    /// Families without one (`ModelFamily.acceptsSourceImage`) ignore it. Paths go
+    /// through `settings.adoptSourceImage(_:)` like the panels' own drop handlers.
     private func useInImg2Img(_ path: String) {
-        // Qwen has no img2img: the image becomes the next edit reference.
-        if params.modelFamily == .qwen21 {
+        switch params.modelFamily {
+        case .flux:
+            if params.isEditMode {
+                if !params.editImagePaths.contains(path) {
+                    params.editImagePaths.append(path)
+                }
+            } else {
+                params.imagePath = settings.adoptSourceImage(path)
+                params.adoptResolvedPromptForImg2Img(at: path)
+            }
+        case .krea2:
+            krea2Params.imagePath = settings.adoptSourceImage(path)
+            krea2Params.adoptResolvedPromptForImg2Img(at: path)
+        case .zimage:
+            zimageParams.imagePath = settings.adoptSourceImage(path)
+            zimageParams.adoptResolvedPromptForImg2Img(at: path)
+        case .qwen21:
+            // Qwen has no img2img: the image becomes the next edit reference.
             qwen21Params.isEditMode = true
             if !qwen21Params.editImagePaths.contains(path), qwen21Params.editImagePaths.count < Qwen21Job.maxReferences {
                 qwen21Params.editImagePaths.append(path)
             }
-        } else if params.isEditMode {
-            if !params.editImagePaths.contains(path) {
-                params.editImagePaths.append(path)
-            }
-        } else {
-            params.imagePath = path
-            params.adoptResolvedPromptForImg2Img(at: path)
+        case .ideogram4, .seedvr2:
+            break
+        }
+    }
+
+    /// Puts a new group's name on the active family's board.
+    private func setActiveBoard(_ name: String) {
+        switch params.modelFamily {
+        case .flux: params.board = name
+        case .ideogram4: ideogramParams.board = name
+        case .krea2: krea2Params.board = name
+        case .zimage: zimageParams.board = name
+        case .qwen21: qwen21Params.board = name
+        case .seedvr2: break
         }
     }
 

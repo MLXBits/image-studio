@@ -13,6 +13,12 @@ struct GenerationGalleryView: View {
     let onApplySettings: (GenerationMetadata) -> Void
     let onRemixIdeogram: (Ideogram4Metadata) -> Void
     let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
+    var onRemixKrea2: ((Krea2Metadata) -> Void)?
+    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
+    var onRemixZImage: ((ZImageMetadata) -> Void)?
+    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
+    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
+    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
     let onUseInImg2Img: (String) -> Void
     var onUpscale: (([String]) -> Void)?
     var onSelectBoard: ((String) -> Void)?
@@ -167,6 +173,12 @@ struct GenerationGalleryView: View {
                     onApplySettings: { _, meta in onApplySettings(meta) },
                     onRemixIdeogram: onRemixIdeogram,
                     onApplyIdeogramSettings: { _, meta in onApplyIdeogramSettings(meta) },
+                    onRemixKrea2: onRemixKrea2,
+                    onApplyKrea2Settings: onApplyKrea2Settings,
+                    onRemixZImage: onRemixZImage,
+                    onApplyZImageSettings: onApplyZImageSettings,
+                    onRemixQwen21: onRemixQwen21,
+                    onApplyQwen21Settings: onApplyQwen21Settings,
                     onUseInImg2Img: onUseInImg2Img,
                     onUpscale: { path in
                         // Upscale the whole selection when the right-clicked item is

@@ -82,10 +82,12 @@ struct GalleryItemDetailView: View {
                     Divider()
                     Button("Apply Settings") { onApplyKrea2Settings?(correctedKrea2(meta)) }
                     Button("Remix (new seed)") { onRemixKrea2?(meta) }
+                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
                 } else if let meta = item.zimageMetadata {
                     Divider()
                     Button("Apply Settings") { onApplyZImageSettings?(correctedZImage(meta)) }
                     Button("Remix (new seed)") { onRemixZImage?(meta) }
+                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
                 } else if let meta = item.qwen21Metadata {
                     Divider()
                     Button("Apply Settings") { onApplyQwen21Settings?(correctedQwen21(meta)) }
@@ -116,8 +118,7 @@ struct GalleryItemDetailView: View {
                 info: info,
                 onApplySettings: applySettingsAction,
                 onRemix: remixAction,
-                onUseInImg2Img: item.ideogram4Metadata == nil && item.krea2Metadata == nil
-                    && item.zimageMetadata == nil && item.qwen21Metadata == nil
+                onUseInImg2Img: item.modelFamily.acceptsSourceImage && item.qwen21Metadata == nil
                     ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
