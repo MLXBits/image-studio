@@ -668,8 +668,15 @@ struct GenerationGalleryView: View {
         let rejects = allRejects
         guard !rejects.isEmpty else { return }
         let ids = Set(rejects.map(\.id))
-        if let anchorId = anchorItemId, ids.contains(anchorId) {
-            clearSelection(nextItem: nil)
+        let pruned = GallerySelectionState(
+            selection: selection,
+            anchorId: anchorItemId,
+            selectedId: selectedItem?.id
+        ).removing(ids)
+        selection = pruned.selection
+        anchorItemId = pruned.anchorId
+        if pruned.selectedId == nil {
+            selectedItem = nil
         }
         gallery.deleteItems(rejects, outputDir: settings.outputDir)
     }

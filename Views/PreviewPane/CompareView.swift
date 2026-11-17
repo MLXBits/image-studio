@@ -36,6 +36,7 @@ struct CompareView: View {
     @State private var offset: CGSize = .zero
     @State private var panBase: CGSize?
     @State private var selectFrame: CGRect = .zero
+    @State private var viewFrame: CGRect = .zero
     @State private var keyMonitor: Any?
     @State private var scrollMonitor: Any?
     @State private var hostWindow = WindowRef()
@@ -71,6 +72,13 @@ struct CompareView: View {
             .padding(12)
         }
         .background { WindowAccessor { hostWindow.window = $0 } }
+        .background {
+            GeometryReader { geo in
+                Color.clear
+                    .onAppear { viewFrame = geo.frame(in: .global) }
+                    .onChange(of: geo.frame(in: .global)) { _, new in viewFrame = new }
+            }
+        }
         .onAppear {
             loadSelect()
             loadCandidate()
@@ -352,6 +360,8 @@ struct CompareView: View {
     private func installScrollMonitor() {
         guard scrollMonitor == nil else { return }
         scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { event in
+            // Only act on (and consume) events over this view; everything else passes through.
+            guard EventLocationHitTest.globalPoint(of: event, inside: viewFrame) != nil else { return event }
             let factor: CGFloat
             if event.type == .magnify {
                 factor = 1 + event.magnification

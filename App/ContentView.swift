@@ -73,6 +73,7 @@ struct ContentView: View {
     /// `applyDefaults` just restored. Consumed exactly once.
     @State private var suppressModelResetOnRestore = false
     @State private var fullSizeImage: NSImage?
+    @State private var fullSizeLoadTask: Task<Void, Never>?
     /// Takes the window into real full-screen while `fullSizeImage` is up, so the
     /// viewer owns the whole screen and leaves no titlebar to drag.
     @State private var viewerFullScreen = ViewerFullScreenController()
@@ -598,15 +599,16 @@ struct ContentView: View {
                 return
             }
             previewState = .galleryItem(item)
+            fullSizeLoadTask?.cancel()
+            fullSizeLoadTask = nil
             if fullSizeImage != nil {
                 let url = item.url
-                Task.detached(priority: .userInitiated) {
-                    let img = NSImage(contentsOf: url)
-                    await MainActor.run {
-                        if let img {
-                            self.fullSizeImage = img
-                        }
-                    }
+                fullSizeLoadTask = Task {
+                    let img = await Task.detached(priority: .userInitiated) {
+                        NSImage(contentsOf: url)
+                    }.value
+                    guard !Task.isCancelled, selectedGalleryItem?.id == item.id, let img else { return }
+                    fullSizeImage = img
                 }
             }
         }
