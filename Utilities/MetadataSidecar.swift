@@ -15,7 +15,7 @@ nonisolated struct Ideogram4Metadata: Codable {
             height: job.height,
             quantize: job.quantize,
             lowRam: job.lowRam,
-            loras: job.loras.isEmpty ? nil : job.loras,
+            loras: job.loras,
             board: job.board.isEmpty ? nil : job.board,
             pidDecode: job.pidDecode ? true : nil,
             pidDegradeSigma: job.pidDegradeSigma > 0 ? job.pidDegradeSigma : nil,
@@ -37,7 +37,8 @@ nonisolated struct Ideogram4Metadata: Codable {
     var height: Int
     var quantize: Int
     var lowRam: Bool
-    // Optional so existing sidecars (written before LoRA support) still decode.
+    /// The LoRA stack, written even when empty so a replay clears the form's
+    /// stack. `nil` means a sidecar from before the field: replay keeps the form's.
     var loras: [LoraEntry]?
     var board: String?
     /// Whether PiD decoding produced this image (so the file is 4x the recorded
@@ -130,7 +131,7 @@ nonisolated struct Krea2Metadata: Codable {
             height: job.height,
             quantize: job.quantize,
             lowRam: job.lowRam ? true : nil,
-            loras: job.loras.isEmpty ? nil : job.loras,
+            loras: job.loras,
             imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
             imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
             board: job.board.isEmpty ? nil : job.board,
@@ -156,6 +157,8 @@ nonisolated struct Krea2Metadata: Codable {
     /// Whether the run streamed blocks with `--low-ram`. Written only when true,
     /// so sidecars from before the field and default runs stay unchanged.
     var lowRam: Bool?
+    /// The LoRA stack, written even when empty so a replay clears the form's
+    /// stack. `nil` means a sidecar from before the field: replay keeps the form's.
     var loras: [LoraEntry]?
     var imagePath: String?
     var imageStrength: Double?
@@ -188,7 +191,7 @@ nonisolated struct ZImageMetadata: Codable {
             width: job.width,
             height: job.height,
             quantize: job.quantize,
-            loras: job.loras.isEmpty ? nil : job.loras,
+            loras: job.loras,
             imagePath: job.imagePath.isEmpty ? nil : job.imagePath,
             imageStrength: job.imagePath.isEmpty ? nil : job.imageStrength,
             board: job.board.isEmpty ? nil : job.board,
@@ -214,6 +217,8 @@ nonisolated struct ZImageMetadata: Codable {
     var width: Int
     var height: Int
     var quantize: Int
+    /// The LoRA stack, written even when empty so a replay clears the form's
+    /// stack. `nil` means a sidecar from before the field: replay keeps the form's.
     var loras: [LoraEntry]?
     var imagePath: String?
     var imageStrength: Double?

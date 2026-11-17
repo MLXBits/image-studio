@@ -149,6 +149,7 @@
 		672F81EFC0F5D7D6548681FD /* BackendModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */; };
 		678BDEA59E372B55C266E36A /* ModelDownloadStatusRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CA3C504DBC0F7DFB47DB2A1 /* ModelDownloadStatusRow.swift */; };
 		67E20D03F48F76817A738C86 /* ModelDefaultsView+Forms.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318C96A132452AB2AC3F26D5 /* ModelDefaultsView+Forms.swift */; };
+		6A946D9DEA11B25D2F4B657A /* SidecarLoraReplayTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C6B70A77B33E62930C42BF6 /* SidecarLoraReplayTests.swift */; };
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6BC9348546C9D8D5C0E2A35C /* SandboxFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */; };
 		6D4A9B7B0C1E714BF6E7E65B /* ModelsFolderStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DFA84D78472C9A1FD765C0 /* ModelsFolderStepView.swift */; };
@@ -459,6 +460,7 @@
 		6BE742047832D58C8A2B4E46 /* CompletedImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompletedImageView.swift; sourceTree = "<group>"; };
 		6C1675CADC482D3435550C71 /* PromptBatchSplitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptBatchSplitter.swift; sourceTree = "<group>"; };
 		6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+Krea2Form.swift"; sourceTree = "<group>"; };
+		6C6B70A77B33E62930C42BF6 /* SidecarLoraReplayTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SidecarLoraReplayTests.swift; sourceTree = "<group>"; };
 		6CB12782BB6D8B424591F3DE /* GalleryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryStore.swift; sourceTree = "<group>"; };
 		6CD54E0519CA91161F18FF31 /* BatchMenuButton.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchMenuButton.swift; sourceTree = "<group>"; };
 		6DEA6F6C0B8422BD9F34EAAA /* GallerySelectionPruningTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GallerySelectionPruningTests.swift; sourceTree = "<group>"; };
@@ -847,6 +849,7 @@
 				184D74615C4C4AD52CD2F287 /* RuntimeSelfTestTests.swift */,
 				1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */,
 				2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */,
+				6C6B70A77B33E62930C42BF6 /* SidecarLoraReplayTests.swift */,
 				57F18B41EFEC1520D4B0F068 /* SourceImageFamilyTests.swift */,
 				B5ED9C9945ED26673FBD294B /* SourceImageImportTests.swift */,
 				E29C4BD5FBC92A1C2C0C6DE9 /* StepClampTests.swift */,
@@ -1594,6 +1597,7 @@
 				49A4877C8A6ACAF07EAAF195 /* RuntimeSelfTestTests.swift in Sources */,
 				45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */,
 				59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */,
+				6A946D9DEA11B25D2F4B657A /* SidecarLoraReplayTests.swift in Sources */,
 				F5D3E021802B505D4BF9B35A /* SourceImageFamilyTests.swift in Sources */,
 				9A85F61E40284EC64E989700 /* SourceImageImportTests.swift in Sources */,
 				EF0306EBB67FC93520FA8C03 /* StepClampTests.swift in Sources */,
