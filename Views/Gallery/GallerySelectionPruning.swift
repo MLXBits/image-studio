@@ -15,4 +15,14 @@ struct GallerySelectionState: Equatable {
             selectedId: selectedId.flatMap { deletedIds.contains($0) ? nil : $0 }
         )
     }
+
+    /// The state after the previewed item is cleared. An external clear (the
+    /// pane's ✕, Escape, a restore to the active job) drops the whole selection
+    /// so no highlighted cell lingers. A clear that a deletion caused keeps the
+    /// surviving selection, because `removing(_:)` has already pruned it.
+    func previewCleared(byDeletion: Bool) -> Self {
+        byDeletion
+            ? Self(selection: selection, anchorId: anchorId, selectedId: nil)
+            : Self(selection: [], anchorId: nil, selectedId: nil)
+    }
 }

@@ -41,6 +41,9 @@ struct GenerationGalleryView: View {
     // anchorItemId is the "preview" item shown in the right pane.
     @State private var selection: Set<UUID> = []
     @State private var anchorItemId: UUID?
+    /// Set just before a deletion clears the preview, so the preview observer
+    /// keeps the surviving selection instead of treating it as an external clear.
+    @State private var previewClearedByDeletion = false
     // Transient confirmation toast (e.g. after stripping metadata).
     @State private var statusMessage: String?
     @State private var statusDismissTask: Task<Void, Never>?
@@ -251,11 +254,14 @@ struct GenerationGalleryView: View {
         .onAppear { loadCollapsedBoards() }
         .onChange(of: selectedItem?.id) { _, newId in
             guard let id = newId else {
-                // Preview was cleared externally (the pane's ✕, Escape, or a restore to the
-                // active job). Drop our own selection too so the highlighted cell doesn't
-                // linger out of sync with the now-empty preview pane.
-                selection = []
-                anchorItemId = nil
+                let cleared = GallerySelectionState(
+                    selection: selection,
+                    anchorId: anchorItemId,
+                    selectedId: nil
+                ).previewCleared(byDeletion: previewClearedByDeletion)
+                previewClearedByDeletion = false
+                selection = cleared.selection
+                anchorItemId = cleared.anchorId
                 return
             }
             guard anchorItemId != id else { return }
@@ -675,7 +681,9 @@ struct GenerationGalleryView: View {
         ).removing(ids)
         selection = pruned.selection
         anchorItemId = pruned.anchorId
-        if pruned.selectedId == nil {
+        if pruned.selectedId == nil, selectedItem != nil {
+            // The preview observer must keep the surviving selection for this clear.
+            previewClearedByDeletion = true
             selectedItem = nil
         }
         gallery.deleteItems(rejects, outputDir: settings.outputDir)
