@@ -106,6 +106,10 @@ nonisolated extension TextChunkDecoder {
             process?.terminationHandler = { _ in
                 DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
                     pipe.fileHandleForReading.readabilityHandler = nil
+                    // flush() clears the tail, so EOF and this backstop can't both emit it.
+                    if let rest = decoder.withLock({ $0.flush() }) {
+                        continuation.yield(rest)
+                    }
                     continuation.finish()
                 }
             }

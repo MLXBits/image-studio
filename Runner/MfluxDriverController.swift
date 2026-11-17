@@ -481,7 +481,8 @@ final class MfluxDriverController {
         availability = .unavailable(reason)
         stdinHandle = nil
         resolveHandshake(false, reason: reason)
-        finishRun?(.failed(reason))
+        // A write that fails while a user Stop is in flight is the Stop, not a failure.
+        finishRun?(isStopping ? .cancelled : .failed(reason))
         process?.terminate()
     }
 }

@@ -83,4 +83,19 @@ struct TextChunkDecoderTests {
         var decoder = TextChunkDecoder()
         #expect(decoder.decode(Data([0x61, 0xFF, 0x62])) == "a\u{FFFD}b")
     }
+
+    @Test func streamEndingWithProcessEmitsTruncatedTailOnce() async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/printf")
+        process.arguments = ["a\\342\\200"] // "a" plus a truncated 3-byte sequence
+        let pipe = Pipe()
+        process.standardOutput = pipe
+        let chunks = TextChunkDecoder.stream(reading: pipe, endingWith: process)
+        try process.run()
+        var text = ""
+        for await chunk in chunks {
+            text += chunk
+        }
+        #expect(text == "a\u{FFFD}")
+    }
 }

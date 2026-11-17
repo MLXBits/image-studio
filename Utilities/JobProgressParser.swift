@@ -53,6 +53,12 @@ enum JobProgressParser {
         if line.contains("Fetching") || line.contains(" files") {
             return false
         }
+        // Shard and download bars may use the default "it" unit; judge the description before the counts.
+        if line.range(
+            of: #"^[^\d|]*(Downloading|Loading checkpoint shards|\bshards\b)"#, options: .regularExpression
+        ) != nil {
+            return false
+        }
         if line.range(of: #"\d\s*[kKMGT]?i?B/s"#, options: .regularExpression) != nil {
             return false
         }

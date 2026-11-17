@@ -51,4 +51,16 @@ struct JobProgressParserTests {
     @Test func rejectsNonBarCountLine() {
         #expect(JobProgressParser.parseStep(from: "LoRA (336/336 keys matched)") == nil)
     }
+
+    @Test func rejectsShardAndDownloadBarsWithIterationRate() {
+        #expect(JobProgressParser.parseStep(from: "Loading checkpoint shards: 1/2 [00:01<00:01, 1.2s/it]") == nil)
+        #expect(JobProgressParser.parseStep(from: "Downloading shards: 2/5 [00:10<00:15, 5.2s/it]") == nil)
+        #expect(JobProgressParser.parseStep(from: "Downloading (…)model.safetensors: 1/3 [00:01<00:02, 1.0s/it]") == nil)
+    }
+
+    @Test func keepsRealStepBarAfterDescription() {
+        let step = JobProgressParser.parseStep(from: "  25%|██▌       | 1/4 [00:01<00:03, 1.20s/it]")
+        #expect(step?.current == 1)
+        #expect(step?.total == 4)
+    }
 }
