@@ -22,6 +22,7 @@
 		0A0BB69B6C7981EC9CA95DE4 /* GallerySelectionPruning.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FE7E8BBF8DFAF7D3CD6B54 /* GallerySelectionPruning.swift */; };
 		0A632BF4F39783EFA3A94643 /* ScenarioPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */; };
 		0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */; };
+		0B0B5E6F7524A1F37E034E7C /* LineBuffer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5785B5BA251D96652537F70E /* LineBuffer.swift */; };
 		0BB3953DA1DD49FF37B3DBEB /* GenerationGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */; };
 		0C16B16763774DCD7712F5A1 /* IdeogramCaption.swift in Sources */ = {isa = PBXBuildFile; fileRef = 607FDAD831E19BE75C734220 /* IdeogramCaption.swift */; };
 		0C86899DFA5D1233EC720D27 /* GallerySearch.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9C9BA2D815A71C1489245DC8 /* GallerySearch.swift */; };
@@ -225,6 +226,7 @@
 		AE03750D6C07C31792F17ABA /* scenario_llm_driver.py in Resources */ = {isa = PBXBuildFile; fileRef = 79628AB5261A09BED858E668 /* scenario_llm_driver.py */; };
 		AEA333C40794A9E66A6ADE26 /* Qwen21ComfyGraphTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E189076704105D2F5B1DBC17 /* Qwen21ComfyGraphTests.swift */; };
 		AED653E3BC8E5A6D984E295D /* StorageSettingsRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 230A5E0F0E02CA6ED9B8976C /* StorageSettingsRows.swift */; };
+		AF0FAE9470BD4F6A32C14BDB /* LineBufferTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B37EACF553C8C7E29AAE62E1 /* LineBufferTests.swift */; };
 		B03C0AC9840CDD3F79D00434 /* ComfyProgressDecodeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */; };
 		B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
@@ -432,6 +434,7 @@
 		540284DBEC5FBB9FC0CBC4D9 /* StepsSeedRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StepsSeedRow.swift; sourceTree = "<group>"; };
 		54319FFDDA384384985FA769 /* AppSettingsProfileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsProfileTests.swift; sourceTree = "<group>"; };
 		5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionTests.swift; sourceTree = "<group>"; };
+		5785B5BA251D96652537F70E /* LineBuffer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineBuffer.swift; sourceTree = "<group>"; };
 		57926FDFB7BD2FF38C94E765 /* Ideogram4ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelState.swift; sourceTree = "<group>"; };
 		57F18B41EFEC1520D4B0F068 /* SourceImageFamilyTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceImageFamilyTests.swift; sourceTree = "<group>"; };
 		58375178C787708F4AAFF3EE /* TipJarStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TipJarStore.swift; sourceTree = "<group>"; };
@@ -550,6 +553,7 @@
 		B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyProgressDecodeTests.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
 		B374AB2E6CB6A08337918C29 /* ComfyUIClient+Discovery.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ComfyUIClient+Discovery.swift"; sourceTree = "<group>"; };
+		B37EACF553C8C7E29AAE62E1 /* LineBufferTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LineBufferTests.swift; sourceTree = "<group>"; };
 		B4ED4622A2079F5ED9546458 /* DimensionConstraints.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionConstraints.swift; sourceTree = "<group>"; };
 		B53824D8F5CACEF836DDE9FB /* ToolchainMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ToolchainMigrationTests.swift; sourceTree = "<group>"; };
 		B56696DB606934F0F85992CD /* ProfileActionPresenter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileActionPresenter.swift; sourceTree = "<group>"; };
@@ -669,6 +673,7 @@
 				50DCB8CA23D73F1BD0AAF97C /* ImagePasteboard.swift */,
 				FBF3A51D0D654A2A38BA493B /* JobProgressParser.swift */,
 				D923D32E0D737D888C711FE7 /* KeychainHelper.swift */,
+				5785B5BA251D96652537F70E /* LineBuffer.swift */,
 				4BE8D8821D022789E6524216 /* LoraBaseModelHeuristic.swift */,
 				529C1CDA0E09FB681D68CA6E /* MetadataSidecar.swift */,
 				620C7773AFC771C44901D728 /* MfluxProbes.swift */,
@@ -824,6 +829,7 @@
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
+				B37EACF553C8C7E29AAE62E1 /* LineBufferTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
 				AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */,
 				BFCD547F87990EC6D95E8676 /* LoraServerPresenceTests.swift */,
@@ -1410,6 +1416,7 @@
 				1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */,
 				C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */,
 				BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */,
+				0B0B5E6F7524A1F37E034E7C /* LineBuffer.swift in Sources */,
 				28A278E311B31F4464A171CC /* LogTextView.swift in Sources */,
 				CE720A2FCD4D53E50CBDF11D /* LoraBaseModelHeuristic.swift in Sources */,
 				548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */,
@@ -1570,6 +1577,7 @@
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
+				AF0FAE9470BD4F6A32C14BDB /* LineBufferTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,
 				2234E95356AF9A072B4D92E6 /* LoraRelocateTests.swift in Sources */,
 				D69795950E3AC63EA0834ED5 /* LoraServerPresenceTests.swift in Sources */,

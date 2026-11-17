@@ -24,22 +24,7 @@ enum RunnerSupport {
         process.standardOutput = pipe
         process.standardError = pipe
 
-        return AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+        return TextChunkDecoder.stream(reading: pipe, endingWith: process)
     }
 
     /// Images a completed job saved: each of `outputPaths` for a batch, else

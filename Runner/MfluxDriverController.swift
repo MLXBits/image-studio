@@ -24,17 +24,7 @@ final class MfluxDriverController {
     /// Combined chunk stream for one pipe (same pattern as
     /// ``RunnerSupport/outputStream(for:)`` but per-pipe).
     nonisolated private static func chunkStream(for pipe: Pipe) -> AsyncStream<String> {
-        AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-        }
+        TextChunkDecoder.stream(reading: pipe)
     }
 
     private(set) var availability: Availability = .unknown
@@ -474,6 +464,24 @@ final class MfluxDriverController {
 
     private func writeLine(_ data: Data) {
         guard let stdinHandle else { return }
-        try? stdinHandle.write(contentsOf: data + Data("\n".utf8))
+        do {
+            try stdinHandle.write(contentsOf: data + Data("\n".utf8))
+        } catch {
+            writeFailed(error)
+        }
+    }
+
+    /// The driver's stdin is gone (it died or closed the pipe). Logs the error,
+    /// marks the driver unavailable, fails the pending run instead of leaving it
+    /// to wait for an event that will never come, and terminates the process so
+    /// ``processDied(_:)`` clears the loaded-model state.
+    private func writeFailed(_ error: any Error) {
+        let reason = "Could not write to the warm driver: \(error.localizedDescription)"
+        onLog?(reason + "\n")
+        availability = .unavailable(reason)
+        stdinHandle = nil
+        resolveHandshake(false, reason: reason)
+        finishRun?(.failed(reason))
+        process?.terminate()
     }
 }

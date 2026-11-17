@@ -194,23 +194,7 @@ enum GemmaChatRunner {
         process.standardOutput = pipe
         process.standardError = pipe
 
-        let stream = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+        let stream = TextChunkDecoder.stream(reading: pipe, endingWith: process)
 
         try process.run()
 
