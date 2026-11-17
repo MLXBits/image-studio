@@ -66,12 +66,12 @@ struct ContentView: View {
     @State private var krea2Params = Krea2ParamsPanelState()
     @State private var zimageParams = ZImageParamsPanelState()
     @State private var qwen21Params = Qwen21ParamsPanelState()
-    /// Armed in `onAppear` when restoring the last-used model will change
-    /// `params.model` away from its initial default. Swallows the resulting
-    /// `onChange(of: params.model)` so the interactive "switch model → reset to
-    /// that model's defaults" path doesn't clobber the last-used LoRAs that
-    /// `applyDefaults` just restored. Consumed exactly once.
-    @State private var suppressModelResetOnRestore = false
+    /// Model-picker handlers whose next reset to defaults must be skipped,
+    /// because a programmatic change has just written the form itself. That
+    /// change is either the launch-time restore of the last-used model or a
+    /// gallery replay (Apply Settings / Remix). Each handler consumes its own
+    /// entry once. See ``ModelChangeObserver``.
+    @State private var suppressedModelObservers: Set<ModelChangeObserver> = []
     @State private var fullSizeImage: NSImage?
     @State private var fullSizeLoadTask: Task<Void, Never>?
     /// Takes the window into real full-screen while `fullSizeImage` is up, so the
@@ -188,12 +188,10 @@ struct ContentView: View {
             driverController.modelPickerChanged(
                 to: m == .custom ? params.customBaseModel.rawValue : m.rawValue
             )
-            // The launch-time restore in `onAppear` seeds `params.model` from
-            // `lastModel`, which fires this handler before any user interaction.
-            // Skip the defaults reset that one time so it doesn't overwrite the
-            // last-used LoRAs `applyDefaults` just restored.
-            if suppressModelResetOnRestore {
-                suppressModelResetOnRestore = false
+            // The launch-time restore and gallery replays write the form right
+            // after moving the picker. Skip the defaults reset for that change so it
+            // doesn't overwrite the restored or replayed LoRAs and settings.
+            if suppressedModelObservers.remove(.model) != nil {
                 return
             }
             if adoptFamilyForm(m) {
@@ -222,6 +220,9 @@ struct ContentView: View {
         .onChange(of: params.customBaseModel) { _, target in
             guard params.model == .custom else { return }
             driverController.modelPickerChanged(to: target.rawValue)
+            if suppressedModelObservers.remove(.customBase) != nil {
+                return
+            }
             _ = adoptFamilyForm(target)
             // Same as a direct switch: FLUX 3 targets can't take an init image.
             if target.isFlux3 {
@@ -233,8 +234,8 @@ struct ContentView: View {
     private var previewPaneView: some View {
         PreviewPaneView(
             state: previewState,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
+            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
@@ -278,8 +279,8 @@ struct ContentView: View {
         GenerationGalleryView(
             selectedItem: $selectedGalleryItem,
             modelFilter: params.modelFamily,
-            onRemix: { meta in params.apply(metadata: meta, newSeed: true); generate() },
-            onApplySettings: { meta in params.apply(metadata: meta, newSeed: false) },
+            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
+            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
             onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
             onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
             onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
@@ -365,7 +366,7 @@ struct ContentView: View {
                 // the model (and thus fire onChange). If lastModel already equals
                 // the initial default, onChange won't fire and the flag must stay
                 // down so the next genuine user switch isn't swallowed.
-                suppressModelResetOnRestore = settings.lastModel != params.model
+                suppressedModelObservers = settings.lastModel != params.model ? [.model] : []
                 params.applyDefaults(from: settings, library: loraLibrary)
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
                 krea2Params.applyDefaults(settings: settings, library: loraLibrary)
@@ -1146,6 +1147,11 @@ struct ContentView: View {
     /// image came from a custom checkpoint — so replaying a custom run restores the
     /// checkpoint, not the stock model of the same family.
     private func selectFamily(_ target: FluxModelVariant, customRepo: String?) {
+        let isCustom = customRepo.map { !$0.isEmpty } ?? false
+        armReplayGuard(
+            model: isCustom ? .custom : target,
+            customBase: isCustom ? target : params.customBaseModel
+        )
         if let repo = customRepo, !repo.isEmpty {
             params.customModelRepo = repo
             params.customBaseModel = target
@@ -1153,6 +1159,22 @@ struct ContentView: View {
         } else {
             params.model = target
         }
+    }
+
+    /// Arms the model-picker handlers that moving to `model`/`customBase` will
+    /// fire, so a replay's settings survive their reset to defaults.
+    private func armReplayGuard(model: FluxModelVariant, customBase: FluxModelVariant) {
+        suppressedModelObservers = ModelChangeObserver.firing(
+            from: (params.model, params.customBaseModel),
+            to: (model, customBase)
+        )
+    }
+
+    /// Replays a completed Flux generation's settings, which also moves the
+    /// picker to the model (or custom checkpoint) the image was made with.
+    private func applyFlux(_ meta: GenerationMetadata, newSeed: Bool) {
+        armReplayGuard(model: meta.model, customBase: meta.customBaseModel)
+        params.apply(metadata: meta, newSeed: newSeed)
     }
 
     /// Switches the params panel to the Krea 2 family and replays a completed
