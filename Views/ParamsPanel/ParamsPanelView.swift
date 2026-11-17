@@ -500,8 +500,7 @@ struct ParamsPanelView: View {
         }
         .imageDropTarget(extensions: Self.imageExtensions, isTargeted: $isImageDropTargeted) { paths in
             guard let path = paths.first else { return }
-            params.imagePath = settings.adoptSourceImage(path)
-            params.adoptResolvedPromptForImg2Img(at: path)
+            params.adoptImg2ImgSource(path, settings: settings)
         }
         .dropHighlight(isImageDropTargeted)
     }
@@ -610,7 +609,7 @@ struct ParamsPanelView: View {
 
     private func pasteImage() {
         if let path = imagePathFromPasteboard(tempPrefix: "pasted-image") {
-            params.imagePath = settings.adoptSourceImage(path)
+            params.adoptImg2ImgSource(path, settings: settings)
         }
     }
 

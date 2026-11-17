@@ -86,6 +86,13 @@ final class ParamsPanelState {
         lowRam = settings.resolvedDefaults(for: model).lowRam
     }
 
+    /// The one adoption path for a new img2img source (drop, paste, "Use in img2img"):
+    /// routes `path` through `settings.adoptSourceImage(_:)`, then adopts its resolved prompt.
+    func adoptImg2ImgSource(_ path: String, settings: AppSettings) {
+        imagePath = settings.adoptSourceImage(path)
+        adoptResolvedPromptForImg2Img(at: path)
+    }
+
     /// When a generated candidate becomes the img2img reference while the
     /// prompt box still holds wildcards, adopt that candidate's resolved
     /// prompt so refinement varies the exact base (and collapses to one job)
