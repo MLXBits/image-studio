@@ -179,6 +179,28 @@ extension ProfileScopedJobStore where PersistedJob: QueueListedJob {
     }
 }
 
+/// A job that can be cloned for one seed of a multi-seed batch.
+@MainActor
+protocol SeedSplittableJob: GeneratedJob {
+    /// A fresh pending job with a new id, running only `seed`, and every
+    /// user-settable field of this one. Runtime state starts empty.
+    func copy(seed: Int) -> Self
+}
+
+extension ProfileScopedJobStore where PersistedJob: SeedSplittableJob {
+    /// Replaces a finished multi-seed `batchJob` with one completed row per
+    /// seed that landed, each carrying the batch's full settings.
+    func expandBatchJob(_ batchJob: PersistedJob) {
+        guard let idx = jobs.firstIndex(where: { $0.id == batchJob.id }) else { return }
+        let expanded = zip(batchJob.seeds, batchJob.outputPaths).enumerated().map { i, pair in
+            let job = batchJob.copy(seed: pair.0)
+            job.markExpanded(from: batchJob, seed: pair.0, path: pair.1, index: i)
+            return job
+        }
+        jobs.replaceSubrange(idx ... idx, with: expanded)
+    }
+}
+
 extension GeneratedJob {
     /// Turns a fresh copy of `batch` into its `index`-th finished image when a
     /// multi-seed job is fanned out into one queue row per seed.
