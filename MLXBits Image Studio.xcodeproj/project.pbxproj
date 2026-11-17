@@ -157,6 +157,7 @@
 		6DF2369B67B863ABA6077324 /* ModelChangeObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9E9EFBB359CD527076035F /* ModelChangeObserverTests.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		702EEE1D7C98FD72E764AEED /* ComfyUIClient+SeedVR2.swift in Sources */ = {isa = PBXBuildFile; fileRef = C45C60EE72D93B2B1A0A0715 /* ComfyUIClient+SeedVR2.swift */; };
+		704C242597F296B8E42D0B22 /* JobProgressParserTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 750C9612D36CEE661C35EDC4 /* JobProgressParserTests.swift */; };
 		71F9837A68B44DE6AEDA078B /* LoraLibraryEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */; };
 		7393F86702BDE4B778BE0555 /* GrantStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74271FE93FEB78B95F9C92E7 /* GrantStore.swift */; };
 		7403E3D96480125AF43574E4 /* ProfileScopedJobStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6A3A688F02CE22044E67E770 /* ProfileScopedJobStoreTests.swift */; };
@@ -477,6 +478,7 @@
 		74271FE93FEB78B95F9C92E7 /* GrantStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GrantStore.swift; sourceTree = "<group>"; };
 		7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelState.swift; sourceTree = "<group>"; };
 		7487A27C328B569EF618E3BC /* BBoxEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxEditorView.swift; sourceTree = "<group>"; };
+		750C9612D36CEE661C35EDC4 /* JobProgressParserTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobProgressParserTests.swift; sourceTree = "<group>"; };
 		7599E6E55AF4226B1270C42D /* ModelChangeObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelChangeObserver.swift; sourceTree = "<group>"; };
 		75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryStore.swift; sourceTree = "<group>"; };
 		75FBF47724D9699F42B96FD1 /* ClipboardImageMonitor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ClipboardImageMonitor.swift; sourceTree = "<group>"; };
@@ -826,6 +828,7 @@
 				5454BD52BE3BB9A9EE3B0397 /* IdeogramCaptionTests.swift */,
 				444B5198F2FA32283F0BA8FC /* ImagePasteboardTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
+				750C9612D36CEE661C35EDC4 /* JobProgressParserTests.swift */,
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
@@ -1574,6 +1577,7 @@
 				AC61A877A6A5A38868CB9C50 /* IdeogramCaptionTests.swift in Sources */,
 				513E46C0C240CF89D450518F /* ImagePasteboardTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
+				704C242597F296B8E42D0B22 /* JobProgressParserTests.swift in Sources */,
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
