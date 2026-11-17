@@ -282,8 +282,13 @@ struct DimensionPickerView: View {
         Binding(
             get: { width },
             set: { newVal in
-                let h = effectiveRatio.map { constraints.snap(Double(newVal) / $0) } ?? height
-                applyDimensions(width: newVal, height: h, preserveRatio: effectiveRatio != nil)
+                if let ratio = effectiveRatio {
+                    let size = constraints.lockedSize(width: newVal, ratio: ratio)
+                        ?? (newVal, constraints.snap(Double(newVal) / ratio))
+                    applyDimensions(width: size.width, height: size.height, preserveRatio: true)
+                } else {
+                    applyDimensions(width: newVal, height: height, preserveRatio: false)
+                }
             }
         )
     }

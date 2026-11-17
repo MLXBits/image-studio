@@ -92,6 +92,7 @@ struct DimensionConstraintsTests {
     @Test func sliderEndsFollowTheAreaCap() {
         #expect(DimensionConstraints.qwen21.lockedLimits(ratio: 4.0 / 5.0) == (1824, 2272))
         #expect(DimensionConstraints.qwen21.lockedLimits(ratio: 21.0 / 9.0) == (3104, 1344))
+        #expect(DimensionConstraints.qwen21.lockedLimits(ratio: 9.0 / 21.0) == (1344, 3104))
         #expect(DimensionConstraints.krea2.lockedLimits(ratio: 1) == (4096, 4096))
         #expect(DimensionConstraints.legacy.lockedLimits(ratio: 16.0 / 9.0) == (2048, 1152))
         #expect(DimensionConstraints.qwen21.maxSide(other: 1024) == 4096)
@@ -105,13 +106,25 @@ struct DimensionConstraintsTests {
     @Test func lockedHeightReturnsToASizeTheWidthReached() throws {
         let ratio = 21.0 / 9.0
         let q = DimensionConstraints.qwen21
-        #expect(q.lockedSize(width: 3104, ratio: ratio) == (3104, 1344))
+        #expect(try #require(q.lockedSize(width: 3104, ratio: ratio)) == (3104, 1344))
         let down = try #require(q.lockedSize(height: 1312, ratio: ratio))
         #expect(down == (3072, 1312))
         #expect(q.lockedLimits(ratio: ratio).height >= 1344)
         let back = try #require(q.lockedSize(height: 1344, ratio: ratio))
         #expect(back == (3104, 1344))
         #expect(back.width * back.height <= 2048 * 2048)
+    }
+
+    /// Swapping a ratio swaps where the sliders end, for every preset and family:
+    /// 21:9 and 9:21 share one bounding size, turned on its side.
+    @Test func lockedLimitsMirrorWhenTheRatioSwaps() {
+        for (name, constraints) in Self.sets {
+            for (label, ratio) in Self.ratios {
+                let wide = constraints.lockedLimits(ratio: ratio)
+                let tall = constraints.lockedLimits(ratio: 1 / ratio)
+                #expect((wide.width, wide.height) == (tall.height, tall.width), "\(name) \(label)")
+            }
+        }
     }
 
     /// Targets past the settings bounds are clamped rather than trusted.
