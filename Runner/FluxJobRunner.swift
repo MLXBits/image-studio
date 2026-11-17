@@ -398,7 +398,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         // throws and fails the job — there is no silent t2i fallback.
         if hasRefs {
             for (index, path) in refs.enumerated() {
-                params[index == 0 ? "source_image" : "source_image_\(index)"] = try await client.uploadKreaImage(localPath: path)
+                params[index == 0 ? "source_image" : "source_image_\(index)"] = try await client.uploadImage(localPath: path)
             }
         }
         // Render once (seed 0, the Krea 2 convention): a stale param map throws here and fails the job

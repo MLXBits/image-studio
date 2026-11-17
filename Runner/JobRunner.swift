@@ -945,13 +945,19 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
                 // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
                 // canonical `_seed_{N}` name matching a local run's expandedPaths.
-                guard !outputs.isEmpty else { continue }
+                guard !outputs.isEmpty else {
+                    job.log += "Seed \(seed): ComfyUI returned no image, skipped\n"
+                    continue
+                }
                 let out = outputs[0]
                 let local = seedsToRun.count == 1
                     ? ctx.outputFile
                     : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: [seed])[0].path
                 guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
-                else { continue }
+                else {
+                    job.log += "Seed \(seed): download failed, skipped\n"
+                    continue
+                }
 
                 // Stamp the per-image window end only now that this seed's image has landed on disk, so the sidecar records real elapsed
                 // time (run-start -> first landing; previous landing -> next for batches), not ~0s.
