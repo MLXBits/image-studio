@@ -6,7 +6,7 @@ import Testing
 /// without turning into something that no longer looks like the ratio asked for.
 struct DimensionConstraintsTests {
     private static let sets: [(name: String, constraints: DimensionConstraints)] = [
-        ("legacy", .legacy), ("krea2", .krea2), ("zimage", .zimage), ("flux2", .flux2),
+        ("legacy", .legacy), ("krea2", .krea2), ("zimage", .zimage), ("qwen21", .qwen21), ("flux2", .flux2),
     ]
 
     private static let ratios: [(label: String, value: Double)] = [
@@ -75,6 +75,16 @@ struct DimensionConstraintsTests {
         let (w, h) = DimensionConstraints.flux2.dimensions(ratio: 21.0 / 9.0, megapixels: 8)
         #expect(w * h <= 2048 * 2048)
         #expect(w <= 4096)
+    }
+
+    /// Qwen-Image 2.1 is area-limited too: a wide 4 MP output runs past 2048 on the
+    /// long side, and an oversized square shrinks to the cap.
+    @Test func qwen21ReachesFourMegapixelsAtWideRatios() {
+        let (w, h) = DimensionConstraints.qwen21.dimensions(ratio: 16.0 / 9.0, megapixels: 4.19)
+        #expect(w > 2048)
+        #expect(w * h <= 2048 * 2048)
+        #expect(w % 32 == 0 && h % 32 == 0)
+        #expect(DimensionConstraints.qwen21.fit(width: 4096, height: 4096, preserveRatio: true) == (2048, 2048))
     }
 
     /// Targets past the settings bounds are clamped rather than trusted.
