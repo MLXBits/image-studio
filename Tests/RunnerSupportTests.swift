@@ -170,3 +170,36 @@ struct RunnerSupportTests {
             == "mflux reported success but wrote no image to /Lib/a.png")
     }
 }
+
+// MARK: - uniqueOutputPath
+
+struct OutputNamingTests {
+    private static func make(_ seed: Int?, taken: Set<String> = []) -> String {
+        RunnerSupport.uniqueOutputPath(dir: "/out", prefix: "image", timestamp: 100, seed: seed) { taken.contains($0) }
+    }
+
+    @Test func freeNameKeepsExistingFormat() {
+        #expect(Self.make(42) == "/out/image_100_42.png")
+    }
+
+    @Test func sameSecondCollisionGetsSuffixTwo() {
+        #expect(Self.make(42, taken: ["/out/image_100_42.png"]) == "/out/image_100_42_2.png")
+    }
+
+    @Test func thirdCollisionGetsSuffixThree() {
+        #expect(Self.make(42, taken: ["/out/image_100_42.png", "/out/image_100_42_2.png"]) == "/out/image_100_42_3.png")
+    }
+
+    @Test func resolvedRandomSeedAppearsInName() {
+        let path = Self.make(123_456)
+        #expect(path.contains("123456"))
+        #expect(!path.contains("rnd"))
+    }
+
+    @Test func multiSeedTemplateStaysParseableByExpandedPaths() {
+        #expect(Self.make(nil) == "/out/image_100.png")
+        let second = Self.make(nil, taken: ["/out/image_100.png"])
+        #expect(RunnerSupport.expandedPaths(from: second, seeds: [5, 9]).map(\.path)
+            == ["/out/image_100_2_seed_5.png", "/out/image_100_2_seed_9.png"])
+    }
+}

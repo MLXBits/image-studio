@@ -33,6 +33,17 @@ extension ComfyUIClient {
         var softHeight: Int?
     }
 
+    /// Last path component of `path`, with `"`, `\`, CR and LF swapped for `_` so it can sit in a quoted multipart header.
+    nonisolated static func sanitizedMultipartFilename(_ path: String) -> String {
+        // Scalars, not Characters: "\r\n" is a single Character, so a Character-wise `contains` never matched CR or LF.
+        let unsafe: Set<Unicode.Scalar> = ["\"", "\\", "\r", "\n"]
+        var scalars = String.UnicodeScalarView()
+        for scalar in (path as NSString).lastPathComponent.unicodeScalars {
+            scalars.append(unsafe.contains(scalar) ? "_" : scalar)
+        }
+        return String(scalars)
+    }
+
     /// mflux: the short side becomes `scale × short`, floored to a multiple of 16 (`ScaleFactor.get_scaled_value`); both sides
     /// follow that ratio and are floored to even. Softness maps 0…1 to a 1…8 blur factor (`1 + softness × 7`); above 1 the
     /// image is first downscaled by that factor, which is the whole of what softness does.
@@ -143,7 +154,7 @@ extension ComfyUIClient {
         field("type", "input")
         field("subfolder", subfolder)
         // Only names the server copy (the graph uses the returned name), so swap anything that would break the quoted header.
-        let filename = String((localPath as NSString).lastPathComponent.map { "\"\\\r\n".contains($0) ? "_" : $0 })
+        let filename = Self.sanitizedMultipartFilename(localPath)
         body.append(Data((
             "--\(boundary)\r\nContent-Disposition: form-data; name=\"image\"; filename=\"\(filename)\"\r\n"
                 + "Content-Type: application/octet-stream\r\n\r\n"

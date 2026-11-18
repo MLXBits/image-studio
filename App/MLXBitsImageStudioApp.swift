@@ -216,6 +216,8 @@ struct MLXBitsImageStudioApp: App {
         // ask mflux which models are downloaded (#19): the sweep changes the
         // folders it asks about, which would make its answers stale at once.
         if !testHost {
+            // The Flux runner's --base-model probe imports mflux (seconds); start it now.
+            settings.startProbeWarmUps()
             let hubDir = settings.hfHubDir
             Task {
                 await Task.detached(priority: .utility) { ModelDownloadStore.removeAbandonedPartials(hubDir: hubDir) }.value

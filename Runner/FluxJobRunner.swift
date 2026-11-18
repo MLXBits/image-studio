@@ -8,6 +8,34 @@ typealias FluxJobRunner = JobRunner<FluxRunnerSpec>
 extension FluxJob: @MainActor GeneratedJob {}
 extension JobStore: @MainActor GenerationJobStore {}
 
+/// Where a job's weights come from, which decides its `--model` value and whether
+/// `--base-model` rides along. Chosen once by ``FluxRunnerSpec/modelRoute(job:settings:)`` for both
+/// ``FluxRunnerSpec/modelArgs(job:settings:python:)`` and ``FluxRunnerSpec/prepareArgs(job:settings:python:)``.
+enum FluxModelRoute {
+    /// A custom checkpoint (repo id or local path), loaded as `base`.
+    case custom(repo: String, base: FluxModelVariant)
+    /// The user's repo override (HF repo ID or local path) for `model`.
+    case override(String)
+    /// A published pre-saved community repo; `baseKey` names its root config when the
+    /// repo name matches no alias mflux can infer from (FLUX 3).
+    case published(repo: String, baseKey: String?)
+    /// Local mflux-saved weights.
+    case saved(URL)
+    /// The bare registry name: in-memory quantization or an unquantized builtin.
+    case registry
+
+    /// Whether the route sends `--base-model` only when the probe says mflux accepts it.
+    /// FLUX 3 routes pass it unconditionally, and the registry name never passes it.
+    var needsBaseModelProbe: Bool {
+        switch self {
+        case let .custom(_, base): !base.isFlux3
+        case .override, .saved: true
+        case let .published(_, baseKey): baseKey == nil
+        case .registry: false
+        }
+    }
+}
+
 enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = FluxJob
     typealias Store = JobStore
@@ -152,72 +180,92 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     /// Probed per interpreter (cached; see ``MfluxProbes/supportsBaseModel(python:)``) rather than
     /// version-gated: package metadata lies on editable installs and no release boundary marks
     /// when the option landed, so ask the parser — pre-option releases reject it with exit 2.
-    static func baseModelArgs(base: FluxModelVariant, settings: AppSettings) -> [String] {
-        guard MfluxProbes.supportsBaseModel(python: try? settings.toolchain.mfluxInterpreter()) else { return [] }
+    ///
+    /// Uses the answer the job's run awaited (``JobRunContext/baseModelSupported``) rather than
+    /// re-reading a cache that a probe reset during the wait may have invalidated; a route that
+    /// never asked the probe (nil) leaves the flag off as on a pre-option mflux.
+    static func baseModelArgs(base: FluxModelVariant, baseModelSupported: Bool?) -> [String] {
+        guard baseModelSupported == true else { return [] }
         return ["--base-model", base.mfluxModelID]
     }
 
-    /// Resolves the `--model` value per job source, in priority order: custom checkpoint,
-    /// user override (HF repo ID or local path), published pre-saved community repo —
-    /// mflux detects stored_q so no quantize flag rides along; FLUX 3 publishes one at
-    /// every precision including BF16, so its gated BFL source is never downloaded by
-    /// the app. Then locally saved weights (mflux-save output), finally the bare
-    /// registry name for in-memory quantization or unquantized builtins.
-    static func modelArgs(job: FluxJob, settings: AppSettings) -> [String] {
+    /// Awaits the `--base-model` probe off the main actor (keyed on the run's captured
+    /// `python`) and returns its answer for ``JobRunContext/baseModelSupported``. Returns nil
+    /// for a route that never asks the probe (see ``FluxModelRoute/needsBaseModelProbe``).
+    /// Usually instant otherwise: the probe is warmed at launch and whenever the interpreter
+    /// changes (``AppSettings/refreshToolchain()``).
+    static func prepareArgs(job: FluxJob, settings: AppSettings, python: String?) async -> Bool? {
+        guard modelRoute(job: job, settings: settings).needsBaseModelProbe else { return nil }
+        return await MfluxProbes.supportsBaseModel(python: python)
+    }
+
+    /// Picks the job's ``FluxModelRoute`` in priority order: custom checkpoint, user override,
+    /// published pre-saved community repo, locally saved weights (mflux-save output), and
+    /// finally the bare registry name.
+    static func modelRoute(job: FluxJob, settings: AppSettings) -> FluxModelRoute {
         if job.model == .custom {
-            // `--model` carries the checkpoint (repo id or local path). `--base-model` names
-            // the Flux.2 architecture mflux loads it as — for a fine-tune, `customBaseModel`
-            // is that architecture; an mlx-community quantized repo resolves to its family
-            // member and keeps this one. Without it the wrong config reached the first
-            // attention reshape and crashed. Gated by version via `baseModelArgs`: before
-            // 0.19.0 the flag's argparse choices= list rejected klein keys and exited with
-            // code 2, so a stale or unreadable install must not see it — which drops back to
-            // that mflux's pre-gate behavior rather than failing here.
+            // For a fine-tune, `customBaseModel` is the architecture; an mlx-community quantized
+            // repo resolves to its family member and keeps this one.
             let base = job.customBaseModel.family == .flux ? job.customBaseModel : .flux2Klein9B
+            return .custom(repo: job.customModelRepo, base: base)
+        }
+        if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
+            return .override(override)
+        }
+        if let publishedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
+            return .published(repo: publishedRepo, baseKey: job.model.baseModelKey)
+        }
+        if job.quantize > 0 {
+            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
+            if FluxModelVariant.hasSavedWeights(at: savedPath) {
+                return .saved(savedPath)
+            }
+        }
+        return .registry
+    }
+
+    /// Resolves the `--model` value for the job's ``FluxModelRoute``: mflux detects stored_q on
+    /// a pre-saved repo or saved weights, so no quantize flag rides along; FLUX 3 publishes
+    /// one at every precision including BF16, so its gated BFL source is never downloaded by
+    /// the app.
+    static func modelArgs(job: FluxJob, settings: AppSettings, baseModelSupported: Bool?) -> [String] {
+        switch modelRoute(job: job, settings: settings) {
+        case let .custom(repo, base):
+            // `--model` carries the checkpoint. `--base-model` names the Flux.2 architecture
+            // mflux loads it as: without it the wrong config reached the first attention
+            // reshape and crashed. Gated by the probe via `baseModelArgs`: before 0.19.0 the
+            // flag's argparse choices= list rejected klein keys and exited with code 2, so a
+            // stale or unreadable install must not see it — which drops back to that mflux's
+            // pre-gate behavior rather than failing here.
             if base.isFlux3 {
                 // Any runtime with the flux3 CLI is ≥0.23 and accepts --base-model, so pass it
                 // unconditionally: a probe-gated flag dropped on a slow interpreter would leave
                 // mflux guessing the architecture from a name that matches no alias.
-                return ["--model", job.customModelRepo, "--base-model", base.mfluxModelID]
+                return ["--model", repo, "--base-model", base.mfluxModelID]
             }
-            return ["--model", job.customModelRepo] + baseModelArgs(base: base, settings: settings)
-        }
-
-        if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
-            // User-supplied override (HF repo ID or local path): use as-is.
-            return ["--model", override] + baseModelArgs(base: job.model, settings: settings)
-        }
-
-        if let publishedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
-            // Known pre-saved community repo (mlx-community / mflux-community).
-            var args = ["--model", publishedRepo]
-            if let baseKey = job.model.baseModelKey {
+            return ["--model", repo] + baseModelArgs(base: base, baseModelSupported: baseModelSupported)
+        case let .override(override):
+            return ["--model", override] + baseModelArgs(base: job.model, baseModelSupported: baseModelSupported)
+        case let .published(repo, baseKey):
+            if let baseKey {
                 // FLUX 3's repo name matches no alias mflux can infer from, so the root config
                 // must be named explicitly. Any runtime with the .flux3 tool is ≥0.23 and accepts
                 // --base-model — pass it unconditionally: a probe-gated flag silently dropped on a
                 // slow interpreter would break every generation with "Cannot infer base_model".
-                args += ["--base-model", baseKey]
-            } else {
-                args += baseModelArgs(base: job.model, settings: settings)
+                return ["--model", repo, "--base-model", baseKey]
             }
-            return args
+            return ["--model", repo] + baseModelArgs(base: job.model, baseModelSupported: baseModelSupported)
+        case let .saved(savedPath):
+            // A bare local path carries no architecture, so name it explicitly.
+            return ["--model", savedPath.path] + baseModelArgs(base: job.model, baseModelSupported: baseModelSupported)
+        case .registry:
+            // Omitting --model would silently fall back to the CLI's default.
+            return ["--model", job.model.mfluxModelID]
         }
-
-        if job.quantize > 0 {
-            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-            if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                // Local mflux-saved weights: pass path directly — mflux detects stored_q,
-                // but a bare local path carries no architecture, so name it explicitly.
-                return ["--model", savedPath.path] + baseModelArgs(base: job.model, settings: settings)
-            }
-        }
-        // Builtin model with no override or quantization (or mflux-save failed): the
-        // registry name — omitting --model would silently fall back to the CLI's default.
-        return ["--model", job.model.mfluxModelID]
     }
 
     static func buildArgs(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> [String] {
-        var args = modelArgs(job: job, settings: settings)
+        var args = modelArgs(job: job, settings: settings, baseModelSupported: ctx.baseModelSupported)
         args += ["--prompt", job.prompt]
         // A custom checkpoint inherits its target's capabilities, so judge prompt and
         // guidance support on the variant that actually runs. FLUX 3 rejects
@@ -350,7 +398,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         // throws and fails the job — there is no silent t2i fallback.
         if hasRefs {
             for (index, path) in refs.enumerated() {
-                params[index == 0 ? "source_image" : "source_image_\(index)"] = try await client.uploadKreaImage(localPath: path)
+                params[index == 0 ? "source_image" : "source_image_\(index)"] = try await client.uploadImage(localPath: path)
             }
         }
         // Render once (seed 0, the Krea 2 convention): a stale param map throws here and fails the job

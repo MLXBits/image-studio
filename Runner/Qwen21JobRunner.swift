@@ -158,7 +158,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         // Upload once and reuse the server filenames across seeds. A failed upload fails the job.
         var uploaded: [String] = []
         for path in refs {
-            try await uploaded.append(client.uploadKreaImage(localPath: path))
+            try await uploaded.append(client.uploadImage(localPath: path))
         }
         if let first = uploaded.first {
             // ComfyUI's encoder sizes its own latent from the FIRST reference; mflux sizes from the last. The

@@ -270,22 +270,7 @@ final class WeightDownloadStore {
         let pipe = Pipe()
         process.standardOutput = pipe
         process.standardError = pipe
-        let chunks = AsyncStream<String> { continuation in
-            pipe.fileHandleForReading.readabilityHandler = { handle in
-                let data = handle.availableData
-                if data.isEmpty {
-                    continuation.finish()
-                } else if let text = String(data: data, encoding: .utf8) {
-                    continuation.yield(text)
-                }
-            }
-            process.terminationHandler = { _ in
-                DispatchQueue.global().asyncAfter(deadline: .now() + 0.05) {
-                    pipe.fileHandleForReading.readabilityHandler = nil
-                    continuation.finish()
-                }
-            }
-        }
+        let chunks = TextChunkDecoder.stream(reading: pipe, endingWith: process)
         do { try process.run() } catch {
             run.phase = .failed(error.localizedDescription)
             return false

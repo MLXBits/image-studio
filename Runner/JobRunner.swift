@@ -80,6 +80,13 @@ protocol JobRunnerSpec {
     /// (Ideogram 4 structured captions). Default: none.
     static func makePromptFile(job: Job) -> URL?
     static func buildArgs(job: Job, ctx: JobRunContext, settings: AppSettings) -> [String]
+    /// Awaited just before ``buildArgs(job:ctx:settings:)`` on the one-shot CLI path, for work that
+    /// must not run on the main actor there (Flux awaits its `--base-model` probe), keyed on the
+    /// interpreter captured at run start (`python`) so the probe and the flag it gates key off the
+    /// same interpreter. Returns the capability answer (Flux's base-model support), stored on the
+    /// context so the builder uses the awaited result rather than re-reading a cache that may have
+    /// been invalidated while the probe ran. Default: nil (no capability probe).
+    static func prepareArgs(job: Job, settings: AppSettings, python: String?) async -> Bool?
     /// Whether a tqdm total belongs to this job's denoise loop (rejects other bars,
     /// e.g. weight-download progress).
     static func acceptsProgressTotal(_ total: Int, job: Job) -> Bool
@@ -112,6 +119,10 @@ extension JobRunnerSpec {
     }
 
     static func comfyGraph(job _: Job, settings _: AppSettings, client _: ComfyUIClient) async throws -> ComfyGraph? {
+        nil
+    }
+
+    static func prepareArgs(job _: Job, settings _: AppSettings, python _: String?) async -> Bool? {
         nil
     }
 
@@ -148,6 +159,14 @@ struct JobRunContext {
     let stepwiseDir: URL
     /// Auxiliary prompt file from ``JobRunnerSpec/makePromptFile(job:)``, if any.
     let promptFile: URL?
+    /// The mflux interpreter captured when the run started, so command selection,
+    /// the `--base-model` probe, and the flag all key off the same one even if the
+    /// Custom Python changes while the job is in flight. Defaults to nil for tests.
+    let python: String?
+    /// The base-model probe answer captured by ``JobRunnerSpec/prepareArgs(job:settings:python:)``,
+    /// so ``JobRunnerSpec/buildArgs(job:ctx:settings:)`` uses the answer the run awaited rather than
+    /// re-reading a cache that may have been invalidated while the probe was in flight.
+    var baseModelSupported: Bool?
 }
 
 // MARK: - JobRunner
@@ -337,11 +356,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
         }
         defer { access.end() }
         let isMultiSeed = !job.seeds.isEmpty
-        guard let outputTemplate = buildOutputPath(job: job, settings: settings, multiSeed: isMultiSeed) else {
-            finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
-            return
-        }
-
         let effectiveSeed: Int
         if isMultiSeed {
             effectiveSeed = job.seeds[0]
@@ -349,13 +363,20 @@ final class JobRunner<Spec: JobRunnerSpec> {
             effectiveSeed = job.seed >= 0 ? job.seed : Int(UInt32.random(in: 0 ..< UInt32.max))
             job.resolvedSeed = effectiveSeed
         }
+        guard let outputTemplate = buildOutputPath(job: job, settings: settings, seed: effectiveSeed) else {
+            finishJob(job, status: .failed("Could not create output directory"), stepDir: stepDir)
+            return
+        }
 
         let promptFile = Spec.makePromptFile(job: job)
         defer { promptFile.flatMap { try? FileManager.default.removeItem(at: $0) } }
 
-        let ctx = JobRunContext(
+        // Capture the mflux interpreter once so the command, the `--base-model` probe, and the
+        // flag key off the same one even if the Custom Python changes while the job is in flight.
+        let python = try? settings.toolchain.mfluxInterpreter()
+        var ctx = JobRunContext(
             seed: effectiveSeed, outputFile: outputTemplate,
-            stepwiseDir: stepDir, promptFile: promptFile
+            stepwiseDir: stepDir, promptFile: promptFile, python: python, baseModelSupported: nil
         )
 
         // Remote-ComfyUI path: if this job's family is pointed at a ComfyUI server and its spec can build the graph, generate there
@@ -382,7 +403,14 @@ final class JobRunner<Spec: JobRunnerSpec> {
         let tool = Spec.tool(job: job)
         let command: ToolCommand
         do {
-            command = try settings.toolchain.command(tool)
+            var cmd = try settings.toolchain.command(tool)
+            // The mflux tool runs on the interpreter captured above (ctx.python), not a re-read
+            // of the settings: a Custom Python changed while the job queued can't split the
+            // command from the base-model probe and flag that key off the same interpreter.
+            if tool.isMflux, let python = ctx.python {
+                cmd = ToolCommand(executable: python, arguments: cmd.arguments)
+            }
+            command = cmd
         } catch {
             settings.refreshToolchain() // so the banner shows what went missing
             finishJob(job, status: .failed(error.localizedDescription), stepDir: stepDir)
@@ -441,6 +469,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             }
         }
 
+        // Capture the awaited answer on the context so buildArgs uses it directly, not a
+        // cache that a probe reset during the wait may have invalidated.
+        ctx.baseModelSupported = await Spec.prepareArgs(job: job, settings: settings, python: ctx.python)
         // cancel() may have cancelled runTask during an earlier await that ignores it (e.g. a save's output tail).
         if Task.isCancelled {
             finishJob(job, status: .cancelled, stepDir: stepDir)
@@ -832,7 +863,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     // MARK: - Finish / utilities
 
-    private func buildOutputPath(job: Job, settings: AppSettings, multiSeed: Bool) -> String? {
+    private func buildOutputPath(job: Job, settings: AppSettings, seed: Int) -> String? {
         let useBoard = !job.board.isEmpty && job.board != "Default"
         let dir = useBoard ? "\(settings.outputDir)/\(job.board)" : settings.outputDir
         do {
@@ -840,14 +871,21 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 at: URL(fileURLWithPath: dir), withIntermediateDirectories: true
             )
         } catch { return nil }
-        let ts = Int(Date().timeIntervalSince1970)
-        if multiSeed {
-            // No {seed} placeholder — mflux rewrites multi-seed output paths itself:
-            // it appends _seed_{seed} to the stem, so image_ts.png → image_ts_seed_42.png
-            return "\(dir)/\(Spec.outputPrefix)_\(ts).png"
+        // Multi-seed: no {seed} placeholder — mflux rewrites the path itself (it appends _seed_{seed} to the stem,
+        // so image_ts.png → image_ts_seed_42.png), so the guard checks every expanded path.
+        let seeds = job.seeds
+        return RunnerSupport.uniqueOutputPath(
+            dir: dir, prefix: Spec.outputPrefix, timestamp: Int(Date().timeIntervalSince1970),
+            seed: seeds.isEmpty ? seed : nil
+        ) { candidate in
+            let paths = seeds.isEmpty
+                ? [candidate]
+                : RunnerSupport.expandedPaths(from: candidate, seeds: seeds).map(\.path)
+            return paths.contains { path in
+                let fm = FileManager.default
+                return fm.fileExists(atPath: path) || fm.fileExists(atPath: MetadataSidecar.sidecarURL(for: path).path)
+            }
         }
-        let seedLabel = job.seed == -1 ? "rnd" : "\(job.seed)"
-        return "\(dir)/\(Spec.outputPrefix)_\(ts)_\(seedLabel).png"
     }
 
     private func finishJob(_ job: Job, status: JobStatus, stepDir: URL) {
@@ -939,13 +977,19 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
                 // Land the (single) output for this seed. Primary (first) image goes to `ctx.outputFile` when not multi-seed, else the
                 // canonical `_seed_{N}` name matching a local run's expandedPaths.
-                guard !outputs.isEmpty else { continue }
+                guard !outputs.isEmpty else {
+                    job.log += "Seed \(seed): ComfyUI returned no image, skipped\n"
+                    continue
+                }
                 let out = outputs[0]
                 let local = seedsToRun.count == 1
                     ? ctx.outputFile
                     : RunnerSupport.expandedPaths(from: ctx.outputFile, seeds: [seed])[0].path
                 guard await client.downloadOutput(filename: out.filename, subfolder: out.subfolder, type: out.type, to: local)
-                else { continue }
+                else {
+                    job.log += "Seed \(seed): download failed, skipped\n"
+                    continue
+                }
 
                 // Stamp the per-image window end only now that this seed's image has landed on disk, so the sidecar records real elapsed
                 // time (run-start -> first landing; previous landing -> next for batches), not ~0s.

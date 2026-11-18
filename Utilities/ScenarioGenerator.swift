@@ -217,7 +217,7 @@ final class ScenarioGenerator {
     // gracefully.
     private var process: Process?
     private var stdinHandle: FileHandle?
-    private var stdoutTail = ""
+    private var stdoutLines = LineBuffer()
     private var driverUnavailable = false
     private var handshake: CheckedContinuation<Bool, Never>?
     private var pending: CheckedContinuation<String, Error>?
@@ -374,7 +374,7 @@ final class ScenarioGenerator {
         }
         process = proc
         stdinHandle = stdinPipe.fileHandleForWriting
-        stdoutTail = ""
+        stdoutLines = LineBuffer()
         // Exit handling runs only after every chunk the driver wrote, so a final `result` is never lost.
         Task { [weak self] in
             for await data in output {
@@ -422,10 +422,7 @@ final class ScenarioGenerator {
 
     private func consumeStdout(_ data: Data, from proc: Process) {
         guard process === proc else { return } // output from a driver since replaced
-        stdoutTail += String(bytes: data, encoding: .utf8) ?? ""
-        while let newline = stdoutTail.firstIndex(of: "\n") {
-            let line = String(stdoutTail[..<newline])
-            stdoutTail.removeSubrange(...newline)
+        for line in stdoutLines.append(data) {
             guard let lineData = line.data(using: .utf8), !line.isEmpty,
                   let event = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any] else { continue }
             handleEvent(event)

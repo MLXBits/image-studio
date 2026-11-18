@@ -11,6 +11,11 @@ final class ComfyModelStore {
         case idle, loading, loaded(count: Int), failed(String)
     }
 
+    /// Refresh decision: skip only when a fetch for this very URL is already running; any other URL restarts.
+    nonisolated static func shouldStartFetch(requested: String, inFlight: String?) -> Bool {
+        requested != inFlight
+    }
+
     var unets: [String] = []
     var clips: [String] = []
     var vaes: [String] = []
@@ -18,10 +23,11 @@ final class ComfyModelStore {
     /// Server LoRA relative-path names from `/models/loras` (e.g. `krea2/foo.safetensors`). Populated by the same discovery pass as the
     /// model lists; fed to ``onLorasDiscovered`` so the owner can auto-catalog them into the library.
     var loras: [String] = []
-    var schedulers: [String] = []
 
     private(set) var status: Status = .idle
     private var inFlight: Task<Void, Never>?
+    /// The normalized URL `inFlight` is fetching; `nil` when no fetch is running.
+    private var inFlightURL: String?
     /// The normalized base URL we last fetched successfully for; `nil` until the first success. Used so
     /// re-appearing on the form doesn't re-hit `/object_info`; only a genuine refresh or URL change refetches.
     private(set) var fetchedForURL: String?
@@ -41,14 +47,19 @@ final class ComfyModelStore {
     func refresh(baseURL raw: String) {
         let url = ComfyUIClient.Config.normalize(raw)
         guard !url.isEmpty else { return }
-        if fetchIsInFlight() {
-            return // already fetching for this URL
-        }
+        let running = fetchIsInFlight() ? inFlightURL : nil
+        guard Self.shouldStartFetch(requested: url, inFlight: running) else { return } // already fetching for this URL
         inFlight?.cancel()
+        inFlightURL = url
         status = .loading
         fetchedForURL = nil
         let client = ComfyUIClient(config: .init(baseURL: url, apiKey: nil))
         inFlight = Task { [weak self] in
+            defer {
+                if !Task.isCancelled {
+                    self?.inFlightURL = nil
+                }
+            }
             do {
                 let info = try await client.discoverModels()
                 guard !Task.isCancelled else { return }
@@ -78,12 +89,12 @@ final class ComfyModelStore {
     func cancel() {
         inFlight?.cancel()
         inFlight = nil
+        inFlightURL = nil
         status = .idle
         unets.removeAll()
         clips.removeAll()
         vaes.removeAll()
         samplers.removeAll()
-        schedulers.removeAll()
         loras.removeAll()
         fetchedForURL = nil
     }

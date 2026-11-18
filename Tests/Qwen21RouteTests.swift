@@ -10,7 +10,7 @@ import Testing
 struct Qwen21RouteTests {
     private let ctx = JobRunContext(
         seed: 7, outputFile: "/tmp/out.png",
-        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil
+        stepwiseDir: FileManager.default.temporaryDirectory, promptFile: nil, python: nil, baseModelSupported: nil
     )
 
     private func settings() -> AppSettings {
