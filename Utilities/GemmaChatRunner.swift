@@ -20,18 +20,18 @@ enum GemmaChatRunnerError: LocalizedError {
 /// assembler.
 enum GemmaChatRunner {
     /// Extracts one `## Heading` section's body from an editable prompt
-    /// config markdown file (content up to the next `## ` or EOF, trimmed;
-    /// empty string when the heading is absent).
+    /// config markdown file (content up to the next `## ` line or EOF, trimmed;
+    /// empty string when the heading is absent). The heading must be a whole
+    /// line, so "## Example A" never matches "## Example A Input", and a
+    /// `## Heading` quoted mid-line in a body is not a heading.
     nonisolated static func section(_ heading: String, in raw: String) -> String {
         let marker = "## \(heading)"
-        guard let markerRange = raw.range(of: marker) else { return "" }
-        let afterMarker = raw[markerRange.upperBound...]
-        let content: Substring = if let nextHeading = afterMarker.range(of: "\n## ") {
-            afterMarker[..<nextHeading.lowerBound]
-        } else {
-            afterMarker
+        let lines = raw.components(separatedBy: "\n")
+        guard let start = lines.firstIndex(where: { $0.trimmingCharacters(in: .whitespacesAndNewlines) == marker }) else {
+            return ""
         }
-        return content.trimmingCharacters(in: .whitespacesAndNewlines)
+        let body = lines[(start + 1)...].prefix { !$0.hasPrefix("## ") }
+        return body.joined(separator: "\n").trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     /// The model's reply region in mlx_lm.generate output: mlx_lm echoes the

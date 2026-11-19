@@ -93,20 +93,14 @@ struct NotepadView: View {
 /// headings (`#`–`###`), unordered list items (`-`/`*`), and paragraphs with
 /// inline emphasis/code. Unknown syntax falls back to inline-rendered text.
 private struct MarkdownPreview: View {
-    private enum Block: Identifiable {
+    /// One rendered line. Identified by its line number in the preview: content
+    /// is not unique (two identical lines, every blank line), and a fresh UUID per
+    /// read gave each spacer a new identity on every render.
+    private enum Block {
         case heading(level: Int, text: String)
         case bullet(text: String)
         case paragraph(text: String)
         case spacer
-
-        var id: String {
-            switch self {
-            case let .heading(level, text): "h\(level):\(text)"
-            case let .bullet(text): "b:\(text)"
-            case let .paragraph(text): "p:\(text)"
-            case .spacer: "spacer-\(UUID().uuidString)"
-            }
-        }
     }
 
     let text: String
@@ -118,7 +112,7 @@ private struct MarkdownPreview: View {
                     Text("Nothing here yet — switch to Edit and jot down some prompt notes.")
                         .foregroundStyle(.tertiary)
                 } else {
-                    ForEach(blocks) { block in
+                    ForEach(Array(blocks.enumerated()), id: \.offset) { _, block in
                         view(for: block)
                     }
                 }

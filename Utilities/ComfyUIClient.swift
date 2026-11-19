@@ -122,6 +122,7 @@ final class ComfyUIClient {
             // lastPhase/lastNode carry whatever the latest real frame reported so the ticker never regresses the readout — it only keeps
             // the elapsed clock ticking when frames are sparse. No lock: both tasks inherit this method's main-actor isolation, so they
             // never run at the same time and each read-modify-write below completes without an intervening `await`.
+            let classTypes = Self.classTypes(in: workflow)
             var lastPhase: String?
             var lastNode = 0
             func publish(phase: String?, node: Int) {
@@ -132,11 +133,12 @@ final class ComfyUIClient {
                     let nodePos = snap.nodeID
                         .flatMap { snap.executedNodes.firstIndex(of: $0) }
                         .map { $0 + 1 } ?? snap.executedNodes.count
-                    lastPhase = snap.phaseLabel
+                    let phase = Self.phaseLabel(nodeID: snap.nodeID, classType: snap.nodeID.flatMap { classTypes[$0] })
+                    lastPhase = phase
                     if nodePos > lastNode {
                         lastNode = nodePos
                     }
-                    publish(phase: snap.phaseLabel, node: lastNode)
+                    publish(phase: phase, node: lastNode)
                 }
             }
 
