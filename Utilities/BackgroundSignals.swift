@@ -62,7 +62,10 @@ enum BackgroundSignals {
         Task {
             // Every post waits for permission. Only the first ask prompts; after
             // that the system returns the saved answer. A refusal drops the post.
-            guard await (try? center.requestAuthorization(options: [.alert, .sound])) == true else { return }
+            // `.badge` too: once the app asks for notifications, macOS shows the
+            // dock badge (the queue count) only when badges are allowed.
+            guard await (try? center.requestAuthorization(options: [.alert, .sound, .badge])) == true
+            else { return }
             try? await center.add(request)
         }
     }
