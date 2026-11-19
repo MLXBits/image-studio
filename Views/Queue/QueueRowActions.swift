@@ -60,8 +60,10 @@ extension View {
         modifier(QueueRowActions(job: job, store: store, duplicate: { store.duplicate(job) }, start: start))
     }
 
-    /// The queue row menu for a family whose jobs cannot be copied.
-    func queueRowActions<Store: ProfileScopedJobStore>(
+    /// The queue row menu for a family whose jobs cannot be copied (SeedVR2).
+    /// A separate name, not an overload: a generic drawer that forgot its
+    /// `SeedSplittableJob` constraint would otherwise fall back here silently.
+    func queueRowActionsWithoutDuplicate<Store: ProfileScopedJobStore>(
         _ job: Store.PersistedJob,
         in store: Store,
         start: @escaping () -> Void

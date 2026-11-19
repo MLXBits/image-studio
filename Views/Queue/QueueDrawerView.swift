@@ -352,7 +352,8 @@ private struct Ideogram4QueueJobRow: View {
 /// Queue drawer for a family whose jobs are ``QueueListedJob``s (Krea 2,
 /// Qwen-Image 2.1, Z-Image), driven by that family's runner spec.
 struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
-    where Spec.Job: QueueListedJob, Spec.Store: ProfileScopedJobStore & Observable, Spec.Store.PersistedJob == Spec.Job {
+    where Spec.Job: QueueListedJob & SeedSplittableJob, Spec.Store: ProfileScopedJobStore & Observable,
+    Spec.Store.PersistedJob == Spec.Job {
     @Environment(Spec.Store.self) private var store
     @Environment(JobRunner<Spec>.self) private var runner
     @Environment(AppSettings.self) private var settings
@@ -592,7 +593,7 @@ struct SeedVR2QueueDrawerView: View {
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
-                .queueRowActions(job, in: store, start: startNext)
+                .queueRowActionsWithoutDuplicate(job, in: store, start: startNext)
             }
             .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
