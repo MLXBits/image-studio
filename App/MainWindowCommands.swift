@@ -24,8 +24,6 @@ struct MainWindowActions {
     var batchCount: Int
     var generateBatch: () -> Void
     var stop: () -> Void
-    var family: ModelFamily
-    var selectFamily: (ModelFamily) -> Void
     var showingParams: Bool
     var toggleParams: () -> Void
     var showingQueue: Bool
@@ -61,8 +59,6 @@ struct MainWindowCommands: Commands {
         }
         CommandMenu("Generate") {
             generateItems
-            Divider()
-            familyItems
         }
         CommandMenu("Image") {
             imageItems
@@ -84,17 +80,6 @@ struct MainWindowCommands: Commands {
         Button("Stop") { window?.stop() }
             .keyboardShortcut(KeyboardShortcutCatalog.stop)
             .disabled(window?.isGenerating != true)
-    }
-
-    private var familyItems: some View {
-        ForEach(Array(ModelFamily.generative.enumerated()), id: \.element) { index, family in
-            Toggle(family.rawValue, isOn: Binding(
-                get: { window?.family == family },
-                set: { _ in window?.selectFamily(family) }
-            ))
-            .keyboardShortcut(KeyEquivalent(Character(String(index + 1))), modifiers: .command)
-            .disabled(!formIsFree)
-        }
     }
 
     @ViewBuilder private var imageItems: some View {
@@ -128,7 +113,6 @@ extension KeyboardShortcutCatalog {
         Entry("Generate, or add to the queue while a job runs", generate),
         Entry("Generate a batch (size set in Settings ▸ Generation)", generateBatch),
         Entry("Stop the running job", stop),
-        Entry("Switch to FLUX.2, Ideogram 4, Krea 2, Z-Image or Qwen Image 2.1", ["⌘", "1–5"]),
         Entry("Paste an image from the clipboard as the input image", pasteImage),
     ])
 

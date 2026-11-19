@@ -36,35 +36,3 @@ enum ModelFamily: String, CaseIterable, Codable {
         rawValue.replacingOccurrences(of: " ", with: "").lowercased()
     }
 }
-
-extension ModelFamily {
-    /// The model that Generate ▸ ⌘1–5 selects for this family, coming from
-    /// `current`: the family's model last picked in this window, else the
-    /// Settings default when it belongs to the family, else the family's first
-    /// model. Nil when a stock model of this family is already selected, and for
-    /// SeedVR2, which is not a pickable family. A custom checkpoint is never
-    /// remembered, and the shortcut for its family leaves it for a stock model.
-    func variantToSelect(
-        from current: FluxModelVariant,
-        remembered: [Self: FluxModelVariant],
-        defaultModel: FluxModelVariant
-    ) -> FluxModelVariant? {
-        if current != .custom, current.family == self {
-            return nil
-        }
-        if let last = remembered[self], last != .custom, last.family == self {
-            return last
-        }
-        if defaultModel != .custom, defaultModel.family == self {
-            return defaultModel
-        }
-        return switch self {
-        case .flux: .flux2Klein9B
-        case .ideogram4: .ideogram4
-        case .krea2: .krea2
-        case .zimage: .zimageTurbo
-        case .qwen21: .qwen21Turbo
-        case .seedvr2: nil
-        }
-    }
-}

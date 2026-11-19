@@ -81,8 +81,6 @@ struct ContentView: View {
     @State private var boxOverlay: BoxOverlayContext?
 
     @State private var showingParams: Bool = true
-    /// Each family's model last picked in this window, for View ▸ Model (⌘1–5).
-    @State private var lastVariantByFamily: [ModelFamily: FluxModelVariant] = [:]
     @State private var pendingSelectPath: String?
 
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
@@ -117,8 +115,6 @@ struct ContentView: View {
             batchCount: settings.batchShortcutCount,
             generateBatch: { generate(count: settings.batchShortcutCount) },
             stop: stopAll,
-            family: params.modelFamily,
-            selectFamily: switchFamily,
             showingParams: showingParams,
             toggleParams: { showingParams.toggle() },
             showingQueue: showingQueue,
@@ -646,11 +642,6 @@ struct ContentView: View {
             guard case let .galleryItem(item) = previewState, !ids.contains(item.id) else { return }
             selectedGalleryItem = nil
             restoreActiveJobPreview()
-        }
-        .onChange(of: params.model, initial: true) { _, model in
-            if model != .custom {
-                lastVariantByFamily[model.family] = model
-            }
         }
         .focusedSceneValue(\.mainWindow, mainWindowActions)
     }
@@ -1929,14 +1920,6 @@ struct ContentView: View {
     private func stopAll() {
         runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
         zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
-    }
-
-    /// Moves the picker to `family`, as picking its model in the menu would.
-    private func switchFamily(_ family: ModelFamily) {
-        guard let variant = family.variantToSelect(
-            from: params.model, remembered: lastVariantByFamily, defaultModel: settings.defaultModel
-        ) else { return }
-        params.model = variant
     }
 
     private func imageActions(for item: GalleryItem) -> MainWindowActions.ImageActions {
