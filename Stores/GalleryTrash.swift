@@ -39,12 +39,18 @@ nonisolated enum GalleryTrash {
 
     /// Moves each item back to where it was, recreating its folder if needed.
     /// Returns the names that could not come back — the name is taken again, or
-    /// the item is no longer in the Trash. Those stay where they are. A sidecar
-    /// that cannot come back is reported too; its image still comes back.
+    /// the item is no longer in the Trash. Those stay where they are. When another
+    /// file has taken the sidecar's name, the image stays in the Trash too: that
+    /// file would otherwise be read as the restored image's settings. A sidecar
+    /// missing from the Trash is reported; its image still comes back.
     static func restore(_ items: [TrashedItem]) -> [String] {
         let fm = FileManager.default
         var failures: [String] = []
         for item in items {
+            if let sidecar = item.sidecar, fm.fileExists(atPath: sidecar.original.path) {
+                failures.append(item.original.lastPathComponent)
+                continue
+            }
             guard move(item.trashed, to: item.original, fm: fm) else {
                 failures.append(item.original.lastPathComponent)
                 continue

@@ -92,7 +92,7 @@ extension GalleryStore {
         let failures = GalleryTrash.restore(trashed)
         if !failures.isEmpty {
             moveError = "Could not put back from the Trash: \(failures.joined(separator: ", ")). "
-                + "The name is taken again, or the item is no longer in the Trash."
+                + "A file has taken its name (or its settings file's name) since, or it is no longer in the Trash."
         }
         scan(outputDir: outputDir)
     }

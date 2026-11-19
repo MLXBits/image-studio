@@ -109,7 +109,9 @@ struct GenerationGalleryView: View {
                 Divider()
             }
 
-            if sections.isEmpty {
+            // Named folders stay listed even when the filters empty them, so a search
+            // that matches nothing still needs its own check.
+            if sections.isEmpty || (isFiltering && modelItems.isEmpty) {
                 emptyState
             } else {
                 GalleryCollectionView(

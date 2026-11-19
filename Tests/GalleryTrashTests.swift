@@ -115,18 +115,33 @@ struct GalleryTrashTests {
         #expect(GalleryTrash.restore([item]) == ["a.png"])
     }
 
-    @Test func restoreReportsASidecarWhoseNameIsTaken() throws {
+    /// Another image's settings at the sidecar's name would attach to the restored
+    /// image, so the pair stays in the Trash together.
+    @Test func aTakenSidecarNameKeepsThePairInTheTrash() throws {
         defer { try? fm.removeItem(at: root) }
         let image = try write("a.png", in: root)
         _ = try write("a.json", in: root, "settings")
         let item = try GalleryTrash.trashImage(image, using: fakeTrash)
-        let stray = try write("a.json", in: root, "stray")
+        let stray = try write("a.json", in: root, #"{"prompt":"someone else"}"#)
 
         let failures = GalleryTrash.restore([item])
 
-        #expect(failures == ["a.json"])
+        #expect(failures == ["a.png"])
+        #expect(!fm.fileExists(atPath: image.path))
+        #expect(fm.fileExists(atPath: item.trashed.path))
+        #expect(try fm.fileExists(atPath: #require(item.sidecar).trashed.path))
+        #expect(try String(contentsOf: stray, encoding: .utf8) == #"{"prompt":"someone else"}"#)
+    }
+
+    @Test func aSidecarEmptiedFromTheTrashIsReportedButTheImageReturns() throws {
+        defer { try? fm.removeItem(at: root) }
+        let image = try write("a.png", in: root)
+        _ = try write("a.json", in: root, "settings")
+        let item = try GalleryTrash.trashImage(image, using: fakeTrash)
+        try fm.removeItem(at: #require(item.sidecar).trashed)
+
+        #expect(GalleryTrash.restore([item]) == ["a.json"])
         #expect(fm.fileExists(atPath: image.path))
-        #expect(try String(contentsOf: stray, encoding: .utf8) == "stray")
     }
 
     @Test func trashesAndRestoresAFolder() throws {
