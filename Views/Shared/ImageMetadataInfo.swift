@@ -342,3 +342,23 @@ func imagePixelSize(at path: String) -> (Int, Int)? {
     let orientation = props[kCGImagePropertyOrientation] as? Int ?? 1
     return orientation >= 5 ? (h, w) : (w, h)
 }
+
+extension ImageMetadataInfo {
+    /// The info for a gallery image, from whichever family's sidecar it has; an
+    /// image without one shows only what the file itself says.
+    init(galleryItem item: GalleryItem) {
+        self = if item.ideogram4Metadata != nil {
+            ImageMetadataInfo(ideogram4Item: item)
+        } else if item.krea2Metadata != nil {
+            ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.zimageMetadata != nil {
+            ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.qwen21Metadata != nil {
+            ImageMetadataInfo(qwen21Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else if item.seedVR2Metadata != nil {
+            ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
+        } else {
+            ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
+        }
+    }
+}

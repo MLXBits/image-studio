@@ -83,6 +83,18 @@ struct ImageMetadataPanel: View {
                         }
                     }
                 Spacer(minLength: 0)
+                if !info.prompt.isEmpty {
+                    Button {
+                        PathCopy.copy(info.prompt)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(.caption)
+                            .foregroundStyle(.tertiary)
+                    }
+                    .buttonStyle(.iconButtonCompact)
+                    .help("Copy prompt")
+                    .accessibilityLabel("Copy prompt")
+                }
             }
             if !info.prompt.isEmpty && (isPromptTruncated || promptExpanded) {
                 HStack {
@@ -144,6 +156,7 @@ struct ImageMetadataPanel: View {
         }
         .buttonStyle(.iconButtonCompact)
         .help("Copy these settings (everything but the prompt) to the clipboard")
+        .accessibilityLabel("Copy settings")
     }
 
     /// The metadata grid rendered as plain text, one `Label: value` per line.
@@ -192,12 +205,14 @@ struct ImageMetadataPanel: View {
                 Button { fn() } label: { Image(systemName: "photo.on.rectangle.angled") }
                     .buttonStyle(.bordered)
                     .help("Use as img2img input")
+                    .accessibilityLabel("Use as img2img input")
             }
             if let fn = onEditBoxes {
                 Button { fn() } label: { Image(systemName: "square.dashed") }
                     .buttonStyle(.bordered)
                     .help("Adjust the bounding boxes over this image. Loads the boxes into "
                         + "the form; fix the seed (or Apply Settings) to re-render this same image.")
+                    .accessibilityLabel("Edit bounding boxes")
             }
             if let path = info.filePath {
                 Button {
@@ -207,21 +222,25 @@ struct ImageMetadataPanel: View {
                 } label: { Image(systemName: "doc.on.doc") }
                     .buttonStyle(.bordered)
                     .help("Copy image to clipboard")
+                    .accessibilityLabel("Copy image")
             }
             if let fn = onUpscale {
                 Button { fn() } label: { Image(systemName: "arrow.up.left.and.arrow.down.right") }
                     .buttonStyle(.bordered)
                     .help("Upscale with SeedVR2")
+                    .accessibilityLabel("Upscale")
             }
             if let fn = onRevealInFinder {
                 Button { fn() } label: { Image(systemName: "folder") }
                     .buttonStyle(.bordered)
                     .help("Reveal in Finder")
+                    .accessibilityLabel("Reveal in Finder")
             }
             if let fn = onShowLog {
                 Button { fn() } label: { Image(systemName: "text.alignleft") }
                     .buttonStyle(.bordered)
                     .help("Show generation log")
+                    .accessibilityLabel("Show generation log")
             }
         }
         // Regular rather than .small: six of these are icon-only, and .small drew them
@@ -261,6 +280,7 @@ struct ImageMetadataPanel: View {
                 }
                 .buttonStyle(.plain)
                 .help("Click to copy seed")
+                .accessibilityLabel("Copy seed \(seed)")
             } else {
                 Text("–").font(.caption).foregroundStyle(.tertiary)
             }

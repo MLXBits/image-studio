@@ -70,6 +70,7 @@ struct FullSizeImageView: View {
                             .foregroundStyle(.white.opacity(0.8))
                     }
                     .buttonStyle(.iconButton)
+                    .accessibilityLabel("Close")
                     // Insets the button from the corner — the hit area is the style's
                     // 28pt frame, not this padding.
                     .padding(8)
@@ -95,6 +96,7 @@ struct FullSizeImageView: View {
                                 .background(.white.opacity(0.18), in: Circle())
                         }
                         .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
+                        .accessibilityLabel("Previous image")
                         .padding(.leading, 20)
                     }
                     Spacer()
@@ -111,6 +113,7 @@ struct FullSizeImageView: View {
                                 .background(.white.opacity(0.18), in: Circle())
                         }
                         .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
+                        .accessibilityLabel("Next image")
                         .padding(.trailing, 20)
                     }
                 }

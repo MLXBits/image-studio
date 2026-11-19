@@ -888,6 +888,14 @@ struct GalleryCollectionView: NSViewRepresentable {
             let copyCount = selected.contains(item.id) ? selected.count : 1
             let copyTitle = copyCount > 1 ? "Copy \(copyCount) Images" : "Copy Image"
             menu.addItem(menuItem(copyTitle) { [weak self] in self?.parent.onCopyItem(item) })
+            // The right-clicked image's own prompt and seed, whatever else is selected.
+            let info = ImageMetadataInfo(galleryItem: item)
+            if !info.prompt.isEmpty {
+                menu.addItem(menuItem("Copy Prompt") { PathCopy.copy(info.prompt) })
+            }
+            if let seed = info.seed {
+                menu.addItem(menuItem("Copy Seed") { PathCopy.copy(String(seed)) })
+            }
 
             menu.addItem(.separator())
             addCullMenuItems(to: menu, for: item)

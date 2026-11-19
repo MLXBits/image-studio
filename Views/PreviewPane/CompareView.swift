@@ -103,6 +103,7 @@ struct CompareView: View {
                     .foregroundStyle(.white.opacity(0.85))
             }
             .buttonStyle(.iconButton)
+            .accessibilityLabel("Close compare")
 
             Text("Compare").font(.headline).foregroundStyle(.white)
 
@@ -126,10 +127,12 @@ struct CompareView: View {
                 HStack(spacing: 8) {
                     Button { cycle(-1) } label: { Image(systemName: "chevron.left") }
                         .buttonStyle(.iconButton).foregroundStyle(.white)
+                        .accessibilityLabel("Previous candidate")
                     Text("\(candidatePosition) / \(candidateCount)")
                         .font(.caption.monospacedDigit()).foregroundStyle(.white.opacity(0.8))
                     Button { cycle(1) } label: { Image(systemName: "chevron.right") }
                         .buttonStyle(.iconButton).foregroundStyle(.white)
+                        .accessibilityLabel("Next candidate")
                 }
             }
 

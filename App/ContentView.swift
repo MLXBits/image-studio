@@ -255,6 +255,7 @@ struct ContentView: View {
             onSetGalleryFlag: { flag in setPreviewFlag(flag) },
             onSetGalleryRating: { rating in setPreviewRating(rating) },
             onUpscale: { path in promptUpscale(paths: [path]) },
+            onRetry: retryPreviewJob,
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -1908,6 +1909,21 @@ struct ContentView: View {
             WildcardExpander.expandVariants(pair.positive, count: 1).first ?? pair.positive,
             WildcardExpander.expandVariants(pair.negative, count: 1).first ?? pair.negative
         )
+    }
+
+    /// Puts the failed job the preview shows back at the front of its family's
+    /// queue, then starts it once the gate is free.
+    private func retryPreviewJob() {
+        switch previewState {
+        case let .activeJob(job): store.restart(job)
+        case let .activeIdeogram4Job(job): ideogram4Store.restart(job)
+        case let .activeKrea2Job(job): krea2Store.restart(job)
+        case let .activeZImageJob(job): zimageStore.restart(job)
+        case let .activeQwen21Job(job): qwen21Store.restart(job)
+        case let .activeSeedVR2Job(job): seedVR2Store.restart(job)
+        case .idle, .galleryItem: return
+        }
+        pumpQueues()
     }
 
     /// Starts the next pending job across all families, but only when the gate is free.
