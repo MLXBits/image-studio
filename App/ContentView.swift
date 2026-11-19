@@ -106,11 +106,15 @@ struct ContentView: View {
             || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
     }
 
-    /// Running plus pending jobs across every family, for the dock badge.
-    private var queuedJobCount: Int {
-        let pending = store.pendingJobs.count + ideogram4Store.pendingJobs.count + krea2Store.pendingJobs.count
-            + zimageStore.pendingJobs.count + qwen21Store.pendingJobs.count + seedVR2Store.pendingJobs.count
-        return pending + (isAnyStoreRunning ? 1 : 0)
+    /// The images still to make across every family's queue, for the dock badge:
+    /// each pending job's batch, plus what the running job has yet to land.
+    private var imagesLeftInQueue: Int {
+        imagesLeft(store.pendingJobs, runner.activeJob)
+            + imagesLeft(ideogram4Store.pendingJobs, ideogram4Runner.activeJob)
+            + imagesLeft(krea2Store.pendingJobs, krea2Runner.activeJob)
+            + imagesLeft(zimageStore.pendingJobs, zimageRunner.activeJob)
+            + imagesLeft(qwen21Store.pendingJobs, qwen21Runner.activeJob)
+            + imagesLeft(seedVR2Store.pendingJobs, seedVR2Runner.activeJob)
     }
 
     /// What the menu bar acts on while this window is in front.
@@ -659,8 +663,8 @@ struct ContentView: View {
                 lastVariantByFamily[model.family] = model
             }
         }
-        .onChange(of: queuedJobCount, initial: true) { _, count in
-            BackgroundSignals.showQueueCount(count)
+        .onChange(of: imagesLeftInQueue, initial: true) { _, count in
+            BackgroundSignals.showImagesLeft(count)
         }
         .focusedSceneValue(\.mainWindow, mainWindowActions)
     }
@@ -1935,6 +1939,14 @@ struct ContentView: View {
     }
 
     // MARK: - Menu commands
+
+    private func imagesLeft<Job: GeneratedJob>(_ pending: [Job], _ running: Job?) -> Int {
+        let waiting = pending.reduce(0) { total, job in
+            total + BackgroundSignals.imagesLeft(seedCount: job.seeds.count, landed: 0)
+        }
+        guard let running else { return waiting }
+        return waiting + BackgroundSignals.imagesLeft(seedCount: running.seeds.count, landed: running.completedSeedsInBatch)
+    }
 
     private func stopAll() {
         runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()

@@ -15,7 +15,7 @@ struct JobFinish: Equatable {
 
 /// Signals that reach the user while the app is in the background: a
 /// notification when a job finishes or fails, a dock bounce on a failure, and
-/// the queue count on the dock icon.
+/// the images still to make on the dock icon.
 enum BackgroundSignals {
     /// The notification's title and body for a finished job.
     static func content(for finish: JobFinish) -> (title: String, body: String) {
@@ -33,13 +33,19 @@ enum BackgroundSignals {
         }
     }
 
-    /// The dock badge for `queued` jobs (running plus pending): none when empty.
-    static func badgeLabel(queued: Int) -> String? {
-        queued > 0 ? String(queued) : nil
+    /// The images a job has still to make: one per batch seed (one for a
+    /// single-seed job), less those that have landed.
+    static func imagesLeft(seedCount: Int, landed: Int) -> Int {
+        max(max(seedCount, 1) - landed, 0)
     }
 
-    static func showQueueCount(_ queued: Int) {
-        NSApp.dockTile.badgeLabel = badgeLabel(queued: queued)
+    /// The dock badge for the images still to make across the queue: none when empty.
+    static func badgeLabel(imagesLeft: Int) -> String? {
+        imagesLeft > 0 ? String(imagesLeft) : nil
+    }
+
+    static func showImagesLeft(_ count: Int) {
+        NSApp.dockTile.badgeLabel = badgeLabel(imagesLeft: count)
     }
 
     /// Posts a notification when the app is not frontmost, and bounces the dock

@@ -22,8 +22,20 @@ struct BackgroundSignalsTests {
     }
 
     @Test func anEmptyQueueHasNoBadge() {
-        #expect(BackgroundSignals.badgeLabel(queued: 0) == nil)
-        #expect(BackgroundSignals.badgeLabel(queued: 3) == "3")
+        #expect(BackgroundSignals.badgeLabel(imagesLeft: 0) == nil)
+        #expect(BackgroundSignals.badgeLabel(imagesLeft: 3) == "3")
+    }
+
+    @Test func aBatchCountsDownItsImages() {
+        #expect(BackgroundSignals.imagesLeft(seedCount: 10, landed: 0) == 10)
+        #expect(BackgroundSignals.imagesLeft(seedCount: 10, landed: 4) == 6)
+        #expect(BackgroundSignals.imagesLeft(seedCount: 10, landed: 10) == 0)
+    }
+
+    @Test func aSingleSeedJobIsOneImage() {
+        #expect(BackgroundSignals.imagesLeft(seedCount: 0, landed: 0) == 1)
+        #expect(BackgroundSignals.imagesLeft(seedCount: 1, landed: 0) == 1)
+        #expect(BackgroundSignals.imagesLeft(seedCount: 1, landed: 1) == 0)
     }
 }
 
