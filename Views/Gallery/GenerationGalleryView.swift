@@ -65,6 +65,11 @@ struct GenerationGalleryView: View {
         )
     }
 
+    /// How many images this model family has before the search and filters.
+    private var familyItemCount: Int {
+        GallerySearch.filter(gallery.items, family: modelFilter, query: "", flag: .all, minRating: 0).count
+    }
+
     /// Whether any culling filter is narrowing the gallery (drives the "clear" affordance).
     private var isFiltering: Bool {
         flagFilter != .all || minRating > 0 || !searchText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -532,13 +537,13 @@ struct GenerationGalleryView: View {
     /// "No results" with a way out when the filters hide every image; "No images
     /// yet" only when this model really has none.
     @ViewBuilder private var emptyState: some View {
-        if isFiltering, !modelItems.isEmpty {
+        if isFiltering, familyItemCount > 0 {
             ContentUnavailableView {
                 Label("No Matching Images", systemImage: "line.3.horizontal.decrease.circle")
             } description: {
-                Text(modelItems.count == 1
+                Text(familyItemCount == 1
                     ? "The search or filters hide the only image."
-                    : "The search or filters hide all \(modelItems.count) images.")
+                    : "The search or filters hide all \(familyItemCount) images.")
             } actions: {
                 Button("Clear Filters") { clearFilters() }
             }

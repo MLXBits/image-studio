@@ -1,0 +1,104 @@
+<h2>Where does the Model Center live?</h2>
+<p class="subtitle">Same content, two anchors. Both keep the app ungated and Generate always enabled. Pick the one that feels more findable for a first-time user without cluttering the panel for you (the power user).</p>
+
+<div class="split">
+  <!-- Option A: Top card in the params area, always visible when the selected model isn't cached -->
+  <div class="mockup">
+    <div class="mockup-header">Option A — Top card (always visible when model not cached)</div>
+    <div class="mockup-body" style="background:#1c1c1e;padding:14px;">
+      <div style="font-size:11px;color:#98989d;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Params Pane (350pt)</div>
+      <!-- The card -->
+      <div style="border:1px solid #3a3a3c;border-radius:10px;padding:12px;background:#2c2c2e;margin-bottom:12px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+          <div style="font-size:13px;font-weight:600;color:#f5f5f7;">FLUX.1 [dev] · Q8</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,159,10,0.18);color:#ff9f0a;">≈12 GB RAM</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(142,142,147,0.18);color:#98989d;">≈22 GB</span>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="flex:1;height:6px;border-radius:6px;background:#3a3a3c;overflow:hidden;">
+            <div style="width:0%;height:100%;background:#0a84ff;"></div>
+          </div>
+          <button style="font-size:12px;font-weight:600;padding:6px 14px;border-radius:8px;background:#0a84ff;color:white;border:none;">Download</button>
+        </div>
+        <div style="font-size:10px;color:#636366;margin-top:6px;">Not downloaded · First use only, keeps going if you close the window</div>
+      </div>
+      <!-- Rest of the params panel below it (dimmed to show it's not the focus) -->
+      <div style="opacity:0.5;">
+        <div style="font-size:11px;color:#98989d;font-weight:600;margin-bottom:6px;">Style</div>
+        <div style="height:34px;border:1px dashed #3a3a3c;border-radius:8px;margin-bottom:10px;"></div>
+        <div style="font-size:11px;color:#98989d;font-weight:600;margin-bottom:6px;">Prompt</div>
+        <div style="height:58px;border:1px dashed #3a3a3c;border-radius:8px;margin-bottom:10px;"></div>
+        <div style="font-size:11px;color:#98989d;font-weight:600;margin-bottom:6px;">Image Input</div>
+        <div style="height:44px;border:1px dashed #3a3a3c;border-radius:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Option B: A tab/section inside the left params column -->
+  <div class="mockup">
+    <div class="mockup-header">Option B — Tab in the params column</div>
+    <div class="mockup-body" style="background:#1c1c1e;padding:14px;">
+      <div style="font-size:11px;color:#98989d;font-weight:600;text-transform:uppercase;letter-spacing:0.04em;margin-bottom:8px;">Params Pane (350pt)</div>
+      <!-- Tab bar -->
+      <div style="display:flex;gap:4px;border-bottom:1px solid #3a3a3c;margin-bottom:12px;padding-bottom:8px;">
+        <div style="font-size:12px;padding:5px 12px;border-radius:7px;color:#98989d;">Params</div>
+        <div style="font-size:12px;font-weight:600;padding:5px 12px;border-radius:7px;color:white;background:#0a84ff;">Models</div>
+      </div>
+      <!-- Model Center list view -->
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="border:1px solid #3a3a3c;border-radius:9px;padding:10px;background:#2c2c2e;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:600;color:#f5f5f7;">FLUX 3 Klein</div>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(52,199,89,0.18);color:#34c759;">Cached</span>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(52,199,89,0.15);color:#34c759;">≈9 GB RAM</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(142,142,147,0.18);color:#98989d;">≈18 GB</span>
+          </div>
+        </div>
+        <div style="border:1px solid #0a84ff;border-radius:9px;padding:10px;background:rgba(10,132,255,0.08);">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:600;color:#f5f5f7;">FLUX.1 [dev] · Q8</div>
+            <button style="font-size:11px;font-weight:600;padding:4px 11px;border-radius:7px;background:#0a84ff;color:white;border:none;">Download</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,159,10,0.18);color:#ff9f0a;">≈12 GB RAM</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(142,142,147,0.18);color:#98989d;">≈22 GB</span>
+          </div>
+        </div>
+        <div style="border:1px solid #3a3a3c;border-radius:9px;padding:10px;background:#2c2c2e;">
+          <div style="display:flex;align-items:center;justify-content:space-between;">
+            <div style="font-size:12px;font-weight:600;color:#f5f5f7;">Krea 2</div>
+            <button style="font-size:11px;font-weight:600;padding:4px 11px;border-radius:7px;background:#3a3a3c;color:#f5f5f7;border:none;">Download</button>
+          </div>
+          <div style="display:flex;gap:6px;margin-top:6px;">
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(255,69,58,0.18);color:#ff453a;">≈23 GB RAM</span>
+            <span style="font-size:10px;padding:2px 7px;border-radius:20px;background:rgba(142,142,147,0.18);color:#98989d;">≈28 GB</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section" style="margin-top:18px;">
+  <p class="subtitle" style="margin-bottom:10px;">Click a column header's option, or tell me in the terminal which feels right.</p>
+  <div class="options">
+    <div class="option" data-choice="a" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Top card</h3>
+        <p>Always visible when the selected model isn't cached. Highest discoverability for a cold user — they see the download without hunting. Cost: it occupies params-panel space and competes with the dense layout (350pt budget).</p>
+      </div>
+    </div>
+    <div class="option" data-choice="b" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Params-column tab</h3>
+        <p>A "Models" tab alongside "Params". Keeps the params panel clean for you; the full model list + cache state lives in its own place. Cost: a cold user has to know to look for the tab — lower discoverability unless the wizard points at it.</p>
+      </div>
+    </div>
+  </div>
+</div>

@@ -17,6 +17,11 @@ struct FailureSummaryTests {
         #expect(FailureSummary.line(message: "exited with code 1", log: log) == "torch.OutOfMemoryError: CUDA out of memory")
     }
 
+    @Test func anUnprefixedExceptionCounts() {
+        #expect(FailureSummary
+            .line(message: "exited", log: "Exception: model load failed\nWorker exited") == "Exception: model load failed")
+    }
+
     @Test func aBareExceptionNameCounts() {
         #expect(FailureSummary.line(message: "x", log: "step 3\nKeyboardInterrupt\n") == "KeyboardInterrupt")
     }

@@ -115,7 +115,7 @@ struct GalleryTrashTests {
         #expect(GalleryTrash.restore([item]) == ["a.png"])
     }
 
-    @Test func restoreLeavesTheSidecarWhenItsNameIsTaken() throws {
+    @Test func restoreReportsASidecarWhoseNameIsTaken() throws {
         defer { try? fm.removeItem(at: root) }
         let image = try write("a.png", in: root)
         _ = try write("a.json", in: root, "settings")
@@ -124,7 +124,7 @@ struct GalleryTrashTests {
 
         let failures = GalleryTrash.restore([item])
 
-        #expect(failures.isEmpty)
+        #expect(failures == ["a.json"])
         #expect(fm.fileExists(atPath: image.path))
         #expect(try String(contentsOf: stray, encoding: .utf8) == "stray")
     }

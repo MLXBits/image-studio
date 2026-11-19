@@ -399,6 +399,15 @@ struct PreviewPaneView: View {
                         .padding(.horizontal)
                     }
 
+                    if let onRetry {
+                        Button(action: onRetry) {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal)
+                    }
+
                     Button {
                         openSettings()
                         DispatchQueue.main.async {

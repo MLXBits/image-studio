@@ -32,11 +32,12 @@ nonisolated enum FailureSummary {
         return gatedMarkers.contains { combined.contains($0) }
     }
 
-    /// `ValueError: …`, `torch.OutOfMemoryError: …`, `KeyboardInterrupt` — a dotted
-    /// name ending in Error, Exception or Interrupt, alone or followed by a colon.
+    /// `ValueError: …`, `torch.OutOfMemoryError: …`, `Exception: …`, `KeyboardInterrupt`
+    /// — a dotted name ending in (or being) Error, Exception or Interrupt, alone or
+    /// followed by a colon.
     private static func isExceptionLine(_ line: String) -> Bool {
         line.range(
-            of: #"^[A-Za-z_][\w.]*(Error|Exception|Interrupt)(:.*)?$"#,
+            of: #"^(?:[A-Za-z_][\w.]*)?(Error|Exception|Interrupt)(:.*)?$"#,
             options: .regularExpression
         ) != nil
     }
