@@ -120,8 +120,11 @@ struct GenerationGalleryView: View {
                         if selection.contains(item.id) {
                             selection.remove(item.id)
                             if anchorItemId == item.id {
-                                anchorItemId = selection.first
-                                selectedItem = gallery.items.first { $0.id == selection.first }
+                                let next = GallerySelectionState.nearestSelected(
+                                    to: item.id, in: sections.flatMap(\.items).map(\.id), selection: selection
+                                )
+                                anchorItemId = next
+                                selectedItem = next.flatMap { id in gallery.items.first { $0.id == id } }
                             }
                         } else {
                             selection.insert(item.id)

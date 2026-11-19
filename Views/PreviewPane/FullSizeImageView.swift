@@ -355,12 +355,9 @@ struct FullSizeImageView: View {
             if event.type == .magnify {
                 factor = 1 + event.magnification
             } else {
-                // Trackpad two-finger / mouse-wheel scroll → exponential zoom.
-                let delta = event.hasPreciseScrollingDeltas
-                    ? event.scrollingDeltaY
-                    : event.scrollingDeltaY * 3
-                guard delta != 0 else { return event }
-                factor = exp(delta * 0.005)
+                // Trackpad two-finger / mouse-wheel scroll → zoom.
+                guard event.scrollingDeltaY != 0 else { return event }
+                factor = ScrollZoom.factor(deltaY: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas)
             }
             showChrome()
             zoom(by: factor, at: cursor)

@@ -28,3 +28,22 @@ struct GallerySelectionState: Equatable {
             : Self(selection: [], anchorId: nil, selectedId: nil)
     }
 }
+
+extension GallerySelectionState {
+    /// The selected id closest to `removed` in grid `order`, checking the next
+    /// cell before the previous one at each distance. For a Cmd-click that
+    /// deselects the anchor: the anchor moves to a neighbour, not to whichever id
+    /// the set happens to list first. Falls back to any selected id when `removed`
+    /// is not in `order`, or no selected id is.
+    static func nearestSelected(to removed: UUID, in order: [UUID], selection: Set<UUID>) -> UUID? {
+        guard let start = order.firstIndex(of: removed) else { return selection.first }
+        for distance in 1 ..< max(order.count, 1) {
+            for idx in [start + distance, start - distance] where order.indices.contains(idx) {
+                if selection.contains(order[idx]) {
+                    return order[idx]
+                }
+            }
+        }
+        return selection.first
+    }
+}
