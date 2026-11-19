@@ -94,12 +94,19 @@ final class DockBadge {
     private let imagesLeft: () -> Int
 
     /// `imagesLeft` reads observable queue state; the badge follows its changes.
+    /// Built in `App.init`, before `NSApp` exists, so the first update waits
+    /// for the app to run.
     init(imagesLeft: @escaping () -> Int) {
         self.imagesLeft = imagesLeft
-        update()
+        Task { @MainActor [weak self] in self?.update() }
     }
 
     private func update() {
+        // Not up yet: the dock tile belongs to `NSApp`. Try again next turn.
+        guard NSApp != nil else {
+            Task { @MainActor [weak self] in self?.update() }
+            return
+        }
         let count = withObservationTracking {
             imagesLeft()
         } onChange: { [weak self] in
