@@ -9,14 +9,49 @@ import Foundation
 /// characters. We take the larger of the two estimates so the counter errs toward
 /// warning early rather than letting a prompt silently overrun the cap (past which
 /// the backend truncates and trailing text is dropped before reaching the model).
-enum PromptTokenEstimator {
+///
+/// CJK ideographs, kana and hangul are written without spaces and encode at about
+/// one token per character, so they are counted one each and removed from the text
+/// before the word/character estimate runs on what is left.
+nonisolated enum PromptTokenEstimator {
     static func estimate(_ text: String) -> Int {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return 0 }
-        let words = trimmed.split(whereSeparator: \.isWhitespace).count
-        let chars = trimmed.count
+        var dense = 0
+        var rest = String.UnicodeScalarView()
+        for scalar in trimmed.unicodeScalars {
+            if isDense(scalar) {
+                dense += 1
+                rest.append(" ") // keeps the words on either side apart
+            } else {
+                rest.append(scalar)
+            }
+        }
+        let other = String(rest).trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !other.isEmpty else { return dense }
+        let words = other.split(whereSeparator: \.isWhitespace).count
+        let chars = other.count
         let byWords = Int((Double(words) * 1.3).rounded())
         let byChars = Int((Double(chars) / 4.0).rounded(.up))
-        return max(byWords, byChars)
+        return dense + max(byWords, byChars)
+    }
+
+    /// Scripts the BPE encodes at roughly one token per scalar.
+    private static func isDense(_ scalar: Unicode.Scalar) -> Bool {
+        switch scalar.value {
+        case 0x3040 ... 0x30FF, // Hiragana, Katakana
+             0x31F0 ... 0x31FF, // Katakana phonetic extensions
+             0x3400 ... 0x4DBF, // CJK Extension A
+             0x4E00 ... 0x9FFF, // CJK Unified Ideographs
+             0xF900 ... 0xFAFF, // CJK Compatibility Ideographs
+             0xFF66 ... 0xFF9F, // Half-width Katakana
+             0x1100 ... 0x11FF, // Hangul Jamo
+             0x3130 ... 0x318F, // Hangul Compatibility Jamo
+             0xAC00 ... 0xD7AF, // Hangul Syllables
+             0x20000 ... 0x2FA1F: // CJK Extensions B–F, Compatibility Supplement
+            true
+        default:
+            false
+        }
     }
 }
