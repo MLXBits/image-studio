@@ -35,7 +35,10 @@ private struct QueueRowActions<Store: ProfileScopedJobStore>: ViewModifier {
                         start()
                     }
                 case .pending:
-                    Button("Run Next") { store.moveToFront(job) }
+                    Button("Run Next") {
+                        store.moveToFront(job)
+                        start()
+                    }
                 default:
                     EmptyView()
                 }

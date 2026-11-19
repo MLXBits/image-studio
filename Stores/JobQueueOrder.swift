@@ -27,10 +27,12 @@ extension ProfileScopedJobStore {
         save()
     }
 
-    /// Retries every failed job, oldest first. Cancelled jobs stay cancelled.
+    /// Retries every failed job in list order: the lowest failed row runs
+    /// first, as the waiting rows do. Cancelled jobs stay cancelled.
     func retryAllFailed() {
-        // Top to bottom is newest to oldest; each retry lands below the last,
-        // so the oldest ends lowest and runs first.
+        // Each retry lands below the one before, so visiting top to bottom
+        // keeps the failed rows in their order, the lowest ending lowest.
+        // List order, not `createdAt`: a drag or Duplicate decouples the two.
         for job in jobs {
             if case .failed = job.status {
                 restart(job)

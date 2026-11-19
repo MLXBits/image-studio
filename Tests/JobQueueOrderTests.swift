@@ -53,7 +53,7 @@ struct JobQueueOrderTests {
         #expect(store.nextPendingJob === failed)
     }
 
-    @Test func retryAllFailedRunsTheOldestFirst() {
+    @Test func retryAllFailedKeepsListOrder() {
         let store = store([
             job("new fail", .failed("a")), job("cancelled", .cancelled), job("old fail", .failed("b")),
         ])
@@ -64,6 +64,18 @@ struct JobQueueOrderTests {
         #expect(store.nextPendingJob?.prompt == "old fail")
         // Retry All Failed leaves cancelled jobs alone.
         #expect(store.jobs.first { $0.prompt == "cancelled" }?.status == .cancelled)
+    }
+
+    /// A failed row dragged above an older one (before it ran) keeps its place:
+    /// list order, not creation time, decides.
+    @Test func retryAllFailedFollowsTheListNotCreationTime() {
+        let older = job("older, listed higher", .failed("a"))
+        let newer = job("newer, listed lower", .failed("b"))
+        let store = store([older, newer])
+
+        store.retryAllFailed()
+
+        #expect(store.nextPendingJob === newer)
     }
 
     @Test func runNextMovesAWaitingJobToTheFront() {
