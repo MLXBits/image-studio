@@ -260,11 +260,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
 
     func runNext(in store: Spec.Store, settings: AppSettings, coordinator: GenerationCoordinator, timing: TimingStore) {
         guard runTask == nil else { return }
-        // FIFO by submission time: the oldest pending job runs next, so a second
-        // batch doesn't preempt the first (which would thrash the warm model —
-        // e.g. reloading/re-fusing LoRAs at each batch boundary). The store
-        // lists newest-first for display; execution order is independent of it.
-        guard let job = store.pendingJobs.min(by: { $0.createdAt < $1.createdAt }) else {
+        // The lowest pending row runs next. New jobs join at the top, so this is
+        // first in, first out — a second batch doesn't preempt the first (which
+        // would thrash the warm model, re-fusing LoRAs at each batch boundary) —
+        // and dragging a row in the queue drawer changes when it runs.
+        guard let job = store.pendingJobs.last else {
             inSession = false
             coordinator.release(Spec.family)
             return

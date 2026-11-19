@@ -64,8 +64,7 @@ final class SeedVR2JobStore: @MainActor ProfileScopedJobStore {
         job.startedAt = nil
         job.completedAt = nil
         job.latestStepwisePath = nil
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(job, at: 0)
+        placeNext(job)
         save()
     }
 }

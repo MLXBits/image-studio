@@ -69,7 +69,9 @@ struct QueueDrawerView: View {
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
+                .queueRowActions(job, in: store, start: startNext)
             }
+            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
         .listStyle(.sidebar)
     }
@@ -100,6 +102,10 @@ struct QueueDrawerView: View {
 
     private func restart(_ job: FluxJob) {
         store.restart(job)
+        startNext()
+    }
+
+    private func startNext() {
         runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
     }
 
@@ -185,7 +191,9 @@ struct Ideogram4QueueDrawerView: View {
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
+                .queueRowActions(job, in: store, start: startNext)
             }
+            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
         .listStyle(.sidebar)
     }
@@ -216,6 +224,10 @@ struct Ideogram4QueueDrawerView: View {
 
     private func restart(_ job: Ideogram4Job) {
         store.restart(job)
+        startNext()
+    }
+
+    private func startNext() {
         runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
     }
 
@@ -408,7 +420,9 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
+                .queueRowActions(job, in: store, start: startNext)
             }
+            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
         .listStyle(.sidebar)
     }
@@ -439,6 +453,10 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
 
     private func restart(_ job: Spec.Job) {
         store.restart(job)
+        startNext()
+    }
+
+    private func startNext() {
         runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
     }
 
@@ -574,7 +592,9 @@ struct SeedVR2QueueDrawerView: View {
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
+                .queueRowActions(job, in: store, start: startNext)
             }
+            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
         .listStyle(.sidebar)
     }
@@ -605,6 +625,10 @@ struct SeedVR2QueueDrawerView: View {
 
     private func restart(_ job: SeedVR2Job) {
         store.restart(job)
+        startNext()
+    }
+
+    private func startNext() {
         runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
     }
 

@@ -21,14 +21,6 @@ final class Ideogram4JobStore: @MainActor ProfileScopedJobStore {
         save()
     }
 
-    func addBatch(_ jobs: [Ideogram4Job]) {
-        for job in jobs.reversed() {
-            self.jobs.insert(job, at: 0)
-        }
-        pruneIfNeeded()
-        save()
-    }
-
     func remove(ids: Set<UUID>) {
         jobs.removeAll { ids.contains($0.id) }
         save()
@@ -63,8 +55,7 @@ final class Ideogram4JobStore: @MainActor ProfileScopedJobStore {
         job.startedAt = nil
         job.completedAt = nil
         job.latestStepwisePath = nil
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(job, at: 0)
+        placeNext(job)
         save()
     }
 }

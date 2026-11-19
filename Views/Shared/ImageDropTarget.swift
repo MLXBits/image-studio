@@ -4,10 +4,9 @@ import UniformTypeIdentifiers
 
 /// One drop target that accepts an image from either source the app can be handed one.
 ///
-/// Two sources, two pasteboard types:
-/// - the in-app gallery is an `NSCollectionView` whose drag writes the file path as
-///   plain text (`GalleryCollectionView.pasteboardWriterForItemAt`), and
-/// - a Finder drag arrives as `public.file-url`.
+/// Two pasteboard types:
+/// - a gallery or Finder drag arrives as `public.file-url` (``GalleryDragPayload``), and
+/// - other sources may hand over a path, or a `file://` URL, as plain text.
 ///
 /// The wells used to declare those as two separate targets on the same view —
 /// `.dropDestination(for: String.self)` for the first and `.onDrop(of: [.fileURL])`
@@ -74,8 +73,8 @@ enum ImageDropResolver {
             }
             return
         }
-        // The gallery hands over a plain path string; tolerate a file:// URL too, since
-        // some sources write the text representation of a URL rather than a bare path.
+        // Some sources hand over a plain path string; tolerate a file:// URL too, since
+        // some write the text representation of a URL rather than a bare path.
         let text = UTType.utf8PlainText.identifier
         if provider.hasItemConformingToTypeIdentifier(text) {
             provider.loadDataRepresentation(forTypeIdentifier: text) { data, _ in

@@ -397,11 +397,13 @@ final class GalleryNSCollectionView: NSCollectionView {
     // methods guarantees we see every cursor position including collapsed section headers.
 
     override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
-        eventDelegate?.dragUpdated(sender, in: self)
-        return .move
+        draggingUpdated(sender)
     }
 
+    /// Only the gallery's own images move between boards. A file dragged in from
+    /// Finder carries the same file URL type, so it is turned away here.
     override func draggingUpdated(_ sender: NSDraggingInfo) -> NSDragOperation {
+        guard isOwnDrag(sender) else { return [] }
         eventDelegate?.dragUpdated(sender, in: self)
         return .move
     }
@@ -415,7 +417,12 @@ final class GalleryNSCollectionView: NSCollectionView {
     }
 
     override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
-        eventDelegate?.dropPerformed(sender, in: self) ?? false
+        guard isOwnDrag(sender) else { return false }
+        return eventDelegate?.dropPerformed(sender, in: self) ?? false
+    }
+
+    private func isOwnDrag(_ sender: NSDraggingInfo) -> Bool {
+        (sender.draggingSource as AnyObject?) === self
     }
 
     /// Edit ▸ Copy (⌘C). The menu's key equivalent fires before `keyDown`, so ⌘C
@@ -624,10 +631,7 @@ struct GalleryCollectionView: NSViewRepresentable {
         ) -> (any NSPasteboardWriting)? {
             guard path.section < sections.count,
                   path.item < sections[path.section].visibleItems.count else { return nil }
-            let item = sections[path.section].visibleItems[path.item]
-            let pb = NSPasteboardItem()
-            pb.setString(item.path, forType: .string)
-            return pb
+            return GalleryDragPayload.item(for: sections[path.section].visibleItems[path.item].path)
         }
 
         // MARK: Drop destination — handled at NSView level (see GalleryNSCollectionView overrides)
@@ -660,7 +664,7 @@ struct GalleryCollectionView: NSViewRepresentable {
                 searchOptions: [:]
             ) { draggingItem, _, _ in
                 guard let pbItem = draggingItem.item as? NSPasteboardItem,
-                      let itemPath = pbItem.string(forType: .string),
+                      let itemPath = GalleryDragPayload.path(from: pbItem),
                       let item = allVisible.first(where: { $0.path == itemPath }),
                       item.board != board else { return }
                 draggedItems.append(item)
@@ -1004,7 +1008,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             forSupplementaryViewOfKind: NSCollectionView.elementKindSectionHeader,
             withIdentifier: GallerySectionHeader.reuseID
         )
-        cv.registerForDraggedTypes([.string])
+        cv.registerForDraggedTypes([.fileURL])
         cv.setDraggingSourceOperationMask(.move, forLocal: true)
         cv.setDraggingSourceOperationMask(.copy, forLocal: false)
 
