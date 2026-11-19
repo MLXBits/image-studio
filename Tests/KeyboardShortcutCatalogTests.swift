@@ -17,7 +17,8 @@ struct KeyboardShortcutCatalogTests {
         let listed = Set(Catalog.sections.flatMap(\.entries).flatMap(\.keys))
         let bindings: [Catalog.Binding] = [
             Catalog.showShortcuts, Catalog.generate, Catalog.generateBatch, Catalog.toggleQueue,
-            Catalog.pasteImage, Catalog.deleteRejected, Catalog.addBox,
+            Catalog.pasteImage, Catalog.deleteRejected, Catalog.addBox, Catalog.stop, Catalog.toggleParams,
+            Catalog.showNotepad, Catalog.revealInFinder, Catalog.copyPrompt,
         ]
         for binding in bindings {
             #expect(listed.contains(binding.keycaps), "\(binding.symbols) is bound but not listed")
@@ -34,6 +35,13 @@ struct KeyboardShortcutCatalogTests {
             let keys = section.entries.flatMap(\.keys)
             #expect(Set(keys).count == keys.count, "\(section.title) lists a key twice")
         }
+    }
+
+    /// Menu commands answer anywhere in the main window, so no two of them may share a key.
+    @Test func menuShortcutsDoNotCollide() {
+        let menuSections = [Catalog.general, Catalog.generating, Catalog.windowLayout, Catalog.imageMenu]
+        let keys = menuSections.flatMap(\.entries).flatMap(\.keys)
+        #expect(Set(keys).count == keys.count)
     }
 
     @Test func anEmptySearchShowsEverything() {
@@ -55,7 +63,7 @@ struct KeyboardShortcutCatalogTests {
     }
 
     @Test func searchMatchesKeycaps() {
-        let found = Catalog.filtered("⌥⌘")
+        let found = Catalog.filtered("⌥⌘↵")
         #expect(found.flatMap(\.entries).map(\.action) == ["Generate a batch (size set in Settings ▸ Generation)"])
     }
 

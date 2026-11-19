@@ -4,7 +4,7 @@ struct MLXBitsImageStudioApp: App {
     static let mainWindowID = "main"
 
     /// The support nudge's count: the images every runner saves (spec §5).
-    private static func makeSupport(testHost: Bool, runners: [any LandedImagesReporting]) -> SupportStore {
+    private static func makeSupport(testHost: Bool, runners: [any JobOutcomeReporting]) -> SupportStore {
         let support = SupportStore(
             defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
         )
@@ -12,6 +12,16 @@ struct MLXBitsImageStudioApp: App {
             runner.onImagesLanded = { support.recordImages($0) }
         }
         return support
+    }
+
+    private static func makeTipJar(support: SupportStore, testHost: Bool) -> TipJarStore {
+        let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }
+        // Tips interrupted last launch, or approved later, are finished as
+        // soon as the app starts (spec §5).
+        if BuildFlavor.isAppStore, !testHost {
+            tipJar.startFinishingTransactions()
+        }
+        return tipJar
     }
 
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
@@ -30,6 +40,8 @@ struct MLXBitsImageStudioApp: App {
     @State private var qwen21Store: Qwen21JobStore
     @State private var qwen21Runner: Qwen21JobRunner
     @State private var seedVR2Store: SeedVR2JobStore
+    /// Nil in a test run, which leaves the dock alone.
+    @State private var dockBadge: DockBadge?
     @State private var seedVR2Runner: SeedVR2JobRunner
     @State private var coordinator: GenerationCoordinator
     @State private var timing = TimingStore()
@@ -82,6 +94,7 @@ struct MLXBitsImageStudioApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             AboutCommands()
+            MainWindowCommands()
             KeyboardShortcutsCommands()
             CommandGroup(after: .help) {
                 // The bundled runtime's third-party notices (spec §2).
@@ -204,17 +217,26 @@ struct MLXBitsImageStudioApp: App {
         _zimageRunner = State(initialValue: zimageRunner)
         _qwen21Runner = State(initialValue: qwen21Runner)
         _seedVR2Runner = State(initialValue: seedVR2Runner)
-        let support = Self.makeSupport(
-            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner]
-        )
-        _support = State(initialValue: support)
-        let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }
-        // Tips interrupted last launch, or approved later, are finished as
-        // soon as the app starts (spec §5).
-        if BuildFlavor.isAppStore, !testHost {
-            tipJar.startFinishingTransactions()
+        let allRunners: [any JobOutcomeReporting] = [
+            runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner,
+        ]
+        let support = Self.makeSupport(testHost: testHost, runners: allRunners)
+        // A test run finishes jobs in the background; it must not post notifications.
+        if !testHost {
+            for reporter in allRunners {
+                reporter.onJobFinished = { BackgroundSignals.jobFinished($0) }
+            }
+            _dockBadge = State(initialValue: DockBadge {
+                BackgroundSignals.imagesLeft(pending: store.pendingJobs, running: runner.activeJob)
+                    + BackgroundSignals.imagesLeft(pending: ideogram4Store.pendingJobs, running: ideogram4Runner.activeJob)
+                    + BackgroundSignals.imagesLeft(pending: krea2Store.pendingJobs, running: krea2Runner.activeJob)
+                    + BackgroundSignals.imagesLeft(pending: zimageStore.pendingJobs, running: zimageRunner.activeJob)
+                    + BackgroundSignals.imagesLeft(pending: qwen21Store.pendingJobs, running: qwen21Runner.activeJob)
+                    + BackgroundSignals.imagesLeft(pending: seedVR2Store.pendingJobs, running: seedVR2Runner.activeJob)
+            })
         }
-        _tipJar = State(initialValue: tipJar)
+        _support = State(initialValue: support)
+        _tipJar = State(initialValue: Self.makeTipJar(support: support, testHost: testHost))
         // Partial downloads nothing will resume (#18), off the main thread. Then
         // ask mflux which models are downloaded (#19): the sweep changes the
         // folders it asks about, which would make its answers stale at once.
