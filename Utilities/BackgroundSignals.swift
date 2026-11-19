@@ -39,6 +39,16 @@ enum BackgroundSignals {
         max(max(seedCount, 1) - landed, 0)
     }
 
+    /// The images one family's queue has still to make: each pending job's
+    /// batch, plus what the running job has yet to land.
+    static func imagesLeft<Job: GeneratedJob>(pending: [Job], running: Job?) -> Int {
+        let waiting = pending.reduce(0) { total, job in
+            total + imagesLeft(seedCount: job.seeds.count, landed: 0)
+        }
+        guard let running else { return waiting }
+        return waiting + imagesLeft(seedCount: running.seeds.count, landed: running.completedSeedsInBatch)
+    }
+
     /// The dock badge for the images still to make across the queue: none when empty.
     static func badgeLabel(imagesLeft: Int) -> String? {
         imagesLeft > 0 ? String(imagesLeft) : nil
@@ -74,5 +84,28 @@ enum BackgroundSignals {
             else { return }
             try? await center.add(request)
         }
+    }
+}
+
+/// Keeps the dock badge on the images still to make. Owned by the app, not a
+/// window: jobs keep running with the main window closed, and the badge keeps
+/// counting them down.
+final class DockBadge {
+    private let imagesLeft: () -> Int
+
+    /// `imagesLeft` reads observable queue state; the badge follows its changes.
+    init(imagesLeft: @escaping () -> Int) {
+        self.imagesLeft = imagesLeft
+        update()
+    }
+
+    private func update() {
+        let count = withObservationTracking {
+            imagesLeft()
+        } onChange: { [weak self] in
+            // Fires once, before the change lands: read it on the next turn, then track again.
+            Task { @MainActor in self?.update() }
+        }
+        BackgroundSignals.showImagesLeft(count)
     }
 }

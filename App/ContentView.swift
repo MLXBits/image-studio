@@ -106,17 +106,6 @@ struct ContentView: View {
             || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
     }
 
-    /// The images still to make across every family's queue, for the dock badge:
-    /// each pending job's batch, plus what the running job has yet to land.
-    private var imagesLeftInQueue: Int {
-        imagesLeft(store.pendingJobs, runner.activeJob)
-            + imagesLeft(ideogram4Store.pendingJobs, ideogram4Runner.activeJob)
-            + imagesLeft(krea2Store.pendingJobs, krea2Runner.activeJob)
-            + imagesLeft(zimageStore.pendingJobs, zimageRunner.activeJob)
-            + imagesLeft(qwen21Store.pendingJobs, qwen21Runner.activeJob)
-            + imagesLeft(seedVR2Store.pendingJobs, seedVR2Runner.activeJob)
-    }
-
     /// What the menu bar acts on while this window is in front.
     private var mainWindowActions: MainWindowActions {
         MainWindowActions(
@@ -662,9 +651,6 @@ struct ContentView: View {
             if model != .custom {
                 lastVariantByFamily[model.family] = model
             }
-        }
-        .onChange(of: imagesLeftInQueue, initial: true) { _, count in
-            BackgroundSignals.showImagesLeft(count)
         }
         .focusedSceneValue(\.mainWindow, mainWindowActions)
     }
@@ -1940,14 +1926,6 @@ struct ContentView: View {
 
     // MARK: - Menu commands
 
-    private func imagesLeft<Job: GeneratedJob>(_ pending: [Job], _ running: Job?) -> Int {
-        let waiting = pending.reduce(0) { total, job in
-            total + BackgroundSignals.imagesLeft(seedCount: job.seeds.count, landed: 0)
-        }
-        guard let running else { return waiting }
-        return waiting + BackgroundSignals.imagesLeft(seedCount: running.seeds.count, landed: running.completedSeedsInBatch)
-    }
-
     private func stopAll() {
         runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
         zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
@@ -1955,9 +1933,9 @@ struct ContentView: View {
 
     /// Moves the picker to `family`, as picking its model in the menu would.
     private func switchFamily(_ family: ModelFamily) {
-        guard family != params.modelFamily,
-              let variant = family.variantToSelect(remembered: lastVariantByFamily, defaultModel: settings.defaultModel)
-        else { return }
+        guard let variant = family.variantToSelect(
+            from: params.model, remembered: lastVariantByFamily, defaultModel: settings.defaultModel
+        ) else { return }
         params.model = variant
     }
 
