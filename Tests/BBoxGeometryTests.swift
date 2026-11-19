@@ -58,6 +58,22 @@ struct BBoxGeometryTests {
         #expect(box == [100, 100, 110, 110])
     }
 
+    @Test func resizedMinimumBoxStaysInFrameAtTopLeftEdge() {
+        // A box already smaller than minBox, dragged by its top-left handle into the
+        // corner: growing to minBox upward would put y1/x1 below 0.
+        let box = BBoxGeometry.resized(
+            [0, 0, 5, 5], handle: .topLeft, delta: CGSize(width: -20, height: -20), minBox: 10
+        )
+        #expect(box == [0, 0, 10, 10])
+    }
+
+    @Test func resizedMinimumBoxStaysInFrameAtBottomRightEdge() {
+        let box = BBoxGeometry.resized(
+            [995, 995, 1000, 1000], handle: .bottomRight, delta: CGSize(width: 20, height: 20), minBox: 10
+        )
+        #expect(box == [990, 990, 1000, 1000])
+    }
+
     @Test func fitCanvasHonorsAspectRatio() {
         // Wide target constrained by width.
         #expect(BBoxGeometry.fitCanvas(width: 2000, height: 1000, in: CGSize(width: 500, height: 500))
@@ -169,6 +185,32 @@ struct OrientationClauseTests {
             to: ""
         )
         #expect(result == "head at center of frame, feet at bottom center of frame")
+    }
+
+    @Test func applyReplacesMultiWordLabels() {
+        let first = OrientationClause.apply(
+            partA: "left hand", zoneA: "top left of frame",
+            partB: "tail fin", zoneB: "bottom right of frame",
+            to: "a koi fish"
+        )
+        let second = OrientationClause.apply(
+            partA: "left hand", zoneA: "center of frame",
+            partB: "tail fin", zoneB: "top center of frame",
+            to: first
+        )
+        #expect(second == "a koi fish, left hand at center of frame, tail fin at top center of frame")
+    }
+
+    @Test func stripKeepsFreeTextBeforeTheClause() {
+        // The label match is bounded by the comma: the words before it are not a label.
+        let desc = "a woman lying on a red sofa, head at bottom left of frame, feet at top right of frame"
+        #expect(OrientationClause.strip(from: desc) == "a woman lying on a red sofa")
+    }
+
+    @Test func stripLeavesInlineMentionsAlone() {
+        // "at top" inside a longer segment is description, not a managed clause.
+        let desc = "a lamp hanging at top of the stairs, warm light"
+        #expect(OrientationClause.strip(from: desc) == desc)
     }
 }
 

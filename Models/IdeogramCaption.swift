@@ -249,15 +249,19 @@ struct IdeogramCaption: Codable, Equatable {
     /// which does not preserve insertion order, causing Ideogram4CaptionWarning on the Python side.
     func toJSON() -> String? {
         func esc(_ s: String) -> String {
+            // Per scalar, not per Character: "\r\n" is one Character, and JSON needs
+            // every control scalar below 0x20 escaped or the Python side rejects it.
             var out = "\""
-            for ch in s {
-                switch ch {
+            for scalar in s.unicodeScalars {
+                switch scalar {
                 case "\"": out += "\\\""
                 case "\\": out += "\\\\"
                 case "\n": out += "\\n"
                 case "\r": out += "\\r"
                 case "\t": out += "\\t"
-                default: out.append(ch)
+                case _ where scalar.value < 0x20:
+                    out += String(format: "\\u%04x", scalar.value)
+                default: out.unicodeScalars.append(scalar)
                 }
             }
             return out + "\""

@@ -143,7 +143,24 @@ enum BBoxGeometry {
                 x2 = x1 + minBox
             }
         }
+        // Growing to `minBox` against a frame edge pushes the far side out of range.
+        // Slide the box back inside, keeping its size.
+        (y1, y2) = shiftedIntoFrame(y1, y2)
+        (x1, x2) = shiftedIntoFrame(x1, x2)
         return [y1, x1, y2, x2]
+    }
+
+    /// Moves a `lo…hi` span by whole units so it lies within 0…1000, keeping its
+    /// length. A span longer than 1000 is cut to the frame.
+    private static func shiftedIntoFrame(_ lo: Int, _ hi: Int) -> (Int, Int) {
+        let length = min(hi - lo, 1000)
+        if lo < 0 {
+            return (0, length)
+        }
+        if hi > 1000 {
+            return (1000 - length, 1000)
+        }
+        return (lo, hi)
     }
 
     // MARK: - Composition guides
