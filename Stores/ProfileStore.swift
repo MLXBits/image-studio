@@ -271,6 +271,11 @@ final class ProfileStore {
         guard save(next) else { return ProfileError(lastError ?? "Couldn't save the profile list.") }
         registry = next
         settings.applyLibraryPath(resolved)
+        // A gallery undo from the old library would restore into it and rescan
+        // that folder over the new one.
+        for window in NSApp.windows {
+            window.undoManager?.removeAllActions()
+        }
         restartLibraryLease()
         gallery.activate(thumbnailDirectory: paths.thumbnailDirectory(for: id), preservingLocks: true)
         gallery.scan(outputDir: resolved)

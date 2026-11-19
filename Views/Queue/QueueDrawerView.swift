@@ -257,6 +257,7 @@ private struct QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
+                .accessibilityLabel("Cancel job")
             }
             if let onRestart {
                 Button(action: onRestart) {
@@ -267,9 +268,11 @@ private struct QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
+                .accessibilityLabel("Re-queue job")
             }
         }
         .padding(.vertical, 2)
+        .failureHelp(job.status)
     }
 
     private var statusIcon: some View {
@@ -313,6 +316,7 @@ private struct Ideogram4QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
+                .accessibilityLabel("Cancel job")
             }
             if let onRestart {
                 Button(action: onRestart) {
@@ -323,9 +327,11 @@ private struct Ideogram4QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
+                .accessibilityLabel("Re-queue job")
             }
         }
         .padding(.vertical, 2)
+        .failureHelp(job.status)
     }
 }
 
@@ -474,6 +480,7 @@ private struct FamilyQueueJobRow<Job: QueueListedJob>: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
+                .accessibilityLabel("Cancel job")
             }
             if let onRestart {
                 Button(action: onRestart) {
@@ -484,9 +491,11 @@ private struct FamilyQueueJobRow<Job: QueueListedJob>: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
+                .accessibilityLabel("Re-queue job")
             }
         }
         .padding(.vertical, 2)
+        .failureHelp(job.status)
     }
 }
 
@@ -644,6 +653,7 @@ private struct SeedVR2QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Cancel this job")
+                .accessibilityLabel("Cancel job")
             }
             if let onRestart {
                 Button(action: onRestart) {
@@ -654,9 +664,11 @@ private struct SeedVR2QueueJobRow: View {
                 .buttonStyle(.iconButtonCompact)
                 .focusable(false)
                 .help("Re-queue this job")
+                .accessibilityLabel("Re-queue job")
             }
         }
         .padding(.vertical, 2)
+        .failureHelp(job.status)
     }
 }
 
@@ -679,6 +691,7 @@ private struct PurgeFinishedButton: View {
         .foregroundStyle(.secondary)
         .focusable(false)
         .help("Remove all completed, failed, and cancelled jobs")
+        .accessibilityLabel("Remove finished jobs")
         .confirmationDialog("Remove finished jobs?", isPresented: $confirming, titleVisibility: .visible) {
             Button("Remove", role: .destructive, action: purge)
         } message: {
@@ -691,6 +704,11 @@ private struct JobStatusIcon: View {
     let status: JobStatus
 
     var body: some View {
+        // What the glyph means, for VoiceOver; a failure reads its error too.
+        icon.accessibilityLabel(status.label)
+    }
+
+    @ViewBuilder private var icon: some View {
         switch status {
         case .pending:
             Image(systemName: "clock")
@@ -716,6 +734,18 @@ private struct JobStatusIcon: View {
             Image(systemName: "stop.circle.fill")
                 .font(.caption)
                 .foregroundStyle(.secondary)
+        }
+    }
+}
+
+private extension View {
+    /// A failed job's row shows its error as a tooltip; other rows show none.
+    @ViewBuilder
+    func failureHelp(_ status: JobStatus) -> some View {
+        if case let .failed(message) = status {
+            help(message)
+        } else {
+            self
         }
     }
 }

@@ -24,19 +24,7 @@ struct GalleryItemDetailView: View {
     @State private var showingLog: Bool = false
 
     var body: some View {
-        let info = if item.ideogram4Metadata != nil {
-            ImageMetadataInfo(ideogram4Item: item)
-        } else if item.krea2Metadata != nil {
-            ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.zimageMetadata != nil {
-            ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.qwen21Metadata != nil {
-            ImageMetadataInfo(qwen21Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.seedVR2Metadata != nil {
-            ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else {
-            ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
-        }
+        let info = ImageMetadataInfo(galleryItem: item)
         VStack(spacing: 0) {
             ZStack {
                 Color.black.opacity(0.05)
@@ -143,12 +131,14 @@ struct GalleryItemDetailView: View {
                     .foregroundStyle(item.flag == .pick ? .green : .secondary)
             }
             .buttonStyle(.iconButton).help("Pick (P)")
+            .accessibilityLabel("Pick")
 
             Button { onSetFlag?(item.flag == .reject ? nil : .reject) } label: {
                 Image(systemName: "xmark")
                     .foregroundStyle(item.flag == .reject ? .red : .secondary)
             }
             .buttonStyle(.iconButton).help("Reject (X)")
+            .accessibilityLabel("Reject")
 
             Divider().frame(height: 14)
 
@@ -161,6 +151,7 @@ struct GalleryItemDetailView: View {
                             .foregroundStyle(star <= item.rating ? .yellow : .secondary)
                     }
                     .buttonStyle(.iconButtonCompact).help("Rate \(star)")
+                    .accessibilityLabel("Rate \(star)")
                 }
             }
             Spacer()

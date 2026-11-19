@@ -5,6 +5,7 @@ import SwiftUI
 struct GenerationGalleryView: View {
     @Environment(GalleryStore.self) private var gallery
     @Environment(AppSettings.self) private var settings
+    @Environment(\.undoManager) private var undoManager
 
     @Binding var selectedItem: GalleryItem?
     /// Only images produced by this model family are shown.
@@ -64,6 +65,11 @@ struct GenerationGalleryView: View {
         )
     }
 
+    /// How many images this model family has before the search and filters.
+    private var familyItemCount: Int {
+        GallerySearch.filter(gallery.items, family: modelFilter, query: "", flag: .all, minRating: 0).count
+    }
+
     /// Whether any culling filter is narrowing the gallery (drives the "clear" affordance).
     private var isFiltering: Bool {
         flagFilter != .all || minRating > 0 || !searchText.trimmingCharacters(in: .whitespaces).isEmpty
@@ -103,7 +109,9 @@ struct GenerationGalleryView: View {
                 Divider()
             }
 
-            if sections.isEmpty {
+            // Named folders stay listed even when the filters empty them, so a search
+            // that matches nothing still needs its own check.
+            if sections.isEmpty || (isFiltering && modelItems.isEmpty) {
                 emptyState
             } else {
                 GalleryCollectionView(
@@ -145,7 +153,7 @@ struct GenerationGalleryView: View {
                             anchorItemId = adjacent?.id
                             selectedItem = adjacent
                         }
-                        gallery.delete(item, outputDir: settings.outputDir)
+                        registerUndo(gallery.delete(item, outputDir: settings.outputDir))
                     },
                     onCopyPath: { item, isRelative in
                         // One path per line, the whole selection when the clicked item is in it.
@@ -162,7 +170,7 @@ struct GenerationGalleryView: View {
                         let anchorItem = gallery.items.first { $0.id == anchorItemId }
                         let adjacent = anchorItem.flatMap { adjacentItem(to: $0) }
                         let toDelete = gallery.items.filter { selection.contains($0.id) }
-                        gallery.deleteItems(toDelete, outputDir: settings.outputDir)
+                        registerUndo(gallery.deleteItems(toDelete, outputDir: settings.outputDir))
                         clearSelection(nextItem: adjacent)
                     },
                     onCopyItem: { item in
@@ -309,22 +317,22 @@ struct GenerationGalleryView: View {
                             selection.insert(adj.id)
                         }
                     }
-                    gallery.delete(item, outputDir: settings.outputDir)
+                    registerUndo(gallery.delete(item, outputDir: settings.outputDir))
                     deleteTarget = nil
                 } else {
                     let anchorItem = gallery.items.first { $0.id == anchorItemId }
                     let adjacent = anchorItem.flatMap { adjacentItem(to: $0) }
                     let toDelete = gallery.items.filter { selection.contains($0.id) }
-                    gallery.deleteItems(toDelete, outputDir: settings.outputDir)
+                    registerUndo(gallery.deleteItems(toDelete, outputDir: settings.outputDir))
                     clearSelection(nextItem: adjacent)
                 }
             }
             Button("Cancel", role: .cancel) { deleteTarget = nil }
         } message: {
             if deleteTarget != nil || selection.count <= 1 {
-                Text("This will permanently delete the image and its metadata file.")
+                Text("The image and its metadata file move to the Trash. Undo with ⌘Z.")
             } else {
-                Text("This will permanently delete \(selection.count) images and their metadata files.")
+                Text("\(selection.count) images and their metadata files move to the Trash. Undo with ⌘Z.")
             }
         }
         .confirmationDialog(
@@ -337,7 +345,7 @@ struct GenerationGalleryView: View {
                     if collapsedBoards.contains(board) {
                         collapsedBoards.remove(board)
                     }
-                    gallery.deleteBoard(board, outputDir: settings.outputDir)
+                    registerUndo(gallery.deleteBoard(board, outputDir: settings.outputDir), name: "Delete Folder")
                 }
                 deletingBoard = nil
             }
@@ -345,10 +353,10 @@ struct GenerationGalleryView: View {
         } message: {
             let count = boardImageCount(deletingBoard)
             if count == 0 {
-                Text("This empty folder will be permanently deleted.")
+                Text("This empty folder moves to the Trash. Undo with ⌘Z.")
             } else {
-                Text("This will permanently delete the folder and its \(count) "
-                    + "image\(count == 1 ? "" : "s") (plus their metadata files).")
+                Text("The folder and its \(count) image\(count == 1 ? "" : "s") "
+                    + "(plus their metadata files) move to the Trash. Undo with ⌘Z.")
             }
         }
         .confirmationDialog(
@@ -359,8 +367,8 @@ struct GenerationGalleryView: View {
             Button("Delete", role: .destructive) { deleteAllRejects() }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("This permanently deletes every reject-flagged image in this model's "
-                + "gallery (and their metadata files), across all groups.")
+            Text("Every reject-flagged image in this model's gallery (and its metadata "
+                + "file), across all groups, moves to the Trash. Undo with ⌘Z.")
         }
     }
 
@@ -376,6 +384,7 @@ struct GenerationGalleryView: View {
             }
             .buttonStyle(.iconButtonCompact)
             .help("New group")
+            .accessibilityLabel("New group")
             .popover(isPresented: $showingNewGroup) { newGroupPopover }
         }
     }
@@ -395,6 +404,8 @@ struct GenerationGalleryView: View {
                         .font(.caption2)
                 }
                 .buttonStyle(.iconButtonCompact).foregroundStyle(.tertiary)
+                .help("Clear search")
+                .accessibilityLabel("Clear search")
             }
 
             Divider().frame(height: 14)
@@ -408,6 +419,7 @@ struct GenerationGalleryView: View {
                 }
                 .buttonStyle(.iconButtonCompact).foregroundStyle(.secondary)
                 .help("Clear filters")
+                .accessibilityLabel("Clear filters")
             }
             if rejectCount > 0 {
                 Button(role: .destructive) { showingDeleteRejectsConfirm = true } label: {
@@ -450,6 +462,7 @@ struct GenerationGalleryView: View {
         }
         .menuStyle(.borderlessButton).fixedSize()
         .help("Filter by pick/reject flag")
+        .accessibilityLabel("Flag filter: \(flagFilter.label)")
     }
 
     private var ratingFilterMenu: some View {
@@ -478,6 +491,7 @@ struct GenerationGalleryView: View {
         }
         .menuStyle(.borderlessButton).fixedSize()
         .help("Filter by minimum star rating")
+        .accessibilityLabel(minRating > 0 ? "Rating filter: \(minRating) stars and up" : "Rating filter: any")
     }
 
     // MARK: - Status toast
@@ -522,14 +536,28 @@ struct GenerationGalleryView: View {
 
     // MARK: - Empty state
 
-    private var emptyState: some View {
-        VStack(spacing: 12) {
-            Spacer()
-            Image(systemName: "photo.stack")
-                .font(.system(size: 36)).foregroundStyle(.tertiary)
-            Text("No images yet")
-                .font(.callout).foregroundStyle(.secondary)
-            Spacer()
+    /// "No results" with a way out when the filters hide every image; "No images
+    /// yet" only when this model really has none.
+    @ViewBuilder private var emptyState: some View {
+        if isFiltering, familyItemCount > 0 {
+            ContentUnavailableView {
+                Label("No Matching Images", systemImage: "line.3.horizontal.decrease.circle")
+            } description: {
+                Text(familyItemCount == 1
+                    ? "The search or filters hide the only image."
+                    : "The search or filters hide all \(familyItemCount) images.")
+            } actions: {
+                Button("Clear Filters") { clearFilters() }
+            }
+        } else {
+            VStack(spacing: 12) {
+                Spacer()
+                Image(systemName: "photo.stack")
+                    .font(.system(size: 36)).foregroundStyle(.tertiary)
+                Text("No images yet")
+                    .font(.callout).foregroundStyle(.secondary)
+                Spacer()
+            }
         }
     }
 
@@ -620,6 +648,7 @@ struct GenerationGalleryView: View {
             }
             .buttonStyle(.iconButton).foregroundStyle(.secondary)
             .help("Strip embedded metadata (prompt, parameters) from the selected images")
+            .accessibilityLabel("Strip metadata")
 
             Button(role: .destructive) {
                 deleteTarget = nil
@@ -628,11 +657,15 @@ struct GenerationGalleryView: View {
                 Image(systemName: "trash").font(.caption)
             }
             .buttonStyle(.iconButton).foregroundStyle(.red)
+            .help("Move the selected images to the Trash")
+            .accessibilityLabel("Delete selected images")
 
             Button { clearSelection(nextItem: nil) } label: {
                 Image(systemName: "xmark").font(.caption)
             }
             .buttonStyle(.iconButton).foregroundStyle(.secondary)
+            .help("Clear selection")
+            .accessibilityLabel("Clear selection")
         }
         .lineLimit(1)
     }
@@ -689,7 +722,17 @@ struct GenerationGalleryView: View {
             previewClearedByDeletion = true
             selectedItem = nil
         }
-        gallery.deleteItems(rejects, outputDir: settings.outputDir)
+        registerUndo(gallery.deleteItems(rejects, outputDir: settings.outputDir), name: "Delete Rejects")
+    }
+
+    /// Lets Edit > Undo (⌘Z) put trashed images or folders back.
+    private func registerUndo(_ trashed: [TrashedItem], name: String = "Delete") {
+        guard !trashed.isEmpty, let undoManager else { return }
+        let outputDir = settings.outputDir
+        undoManager.registerUndo(withTarget: gallery) { gallery in
+            gallery.restore(trashed, outputDir: outputDir)
+        }
+        undoManager.setActionName(name)
     }
 
     // MARK: - Range select (shift+click)

@@ -36,6 +36,8 @@ struct PreviewPaneView: View {
     var onSetGalleryFlag: ((PickFlag?) -> Void)?
     var onSetGalleryRating: ((Int) -> Void)?
     var onUpscale: ((String) -> Void)?
+    /// Puts the failed job the preview shows back at the front of its queue.
+    var onRetry: (() -> Void)?
     var hasPrev: Bool = false
     var hasNext: Bool = false
     var onNavigatePrev: (() -> Void)?
@@ -98,7 +100,11 @@ struct PreviewPaneView: View {
                         )
 
                     case let .failed(msg):
-                        ideogram4FailedView(message: msg, job: job)
+                        FailedJobView(
+                            message: msg, log: job.log,
+                            repoURL: FluxModelVariant.ideogram4.hfRepoURL(quantize: job.quantize),
+                            onRetry: onRetry
+                        ) { onApplyIdeogramSettings(Ideogram4Metadata.from(job: job)) }
 
                     case .cancelled:
                         cancelledView
@@ -122,7 +128,10 @@ struct PreviewPaneView: View {
                         )
 
                     case let .failed(msg):
-                        logFailedView(message: msg, log: job.log)
+                        FailedJobView(
+                            message: msg, log: job.log, onRetry: onRetry,
+                            onLoadSettings: onApplyKrea2Settings.map { fn in { fn(Krea2Metadata.from(job: job)) } }
+                        )
 
                     case .cancelled:
                         cancelledView
@@ -146,7 +155,10 @@ struct PreviewPaneView: View {
                         )
 
                     case let .failed(msg):
-                        logFailedView(message: msg, log: job.log)
+                        FailedJobView(
+                            message: msg, log: job.log, onRetry: onRetry,
+                            onLoadSettings: onApplyQwen21Settings.map { fn in { fn(Qwen21Metadata.from(job: job)) } }
+                        )
 
                     case .cancelled:
                         cancelledView
@@ -170,7 +182,12 @@ struct PreviewPaneView: View {
                         )
 
                     case let .failed(msg):
-                        logFailedView(message: msg, log: job.log, repoURL: job.modelVariant.hfRepoURL(quantize: job.quantize))
+                        FailedJobView(
+                            message: msg, log: job.log,
+                            repoURL: job.modelVariant.hfRepoURL(quantize: job.quantize),
+                            onRetry: onRetry,
+                            onLoadSettings: onApplyZImageSettings.map { fn in { fn(ZImageMetadata.from(job: job)) } }
+                        )
 
                     case .cancelled:
                         cancelledView
@@ -188,7 +205,7 @@ struct PreviewPaneView: View {
                         SeedVR2CompletedPreviewView(job: job)
 
                     case let .failed(msg):
-                        seedVR2FailedView(message: msg, job: job)
+                        FailedJobView(title: "Upscale failed", message: msg, log: job.log, onRetry: onRetry)
 
                     case .cancelled:
                         cancelledView
@@ -227,6 +244,7 @@ struct PreviewPaneView: View {
                             .foregroundStyle(.secondary)
                     }
                     .buttonStyle(.iconButton)
+                    .accessibilityLabel("Close preview")
                     // Insets the button from the corner — the hit area is the style's
                     // 28pt frame, not this padding.
                     .padding(6)
@@ -245,6 +263,7 @@ struct PreviewPaneView: View {
                                 .background(.secondary.opacity(0.1), in: Circle())
                         }
                         .buttonStyle(.iconButton)
+                        .accessibilityLabel("Previous image")
                         .padding(.leading, 14)
                     }
                     Spacer()
@@ -257,6 +276,7 @@ struct PreviewPaneView: View {
                                 .background(.secondary.opacity(0.1), in: Circle())
                         }
                         .buttonStyle(.iconButton)
+                        .accessibilityLabel("Next image")
                         .padding(.trailing, 14)
                     }
                 }
@@ -351,12 +371,7 @@ struct PreviewPaneView: View {
     }
 
     private func failedView(message: String, job: FluxJob) -> some View {
-        let combined = message + "\n" + job.log
-        let isGatedRepo = combined.contains("private or gated repo")
-            || combined.contains("GatedRepoError")
-            || combined.contains("is restricted")
-            || combined.contains("403 Client Error")
-            || combined.contains("401 Client Error")
+        let isGatedRepo = FailureSummary.isGatedRepo(message: message, log: job.log)
         let repoURL: URL? = job.model != .custom
             ? job.model.hfRepoURL(quantize: job.quantize)
             : nil
@@ -384,6 +399,15 @@ struct PreviewPaneView: View {
                         .padding(.horizontal)
                     }
 
+                    if let onRetry {
+                        Button(action: onRetry) {
+                            Label("Retry", systemImage: "arrow.clockwise")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.bordered)
+                        .padding(.horizontal)
+                    }
+
                     Button {
                         openSettings()
                         DispatchQueue.main.async {
@@ -400,68 +424,9 @@ struct PreviewPaneView: View {
             }
             .padding())
         }
-        return AnyView(VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text("Generation failed")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding()
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(job.log.isEmpty ? message : job.log)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                    Color.clear.frame(height: 1).id("errEnd")
-                }
-                .onAppear { proxy.scrollTo("errEnd") }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
-    }
-
-    private func ideogram4FailedView(message: String, job: Ideogram4Job) -> some View {
-        let combined = message + "\n" + job.log
-        let isGatedRepo = combined.contains("private or gated repo")
-            || combined.contains("GatedRepoError")
-            || combined.contains("is restricted")
-            || combined.contains("403 Client Error")
-            || combined.contains("401 Client Error")
-
-        return AnyView(VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text("Generation failed")
-                    .font(.headline)
-                Spacer()
-                if isGatedRepo, let url = FluxModelVariant.ideogram4.hfRepoURL(quantize: job.quantize) {
-                    Link("Accept Terms", destination: url)
-                        .font(.caption)
-                }
-            }
-            .padding()
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(job.log.isEmpty ? message : job.log)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                    Color.clear.frame(height: 1).id("errEnd")
-                }
-                .onAppear { proxy.scrollTo("errEnd") }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading))
+        return AnyView(FailedJobView(message: message, log: job.log, onRetry: onRetry) {
+            onApplySettings(GenerationMetadata.from(job: job))
+        })
     }
 
     private func ideogram4PendingView(job: Ideogram4Job) -> some View {
@@ -492,42 +457,6 @@ struct PreviewPaneView: View {
         }
     }
 
-    /// A failed run's log (or its error when there is no log), scrolled to the end. With `repoURL`, a
-    /// gated-repo failure also links to the model page, where the user accepts its license.
-    private func logFailedView(message: String, log: String, repoURL: URL? = nil) -> some View {
-        let combined = message + "\n" + log
-        let isGatedRepo = ["private or gated repo", "GatedRepoError", "is restricted", "403 Client Error", "401 Client Error"]
-            .contains { combined.contains($0) }
-        return VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text("Generation failed")
-                    .font(.headline)
-                Spacer()
-                if isGatedRepo, let repoURL {
-                    Link("Open on HuggingFace", destination: repoURL)
-                        .font(.caption)
-                }
-            }
-            .padding()
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(log.isEmpty ? message : log)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                    Color.clear.frame(height: 1).id("errEnd")
-                }
-                .onAppear { proxy.scrollTo("errEnd") }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-    }
-
     private func queuedView(displayName: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
@@ -540,33 +469,6 @@ struct PreviewPaneView: View {
                 .font(.caption)
                 .foregroundStyle(.tertiary)
         }
-    }
-
-    private func seedVR2FailedView(message: String, job: SeedVR2Job) -> some View {
-        VStack(alignment: .leading, spacing: 0) {
-            HStack(spacing: 8) {
-                Image(systemName: "exclamationmark.triangle.fill")
-                    .foregroundStyle(.red)
-                Text("Upscale failed")
-                    .font(.headline)
-                Spacer()
-            }
-            .padding()
-            Divider()
-            ScrollViewReader { proxy in
-                ScrollView {
-                    Text(job.log.isEmpty ? message : job.log)
-                        .font(.system(.caption, design: .monospaced))
-                        .foregroundStyle(.secondary)
-                        .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                        .padding()
-                    Color.clear.frame(height: 1).id("errEnd")
-                }
-                .onAppear { proxy.scrollTo("errEnd") }
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private func seedVR2PendingView(job: SeedVR2Job) -> some View {

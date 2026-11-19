@@ -2,7 +2,7 @@ import Foundation
 
 // MARK: - File operations
 //
-// Moving, deleting and stripping gallery images and boards on disk, and the guards
+// Moving, trashing and stripping gallery images and boards on disk, and the guards
 // that refuse to delete an image attached to a drop area or marked as a pick.
 
 extension GalleryStore {
@@ -64,38 +64,52 @@ extension GalleryStore {
         scan(outputDir: outputDir)
     }
 
-    func delete(_ item: GalleryItem, outputDir: String) {
+    /// Moves an image and its sidecar to the Trash. Returns what moved, for undo.
+    @discardableResult
+    func delete(_ item: GalleryItem, outputDir: String) -> [TrashedItem] {
         if lockedPaths.contains(item.path) {
             lockError = lockMessage(item.filename)
-            return
+            return []
         }
         // A pick is a keep decision: deleting it takes an explicit un-flag first.
         if isPick(item) {
             lockError = pickMessage(item.filename)
-            return
+            return []
         }
+        var trashed: [TrashedItem] = []
         do {
-            try FileManager.default.removeItem(atPath: item.path)
-            // Only once the image is gone: a kept image must keep its settings.
-            try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+            try trashed.append(GalleryTrash.trashImage(URL(fileURLWithPath: item.path)))
             ThumbnailCache.purge(path: item.path, in: thumbnailDirectory)
         } catch {
-            deleteError = "Could not delete \(item.filename): \(error.localizedDescription)"
+            deleteError = "Could not move \(item.filename) to the Trash: \(error.localizedDescription)"
+        }
+        scan(outputDir: outputDir)
+        return trashed
+    }
+
+    /// Puts trashed images or folders back where they were (undo of a delete).
+    func restore(_ trashed: [TrashedItem], outputDir: String) {
+        let failures = GalleryTrash.restore(trashed)
+        if !failures.isEmpty {
+            moveError = "Could not put back from the Trash: \(failures.joined(separator: ", ")). "
+                + "A file has taken its name (or its settings file's name) since, or it is no longer in the Trash."
         }
         scan(outputDir: outputDir)
     }
 
-    /// Deletes a folder (board) and everything inside it — images and sidecars alike.
-    /// The "Default" board maps to the output root and is never deleted.
-    func deleteBoard(_ board: String, outputDir: String) {
-        guard board != "Default" else { return }
+    /// Moves a folder (board) and everything inside it to the Trash — images and
+    /// sidecars alike. The "Default" board maps to the output root and is never
+    /// deleted. Returns what moved, for undo.
+    @discardableResult
+    func deleteBoard(_ board: String, outputDir: String) -> [TrashedItem] {
+        guard board != "Default" else { return [] }
         let dir = URL(fileURLWithPath: outputDir).appendingPathComponent(board)
         // Deleting the folder wholesale would take any attached img2img source
         // inside it down too, so block the whole delete if one lives here.
         if let name = lockedName(under: dir) {
             lockError = "\"\(board)\" contains \(name), which is in use as an "
                 + "img2img source. Clear it from the drop area first."
-            return
+            return []
         }
         // Same for an approved pick inside it: the folder delete would take it
         // along, so block until the flag is cleared. Read the flags on disk rather
@@ -103,18 +117,20 @@ extension GalleryStore {
         if let pick = Self.pickName(under: dir) {
             lockError = "\"\(board)\" contains \(pick), which is flagged as a "
                 + "pick. Clear the flag (press P again) before deleting the folder."
-            return
+            return []
         }
         // Purge cache entries for every image we know lives under this board
         // before the folder goes away. The post-scan sweep then catches any we
         // didn't know about (e.g., images added externally since the last scan).
         ThumbnailCache.purge(paths: items.filter { $0.board == board }.map(\.path), in: thumbnailDirectory)
+        var trashed: [TrashedItem] = []
         do {
-            try FileManager.default.removeItem(at: dir)
+            try trashed.append(GalleryTrash.trashFolder(dir))
         } catch {
-            deleteError = "Could not delete folder \(board): \(error.localizedDescription)"
+            deleteError = "Could not move folder \(board) to the Trash: \(error.localizedDescription)"
         }
         scan(outputDir: outputDir)
+        return trashed
     }
 
     /// Whether the folder was renamed; a failure sets ``moveError``.
@@ -173,7 +189,9 @@ extension GalleryStore {
         scan(outputDir: outputDir)
     }
 
-    func deleteItems(_ items: [GalleryItem], outputDir: String) {
+    /// Moves images and their sidecars to the Trash. Returns what moved, for undo.
+    @discardableResult
+    func deleteItems(_ items: [GalleryItem], outputDir: String) -> [TrashedItem] {
         // Skip images attached to an img2img/edit drop area — deleting them would
         // rug-pull a queued or future generation — and images flagged as a pick,
         // which are approved keeps. The rest are deleted normally.
@@ -184,10 +202,10 @@ extension GalleryStore {
         let deletable = unlocked.filter { !pickedIds.contains($0.id) }
         var failures: [String] = []
         var deleted: [String] = []
+        var trashed: [TrashedItem] = []
         for item in deletable {
             do {
-                try FileManager.default.removeItem(atPath: item.path)
-                try? FileManager.default.removeItem(at: MetadataSidecar.sidecarURL(for: item.path))
+                try trashed.append(GalleryTrash.trashImage(URL(fileURLWithPath: item.path)))
                 deleted.append(item.path)
             } catch {
                 failures.append(item.filename)
@@ -195,7 +213,7 @@ extension GalleryStore {
         }
         ThumbnailCache.purge(paths: deleted, in: thumbnailDirectory)
         if !failures.isEmpty {
-            deleteError = "Could not delete: \(failures.joined(separator: ", "))"
+            deleteError = "Could not move to the Trash: \(failures.joined(separator: ", "))"
         }
         var blocked: [String] = []
         if !locked.isEmpty {
@@ -208,6 +226,7 @@ extension GalleryStore {
             lockError = blocked.joined(separator: "\n\n")
         }
         scan(outputDir: outputDir)
+        return trashed
     }
 
     /// Removes embedded metadata (EXIF/IPTC/XMP, including mflux's prompt and

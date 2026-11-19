@@ -74,6 +74,9 @@ struct MLXBitsImageStudioApp: App {
                 // Launch-time update check; drives the toolbar badge when a newer
                 // GitHub release exists. Coalesced, so reopening the window checks once.
                 .task { await updateChecker.check() }
+                .onAppear {
+                    appDelegate.isGenerating = { [coordinator] in coordinator.activeFamily != nil }
+                }
         }
         .windowResizability(.contentMinSize)
         .commands {

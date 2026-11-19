@@ -8,4 +8,10 @@ struct AppDelegateTests {
     @Test func closingTheLastWindowKeepsTheAppRunning() {
         #expect(!AppDelegate().applicationShouldTerminateAfterLastWindowClosed(NSApplication.shared))
     }
+
+    @Test func quitsWithoutAskingWhenNothingIsGenerating() {
+        let delegate = AppDelegate()
+        delegate.isGenerating = { false }
+        #expect(delegate.applicationShouldTerminate(NSApplication.shared) == .terminateNow)
+    }
 }
