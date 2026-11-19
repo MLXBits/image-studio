@@ -211,9 +211,8 @@ struct MLXBitsImageStudioApp: App {
         let support = Self.makeSupport(testHost: testHost, runners: allRunners)
         // A test run finishes jobs in the background; it must not post notifications.
         if !testHost {
-            let signals = BackgroundSignals()
             for reporter in allRunners {
-                reporter.onJobFinished = { signals.jobFinished($0) }
+                reporter.onJobFinished = { BackgroundSignals.jobFinished($0) }
             }
         }
         _support = State(initialValue: support)
