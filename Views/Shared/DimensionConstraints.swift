@@ -163,6 +163,12 @@ struct DimensionConstraints: Equatable {
         range.contains(width) && range.contains(height) && maxArea.map { width * height <= $0 } ?? true
     }
 
+    /// `value` snapped to step and range, then lowered to fit the area cap while the
+    /// other axis stays at `other`.
+    func fitSide(_ value: Int, other: Int) -> Int {
+        fit(width: value, height: other, preserveRatio: false).width
+    }
+
     /// The largest on-step value for one axis while the other stays at `other`. With the
     /// aspect ratio unlocked, the area cap ends each slider here.
     func maxSide(other: Int) -> Int {
@@ -179,5 +185,19 @@ struct DimensionConstraints: Equatable {
     private func snapDown(_ value: Double) -> Int {
         let snapped = Int((value / Double(step)).rounded(.down)) * step
         return min(range.upperBound, max(range.lowerBound, snapped))
+    }
+}
+
+extension FluxModelVariant {
+    /// The size limits of this variant's pipeline. `custom` has no pipeline of its
+    /// own and keeps the per-axis legacy limits.
+    var dimensionConstraints: DimensionConstraints {
+        switch family {
+        case .krea2: .krea2
+        case .zimage: .zimage
+        case .qwen21: .qwen21
+        case .flux: isFlux ? .flux2 : .legacy
+        case .ideogram4, .seedvr2: .legacy
+        }
     }
 }

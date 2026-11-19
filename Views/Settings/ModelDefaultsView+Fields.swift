@@ -162,19 +162,20 @@ extension ModelDefaultsView {
         }
     }
 
-    func widthPicker(model: FluxModelVariant, current: Int?, constraints: DimensionConstraints = .legacy) -> some View {
+    /// The default-width row. Limited by the model's own constraints, including its
+    /// area cap against the saved height.
+    func widthPicker(model: FluxModelVariant, defaults d: ModelDefaults) -> some View {
         dimensionRow(
-            label: "Width", model: model, current: current, constraints: constraints,
-            get: \.width,
+            label: "Width", model: model, current: d.width, other: d.height,
             set: { var d = settings.defaults(for: model); d.width = $0; settings.updateDefaults(d, for: model) },
             reset: { var d = settings.defaults(for: model); d.width = nil; settings.updateDefaults(d, for: model) }
         )
     }
 
-    func heightPicker(model: FluxModelVariant, current: Int?, constraints: DimensionConstraints = .legacy) -> some View {
+    /// The default-height row; see ``widthPicker(model:defaults:)``.
+    func heightPicker(model: FluxModelVariant, defaults d: ModelDefaults) -> some View {
         dimensionRow(
-            label: "Height", model: model, current: current, constraints: constraints,
-            get: \.height,
+            label: "Height", model: model, current: d.height, other: d.width,
             set: { var d = settings.defaults(for: model); d.height = $0; settings.updateDefaults(d, for: model) },
             reset: { var d = settings.defaults(for: model); d.height = nil; settings.updateDefaults(d, for: model) }
         )
@@ -182,17 +183,24 @@ extension ModelDefaultsView {
 
     // swiftlint:disable:next function_parameter_count
     private func dimensionRow(
-        label: String, model: FluxModelVariant, current: Int?, constraints: DimensionConstraints,
-        get _: KeyPath<ModelDefaults, Int?>,
+        label: String, model: FluxModelVariant, current: Int?, other: Int?,
         set: @escaping (Int) -> Void,
         reset: @escaping () -> Void
     ) -> some View {
+        let constraints = model.dimensionConstraints
+        // An unset side resolves to 1024 (``ModelDefaults/resolved(for:)``).
+        let value = current ?? 1024
+        let otherSide = other ?? 1024
         let bound = Binding<Int>(
-            get: { current ?? 1024 },
-            set: { set($0) }
+            get: { value },
+            set: { set(constraints.fitSide($0, other: otherSide)) }
         )
         return HStack {
-            DimensionSliderRow(label: label, value: bound, range: constraints.range, step: constraints.step)
+            DimensionSliderRow(
+                label: label, value: bound, range: constraints.range, step: constraints.step,
+                // A saved value over the cap stays reachable, as in the params panel.
+                limit: max(constraints.maxSide(other: otherSide), value)
+            )
             if current != nil {
                 resetButton(reset)
             }

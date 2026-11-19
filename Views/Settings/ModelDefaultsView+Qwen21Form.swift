@@ -52,8 +52,8 @@ extension ModelDefaultsView {
             }
 
             Section {
-                widthPicker(model: model, current: d.width, constraints: .qwen21)
-                heightPicker(model: model, current: d.height, constraints: .qwen21)
+                widthPicker(model: model, defaults: d)
+                heightPicker(model: model, defaults: d)
             } header: {
                 Text("Canvas")
             } footer: {

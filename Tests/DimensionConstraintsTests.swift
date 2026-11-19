@@ -158,3 +158,25 @@ struct DimensionConstraintsTests {
         }
     }
 }
+
+/// The Settings › Model Defaults size rows use each variant's own limits.
+struct ModelDimensionConstraintsTests {
+    @Test func everyVariantMapsToItsPipelineLimits() {
+        #expect(FluxModelVariant.krea2.dimensionConstraints == .krea2)
+        #expect(FluxModelVariant.zimageTurbo.dimensionConstraints == .zimage)
+        #expect(FluxModelVariant.zimage.dimensionConstraints == .zimage)
+        #expect(FluxModelVariant.qwen21Turbo.dimensionConstraints == .qwen21)
+        #expect(FluxModelVariant.flux2Klein9B.dimensionConstraints == .flux2)
+        #expect(FluxModelVariant.custom.dimensionConstraints == .legacy)
+        #expect(FluxModelVariant.ideogram4.dimensionConstraints == .legacy)
+    }
+
+    @Test func fitSideAppliesTheAreaCap() {
+        // FLUX.2: 4096 wide against a 2048 height is 8 MP, over the 4 MP cap.
+        #expect(DimensionConstraints.flux2.fitSide(4096, other: 2048) == 2048)
+        // Under the cap it only snaps.
+        #expect(DimensionConstraints.flux2.fitSide(1030, other: 1024) == 1024)
+        // No cap: only the per-axis range binds.
+        #expect(DimensionConstraints.zimage.fitSide(4000, other: 2048) == 2048)
+    }
+}
