@@ -376,8 +376,10 @@ final class StepwiseWatcher {
     }
 }
 
-/// A runner that reports the images each completed job saved (the support
-/// nudge's count, spec §5).
-protocol LandedImagesReporting: AnyObject {
+/// A runner that reports how each job ended: the images a completed job saved
+/// (the support nudge's count, spec §5), and every finish or failure for the
+/// background signals.
+protocol JobOutcomeReporting: AnyObject {
     var onImagesLanded: ((Int) -> Void)? { get set }
+    var onJobFinished: ((JobFinish) -> Void)? { get set }
 }

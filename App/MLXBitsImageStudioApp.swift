@@ -4,7 +4,7 @@ struct MLXBitsImageStudioApp: App {
     static let mainWindowID = "main"
 
     /// The support nudge's count: the images every runner saves (spec §5).
-    private static func makeSupport(testHost: Bool, runners: [any LandedImagesReporting]) -> SupportStore {
+    private static func makeSupport(testHost: Bool, runners: [any JobOutcomeReporting]) -> SupportStore {
         let support = SupportStore(
             defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
         )
@@ -82,6 +82,7 @@ struct MLXBitsImageStudioApp: App {
         .commands {
             CommandGroup(replacing: .newItem) {}
             AboutCommands()
+            MainWindowCommands()
             KeyboardShortcutsCommands()
             CommandGroup(after: .help) {
                 // The bundled runtime's third-party notices (spec §2).
@@ -204,9 +205,17 @@ struct MLXBitsImageStudioApp: App {
         _zimageRunner = State(initialValue: zimageRunner)
         _qwen21Runner = State(initialValue: qwen21Runner)
         _seedVR2Runner = State(initialValue: seedVR2Runner)
-        let support = Self.makeSupport(
-            testHost: testHost, runners: [runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner]
-        )
+        let allRunners: [any JobOutcomeReporting] = [
+            runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner,
+        ]
+        let support = Self.makeSupport(testHost: testHost, runners: allRunners)
+        // A test run finishes jobs in the background; it must not post notifications.
+        if !testHost {
+            let signals = BackgroundSignals()
+            for reporter in allRunners {
+                reporter.onJobFinished = { signals.jobFinished($0) }
+            }
+        }
         _support = State(initialValue: support)
         let tipJar = TipJarStore(storefront: StoreKitStorefront()) { support.noteTipped() }
         // Tips interrupted last launch, or approved later, are finished as

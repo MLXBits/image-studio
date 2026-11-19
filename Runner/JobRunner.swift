@@ -235,6 +235,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     var driver: MfluxDriverController?
     /// Called with the images each completed job saved.
     var onImagesLanded: ((Int) -> Void)?
+    /// Called when a job completes or fails. Not called for a cancel.
+    var onJobFinished: ((JobFinish) -> Void)?
     /// True while a cooperative cancel is pending, so Stop can offer to force
     /// one through. The driver is shared across families, but only the running
     /// one has `driverJobActive` set, so this stays scoped to this runner.
@@ -895,8 +897,16 @@ final class JobRunner<Spec: JobRunnerSpec> {
         try? FileManager.default.removeItem(at: stepDir)
         job.status = status
         job.completedAt = Date()
-        if case .completed = status {
-            onImagesLanded?(RunnerSupport.imagesLanded(outputPath: job.outputPath, outputPaths: job.outputPaths))
+        switch status {
+        case .completed:
+            let images = RunnerSupport.imagesLanded(outputPath: job.outputPath, outputPaths: job.outputPaths)
+            onImagesLanded?(images)
+            onJobFinished?(JobFinish(family: Spec.family, outcome: .completed(images: images)))
+        case let .failed(message):
+            let summary = FailureSummary.line(message: message, log: job.log)
+            onJobFinished?(JobFinish(family: Spec.family, outcome: .failed(summary: summary)))
+        default:
+            break
         }
         job.latestStepwisePath = nil
         job.stepTiming = nil
@@ -1035,4 +1045,4 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 }
 
-extension JobRunner: LandedImagesReporting {}
+extension JobRunner: JobOutcomeReporting {}

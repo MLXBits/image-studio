@@ -81,6 +81,8 @@ struct ContentView: View {
     @State private var boxOverlay: BoxOverlayContext?
 
     @State private var showingParams: Bool = true
+    /// Each family's model last picked in this window, for View ▸ Model (⌘1–5).
+    @State private var lastVariantByFamily: [ModelFamily: FluxModelVariant] = [:]
     @State private var pendingSelectPath: String?
 
     @AppStorage("galleryPanelWidth") private var savedGalleryWidth: Double = 260
@@ -102,6 +104,35 @@ struct ContentView: View {
     private var isAnyStoreRunning: Bool {
         store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
             || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
+    }
+
+    /// Running plus pending jobs across every family, for the dock badge.
+    private var queuedJobCount: Int {
+        let pending = store.pendingJobs.count + ideogram4Store.pendingJobs.count + krea2Store.pendingJobs.count
+            + zimageStore.pendingJobs.count + qwen21Store.pendingJobs.count + seedVR2Store.pendingJobs.count
+        return pending + (isAnyStoreRunning ? 1 : 0)
+    }
+
+    /// What the menu bar acts on while this window is in front.
+    private var mainWindowActions: MainWindowActions {
+        MainWindowActions(
+            sheetIsUp: showingQueue || showingNotepad || showingOutputDirPrompt || boxOverlay != nil
+                || upscaleTarget != nil || profileAction != nil,
+            canGenerate: canGenerate,
+            isGenerating: isAnyStoreRunning,
+            generate: { generate() },
+            batchCount: settings.batchShortcutCount,
+            generateBatch: { generate(count: settings.batchShortcutCount) },
+            stop: stopAll,
+            family: params.modelFamily,
+            selectFamily: switchFamily,
+            showingParams: showingParams,
+            toggleParams: { showingParams.toggle() },
+            showingQueue: showingQueue,
+            toggleQueue: { showingQueue.toggle() },
+            showNotepad: { showingNotepad = true },
+            image: selectedGalleryItem.map { imageActions(for: $0) }
+        )
     }
 
     /// Every image currently attached to an img2img / edit drop area, across the
@@ -245,10 +276,7 @@ struct ContentView: View {
             onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
             onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: {
-                runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
-                zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
-            },
+            onCancel: stopAll,
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
@@ -626,11 +654,15 @@ struct ContentView: View {
             selectedGalleryItem = nil
             restoreActiveJobPreview()
         }
-        .background {
-            Button("") { showingQueue.toggle() }
-                .keyboardShortcut(KeyboardShortcutCatalog.toggleQueue)
-                .hidden()
+        .onChange(of: params.model, initial: true) { _, model in
+            if model != .custom {
+                lastVariantByFamily[model.family] = model
+            }
         }
+        .onChange(of: queuedJobCount, initial: true) { _, count in
+            BackgroundSignals.showQueueCount(count)
+        }
+        .focusedSceneValue(\.mainWindow, mainWindowActions)
     }
 
     @ToolbarContentBuilder
@@ -639,7 +671,7 @@ struct ContentView: View {
             Button { showingParams.toggle() } label: {
                 Label("Toggle Params Panel", systemImage: "sidebar.leading")
             }
-            .help("Toggle params panel")
+            .help("Toggle params panel (\(KeyboardShortcutCatalog.toggleParams.symbols))")
         }
 
         // Debug builds carry the in-repo MARKETING_VERSION, which trails the
@@ -665,7 +697,7 @@ struct ContentView: View {
             Button { showingNotepad = true } label: {
                 Label("Notepad", systemImage: "note.text")
             }
-            .help("Open the notepad for reusable prompt notes")
+            .help("Open the notepad for reusable prompt notes (\(KeyboardShortcutCatalog.showNotepad.symbols))")
         }
 
         ToolbarItem(placement: .primaryAction) {
@@ -837,26 +869,29 @@ struct ContentView: View {
 
     // MARK: - Top control bar
 
+    private var canGenerate: Bool {
+        switch params.modelFamily {
+        case .flux:
+            !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
+                && (!params.isEditMode || !params.editImagePaths.isEmpty)
+        case .ideogram4:
+            ideogramParams.isReadyToGenerate(settings: settings)
+        case .krea2:
+            krea2Params.isReadyToGenerate(settings: settings)
+        case .zimage:
+            zimageParams.isReadyToGenerate(settings: settings)
+        case .qwen21:
+            qwen21Params.canGenerate
+        case .seedvr2:
+            false // upscaler — never the picker-selected family
+        }
+    }
+
     private var topControlBar: some View {
         // Generate group is window-centered; the model selector is pinned to the
         // leading edge in the same ZStack so its width doesn't shift the center.
         ZStack {
             HStack(spacing: 12) {
-                let canGenerate: Bool = switch params.modelFamily {
-                case .flux:
-                    !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
-                        && (!params.isEditMode || !params.editImagePaths.isEmpty)
-                case .ideogram4:
-                    ideogramParams.isReadyToGenerate(settings: settings)
-                case .krea2:
-                    krea2Params.isReadyToGenerate(settings: settings)
-                case .zimage:
-                    zimageParams.isReadyToGenerate(settings: settings)
-                case .qwen21:
-                    qwen21Params.canGenerate
-                case .seedvr2:
-                    false // upscaler — never the picker-selected family
-                }
                 HStack(spacing: 0) {
                     Button { generate() } label: {
                         Label("Generate  \(KeyboardShortcutCatalog.generate.symbols)", systemImage: "wand.and.stars")
@@ -865,7 +900,6 @@ struct ContentView: View {
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
-                    .keyboardShortcut(KeyboardShortcutCatalog.generate)
                     .disabled(!canGenerate)
                     // Batch button: auto-generates N random seeds into one warm job.
                     // Shown for whichever family has a random (-1) seed selected.
@@ -895,17 +929,6 @@ struct ContentView: View {
                 .opacity(canGenerate ? 1.0 : 0.5)
                 .focusEffectDisabled()
                 .help("Generate (\(KeyboardShortcutCatalog.generate.symbols))")
-
-                // Batch shortcut (⌥⌘↵). A SwiftUI button — not a static NSEvent
-                // monitor — so it always binds to the live, currently-active
-                // ContentView's state. The old static monitor captured the first
-                // window's `self`, so after switching the model family (or in a
-                // second window) it submitted the stale family's last job.
-                Button("") { generate(count: settings.batchShortcutCount) }
-                    .keyboardShortcut(KeyboardShortcutCatalog.generateBatch)
-                    .disabled(!canGenerate)
-                    .hidden()
-                    .accessibilityHidden(true)
 
                 Button { showingQueue.toggle() } label: {
                     // Width is content-driven (icon, or a progress + count readout), so
@@ -1911,6 +1934,59 @@ struct ContentView: View {
         )
     }
 
+    // MARK: - Menu commands
+
+    private func stopAll() {
+        runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
+        zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
+    }
+
+    /// Moves the picker to `family`, as picking its model in the menu would.
+    private func switchFamily(_ family: ModelFamily) {
+        guard family != params.modelFamily,
+              let variant = family.variantToSelect(remembered: lastVariantByFamily, defaultModel: settings.defaultModel)
+        else { return }
+        params.model = variant
+    }
+
+    private func imageActions(for item: GalleryItem) -> MainWindowActions.ImageActions {
+        let prompt = ImageMetadataInfo(galleryItem: item).prompt
+        let upscale = { promptUpscale(paths: [item.path]) }
+        return MainWindowActions.ImageActions(
+            revealInFinder: { NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "") },
+            copyPrompt: prompt.isEmpty ? nil : { PathCopy.copy(prompt) },
+            applySettings: applySettingsAction(for: item),
+            upscale: upscale
+        )
+    }
+
+    /// Apply Settings for the family whose sidecar the image carries, filed under
+    /// the board the image is in now, as the gallery's context menu does.
+    private func applySettingsAction(for item: GalleryItem) -> (() -> Void)? {
+        let board: String? = item.board == "Default" ? nil : item.board
+        if var meta = item.metadata {
+            meta.board = board
+            return { applyFlux(meta, newSeed: false) }
+        }
+        if var meta = item.ideogram4Metadata {
+            meta.board = board
+            return { applyIdeogram(meta, newSeed: false) }
+        }
+        if var meta = item.krea2Metadata {
+            meta.board = board
+            return { applyKrea2(meta, newSeed: false) }
+        }
+        if var meta = item.zimageMetadata {
+            meta.board = board
+            return { applyZImage(meta, newSeed: false) }
+        }
+        if var meta = item.qwen21Metadata {
+            meta.board = board
+            return { applyQwen21(meta, newSeed: false) }
+        }
+        return nil
+    }
+
     /// Puts the failed job the preview shows back at the front of its family's
     /// queue, then starts it once the gate is free.
     private func retryPreviewJob() {
@@ -1952,18 +2028,4 @@ struct ContentView: View {
             seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
         }
     }
-}
-
-extension KeyboardShortcutCatalog {
-    static let generate = Binding(key: .return, modifiers: .command)
-    /// Generates `settings.batchShortcutCount` random seeds.
-    static let generateBatch = Binding(key: .return, modifiers: [.command, .option])
-    static let toggleQueue = Binding(key: "k", modifiers: .command)
-
-    static let generating = Section("Generating", [
-        Entry("Generate", generate),
-        Entry("Generate a batch (size set in Settings ▸ Generation)", generateBatch),
-        Entry("Show or hide the queue", toggleQueue),
-        Entry("Paste an image from the clipboard as the input image", pasteImage),
-    ])
 }

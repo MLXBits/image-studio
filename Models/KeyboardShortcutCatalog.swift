@@ -78,7 +78,7 @@ enum KeyboardShortcutCatalog {
 
     /// In the order the window lists them.
     static let sections: [Section] = [
-        general, generating, gallery, fullSizeView, compareView, layoutEditor, sheets,
+        general, generating, windowLayout, imageMenu, gallery, fullSizeView, compareView, layoutEditor, sheets,
     ]
 
     /// The sections that match `query`: a section whose title matches keeps all
