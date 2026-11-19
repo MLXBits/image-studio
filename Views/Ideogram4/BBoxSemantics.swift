@@ -193,31 +193,43 @@ nonisolated enum DepthOfField: CaseIterable, PhotoDimension {
 /// "head at bottom left of frame, feet at top center of frame". A bbox holds the
 /// whole object and cannot rotate, so orientation lives in the element's `desc`.
 enum OrientationClause {
-    /// A single "<label> at <zone> of frame" fragment. `[A-Za-z]+` label followed
-    /// by a frame zone produced by `BBoxGeometry.frameZone`.
-    private static let fragment =
-        #"[A-Za-z]+ at (?:top|bottom|center)(?: (?:left|center|right))? of frame"#
+    /// One whole comma-separated segment of the form "<label> at <zone> of frame".
+    /// The label is any text without a comma ("left hand", "finger 1"; ``make``
+    /// removes commas from it); the zone is one produced by
+    /// `BBoxGeometry.frameZone`. Anchored to the segment, so a label can never
+    /// reach back into the free text before the comma.
+    private static let segment = try? NSRegularExpression(
+        pattern: #"^[^,]+ at (?:top|bottom|center)(?: (?:left|center|right))? of frame$"#,
+        options: [.caseInsensitive]
+    )
 
     /// Builds the clause for two labeled anchor endpoints and their zones.
     static func make(partA: String, zoneA: String, partB: String, zoneB: String) -> String {
-        "\(partA) at \(zoneA), \(partB) at \(zoneB)"
+        "\(label(partA)) at \(zoneA), \(label(partB)) at \(zoneB)"
     }
 
-    /// Removes any previously-written orientation fragments (and their separators)
-    /// from `desc`, so re-applying replaces rather than duplicates.
+    /// A label as written into `desc`: commas would split the clause into segments
+    /// that ``strip(from:)`` cannot recognize, so they become spaces, and runs of
+    /// whitespace collapse to one space.
+    private static func label(_ text: String) -> String {
+        text.replacingOccurrences(of: ",", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
+    }
+
+    /// Removes any previously-written orientation segments from `desc`, so
+    /// re-applying replaces rather than duplicates. Other segments keep their
+    /// order; separators are normalized to ", ".
     static func strip(from desc: String) -> String {
-        // Remove ", <fragment>" and standalone "<fragment>", then tidy separators.
-        let patterns = [",\\s*" + fragment, fragment]
-        var out = desc
-        for pattern in patterns {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else { continue }
-            let range = NSRange(out.startIndex..., in: out)
-            out = regex.stringByReplacingMatches(in: out, range: range, withTemplate: "")
-        }
-        // Collapse doubled/leading/trailing separators left behind.
-        out = out.replacingOccurrences(of: #"\s*,\s*,\s*"#, with: ", ", options: .regularExpression)
-        out = out.trimmingCharacters(in: CharacterSet(charactersIn: " ,"))
-        return out
+        desc.split(separator: ",")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty && !isOrientationSegment($0) }
+            .joined(separator: ", ")
+    }
+
+    private static func isOrientationSegment(_ text: String) -> Bool {
+        guard let segment else { return false }
+        return segment.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) != nil
     }
 
     /// Replaces the managed orientation clause in `desc` with a fresh one.

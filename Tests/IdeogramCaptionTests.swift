@@ -53,6 +53,23 @@ struct IdeogramCaptionTests {
         #expect(json.contains("\"desc\":\"label\""))
     }
 
+    @Test func toJSONEscapesEveryControlCharacter() throws {
+        // "\r\n" is a single Character in Swift; a per-Character escape let it through raw.
+        // \u{01} and \u{1F} have no short escape and need the \uXXXX form.
+        let raw = "line one\r\nline two\u{01}end\u{1F}"
+        let caption = IdeogramCaption(
+            highLevelDescription: raw,
+            styleDescription: nil,
+            compositionalDeconstruction: IdeogramCaptionComposition(background: "", elements: [])
+        )
+        let json = try #require(caption.toJSON())
+        #expect(json.contains(#""line one\r\nline two\u0001end\u001f""#))
+        #expect(!json.unicodeScalars.contains { $0.value < 0x20 })
+        // And it is valid JSON that decodes back to the same text.
+        let object = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any]
+        #expect(object?["high_level_description"] as? String == raw)
+    }
+
     // MARK: - from(jsonString:)
 
     @Test func parsesRoundTrippedJSON() throws {
@@ -95,5 +112,12 @@ struct IdeogramCaptionTests {
         #expect(caption.styleDescription == nil)
         #expect(caption.compositionalDeconstruction.background == "forest")
         #expect(caption.compositionalDeconstruction.elements.map(\.desc) == ["a fox", "sign"])
+    }
+}
+
+struct Ideogram4BatchSeedParseTests {
+    @Test func parsesWhitespaceSeparatedSeedsAndSkipsJunk() {
+        #expect(Ideogram4ParamsPanelView.parseBatchSeeds("42  137\t8001 x 9.5\n7") == [42, 137, 8001, 7])
+        #expect(Ideogram4ParamsPanelView.parseBatchSeeds("   ").isEmpty)
     }
 }

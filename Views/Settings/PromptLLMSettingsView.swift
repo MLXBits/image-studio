@@ -11,8 +11,12 @@ struct PromptLLMSettingsView: View {
 
     @Environment(AppSettings.self) private var settings
     @State private var apiKeyDraft: String = ""
+    @FocusState private var apiKeyFocused: Bool
     @State private var discoveredModels: [String] = []
     @State private var isFetchingModels = false
+    /// Bumped by each model-list fetch. Only the newest fetch may write results or
+    /// clear `isFetchingModels`, so an older one finishing late cannot stop the spinner.
+    @State private var modelFetchGeneration = 0
     @State private var modelFetchFailed = false
     @State private var connectionPhase: ConnectionPhase = .idle
 
@@ -132,11 +136,18 @@ struct PromptLLMSettingsView: View {
 
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 6) {
+                // Saved on Return or focus loss, not per keystroke: each save is a
+                // Keychain write, and the key change restarts the model-list fetch.
                 SecureField("API key (optional)", text: $apiKeyDraft)
                     .textFieldStyle(.roundedBorder)
-                    .onSubmit { settings.openAIAPIKey = apiKeyDraft }
-                    .onChange(of: apiKeyDraft) { _, v in settings.openAIAPIKey = v }
-                if !settings.openAIAPIKey.isEmpty {
+                    .focused($apiKeyFocused)
+                    .onSubmit(commitAPIKey)
+                    .onChange(of: apiKeyFocused) { _, focused in
+                        if !focused {
+                            commitAPIKey()
+                        }
+                    }
+                if !settings.openAIAPIKey.isEmpty || !apiKeyDraft.isEmpty {
                     Button("Clear") {
                         apiKeyDraft = ""
                         settings.openAIAPIKey = ""
@@ -150,6 +161,8 @@ struct PromptLLMSettingsView: View {
         }
         .padding(.vertical, 2)
         .onAppear { apiKeyDraft = settings.openAIAPIKey }
+        // Closing Settings with the field focused sends no focus change.
+        .onDisappear(perform: commitAPIKey)
 
         HStack(spacing: 8) {
             Button("Test Connection") { testConnection() }
@@ -240,6 +253,8 @@ struct PromptLLMSettingsView: View {
                     ProgressView().controlSize(.small)
                 } else {
                     Button {
+                        // A click leaves focus in the key field; use what is typed there.
+                        commitAPIKey()
                         Task { await refreshModels() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -271,17 +286,25 @@ struct PromptLLMSettingsView: View {
     /// touching the Test Connection status. A failure clears the list — it belonged to
     /// whatever endpoint was configured before — so the hand-entry field comes back.
     private func refreshModels() async {
+        modelFetchGeneration += 1
+        let generation = modelFetchGeneration
         let baseURL = settings.openAIBaseURL.trimmingCharacters(in: .whitespaces)
         guard !baseURL.isEmpty else {
             discoveredModels = []
             modelFetchFailed = false
+            isFetchingModels = false
             return
         }
         isFetchingModels = true
-        defer { isFetchingModels = false }
+        defer {
+            if generation == modelFetchGeneration {
+                isFetchingModels = false
+            }
+        }
         let models = try? await OpenAIChatClient.fetchModels(baseURL: baseURL, apiKey: settings.openAIAPIKey)
-        // Drop a stale result if the endpoint changed while the request was in flight.
-        guard !Task.isCancelled, baseURL == settings.openAIBaseURL.trimmingCharacters(in: .whitespaces) else {
+        // Drop a stale result: a newer fetch started, or the endpoint changed in flight.
+        guard !Task.isCancelled, generation == modelFetchGeneration,
+              baseURL == settings.openAIBaseURL.trimmingCharacters(in: .whitespaces) else {
             return
         }
         discoveredModels = models ?? []
@@ -291,9 +314,16 @@ struct PromptLLMSettingsView: View {
         }
     }
 
+    private func commitAPIKey() {
+        guard apiKeyDraft != settings.openAIAPIKey else { return }
+        settings.openAIAPIKey = apiKeyDraft
+    }
+
     /// Probes the endpoint's `GET /v1/models`, updating the status row and
     /// populating the model picker on success.
     private func testConnection() {
+        // A click leaves focus in the key field; test with what is typed there.
+        commitAPIKey()
         connectionPhase = .testing
         let baseURL = settings.openAIBaseURL
         let apiKey = settings.openAIAPIKey

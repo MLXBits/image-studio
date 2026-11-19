@@ -9,6 +9,11 @@ import SwiftUI
 struct ColorPaletteEditor: View {
     @Binding var colors: [String]
 
+    /// One stable id per entry of `colors`, kept in step by every local add and
+    /// remove. Keyed by offset instead, removing a color would hand the next row's
+    /// hex-field edit state and the open color panel to the wrong entry.
+    @State private var rowIDs: [UUID] = []
+
     /// Wide enough for swatch + editable 6-char hex + remove button without the
     /// capsule contents overflowing into the next grid column.
     private let columns = [GridItem(.adaptive(minimum: 116), spacing: 6, alignment: .leading)]
@@ -17,15 +22,17 @@ struct ColorPaletteEditor: View {
         VStack(alignment: .leading, spacing: 6) {
             if !colors.isEmpty {
                 LazyVGrid(columns: columns, alignment: .leading, spacing: 6) {
-                    ForEach(Array(colors.enumerated()), id: \.offset) { idx, hex in
-                        chip(idx: idx, hex: hex)
+                    let ids = PaletteRowIDs.reconciled(rowIDs, count: colors.count)
+                    ForEach(Array(zip(ids, colors)), id: \.0) { id, hex in
+                        chip(id: id, hex: hex)
                     }
                 }
             }
             Button {
-                let idx = colors.count
+                let id = UUID()
+                rowIDs = PaletteRowIDs.reconciled(rowIDs, count: colors.count) + [id]
                 colors.append("#808080")
-                editColor(at: idx)
+                editColor(id: id)
             } label: {
                 Label("Add color", systemImage: "plus.circle.fill")
                     .font(.caption)
@@ -37,12 +44,16 @@ struct ColorPaletteEditor: View {
             .help("Add a color")
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        // Replacing the whole palette (a template, an undo) changes the count with no
+        // local add or remove; keep one id per entry.
+        .onAppear { rowIDs = PaletteRowIDs.reconciled(rowIDs, count: colors.count) }
+        .onChange(of: colors.count) { _, count in rowIDs = PaletteRowIDs.reconciled(rowIDs, count: count) }
     }
 
-    private func chip(idx: Int, hex: String) -> some View {
+    private func chip(id: UUID, hex: String) -> some View {
         HStack(spacing: 4) {
             Button {
-                editColor(at: idx)
+                editColor(id: id)
             } label: {
                 Circle()
                     .fill(Color(hexString: hex) ?? .black)
@@ -54,11 +65,12 @@ struct ColorPaletteEditor: View {
             .buttonStyle(.iconButtonCompact)
             .help("Edit color")
             HexInputField(hex: hex) { newHex in
-                guard colors.indices.contains(idx) else { return }
+                guard let idx = index(of: id) else { return }
                 colors[idx] = newHex
             }
             Button {
-                guard colors.indices.contains(idx) else { return }
+                guard let idx = index(of: id) else { return }
+                rowIDs.remove(at: idx)
                 colors.remove(at: idx)
             } label: {
                 Image(systemName: "xmark.circle.fill")
@@ -77,15 +89,33 @@ struct ColorPaletteEditor: View {
         .help(hex.uppercased())
     }
 
-    /// Opens the shared system color panel seeded with the entry at `idx`,
-    /// writing each live change back into the palette.
-    private func editColor(at idx: Int) {
-        guard colors.indices.contains(idx) else { return }
-        ColorPanelController.shared.present(initial: Color(hexString: colors[idx]) ?? .black) { picked in
-            if colors.indices.contains(idx) {
+    /// The current position of row `id`, if it is still in the palette.
+    private func index(of id: UUID) -> Int? {
+        guard let idx = rowIDs.firstIndex(of: id), colors.indices.contains(idx) else { return nil }
+        return idx
+    }
+
+    /// Opens the shared system color panel seeded with row `id`, writing each live
+    /// change back into that row wherever it now sits. Nothing is written once the
+    /// row is removed.
+    private func editColor(id: UUID) {
+        let initial = index(of: id).map { colors[$0] } ?? "#808080"
+        ColorPanelController.shared.present(initial: Color(hexString: initial) ?? .black) { picked in
+            if let idx = index(of: id) {
                 colors[idx] = picked.hexString
             }
         }
+    }
+}
+
+/// Keeps a palette's row ids one-for-one with its entries.
+nonisolated enum PaletteRowIDs {
+    /// `ids` cut or padded with fresh ids to `count`. Existing ids keep their place.
+    static func reconciled(_ ids: [UUID], count: Int) -> [UUID] {
+        if ids.count >= count {
+            return Array(ids.prefix(count))
+        }
+        return ids + (ids.count ..< count).map { _ in UUID() }
     }
 }
 

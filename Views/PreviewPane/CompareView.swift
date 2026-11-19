@@ -16,7 +16,7 @@ struct ComparePair: Equatable {
 struct CompareView: View {
     private static let minScale: CGFloat = 1
     private static let maxScale: CGFloat = 12
-    private static let imagePadding: CGFloat = 16
+    nonisolated private static let imagePadding: CGFloat = 16
 
     let selectItem: GalleryItem
     let candidateItem: GalleryItem
@@ -273,25 +273,19 @@ struct CompareView: View {
         offset = newScale <= Self.minScale ? .zero : clampedOffset(offset)
     }
 
-    /// Clamp the pan so the scaled image can't be dragged past the pane edges. Uses the
-    /// Select pane's geometry as the reference; both panes share the offset, so identical
-    /// aspect ratios (the common A/B case) stay perfectly aligned.
+    /// Clamp the pan so the scaled image can't be dragged past the pane edges. Both
+    /// panes share one offset and have the same size, so the limit on each axis is
+    /// the larger of the two images' limits: with A/B images of different aspect
+    /// ratios, a Select-only limit stopped the candidate short of its own edges.
     private func clampedOffset(_ proposed: CGSize) -> CGSize {
-        guard let image = selectImage,
-              selectFrame.width > 0, selectFrame.height > 0 else { return .zero }
-        let availW = max(0, selectFrame.width - 2 * Self.imagePadding)
-        let availH = max(0, selectFrame.height - 2 * Self.imagePadding)
-        let imgW = image.size.width, imgH = image.size.height
-        guard imgW > 0, imgH > 0, availW > 0, availH > 0 else { return .zero }
-
-        let fit = min(availW / imgW, availH / imgH)
-        let dispW = imgW * fit * scale
-        let dispH = imgH * fit * scale
-        let maxX = max(0, (dispW - selectFrame.width) / 2)
-        let maxY = max(0, (dispH - selectFrame.height) / 2)
+        let limits = [selectImage, candidateImage].compactMap { image in
+            image.map { Self.panLimit(imageSize: $0.size, pane: selectFrame.size, scale: scale) }
+        }
+        let maxX = limits.map(\.width).max() ?? 0
+        let maxY = limits.map(\.height).max() ?? 0
         return CGSize(
-            width: min(max(proposed.width, -maxX), maxX),
-            height: min(max(proposed.height, -maxY), maxY)
+            width: proposed.width.clamped(to: -maxX ... maxX),
+            height: proposed.height.clamped(to: -maxY ... maxY)
         )
     }
 
@@ -367,9 +361,8 @@ struct CompareView: View {
             if event.type == .magnify {
                 factor = 1 + event.magnification
             } else {
-                let delta = event.hasPreciseScrollingDeltas ? event.scrollingDeltaY : event.scrollingDeltaY * 3
-                guard delta != 0 else { return event }
-                factor = exp(delta * 0.005)
+                guard event.scrollingDeltaY != 0 else { return event }
+                factor = ScrollZoom.factor(deltaY: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas)
             }
             zoom(by: factor)
             return nil
@@ -394,4 +387,19 @@ extension KeyboardShortcutCatalog {
         Entry("Set the candidate's star rating", ["0–5"]),
         Entry("Close", ["⎋"]),
     ])
+}
+
+extension CompareView {
+    /// How far an image fitted into `pane` (inside `imagePadding`) and zoomed by
+    /// `scale` can pan before its edge comes inside the pane.
+    nonisolated static func panLimit(imageSize: CGSize, pane: CGSize, scale: CGFloat) -> CGSize {
+        let availW = max(0, pane.width - 2 * imagePadding)
+        let availH = max(0, pane.height - 2 * imagePadding)
+        guard imageSize.width > 0, imageSize.height > 0, availW > 0, availH > 0 else { return .zero }
+        let fit = min(availW / imageSize.width, availH / imageSize.height)
+        return CGSize(
+            width: max(0, (imageSize.width * fit * scale - pane.width) / 2),
+            height: max(0, (imageSize.height * fit * scale - pane.height) / 2)
+        )
+    }
 }

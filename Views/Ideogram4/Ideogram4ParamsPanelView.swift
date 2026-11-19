@@ -206,9 +206,9 @@ struct Ideogram4ParamsPanelView: View {
                     .toggleStyle(.button)
                     .controlSize(.small)
                     .onChange(of: showBatchSeeds) { _, on in
-                        if !on {
-                            params.batchSeeds = []
-                        }
+                        // Off clears the parsed seeds but keeps the text, so turning the
+                        // toggle back on must parse that text again.
+                        params.batchSeeds = on ? Self.parseBatchSeeds(batchSeedText) : []
                     }
             }
 
@@ -220,9 +220,7 @@ struct Ideogram4ParamsPanelView: View {
                     TextField("e.g. 42 137 8001", text: $batchSeedText)
                         .textFieldStyle(.roundedBorder)
                         .onChange(of: batchSeedText) { _, text in
-                            params.batchSeeds = text
-                                .components(separatedBy: .whitespaces)
-                                .compactMap { Int($0) }
+                            params.batchSeeds = Self.parseBatchSeeds(text)
                         }
                 }
             }
@@ -250,5 +248,12 @@ struct Ideogram4ParamsPanelView: View {
         .padding(8)
         .background(Color.yellow.opacity(0.1))
         .clipShape(RoundedRectangle(cornerRadius: 6))
+    }
+}
+
+extension Ideogram4ParamsPanelView {
+    /// Whitespace-separated integers; anything else is skipped.
+    nonisolated static func parseBatchSeeds(_ text: String) -> [Int] {
+        text.split(whereSeparator: \.isWhitespace).compactMap { Int($0) }
     }
 }

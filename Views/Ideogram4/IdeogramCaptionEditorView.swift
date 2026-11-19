@@ -94,6 +94,8 @@ struct IdeogramCaptionEditorView: View {
         .onChange(of: usePlainPrompt) { _, _ in scheduleAutosave() }
         .onDisappear {
             autosaveTask?.cancel()
+            // A caption generation still running would write into an editor that is gone.
+            generatorTask?.cancel()
             persistPromptState()
         }
     }
@@ -437,6 +439,8 @@ struct IdeogramCaptionEditorView: View {
         generatorTask = Task { @MainActor in
             do {
                 let result = try await generator.generate(from: desc, settings: settings, downloads: downloads)
+                // A reply that lands just as the editor closes must not overwrite the caption.
+                try Task.checkCancellation()
                 lastGemmaLog = generator.lastLog
                 caption.highLevelDescription = result.highLevelDescription
                 if let style = result.styleDescription {

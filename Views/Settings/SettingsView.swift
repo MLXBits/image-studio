@@ -145,7 +145,7 @@ struct SettingsView: View {
                                     .textFieldStyle(.roundedBorder)
                                     .frame(width: 56)
                                     .onChange(of: s.batchShortcutCustomCount) { _, v in
-                                        s.batchShortcutCustomCount = max(2, min(100, v))
+                                        s.batchShortcutCustomCount = v.clamped(to: AppSettings.batchShortcutCustomRange)
                                     }
                             }
                         }

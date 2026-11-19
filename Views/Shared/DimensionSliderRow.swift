@@ -106,8 +106,8 @@ struct DimensionSliderRow: View {
     }
 }
 
-private extension Comparable {
-    func clamped(to range: ClosedRange<Self>) -> Self {
+extension Comparable {
+    nonisolated func clamped(to range: ClosedRange<Self>) -> Self {
         min(max(self, range.lowerBound), range.upperBound)
     }
 }

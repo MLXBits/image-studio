@@ -30,27 +30,6 @@ extension ComfyUIClient {
         var nodeID: String? // currently-running node id (`executing.node` / `progress.node`)
         /// Ordered node ids seen via `executing` frames, so a consumer can derive "node X of N".
         var executedNodes: [String] = []
-
-        /// Human phase label derived from the active node class, e.g. "Denoising".
-        var phaseLabel: String? {
-            guard let n = nodeID else { return nil }
-            if n == "KSAMPLER" {
-                return "Denoising"
-            }
-            if n.hasPrefix("CLIP") {
-                return "Encoding prompt"
-            } // CLIP_POS / CLIP_NEG
-            if n == "ENCODE" {
-                return "Encoding image"
-            } // SeedVR2
-            if n == "DECODE" || n == "POST" || n == "SAVE" {
-                return "Decoding & saving"
-            }
-            if n == "EMPTY" {
-                return "Preparing"
-            }
-            return nil
-        }
     }
 
     /// Opens a websocket bound to one submitter identity and streams live progress snapshots as the
@@ -196,5 +175,53 @@ extension ComfyUIClient {
             task?.cancel(with: .normalClosure, reason: nil)
             continuation.finish()
         }
+    }
+}
+
+extension ComfyUIClient {
+    /// Each node id's `class_type` in a submitted API-format workflow.
+    nonisolated static func classTypes(in workflow: Any) -> [String: String] {
+        guard let nodes = workflow as? [String: Any] else { return [:] }
+        return nodes.compactMapValues { ($0 as? [String: Any])?["class_type"] as? String }
+    }
+
+    /// Human phase label for the running node, e.g. "Denoising". Read from the node's
+    /// `class_type`: the bundled templates use numeric ids ("75:64"), so the id alone
+    /// says nothing. The named ids of the built-in SeedVR2 graph are the fallback when
+    /// the class is unknown.
+    nonisolated static func phaseLabel(nodeID: String?, classType: String?) -> String? {
+        if let classType, let label = phaseLabel(classType: classType) {
+            return label
+        }
+        switch nodeID {
+        case "KSAMPLER": return "Denoising"
+        case "ENCODE": return "Encoding image"
+        case "DECODE", "POST", "SAVE": return "Decoding & saving"
+        case "EMPTY": return "Preparing"
+        case let id? where id.hasPrefix("CLIP"): return "Encoding prompt" // CLIP_POS / CLIP_NEG
+        default: return nil
+        }
+    }
+
+    nonisolated private static func phaseLabel(classType: String) -> String? {
+        if (classType.contains("KSampler") && !classType.hasSuffix("Select")) || classType.hasPrefix("SamplerCustom") {
+            return "Denoising"
+        }
+        if classType.contains("TextEncode") {
+            return "Encoding prompt"
+        }
+        if classType.hasPrefix("VAEEncode") {
+            return "Encoding image"
+        }
+        if classType.hasPrefix("VAEDecode") || classType == "SaveImage" || classType.hasSuffix("PostProcessing") {
+            return "Decoding & saving"
+        }
+        if classType.hasPrefix("Empty"), classType.contains("Latent") {
+            return "Preparing"
+        }
+        if classType.hasSuffix("Loader") || classType.contains("LoraLoader") {
+            return "Loading models"
+        }
+        return nil
     }
 }

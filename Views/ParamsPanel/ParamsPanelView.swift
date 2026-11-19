@@ -177,7 +177,7 @@ struct ParamsPanelView: View {
                 DimensionPickerView(
                     width: $params.width,
                     height: $params.height,
-                    constraints: params.model.isFlux ? .flux2 : .legacy,
+                    constraints: params.model.dimensionConstraints,
                     estimate: fluxEstimate
                 )
                 // Neither FLUX 3 CLI implements PiD decode.

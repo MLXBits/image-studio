@@ -52,3 +52,28 @@ struct GallerySelectionPruningTests {
         #expect(p == CGPoint(x: 10, y: 70))
     }
 }
+
+struct GalleryAnchorAfterDeselectTests {
+    private let ids = (0 ..< 6).map { _ in UUID() }
+
+    @Test func movesToTheNextSelectedCell() {
+        // Selected: 1, 3, 4. Cmd-click deselects 3 → 4 is one cell forward.
+        let next = GallerySelectionState.nearestSelected(to: ids[3], in: ids, selection: [ids[1], ids[4]])
+        #expect(next == ids[4])
+    }
+
+    @Test func prefersTheCloserCellBehind() {
+        // Selected: 2, 5. Deselecting 3 → 2 is one back, 5 is two forward.
+        let next = GallerySelectionState.nearestSelected(to: ids[3], in: ids, selection: [ids[2], ids[5]])
+        #expect(next == ids[2])
+    }
+
+    @Test func emptySelectionHasNoAnchor() {
+        #expect(GallerySelectionState.nearestSelected(to: ids[0], in: ids, selection: []) == nil)
+    }
+
+    @Test func idOutsideTheGridFallsBackToAnySelected() {
+        let next = GallerySelectionState.nearestSelected(to: UUID(), in: ids, selection: [ids[5]])
+        #expect(next == ids[5])
+    }
+}

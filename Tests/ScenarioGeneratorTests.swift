@@ -26,6 +26,22 @@ struct GemmaChatRunnerTests {
         #expect(GemmaChatRunner.section("Missing Heading", in: markdown).isEmpty)
     }
 
+    @Test func headingMustMatchTheWholeLine() {
+        let config = """
+        The intro mentions ## Example A in passing.
+
+        ## Example A Input
+
+        outline one
+
+        ## Example A
+
+        the real one
+        """
+        // Not the mid-line mention, and not the longer "Example A Input" heading.
+        #expect(GemmaChatRunner.section("Example A", in: config) == "the real one")
+    }
+
     @Test func replyRegionBetweenSeparators() {
         let raw = "prompt echo with content\n==========\nthe reply\n==========\nstats: 42 tok/s"
         #expect(GemmaChatRunner.replyRegion(from: raw).trimmingCharacters(in: .whitespacesAndNewlines) == "the reply")

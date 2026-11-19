@@ -291,7 +291,8 @@ class AppSettings {
         didSet { save() }
     }
 
-    /// Custom batch count used when ``batchShortcutPreset`` is 0. Clamped to 11–100.
+    /// Custom batch count used when ``batchShortcutPreset`` is 0. Clamped to
+    /// ``batchShortcutCustomRange`` on load and in Settings.
     var batchShortcutCustomCount: Int {
         didSet { save() }
     }
@@ -653,6 +654,7 @@ class AppSettings {
         hfHome = s.hfHome ?? ""
         mfluxCacheDir = s.mfluxCacheDir ?? ""
         hfOffline = s.hfOffline ?? false
+        KeychainHelper.migrateLegacyItemsOnce()
         hfToken = KeychainHelper.get("hf_token")
         logFontSize = s.logFontSize ?? 12.0
         lastWidth = s.lastWidth ?? 1024
@@ -663,7 +665,7 @@ class AppSettings {
         lastQuantize = s.lastQuantize
             ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
         batchShortcutPreset = s.batchShortcutPreset ?? 3
-        batchShortcutCustomCount = s.batchShortcutCustomCount ?? 25
+        batchShortcutCustomCount = (s.batchShortcutCustomCount ?? 25).clamped(to: Self.batchShortcutCustomRange)
         targetMegapixels = DimensionConstraints.clampMegapixels(s.targetMegapixels ?? 1.0)
         rapidTargetMegapixels = DimensionConstraints.clampMegapixels(s.rapidTargetMegapixels ?? 0.25)
         gemmaModelPath = s.gemmaModelPath ?? "mlx-community/gemma-3-12b-it-4bit"
@@ -980,4 +982,9 @@ class AppSettings {
         }
         return toolchain.environment(base: env, interpreter: interpreter)
     }
+}
+
+extension AppSettings {
+    /// The custom batch counts Settings allows.
+    static let batchShortcutCustomRange = 2 ... 100
 }
