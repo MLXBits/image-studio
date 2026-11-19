@@ -194,17 +194,27 @@ nonisolated enum DepthOfField: CaseIterable, PhotoDimension {
 /// whole object and cannot rotate, so orientation lives in the element's `desc`.
 enum OrientationClause {
     /// One whole comma-separated segment of the form "<label> at <zone> of frame".
-    /// The label may be several words ("left hand", "tail fin"); the zone is one
-    /// produced by `BBoxGeometry.frameZone`. Anchored to the segment, so a label
-    /// can never reach back into the free text before the comma.
+    /// The label is any text without a comma ("left hand", "finger 1"; ``make``
+    /// removes commas from it); the zone is one produced by
+    /// `BBoxGeometry.frameZone`. Anchored to the segment, so a label can never
+    /// reach back into the free text before the comma.
     private static let segment = try? NSRegularExpression(
-        pattern: #"^\p{L}+(?:[ '-]\p{L}+)* at (?:top|bottom|center)(?: (?:left|center|right))? of frame$"#,
+        pattern: #"^[^,]+ at (?:top|bottom|center)(?: (?:left|center|right))? of frame$"#,
         options: [.caseInsensitive]
     )
 
     /// Builds the clause for two labeled anchor endpoints and their zones.
     static func make(partA: String, zoneA: String, partB: String, zoneB: String) -> String {
-        "\(partA) at \(zoneA), \(partB) at \(zoneB)"
+        "\(label(partA)) at \(zoneA), \(label(partB)) at \(zoneB)"
+    }
+
+    /// A label as written into `desc`: commas would split the clause into segments
+    /// that ``strip(from:)`` cannot recognize, so they become spaces, and runs of
+    /// whitespace collapse to one space.
+    private static func label(_ text: String) -> String {
+        text.replacingOccurrences(of: ",", with: " ")
+            .split(whereSeparator: \.isWhitespace)
+            .joined(separator: " ")
     }
 
     /// Removes any previously-written orientation segments from `desc`, so

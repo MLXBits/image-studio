@@ -22,7 +22,11 @@ nonisolated enum PromptTokenEstimator {
         for scalar in trimmed.unicodeScalars {
             if isDense(scalar) {
                 dense += 1
-                rest.append(" ") // keeps the words on either side apart
+                // One space per dense run keeps the words on either side apart
+                // without adding a counted character per dense scalar.
+                if rest.last != " " {
+                    rest.append(" ")
+                }
             } else {
                 rest.append(scalar)
             }

@@ -201,6 +201,21 @@ struct OrientationClauseTests {
         #expect(second == "a koi fish, left hand at center of frame, tail fin at top center of frame")
     }
 
+    @Test func applyReplacesLabelsWithDigitsPunctuationAndCommas() {
+        let first = OrientationClause.apply(
+            partA: "finger  1", zoneA: "top left of frame",
+            partB: "left hand, palm.", zoneB: "bottom right of frame",
+            to: "a hand"
+        )
+        #expect(first == "a hand, finger 1 at top left of frame, left hand palm. at bottom right of frame")
+        let second = OrientationClause.apply(
+            partA: "finger  1", zoneA: "center of frame",
+            partB: "left hand, palm.", zoneB: "top center of frame",
+            to: first
+        )
+        #expect(second == "a hand, finger 1 at center of frame, left hand palm. at top center of frame")
+    }
+
     @Test func stripKeepsFreeTextBeforeTheClause() {
         // The label match is bounded by the comma: the words before it are not a label.
         let desc = "a woman lying on a red sofa, head at bottom left of frame, feet at top right of frame"

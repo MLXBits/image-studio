@@ -121,7 +121,7 @@ struct GenerationGalleryView: View {
                             selection.remove(item.id)
                             if anchorItemId == item.id {
                                 let next = GallerySelectionState.nearestSelected(
-                                    to: item.id, in: sections.flatMap(\.items).map(\.id), selection: selection
+                                    to: item.id, in: sections.flatMap(\.visibleItems).map(\.id), selection: selection
                                 )
                                 anchorItemId = next
                                 selectedItem = next.flatMap { id in gallery.items.first { $0.id == id } }

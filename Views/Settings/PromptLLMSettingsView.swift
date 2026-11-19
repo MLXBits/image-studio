@@ -253,6 +253,8 @@ struct PromptLLMSettingsView: View {
                     ProgressView().controlSize(.small)
                 } else {
                     Button {
+                        // A click leaves focus in the key field; use what is typed there.
+                        commitAPIKey()
                         Task { await refreshModels() }
                     } label: {
                         Image(systemName: "arrow.clockwise")
@@ -320,6 +322,8 @@ struct PromptLLMSettingsView: View {
     /// Probes the endpoint's `GET /v1/models`, updating the status row and
     /// populating the model picker on success.
     private func testConnection() {
+        // A click leaves focus in the key field; test with what is typed there.
+        commitAPIKey()
         connectionPhase = .testing
         let baseURL = settings.openAIBaseURL
         let apiKey = settings.openAIAPIKey

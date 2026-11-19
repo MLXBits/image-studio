@@ -6,7 +6,7 @@ enum KeychainHelper {
     static let accounts = ["hf_token", "openai_api_key"]
 
     private static let service = "MLXBits Image Studio"
-    private static let migrationFlag = "keychainLegacyItemsMigrated"
+    private static let migrationFlagPrefix = "keychainLegacyItemMigrated."
 
     /// kSecUseDataProtectionKeychain opts into the modern iOS-style keychain:
     /// no per-binary-hash ACL binding, so new builds never re-trigger access prompts.
@@ -16,14 +16,17 @@ enum KeychainHelper {
         kSecUseDataProtectionKeychain as String: true,
     ]
 
-    static func set(_ value: String, key: String) {
+    /// Replaces the item for `key`; an empty value only deletes it. Returns the
+    /// `SecItemAdd` status, or `errSecSuccess` for a delete.
+    @discardableResult
+    static func set(_ value: String, key: String) -> OSStatus {
         var query = baseAttributes
         query[kSecAttrAccount as String] = key
         SecItemDelete(query as CFDictionary)
-        guard !value.isEmpty else { return }
+        guard !value.isEmpty else { return errSecSuccess }
         query[kSecValueData as String] = Data(value.utf8)
         query[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
-        SecItemAdd(query as CFDictionary, nil)
+        return SecItemAdd(query as CFDictionary, nil)
     }
 
     static func get(_ key: String) -> String {
@@ -31,20 +34,21 @@ enum KeychainHelper {
     }
 
     /// Moves items that builds before June 2026 wrote to the file-based keychain
-    /// into the data-protection keychain, once per install. A read of a legacy item
-    /// can show the system's keychain-access prompt, so this never runs twice; an
-    /// account that already has a data-protection item is not looked up at all.
+    /// into the data-protection keychain. A read of a legacy item can show the
+    /// system's keychain-access prompt, so each account is marked done once it has
+    /// been handled and is never looked up again; an account that already has a
+    /// data-protection item is not looked up at all. An account whose copy fails
+    /// keeps its legacy item and is retried on the next launch.
     static func migrateLegacyItemsOnce(defaults: UserDefaults = .standard) {
-        guard !defaults.bool(forKey: migrationFlag) else { return }
-        // Set first: a crash mid-migration must not prompt again on every launch.
-        defaults.set(true, forKey: migrationFlag)
-        for key in accounts where read(key, dataProtection: true) == nil {
-            guard let legacy = read(key, dataProtection: false) else { continue }
-            set(legacy, key: key)
-            var query = baseAttributes
-            query[kSecAttrAccount as String] = key
-            query[kSecUseDataProtectionKeychain as String] = false
-            SecItemDelete(query as CFDictionary)
+        for key in accounts where !defaults.bool(forKey: migrationFlagPrefix + key) {
+            if read(key, dataProtection: true) == nil, let legacy = read(key, dataProtection: false) {
+                guard set(legacy, key: key) == errSecSuccess else { continue }
+                var query = baseAttributes
+                query[kSecAttrAccount as String] = key
+                query[kSecUseDataProtectionKeychain as String] = false
+                SecItemDelete(query as CFDictionary)
+            }
+            defaults.set(true, forKey: migrationFlagPrefix + key)
         }
     }
 

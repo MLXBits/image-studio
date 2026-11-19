@@ -21,4 +21,10 @@ struct PromptTokenEstimatorTests {
         // 3 ideographs + "neon sign" (2 words → 3 by words, 9 chars → 3 by chars).
         #expect(PromptTokenEstimator.estimate("霓虹灯 neon sign") == 6)
     }
+
+    @Test func denseRunsAddNoCharactersOfTheirOwn() {
+        // 100 ideographs between two words: 100 + "red fox" (2 words → 3 by words, 7 chars → 2).
+        let text = "red" + String(repeating: "狐", count: 100) + "fox"
+        #expect(PromptTokenEstimator.estimate(text) == 103)
+    }
 }
