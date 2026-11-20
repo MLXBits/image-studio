@@ -25,6 +25,9 @@ nonisolated struct Ideogram4Metadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     /// Custom checkpoint this was generated from, when the picker's `Custom…`
     /// entry was loaded as Ideogram 4. Optional so pre-field sidecars decode.
     var customModelRepo: String?
@@ -84,6 +87,9 @@ nonisolated struct GenerationMetadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     var prompt: String
     var negativePrompt: String
     var model: FluxModelVariant
@@ -119,12 +125,8 @@ nonisolated struct GenerationMetadata: Codable {
 // MARK: - Krea 2 metadata
 
 nonisolated struct Krea2Metadata: Codable {
-    /// The value of ``family`` in every Krea 2 sidecar written from now on.
-    static let familyTag = "krea2"
-
     @MainActor static func from(job: Krea2Job) -> Self {
         Self(
-            family: familyTag,
             customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
             prompt: job.prompt,
             negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
@@ -147,9 +149,8 @@ nonisolated struct Krea2Metadata: Codable {
         )
     }
 
-    /// Names the family that wrote the sidecar (``familyTag``), so
-    /// ``AnySidecar`` need not tell Krea 2 apart by elimination. `nil` in
-    /// sidecars written before the field; older builds ignore the key.
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
     var family: String?
     /// Custom checkpoint this was generated from, when the picker's `Custom…`
     /// entry was loaded as Krea 2. Optional so pre-field sidecars decode.
@@ -211,6 +212,9 @@ nonisolated struct ZImageMetadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     /// Which Z-Image variant produced the image (Turbo or base). Optional so
     /// sidecars written before the field decode; defaults to Turbo on read.
     var modelVariant: FluxModelVariant?
@@ -363,6 +367,9 @@ nonisolated struct SeedVR2Metadata: Codable {
         SeedVR2Source(AnySidecar.read(forImageAt: sourcePath))
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     var sourcePath: String
     var model: String
     var scale: Int
@@ -387,11 +394,15 @@ nonisolated struct SeedVR2Metadata: Codable {
 }
 
 enum MetadataSidecar {
-    static func write(_ metadata: some SidecarMetadata, for imagePath: String) {
+    /// Writes `metadata` as the sidecar of `imagePath`, tagged with its family.
+    /// The tag comes from the type, so every sidecar carries the right one.
+    static func write<T: SidecarMetadata>(_ metadata: T, for imagePath: String) {
+        var tagged = metadata
+        tagged.family = T.sidecarFamily.rawValue
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
+        guard let data = try? encoder.encode(tagged) else { return }
         try? data.write(to: sidecarURL(for: imagePath), options: .atomic)
     }
 

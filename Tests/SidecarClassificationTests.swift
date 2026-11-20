@@ -10,8 +10,10 @@ import Testing
 /// only. Fields added later are optional, so these must keep decoding.
 @Suite("Sidecar classification")
 struct SidecarClassificationTests {
+    /// Raw values are the family tags sidecars carry.
     nonisolated private enum Family: String, CaseIterable {
-        case flux, ideogram4, krea2, zimage, qwen21, seedVR2
+        case flux, ideogram4, krea2, zimage, qwen21
+        case seedVR2 = "seedvr2"
     }
 
     nonisolated private struct Fixture {
@@ -53,11 +55,6 @@ struct SidecarClassificationTests {
      "sourceKrea2": \(krea2OrZImage)}
     """
 
-    /// A Krea 2 sidecar as written today, with its family tag.
-    nonisolated private static let taggedKrea2 = krea2OrZImage.replacingOccurrences(
-        of: "{", with: #"{"family": "krea2", "#
-    )
-
     /// Nonisolated: test arguments are built off the main actor.
     nonisolated private static let oldSidecars = [
         Fixture(file: "image_1748772000_1.png", json: flux, family: .flux),
@@ -67,7 +64,16 @@ struct SidecarClassificationTests {
         Fixture(file: "qwen21_1761991200_4.png", json: qwen21, family: .qwen21),
     ]
 
+    /// Each family's sidecar with its family tag, as this build writes them.
+    nonisolated private static let taggedSidecars = (oldSidecars + [
+        Fixture(file: "seedvr2_1759312800_5.png", json: seedVR2OfKrea2, family: .seedVR2),
+    ]).map { Fixture(file: $0.file, json: tagged($0.json, $0.family.rawValue), family: $0.family) }
+
     // MARK: - Helpers
+
+    nonisolated private static func tagged(_ json: String, _ tag: String) -> String {
+        "{\"family\": \"\(tag)\", " + json.dropFirst()
+    }
 
     private static func families(_ found: GallerySidecars) -> [Family] {
         let present: [(Family, Bool)] = [
@@ -109,7 +115,10 @@ struct SidecarClassificationTests {
         return Self.families(SeedVR2Metadata.resolveSource(for: path))
     }
 
-    // MARK: - Old sidecars
+    // MARK: - Untagged sidecars (the legacy fallback)
+
+    // Everything from here to "Family tag" covers sidecars written before the
+    // tag: the key checks and file prefixes in `AnySidecar.legacyFamily`.
 
     @Test(arguments: oldSidecars.indices)
     func theGalleryReadsEachOldSidecarAsItsFamily(_ index: Int) throws {
@@ -164,40 +173,6 @@ struct SidecarClassificationTests {
         #expect(try resolve("zimage_copy.png", Self.flux) == [.flux])
     }
 
-    // MARK: - Krea 2's family tag
-
-    /// Krea 2 now records its family, so it is no longer told apart only by
-    /// having none of the other families' keys: a `zimage` name cannot claim it.
-    @Test func aTaggedKrea2SidecarIsKrea2UnderAnyName() throws {
-        #expect(try classify("zimage_copy.png", Self.taggedKrea2) == [.krea2])
-        #expect(try resolve("zimage_copy.png", Self.taggedKrea2) == [.krea2])
-    }
-
-    /// The tag is checked before any other family's key, so a field Krea 2 adds
-    /// later under a name another family uses cannot move it to that family.
-    @Test func theTagWinsOverAnotherFamilysKey() throws {
-        let json = Self.taggedKrea2.replacingOccurrences(of: "{", with: #"{"modelVariant": "z-image", "#)
-        #expect(try classify("krea2_1.png", json) == [.krea2])
-    }
-
-    /// A tag this build does not know (a newer build's family) falls back to the
-    /// key checks, as a sidecar without a tag does.
-    @Test func anUnknownTagFallsBackToTheKeys() throws {
-        let json = Self.qwen21.replacingOccurrences(of: "{", with: #"{"family": "future-model", "#)
-        #expect(try classify("renamed.png", json) == [.qwen21])
-    }
-
-    /// What Krea 2 writes today carries the tag. Older builds ignore the key:
-    /// a synthesized decoder skips keys it does not know.
-    @Test func krea2WritesItsFamilyTag() throws {
-        let path = try image("krea2_1.png", sidecar: nil)
-        defer { try? FileManager.default.removeItem(atPath: (path as NSString).deletingLastPathComponent) }
-        MetadataSidecar.write(Krea2Metadata.from(job: Krea2Job(prompt: "k")), for: path)
-        let data = try Data(contentsOf: MetadataSidecar.sidecarURL(for: path))
-        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
-        #expect(object?["family"] as? String == "krea2")
-    }
-
     @Test func aQwenPrefixDoesNotHideAnotherFamily() throws {
         #expect(try classify("qwen21_copy.png", Self.flux) == [.flux])
     }
@@ -207,6 +182,78 @@ struct SidecarClassificationTests {
     @Test func aRenamedQwenImageReadsAsQwen() throws {
         #expect(try classify("renamed.png", Self.qwen21) == [.qwen21])
         #expect(try resolve("renamed.png", Self.qwen21) == [.qwen21])
+    }
+
+    // MARK: - Family tag
+
+    /// A tagged sidecar reads as its tag says, whatever the file is called:
+    /// no prefix, and no other family's prefix, changes it.
+    @Test(arguments: taggedSidecars.indices)
+    func aTaggedSidecarReadsAsItsFamilyUnderAnyName(_ index: Int) throws {
+        let fixture = Self.taggedSidecars[index]
+        for name in ["renamed.png", "zimage_copy.png", "qwen21_copy.png", "krea2_copy.png"] {
+            #expect(try classify(name, fixture.json) == [fixture.family], "\(name)")
+        }
+    }
+
+    /// The tag decides before any key is looked at, so a field a family adds
+    /// later under a name another family uses cannot move it to that family.
+    @Test func theTagWinsOverEveryOtherFamilysKey() throws {
+        let json = Self.tagged(Self.krea2OrZImage, "krea2").replacingOccurrences(
+            of: #""prompt""#,
+            with: #""modelVariant": "z-image", "isEditMode": false, "customBaseModel": "x", "sourcePath": "/s.png", "prompt""#
+        )
+        #expect(try classify("zimage_1.png", json) == [.krea2])
+        #expect(try resolve("zimage_1.png", json) == [.krea2])
+    }
+
+    /// A sidecar that does not decode as its tagged family is no family: the
+    /// tag is trusted, so nothing falls through to the next shape that fits.
+    @Test func aSidecarThatFailsItsTaggedFamilyIsNoFamily() throws {
+        #expect(try classify("image_1.png", Self.tagged(Self.krea2OrZImage, "flux")).isEmpty)
+        #expect(try resolve("image_1.png", Self.tagged(Self.krea2OrZImage, "flux")).isEmpty)
+    }
+
+    /// A tag this build does not know comes from a newer build's family. Its
+    /// shape says nothing reliable, so it is no family rather than a guess.
+    @Test func anUnknownTagIsNoFamily() throws {
+        #expect(try classify("renamed.png", Self.tagged(Self.qwen21, "future-model")).isEmpty)
+    }
+
+    /// Every family's writer records its tag. Older builds ignore the key: a
+    /// synthesized decoder skips keys it does not know.
+    @Test func everyFamilyWritesItsTag() throws {
+        let dir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("sidecars-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+        func tag(_ name: String, _ write: (String) -> Void) throws -> String? {
+            let path = dir.appendingPathComponent(name).path
+            write(path)
+            let data = try Data(contentsOf: MetadataSidecar.sidecarURL(for: path))
+            return try (JSONSerialization.jsonObject(with: data) as? [String: Any])?["family"] as? String
+        }
+
+        #expect(try tag("f.png") { MetadataSidecar.write(GenerationMetadata.from(job: FluxJob(prompt: "f")), for: $0) } == "flux")
+        #expect(try tag("i.png") { MetadataSidecar.write(Ideogram4Metadata.from(job: Ideogram4Job(plainPrompt: "i")), for: $0) } ==
+            "ideogram4")
+        #expect(try tag("k.png") { MetadataSidecar.write(Krea2Metadata.from(job: Krea2Job(prompt: "k")), for: $0) } == "krea2")
+        #expect(try tag("z.png") { MetadataSidecar.write(ZImageMetadata.from(job: ZImageJob(prompt: "z")), for: $0) } == "zimage")
+        #expect(try tag("q.png") { MetadataSidecar.write(Qwen21Metadata.from(job: Qwen21Job(prompt: "q")), for: $0) } == "qwen21")
+        #expect(try tag("s.png") { MetadataSidecar.write(SeedVR2Metadata.from(job: SeedVR2Job(sourcePath: "/s.png")), for: $0) } ==
+            "seedvr2")
+    }
+
+    /// The writer sets the tag from the sidecar's type, over any value already
+    /// on it, so no caller can write a wrong one.
+    @Test func theWriterSetsTheTagFromTheType() throws {
+        var meta = Krea2Metadata.from(job: Krea2Job(prompt: "k"))
+        meta.family = "flux"
+        let path = try image("renamed.png", sidecar: nil)
+        defer { try? FileManager.default.removeItem(atPath: (path as NSString).deletingLastPathComponent) }
+        MetadataSidecar.write(meta, for: path)
+        #expect(MetadataSidecar.read(Krea2Metadata.self, for: path)?.family == "krea2")
+        #expect(Self.families(GallerySidecars.read(forImageAt: path)) == [.krea2])
     }
 
     // MARK: - Current sidecars
