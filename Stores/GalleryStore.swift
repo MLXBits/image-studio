@@ -314,20 +314,13 @@ nonisolated private func scanDirectory(
         } else {
             // New or changed file — or one whose sidecar hadn't landed yet when last
             // scanned (batch sidecars are written just after the PNG), so retry the read.
-            // Z-Image is probed by filename prefix first — its sidecar shares the FLUX
-            // shape closely enough that a blind FLUX decode could mis-claim it.
-            // Qwen-Image 2.1 is read only by its prefix too, and then nothing else is tried.
-            let lowered = url.lastPathComponent.lowercased()
-            qwen21Meta = lowered.hasPrefix("qwen21") ? MetadataSidecar.readQwen21(for: url.path) : nil
-            let isZImageFile = lowered.hasPrefix("zimage")
-            zimageMeta = isZImageFile ? MetadataSidecar.readZImage(for: url.path) : nil
-            let claimed = zimageMeta != nil || qwen21Meta != nil
-            fluxMeta = !claimed ? MetadataSidecar.read(for: url.path) : nil
-            ideogramMeta = fluxMeta == nil && !claimed ? MetadataSidecar.readIdeogram4(for: url.path) : nil
-            krea2Meta = fluxMeta == nil && ideogramMeta == nil && !claimed
-                ? MetadataSidecar.readKrea2(for: url.path) : nil
-            seedVR2Meta = fluxMeta == nil && ideogramMeta == nil && krea2Meta == nil && !claimed
-                ? MetadataSidecar.readSeedVR2(for: url.path) : nil
+            let sidecars = GallerySidecars.read(forImageAt: url.path)
+            fluxMeta = sidecars.flux
+            ideogramMeta = sidecars.ideogram4
+            krea2Meta = sidecars.krea2
+            zimageMeta = sidecars.zimage
+            qwen21Meta = sidecars.qwen21
+            seedVR2Meta = sidecars.seedVR2
         }
         // Flags/ratings live in xattrs and never change the file's mtime, so the
         // mtime-based skip above can't be used for them — read them fresh each scan.
