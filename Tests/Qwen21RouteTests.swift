@@ -239,7 +239,7 @@ struct Qwen21RouteTests {
         let source = dir.appendingPathComponent("qwen21_20261114_seed_7.png").path
         var meta = Qwen21Metadata.from(job: Qwen21Job(prompt: "a fox in snow", steps: 8, width: 1344, height: 768))
         meta.seed = 7
-        MetadataSidecar.writeQwen21(meta, for: source)
+        MetadataSidecar.write(meta, for: source)
 
         let resolved = SeedVR2Metadata.resolveSource(for: source)
         #expect(resolved.qwen21?.prompt == "a fox in snow")
@@ -253,7 +253,7 @@ struct Qwen21RouteTests {
         try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: dir) }
         let source = dir.appendingPathComponent("portrait.png").path
-        MetadataSidecar.writeQwen21(Qwen21Metadata.from(job: Qwen21Job(prompt: "renamed")), for: source)
+        MetadataSidecar.write(Qwen21Metadata.from(job: Qwen21Job(prompt: "renamed")), for: source)
         let resolved = SeedVR2Metadata.resolveSource(for: source)
         #expect(resolved.qwen21?.prompt == "renamed")
         #expect(resolved.krea2 == nil && resolved.zimage == nil && resolved.flux == nil)

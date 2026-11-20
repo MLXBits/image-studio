@@ -135,6 +135,7 @@
 		51A29791F2755F3AECE191B9 /* JobPreviewViews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 484551FA66235AAE06EABC0C /* JobPreviewViews.swift */; };
 		548558CE3A5754082C60AD8E /* LoraEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */; };
 		551DEB915D184838A51E5A50 /* AppSettingsProfileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54319FFDDA384384985FA769 /* AppSettingsProfileTests.swift */; };
+		562FA7FA48ADB87F513C9545 /* AnySidecar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 09BAFE6C53EC410A98D11517 /* AnySidecar.swift */; };
 		58B6986FAB5E9B156E999A48 /* JobQueueOrder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 90A2C4A7D1C766F5DCEC91F3 /* JobQueueOrder.swift */; };
 		59160C7CE171391D5D9CAECA /* ScenarioGeneratorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B35B01141A73113FEFB7B60 /* ScenarioGeneratorTests.swift */; };
 		5A84D23E49ADE5A737D442E7 /* ideogram_caption_prompt.md in Resources */ = {isa = PBXBuildFile; fileRef = C8E7E429B7E1355569571155 /* ideogram_caption_prompt.md */; };
@@ -363,6 +364,7 @@
 		061B3DAADC9D8FED58CF64D3 /* ThumbnailCacheTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThumbnailCacheTests.swift; sourceTree = "<group>"; };
 		08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationCoordinator.swift; sourceTree = "<group>"; };
 		08E77A32B68E5EB388143653 /* ModelDownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelDownloadStore.swift; sourceTree = "<group>"; };
+		09BAFE6C53EC410A98D11517 /* AnySidecar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnySidecar.swift; sourceTree = "<group>"; };
 		0B8A946E00348D9BD857672E /* MfluxDriverController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxDriverController.swift; sourceTree = "<group>"; };
 		0BD48898676BEAF41974673E /* GalleryItemDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryItemDetailView.swift; sourceTree = "<group>"; };
 		0BE207A0AFDE1EFE6C815E47 /* TimingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingStore.swift; sourceTree = "<group>"; };
@@ -700,6 +702,7 @@
 		117682124434130DAFA9B142 /* Utilities */ = {
 			isa = PBXGroup;
 			children = (
+				09BAFE6C53EC410A98D11517 /* AnySidecar.swift */,
 				A8D721F682E59296DDBE08C7 /* AspectDirective.swift */,
 				FB118099AF60B10874CBCC28 /* BackgroundSignals.swift */,
 				9E13B8A515FD7C7D6D2D87A5 /* BuildFlavor.swift */,
@@ -1391,6 +1394,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				DD1E02EE297AC49EACB88A1E /* AboutView.swift in Sources */,
+				562FA7FA48ADB87F513C9545 /* AnySidecar.swift in Sources */,
 				FA29AEEB00D982A7EA7EF2BF /* AppDelegate.swift in Sources */,
 				7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */,
 				A5DA058778AC0E6C6FAB56D6 /* AppSettings+FileAccess.swift in Sources */,

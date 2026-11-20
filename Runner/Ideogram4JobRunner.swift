@@ -68,7 +68,7 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
         meta.seed = seed
         meta.startedAt = startedAt
         meta.generatedAt = generatedAt
-        MetadataSidecar.writeIdeogram4(meta, for: path)
+        MetadataSidecar.write(meta, for: path)
     }
 
     /// A repo ID or path that replaces the stock Ideogram 4 model source: the

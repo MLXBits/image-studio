@@ -2,8 +2,9 @@ import Foundation
 @testable import MLXBits_Image_Studio
 import Testing
 
-/// Which family a sidecar belongs to, as the gallery (``GallerySidecars``) and a
-/// SeedVR2 upscale (``SeedVR2Metadata/resolveSource(for:)``) work it out.
+/// Which family a sidecar belongs to, as ``AnySidecar/classify(data:fileName:)``
+/// works it out for both the gallery (``GallerySidecars``) and a SeedVR2 upscale
+/// (``SeedVR2Metadata/resolveSource(for:)``).
 ///
 /// The fixtures are the oldest sidecars each family wrote: the required fields
 /// only. Fields added later are optional, so these must keep decoding.
@@ -33,8 +34,9 @@ struct SidecarClassificationTests {
      "height": 1024, "quantize": 0, "lowRam": false, "generatedAt": "2026-06-10T10:00:00Z"}
     """
 
-    /// Krea 2 and Z-Image wrote the same required fields: only the file name
-    /// tells these two apart.
+    /// Krea 2 and Z-Image wrote the same required fields, and Z-Image sidecars from
+    /// before `modelVariant` have no key of their own: only the file name tells
+    /// these two apart.
     nonisolated private static let krea2OrZImage = """
     {"prompt": "a fox", "seed": 3, "steps": 9, "guidance": 1.0, "width": 1024, "height": 1024,
      "quantize": 8, "generatedAt": "2026-07-01T10:00:00Z"}
@@ -128,11 +130,19 @@ struct SidecarClassificationTests {
 
     // MARK: - The Krea 2 / Z-Image ambiguity
 
-    /// A renamed Z-Image file loses its prefix, and its sidecar then reads as
+    /// A renamed old Z-Image file loses its prefix, and its sidecar then reads as
     /// Krea 2: the two shapes are the same. The prefix is the only signal.
-    @Test func withoutItsPrefixAZImageSidecarReadsAsKrea2() throws {
+    @Test func withoutItsPrefixAnOldZImageSidecarReadsAsKrea2() throws {
         #expect(try classify("renamed.png", Self.krea2OrZImage) == [.krea2])
         #expect(try resolve("renamed.png", Self.krea2OrZImage) == [.krea2])
+    }
+
+    /// Today's Z-Image sidecars record `modelVariant`, which no other family
+    /// writes, so a renamed one still reads as Z-Image.
+    @Test func aRenamedZImageWithItsVariantReadsAsZImage() throws {
+        let json = Self.krea2OrZImage.replacingOccurrences(of: "{", with: #"{"modelVariant": "z-image", "#)
+        #expect(try classify("renamed.png", json) == [.zimage])
+        #expect(try resolve("renamed.png", json) == [.zimage])
     }
 
     /// A file named like Z-Image whose sidecar does not decode as Z-Image still
@@ -141,23 +151,22 @@ struct SidecarClassificationTests {
         #expect(try classify("zimage_copy.png", Self.ideogram4) == [.ideogram4])
     }
 
-    /// The prefix wins over shape: a Flux sidecar carries every field Z-Image
-    /// requires, so beside a `zimage` file it reads as Z-Image. Only a hand-renamed
-    /// file can get here; the app never writes a Flux image under that prefix.
-    @Test func aZImagePrefixClaimsAFluxShapedSidecar() throws {
-        #expect(try classify("zimage_copy.png", Self.flux) == [.zimage])
-        #expect(try resolve("zimage_copy.png", Self.flux) == [.zimage])
+    /// Shape wins over the prefix: a Flux sidecar carries every field Z-Image
+    /// requires, but also `customBaseModel`, which only Flux writes. Only a
+    /// hand-renamed file can get here.
+    @Test func aZImagePrefixDoesNotClaimAFluxSidecar() throws {
+        #expect(try classify("zimage_copy.png", Self.flux) == [.flux])
+        #expect(try resolve("zimage_copy.png", Self.flux) == [.flux])
     }
 
     @Test func aQwenPrefixDoesNotHideAnotherFamily() throws {
         #expect(try classify("qwen21_copy.png", Self.flux) == [.flux])
     }
 
-    /// Qwen's sidecar has no `guidance`, so it never reads as Krea 2 or Z-Image.
-    /// The gallery reads it only by its prefix, while an upscale falls back to a
-    /// plain decode: the two disagree on a renamed file (Batch 8 unifies them).
-    @Test func aRenamedQwenImageIsReadOnlyByAnUpscale() throws {
-        #expect(try classify("renamed.png", Self.qwen21).isEmpty)
+    /// Qwen's sidecar records `isEditMode`, which no other family writes, so a
+    /// renamed Qwen image reads as Qwen in the gallery and in an upscale alike.
+    @Test func aRenamedQwenImageReadsAsQwen() throws {
+        #expect(try classify("renamed.png", Self.qwen21) == [.qwen21])
         #expect(try resolve("renamed.png", Self.qwen21) == [.qwen21])
     }
 
@@ -174,11 +183,14 @@ struct SidecarClassificationTests {
         }
 
         let lora = LoraEntry(path: "/l.safetensors")
-        MetadataSidecar.write(.from(job: FluxJob(prompt: "f", negativePrompt: "n", loras: [lora])), for: path("image_1.png"))
-        MetadataSidecar.writeIdeogram4(.from(job: Ideogram4Job(plainPrompt: "i")), for: path("ideogram4_1.png"))
-        MetadataSidecar.writeKrea2(.from(job: Krea2Job(prompt: "k", negativePrompt: "n")), for: path("krea2_1.png"))
-        MetadataSidecar.writeZImage(.from(job: ZImageJob(modelVariant: .zimage, prompt: "z")), for: path("zimage_1.png"))
-        MetadataSidecar.writeQwen21(.from(job: Qwen21Job(prompt: "q")), for: path("qwen21_1.png"))
+        MetadataSidecar.write(
+            GenerationMetadata.from(job: FluxJob(prompt: "f", negativePrompt: "n", loras: [lora])),
+            for: path("image_1.png")
+        )
+        MetadataSidecar.write(Ideogram4Metadata.from(job: Ideogram4Job(plainPrompt: "i")), for: path("ideogram4_1.png"))
+        MetadataSidecar.write(Krea2Metadata.from(job: Krea2Job(prompt: "k", negativePrompt: "n")), for: path("krea2_1.png"))
+        MetadataSidecar.write(ZImageMetadata.from(job: ZImageJob(modelVariant: .zimage, prompt: "z")), for: path("zimage_1.png"))
+        MetadataSidecar.write(Qwen21Metadata.from(job: Qwen21Job(prompt: "q")), for: path("qwen21_1.png"))
 
         #expect(Self.families(GallerySidecars.read(forImageAt: path("image_1.png"))) == [.flux])
         #expect(Self.families(GallerySidecars.read(forImageAt: path("ideogram4_1.png"))) == [.ideogram4])
@@ -201,16 +213,11 @@ struct SidecarClassificationTests {
     }
 
     /// A Flux sidecar naming a model this build does not know (written by a newer
-    /// build, or a model since removed) fails the Flux decode, and then has every
-    /// field Krea 2 requires. It should read as no family; today it reads as Krea 2.
-    /// Batch 8's single sidecar classifier is where this gets fixed.
+    /// build, or a model since removed) fails the Flux decode. It has every field
+    /// Krea 2 requires, but it is still a Flux sidecar: it reads as no family.
     @Test func aFluxSidecarWithAnUnknownModelIsNotClaimedByKrea2() throws {
         let json = Self.flux.replacingOccurrences(of: #""model": "flux2-klein-9b""#, with: #""model": "flux9-ultra""#)
-        let gallery = try classify("image_1.png", json)
-        let upscale = try resolve("image_1.png", json)
-        withKnownIssue("A Flux sidecar with an unknown model is read as Krea 2") {
-            #expect(gallery.isEmpty)
-            #expect(upscale.isEmpty)
-        }
+        #expect(try classify("image_1.png", json).isEmpty)
+        #expect(try resolve("image_1.png", json).isEmpty)
     }
 }

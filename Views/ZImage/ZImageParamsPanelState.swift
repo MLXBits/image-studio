@@ -157,7 +157,7 @@ final class ZImageParamsPanelState {
     /// refinement varies the exact base instead of re-sampling.
     func adoptResolvedPromptForImg2Img(at path: String) {
         guard WildcardExpander.containsWildcards(prompt),
-              let meta = MetadataSidecar.readZImage(for: path) else { return }
+              let meta = MetadataSidecar.read(ZImageMetadata.self, for: path) else { return }
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt ?? ""
     }

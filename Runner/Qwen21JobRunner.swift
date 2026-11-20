@@ -60,7 +60,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         meta.seed = seed
         meta.startedAt = startedAt
         meta.generatedAt = generatedAt
-        MetadataSidecar.writeQwen21(meta, for: path)
+        MetadataSidecar.write(meta, for: path)
     }
 
     /// The `--model` value: the picker's custom checkpoint, else the published

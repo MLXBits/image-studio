@@ -75,7 +75,7 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
         meta.seed = seed
         meta.startedAt = startedAt
         meta.generatedAt = generatedAt
-        MetadataSidecar.writeZImage(meta, for: path)
+        MetadataSidecar.write(meta, for: path)
     }
 
     /// A repo ID or path that replaces the stock Z-Image model source: the picker's

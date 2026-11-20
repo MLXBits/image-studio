@@ -78,7 +78,7 @@ struct CompletedImageView: View {
 
     private var remixMeta: GenerationMetadata? {
         guard let path = job.outputPath else { return nil }
-        return MetadataSidecar.read(for: path)
+        return MetadataSidecar.read(GenerationMetadata.self, for: path)
     }
 
     private var logSheet: some View {
