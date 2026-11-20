@@ -126,6 +126,18 @@ struct ImageZoomStateTests {
         #expect(state.offset == CGSize(width: 90, height: 0))
     }
 
+    @Test func zoomingToFitMidDragEndsTheDrag() {
+        var state = ImageZoomState()
+        state.zoom(by: 2, toward: nil, in: fit(square))
+        state.pan(by: CGSize(width: 40, height: 0), in: fit(square))
+        // At fit the pan gesture is removed, and its `onEnded` may never run.
+        state.zoom(by: 0.1, toward: nil, in: fit(square))
+        state.zoom(by: 2, toward: nil, in: fit(square))
+        // A new drag starts from where the image is, not from the old drag.
+        state.pan(by: CGSize(width: 10, height: 0), in: fit(square))
+        #expect(state.offset == CGSize(width: 10, height: 0))
+    }
+
     @Test func resetReturnsToFit() {
         var state = ImageZoomState()
         state.zoom(by: 5, toward: CGPoint(x: 400, y: 400), in: fit(square))

@@ -72,6 +72,11 @@ nonisolated struct ImageZoomState: Equatable {
             proposed = CGSize(width: vx - applied * (vx - offset.width), height: vy - applied * (vy - offset.height))
         }
         offset = isZoomed ? clamped(proposed, in: fit) : .zero
+        // At fit the view removes the pan gesture, whose `onEnded` may then
+        // never run: end the drag here, so the next one starts fresh.
+        if !isZoomed {
+            drag = nil
+        }
         // A zoom mid-drag moved the image: re-base the drag on where it is now,
         // so its next movement continues from here instead of jumping back.
         if let translation = drag?.translation {
