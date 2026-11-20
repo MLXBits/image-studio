@@ -14,9 +14,7 @@ struct ComparePair: Equatable {
 /// promotes the candidate to select (swap). Culling keys (p/x/u, 0–5) act on the
 /// candidate — the image under evaluation.
 struct CompareView: View {
-    private static let minScale: CGFloat = 1
-    private static let maxScale: CGFloat = 12
-    nonisolated private static let imagePadding: CGFloat = 16
+    private static let imagePadding: CGFloat = 16
 
     let selectItem: GalleryItem
     let candidateItem: GalleryItem
@@ -32,13 +30,10 @@ struct CompareView: View {
 
     @State private var selectImage: NSImage?
     @State private var candidateImage: NSImage?
-    @State private var scale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var panBase: CGSize?
+    @State private var zoom = ImageZoomState()
     @State private var selectFrame: CGRect = .zero
     @State private var viewFrame: CGRect = .zero
-    @State private var keyMonitor: Any?
-    @State private var scrollMonitor: Any?
+    @State private var monitors = EventMonitors()
     @State private var hostWindow = WindowRef()
 
     private var canCycle: Bool {
@@ -82,15 +77,11 @@ struct CompareView: View {
         .onAppear {
             loadSelect()
             loadCandidate()
-            installKeyMonitor()
-            installScrollMonitor()
+            installMonitors()
         }
-        .onDisappear {
-            removeKeyMonitor()
-            removeScrollMonitor()
-        }
-        .onChange(of: selectItem.id) { _, _ in loadSelect(); resetZoom() }
-        .onChange(of: candidateItem.id) { _, _ in loadCandidate(); resetZoom() }
+        .onDisappear { monitors.removeAll() }
+        .onChange(of: selectItem.id) { _, _ in loadSelect(); zoom.reset() }
+        .onChange(of: candidateItem.id) { _, _ in loadCandidate(); zoom.reset() }
     }
 
     // MARK: - Chrome
@@ -136,8 +127,8 @@ struct CompareView: View {
                 }
             }
 
-            if scale > Self.minScale {
-                Button { resetZoom() } label: {
+            if zoom.isZoomed {
+                Button { zoom.reset() } label: {
                     Label("Fit", systemImage: "arrow.down.right.and.arrow.up.left")
                         .font(.callout)
                         .frame(minHeight: IconButtonMetrics.size)
@@ -153,22 +144,20 @@ struct CompareView: View {
             .font(.caption2).foregroundStyle(.white.opacity(0.5))
     }
 
+    /// Both panes share one offset and have the same size, so the Select pane's
+    /// frame stands for both, and each image can pan to its own edges.
+    private var fit: ImageZoomState.Fit {
+        ImageZoomState.Fit(
+            images: [selectImage, candidateImage].compactMap { $0?.size },
+            frame: selectFrame,
+            padding: Self.imagePadding
+        )
+    }
+
     private var panGesture: some Gesture {
         DragGesture()
-            .onChanged { value in
-                if panBase == nil {
-                    panBase = offset
-                }
-                let base = panBase ?? .zero
-                offset = clampedOffset(CGSize(
-                    width: base.width + value.translation.width,
-                    height: base.height + value.translation.height
-                ))
-            }
-            .onEnded { _ in
-                panBase = nil
-                offset = clampedOffset(offset)
-            }
+            .onChanged { zoom.pan(by: $0.translation, in: fit) }
+            .onEnded { _ in zoom.endPan(in: fit) }
     }
 
     // MARK: - Pane
@@ -189,8 +178,8 @@ struct CompareView: View {
                             .resizable().scaledToFit()
                             .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .padding(Self.imagePadding)
-                            .scaleEffect(scale, anchor: .center)
-                            .offset(offset)
+                            .scaleEffect(zoom.scale, anchor: .center)
+                            .offset(zoom.offset)
                     } else {
                         ProgressView().frame(maxWidth: .infinity, maxHeight: .infinity)
                     }
@@ -206,7 +195,7 @@ struct CompareView: View {
                     }
                 }
             }
-            .gesture(scale > Self.minScale ? panGesture : nil)
+            .gesture(zoom.isZoomed ? panGesture : nil)
             .onTapGesture(count: 2) { toggleZoom() }
         }
         .clipped()
@@ -249,47 +238,16 @@ struct CompareView: View {
     // MARK: - Actions
 
     private func cycle(_ delta: Int) {
-        resetZoom()
+        zoom.reset()
         onCycleCandidate(delta)
     }
 
     private func toggleZoom() {
-        if scale > Self.minScale {
-            resetZoom()
+        if zoom.isZoomed {
+            zoom.reset()
         } else {
-            scale = 2
+            zoom.zoom(by: 2, toward: nil, in: fit)
         }
-    }
-
-    private func resetZoom() {
-        scale = Self.minScale
-        offset = .zero
-        panBase = nil
-    }
-
-    // MARK: - Zoom & pan (linked across both panes)
-
-    private func zoom(by factor: CGFloat) {
-        let newScale = min(max(scale * factor, Self.minScale), Self.maxScale)
-        guard newScale != scale else { return }
-        scale = newScale
-        offset = newScale <= Self.minScale ? .zero : clampedOffset(offset)
-    }
-
-    /// Clamp the pan so the scaled image can't be dragged past the pane edges. Both
-    /// panes share one offset and have the same size, so the limit on each axis is
-    /// the larger of the two images' limits: with A/B images of different aspect
-    /// ratios, a Select-only limit stopped the candidate short of its own edges.
-    private func clampedOffset(_ proposed: CGSize) -> CGSize {
-        let limits = [selectImage, candidateImage].compactMap { image in
-            image.map { Self.panLimit(imageSize: $0.size, pane: selectFrame.size, scale: scale) }
-        }
-        let maxX = limits.map(\.width).max() ?? 0
-        let maxY = limits.map(\.height).max() ?? 0
-        return CGSize(
-            width: proposed.width.clamped(to: -maxX ... maxX),
-            height: proposed.height.clamped(to: -maxY ... maxY)
-        )
     }
 
     // MARK: - Image loading
@@ -314,13 +272,14 @@ struct CompareView: View {
 
     // MARK: - Event monitors
 
-    private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        let host = hostWindow
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard host.owns(event) else { return event }
-            return handleKey(event)
-        }
+    /// Zoom is linked across both panes and centred, so the pointer only has to be
+    /// somewhere over the view.
+    private func installMonitors() {
+        guard !monitors.isInstalled else { return }
+        monitors.addKeys(host: hostWindow) { handleKey($0) }
+        monitors.addZoom(host: hostWindow, over: { viewFrame }, onZoom: { factor, _ in
+            zoom.zoom(by: factor, toward: nil, in: fit)
+        })
     }
 
     /// Listed in `KeyboardShortcutCatalog.compareView`, at the end of this file.
@@ -336,47 +295,12 @@ struct CompareView: View {
         case 36, 76, 126: onSwap(); return nil // Return / Enter / Up → make select
         default: break
         }
-        guard !event.modifierFlags.contains(.command),
-              let chars = event.charactersIgnoringModifiers, chars.count == 1 else { return event }
-        switch chars {
-        case "p", "P": onFlagCandidate(.pick); return nil
-        case "x", "X": onFlagCandidate(.reject); return nil
-        case "u", "U": onFlagCandidate(nil); return nil
-        case "0", "1", "2", "3", "4", "5": onRateCandidate(Int(chars) ?? 0); return nil
-        default: return event
+        switch CullKey(event) {
+        case let .flag(flag): onFlagCandidate(flag)
+        case let .rating(stars): onRateCandidate(stars)
+        case nil: return event
         }
-    }
-
-    private func removeKeyMonitor() {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-            keyMonitor = nil
-        }
-    }
-
-    private func installScrollMonitor() {
-        guard scrollMonitor == nil else { return }
-        let host = hostWindow
-        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { event in
-            // Only act on (and consume) events over this view; everything else passes through.
-            guard EventLocationHitTest.globalPoint(of: event, in: host, inside: viewFrame) != nil else { return event }
-            let factor: CGFloat
-            if event.type == .magnify {
-                factor = 1 + event.magnification
-            } else {
-                guard event.scrollingDeltaY != 0 else { return event }
-                factor = ScrollZoom.factor(deltaY: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas)
-            }
-            zoom(by: factor)
-            return nil
-        }
-    }
-
-    private func removeScrollMonitor() {
-        if let monitor = scrollMonitor {
-            NSEvent.removeMonitor(monitor)
-            scrollMonitor = nil
-        }
+        return nil
     }
 }
 
@@ -390,19 +314,4 @@ extension KeyboardShortcutCatalog {
         Entry("Set the candidate's star rating", ["0–5"]),
         Entry("Close", ["⎋"]),
     ])
-}
-
-extension CompareView {
-    /// How far an image fitted into `pane` (inside `imagePadding`) and zoomed by
-    /// `scale` can pan before its edge comes inside the pane.
-    nonisolated static func panLimit(imageSize: CGSize, pane: CGSize, scale: CGFloat) -> CGSize {
-        let availW = max(0, pane.width - 2 * imagePadding)
-        let availH = max(0, pane.height - 2 * imagePadding)
-        guard imageSize.width > 0, imageSize.height > 0, availW > 0, availH > 0 else { return .zero }
-        let fit = min(availW / imageSize.width, availH / imageSize.height)
-        return CGSize(
-            width: max(0, (imageSize.width * fit * scale - pane.width) / 2),
-            height: max(0, (imageSize.height * fit * scale - pane.height) / 2)
-        )
-    }
 }

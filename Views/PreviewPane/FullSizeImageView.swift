@@ -3,8 +3,6 @@ import SwiftUI
 // MARK: - Full-size image overlay (shown in-place, no sheet window)
 
 struct FullSizeImageView: View {
-    private static let minScale: CGFloat = 1
-    private static let maxScale: CGFloat = 12
     private static let imagePadding: CGFloat = 20
     /// Fullscreen media chrome, deliberately larger than `IconButtonMetrics.size`: the
     /// arrows float over the image with nothing adjacent to crowd them, and this is the
@@ -25,14 +23,11 @@ struct FullSizeImageView: View {
     var onFlag: ((PickFlag?) -> Void)?
     var onRating: ((Int) -> Void)?
 
-    @State private var keyMonitor: Any?
-    @State private var scrollMonitor: Any?
+    @State private var monitors = EventMonitors()
     @State private var hostWindow = WindowRef()
     @State private var chromeVisible: Bool = true
     @State private var hideTask: Task<Void, Never>?
-    @State private var scale: CGFloat = 1
-    @State private var offset: CGSize = .zero
-    @State private var panBase: CGSize?
+    @State private var zoom = ImageZoomState()
     @State private var containerFrame: CGRect = .zero
 
     var body: some View {
@@ -45,12 +40,12 @@ struct FullSizeImageView: View {
                     .scaledToFit()
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .padding(Self.imagePadding)
-                    .scaleEffect(scale, anchor: .center)
-                    .offset(offset)
-                    .gesture(scale > Self.minScale ? panGesture : nil)
+                    .scaleEffect(zoom.scale, anchor: .center)
+                    .offset(zoom.offset)
+                    .gesture(zoom.isZoomed ? panGesture : nil)
                     .onTapGesture(count: 2) {
-                        if scale > Self.minScale {
-                            resetZoom()
+                        if zoom.isZoomed {
+                            zoom.reset()
                         } else {
                             onDismiss()
                         }
@@ -84,37 +79,13 @@ struct FullSizeImageView: View {
             if hasPrev || hasNext {
                 HStack(spacing: 0) {
                     if hasPrev {
-                        Button {
-                            showChrome()
-                            resetZoom()
-                            onNavigatePrev?()
-                        } label: {
-                            Image(systemName: "chevron.left")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundStyle(.white)
-                                .frame(width: Self.navButtonSize, height: Self.navButtonSize)
-                                .background(.white.opacity(0.18), in: Circle())
-                        }
-                        .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
-                        .accessibilityLabel("Previous image")
-                        .padding(.leading, 20)
+                        navButton("chevron.left", label: "Previous image", prev: true)
+                            .padding(.leading, 20)
                     }
                     Spacer()
                     if hasNext {
-                        Button {
-                            showChrome()
-                            resetZoom()
-                            onNavigateNext?()
-                        } label: {
-                            Image(systemName: "chevron.right")
-                                .font(.system(size: 20, weight: .medium))
-                                .foregroundStyle(.white)
-                                .frame(width: Self.navButtonSize, height: Self.navButtonSize)
-                                .background(.white.opacity(0.18), in: Circle())
-                        }
-                        .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
-                        .accessibilityLabel("Next image")
-                        .padding(.trailing, 20)
+                        navButton("chevron.right", label: "Next image", prev: false)
+                            .padding(.trailing, 20)
                     }
                 }
                 .frame(maxWidth: .infinity)
@@ -146,13 +117,11 @@ struct FullSizeImageView: View {
         }
         .background { WindowAccessor { hostWindow.window = $0 } }
         .onAppear {
-            installKeyMonitor()
-            installScrollMonitor()
+            installMonitors()
             scheduleHide()
         }
         .onDisappear {
-            removeKeyMonitor()
-            removeScrollMonitor()
+            monitors.removeAll()
             hideTask?.cancel()
         }
     }
@@ -185,74 +154,30 @@ struct FullSizeImageView: View {
 
     // MARK: - Zoom & pan
 
+    private var fit: ImageZoomState.Fit {
+        ImageZoomState.Fit(images: [image.size], frame: containerFrame, padding: Self.imagePadding)
+    }
+
     private var panGesture: some Gesture {
         DragGesture()
             .onChanged { value in
-                if panBase == nil {
-                    panBase = offset
-                }
-                let base = panBase ?? .zero
-                offset = clampedOffset(CGSize(
-                    width: base.width + value.translation.width,
-                    height: base.height + value.translation.height
-                ))
+                zoom.pan(by: value.translation, in: fit)
                 showChrome()
             }
-            .onEnded { _ in
-                panBase = nil
-                offset = clampedOffset(offset)
-            }
+            .onEnded { _ in zoom.endPan(in: fit) }
     }
 
-    /// Zoom toward a cursor location (in `.global` SwiftUI coordinates) so the
-    /// point under the pointer stays fixed.
-    private func zoom(by factor: CGFloat, at cursor: CGPoint) {
-        guard containerFrame.width > 0, containerFrame.height > 0 else { return }
-        let newScale = min(max(scale * factor, Self.minScale), Self.maxScale)
-        guard newScale != scale else { return }
-        let applied = newScale / scale
-
-        // Cursor relative to the container centre (the scaleEffect anchor).
-        let center = CGPoint(x: containerFrame.midX, y: containerFrame.midY)
-        let vx = cursor.x - center.x
-        let vy = cursor.y - center.y
-
-        scale = newScale
-        if newScale <= Self.minScale {
-            offset = .zero
-        } else {
-            offset = clampedOffset(CGSize(
-                width: vx - applied * (vx - offset.width),
-                height: vy - applied * (vy - offset.height)
-            ))
+    /// A prev/next arrow. Fullscreen media chrome at `navButtonSize`, not the 28pt standard.
+    private func navButton(_ systemImage: String, label: String, prev: Bool) -> some View {
+        Button { navigate(prev: prev) } label: {
+            Image(systemName: systemImage)
+                .font(.system(size: 20, weight: .medium))
+                .foregroundStyle(.white)
+                .frame(width: Self.navButtonSize, height: Self.navButtonSize)
+                .background(.white.opacity(0.18), in: Circle())
         }
-    }
-
-    private func resetZoom() {
-        scale = Self.minScale
-        offset = .zero
-        panBase = nil
-    }
-
-    /// Clamp the pan offset so the scaled image can't be dragged past the
-    /// container edges (no black gutters once zoomed past fit).
-    private func clampedOffset(_ proposed: CGSize) -> CGSize {
-        let availW = max(0, containerFrame.width - 2 * Self.imagePadding)
-        let availH = max(0, containerFrame.height - 2 * Self.imagePadding)
-        let imgW = image.size.width
-        let imgH = image.size.height
-        guard imgW > 0, imgH > 0, availW > 0, availH > 0 else { return .zero }
-
-        let fit = min(availW / imgW, availH / imgH)
-        let dispW = imgW * fit * scale
-        let dispH = imgH * fit * scale
-
-        let maxX = max(0, (dispW - containerFrame.width) / 2)
-        let maxY = max(0, (dispH - containerFrame.height) / 2)
-        return CGSize(
-            width: min(max(proposed.width, -maxX), maxX),
-            height: min(max(proposed.height, -maxY), maxY)
-        )
+        .buttonStyle(IconButtonStyle(side: Self.navButtonSize))
+        .accessibilityLabel(label)
     }
 
     // MARK: - Chrome
@@ -276,13 +201,13 @@ struct FullSizeImageView: View {
 
     // MARK: - Event monitors
 
-    private func installKeyMonitor() {
-        guard keyMonitor == nil else { return }
-        let host = hostWindow
-        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { event in
-            guard host.owns(event) else { return event }
-            return handleKey(event)
-        }
+    private func installMonitors() {
+        guard !monitors.isInstalled else { return }
+        monitors.addKeys(host: hostWindow) { handleKey($0) }
+        monitors.addZoom(host: hostWindow, over: { containerFrame }, onZoom: { factor, pointer in
+            showChrome()
+            zoom.zoom(by: factor, toward: pointer, in: fit)
+        })
     }
 
     /// Handles keys while the overlay is up. Arrow keys drive *linear* prev/next
@@ -304,21 +229,18 @@ struct FullSizeImageView: View {
             break
         }
         // Culling keys — only when this overlay owns a gallery item (callbacks set).
-        guard onFlag != nil || onRating != nil,
-              !event.modifierFlags.contains(.command),
-              let chars = event.charactersIgnoringModifiers, chars.count == 1 else { return event }
-        switch chars {
-        case "p", "P":
-            onFlag?(.pick); showChrome(); advanceIfPossible(); return nil
-        case "x", "X":
-            onFlag?(.reject); showChrome(); advanceIfPossible(); return nil
-        case "u", "U":
-            onFlag?(nil); showChrome(); return nil
-        case "0", "1", "2", "3", "4", "5":
-            onRating?(Int(chars) ?? 0); showChrome(); return nil
-        default:
-            return event
+        guard onFlag != nil || onRating != nil, let key = CullKey(event) else { return event }
+        showChrome()
+        switch key {
+        case let .flag(flag):
+            onFlag?(flag)
+            if flag != nil {
+                advanceIfPossible()
+            }
+        case let .rating(stars):
+            onRating?(stars)
         }
+        return nil
     }
 
     private func navigate(prev: Bool) {
@@ -328,7 +250,7 @@ struct FullSizeImageView: View {
         // parent's navigateGallery clamps at both ends (a no-op at the edge), so an
         // unconditional call is safe. (The on-screen arrow buttons still use live values.)
         showChrome()
-        resetZoom()
+        zoom.reset()
         if prev {
             onNavigatePrev?()
         } else {
@@ -339,47 +261,8 @@ struct FullSizeImageView: View {
     /// Auto-advance after a pick/reject, matching Lightroom's cull rhythm.
     private func advanceIfPossible() {
         // See navigate(prev:) — rely on the bounds-safe parent instead of the stale hasNext.
-        resetZoom()
+        zoom.reset()
         onNavigateNext?()
-    }
-
-    private func removeKeyMonitor() {
-        if let monitor = keyMonitor {
-            NSEvent.removeMonitor(monitor)
-            keyMonitor = nil
-        }
-    }
-
-    private func installScrollMonitor() {
-        guard scrollMonitor == nil else { return }
-        scrollMonitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { event in
-            guard let cursor = cursorInGlobalSpace(for: event) else { return event }
-            let factor: CGFloat
-            if event.type == .magnify {
-                factor = 1 + event.magnification
-            } else {
-                // Trackpad two-finger / mouse-wheel scroll → zoom.
-                guard event.scrollingDeltaY != 0 else { return event }
-                factor = ScrollZoom.factor(deltaY: event.scrollingDeltaY, precise: event.hasPreciseScrollingDeltas)
-            }
-            showChrome()
-            zoom(by: factor, at: cursor)
-            return nil // consume so underlying scroll views don't also react
-        }
-    }
-
-    private func removeScrollMonitor() {
-        if let monitor = scrollMonitor {
-            NSEvent.removeMonitor(monitor)
-            scrollMonitor = nil
-        }
-    }
-
-    /// Convert an event's window-space location (AppKit, bottom-left origin) to
-    /// SwiftUI `.global` space (top-left origin) so it lines up with
-    /// `containerFrame`. Returns nil when the pointer is outside the image area.
-    private func cursorInGlobalSpace(for event: NSEvent) -> CGPoint? {
-        EventLocationHitTest.globalPoint(of: event, in: hostWindow, inside: containerFrame)
     }
 }
 

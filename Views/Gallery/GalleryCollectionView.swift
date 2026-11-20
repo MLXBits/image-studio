@@ -336,20 +336,15 @@ final class GalleryNSCollectionView: NSCollectionView {
         default:
             // Lightroom-style culling keys act on the current anchor item, then
             // auto-advance (flags) so the whole cull can be done from the keyboard.
-            // Match on characters so it's keyboard-layout independent; ignore when a
-            // modifier is held so Cmd-shortcuts (copy, etc.) still pass through.
-            if !event.modifierFlags.contains(.command),
-               let chars = event.charactersIgnoringModifiers, chars.count == 1 {
-                switch chars {
-                case "p", "P": eventDelegate?.cullFlagKeyPressed(.pick); return
-                case "x", "X": eventDelegate?.cullFlagKeyPressed(.reject); return
-                case "u", "U": eventDelegate?.cullFlagKeyPressed(nil); return
-                case "c", "C": eventDelegate?.compareKeyPressed(); return
-                case "0", "1", "2", "3", "4", "5":
-                    eventDelegate?.cullRatingKeyPressed(Int(chars) ?? 0); return
-                default:
-                    break
-                }
+            // C opens Compare. Neither fires with ⌘ held, so ⌘C copies.
+            switch CullKey(event) {
+            case let .flag(flag): eventDelegate?.cullFlagKeyPressed(flag); return
+            case let .rating(stars): eventDelegate?.cullRatingKeyPressed(stars); return
+            case nil: break
+            }
+            if !event.modifierFlags.contains(.command), event.charactersIgnoringModifiers?.lowercased() == "c" {
+                eventDelegate?.compareKeyPressed()
+                return
             }
             super.keyDown(with: event)
         }
