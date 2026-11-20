@@ -21,6 +21,15 @@ struct GalleryCullingXattrTests {
         getxattr(path, name, nil, 0, 0, 0) >= 0
     }
 
+    /// The stored value, read without `GalleryCulling`'s own clamping.
+    private func rawAttribute(_ name: String, _ path: String) -> String? {
+        let length = getxattr(path, name, nil, 0, 0, 0)
+        guard length >= 0 else { return nil }
+        var data = Data(count: length)
+        let read = data.withUnsafeMutableBytes { getxattr(path, name, $0.baseAddress, length, 0, 0) }
+        return read >= 0 ? String(data: data.prefix(read), encoding: .utf8) : nil
+    }
+
     @Test func flagAndRatingRoundTrip() throws {
         let path = try tempFile()
         defer { try? FileManager.default.removeItem(atPath: path) }
@@ -49,9 +58,12 @@ struct GalleryCullingXattrTests {
     @Test func ratingsOutsideOneToFiveAreClampedOnWrite() throws {
         let path = try tempFile()
         defer { try? FileManager.default.removeItem(atPath: path) }
+        // Checked on the stored value too: readRating clamps as well, and would hide a bad write.
         #expect(GalleryCulling.writeRating(9, path: path))
+        #expect(rawAttribute(GalleryCulling.ratingAttr, path) == "5")
         #expect(GalleryCulling.readRating(path: path) == 5)
         #expect(GalleryCulling.writeRating(-2, path: path))
+        #expect(!hasAttribute(GalleryCulling.ratingAttr, path))
         #expect(GalleryCulling.readRating(path: path) == 0)
     }
 

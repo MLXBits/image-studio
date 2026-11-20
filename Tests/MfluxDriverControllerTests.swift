@@ -85,7 +85,10 @@ struct MfluxDriverControllerTests {
             Issue.record("Expected .cancelled, got \(result)")
             return
         }
-        #expect(driver.availability != .unavailable("Driver process died mid-job"))
+        // Any unavailable state, not only the crash one: ensureRunning() refuses them all.
+        if case let .unavailable(reason) = driver.availability {
+            Issue.record("A Stop left the driver unavailable: \(reason)")
+        }
         #expect(!driver.isRunning)
     }
 
