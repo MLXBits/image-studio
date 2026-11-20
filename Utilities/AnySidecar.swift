@@ -27,14 +27,20 @@ nonisolated enum AnySidecar {
         return classify(data: data, fileName: (imagePath as NSString).lastPathComponent)
     }
 
-    /// Classifies by the keys only one family writes, then decodes as that
-    /// family alone. A sidecar that fails its own family's decode (a Flux model
-    /// this build does not know, say) is no family, not the next one that fits.
+    /// Classifies by the `family` tag when the sidecar has one, else by the keys
+    /// only one family writes, then decodes as that family alone. A sidecar that
+    /// fails its own family's decode (a Flux model this build does not know, say)
+    /// is no family, not the next one that fits.
     ///
-    /// Krea 2 and Z-Image sidecars from before `modelVariant` have no key of
-    /// their own and the same shape, so the `zimage` file prefix decides those.
+    /// Krea 2 sidecars from before the tag have no key of their own, and neither
+    /// do Z-Image ones from before `modelVariant`. The two share a shape, so the
+    /// `zimage` file prefix decides those; anything else left over is Krea 2.
     static func classify(data: Data, fileName: String) -> Self? {
-        guard let keys = MetadataSidecar.decode(TopLevelKeys.self, from: data)?.names else { return nil }
+        guard let top = MetadataSidecar.decode(TopLevelKeys.self, from: data) else { return nil }
+        if top.family == Krea2Metadata.familyTag {
+            return MetadataSidecar.decode(Krea2Metadata.self, from: data).map(Self.krea2)
+        }
+        let keys = top.names
         if keys.contains("sourcePath") {
             return MetadataSidecar.decode(SeedVR2Metadata.self, from: data).map(Self.seedVR2)
         }
@@ -54,7 +60,8 @@ nonisolated enum AnySidecar {
     }
 }
 
-/// The key names of a JSON object, without decoding any values.
+/// The key names of a JSON object, and its `family` tag if it has a string one.
+/// No other value is decoded.
 nonisolated private struct TopLevelKeys: Decodable {
     private struct Key: CodingKey {
         var stringValue: String
@@ -72,9 +79,12 @@ nonisolated private struct TopLevelKeys: Decodable {
     }
 
     let names: Set<String>
+    let family: String?
 
     init(from decoder: Decoder) throws {
-        names = try Set(decoder.container(keyedBy: Key.self).allKeys.map(\.stringValue))
+        let container = try decoder.container(keyedBy: Key.self)
+        names = Set(container.allKeys.map(\.stringValue))
+        family = try? container.decodeIfPresent(String.self, forKey: Key(stringValue: "family"))
     }
 }
 

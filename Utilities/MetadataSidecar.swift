@@ -119,8 +119,12 @@ nonisolated struct GenerationMetadata: Codable {
 // MARK: - Krea 2 metadata
 
 nonisolated struct Krea2Metadata: Codable {
+    /// The value of ``family`` in every Krea 2 sidecar written from now on.
+    static let familyTag = "krea2"
+
     @MainActor static func from(job: Krea2Job) -> Self {
         Self(
+            family: familyTag,
             customModelRepo: job.customModelRepo.isEmpty ? nil : job.customModelRepo,
             prompt: job.prompt,
             negativePrompt: job.negativePrompt.isEmpty ? nil : job.negativePrompt,
@@ -143,6 +147,10 @@ nonisolated struct Krea2Metadata: Codable {
         )
     }
 
+    /// Names the family that wrote the sidecar (``familyTag``), so
+    /// ``AnySidecar`` need not tell Krea 2 apart by elimination. `nil` in
+    /// sidecars written before the field; older builds ignore the key.
+    var family: String?
     /// Custom checkpoint this was generated from, when the picker's `Custom…`
     /// entry was loaded as Krea 2. Optional so pre-field sidecars decode.
     var customModelRepo: String?

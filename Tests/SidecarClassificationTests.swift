@@ -53,6 +53,11 @@ struct SidecarClassificationTests {
      "sourceKrea2": \(krea2OrZImage)}
     """
 
+    /// A Krea 2 sidecar as written today, with its family tag.
+    nonisolated private static let taggedKrea2 = krea2OrZImage.replacingOccurrences(
+        of: "{", with: #"{"family": "krea2", "#
+    )
+
     /// Nonisolated: test arguments are built off the main actor.
     nonisolated private static let oldSidecars = [
         Fixture(file: "image_1748772000_1.png", json: flux, family: .flux),
@@ -157,6 +162,40 @@ struct SidecarClassificationTests {
     @Test func aZImagePrefixDoesNotClaimAFluxSidecar() throws {
         #expect(try classify("zimage_copy.png", Self.flux) == [.flux])
         #expect(try resolve("zimage_copy.png", Self.flux) == [.flux])
+    }
+
+    // MARK: - Krea 2's family tag
+
+    /// Krea 2 now records its family, so it is no longer told apart only by
+    /// having none of the other families' keys: a `zimage` name cannot claim it.
+    @Test func aTaggedKrea2SidecarIsKrea2UnderAnyName() throws {
+        #expect(try classify("zimage_copy.png", Self.taggedKrea2) == [.krea2])
+        #expect(try resolve("zimage_copy.png", Self.taggedKrea2) == [.krea2])
+    }
+
+    /// The tag is checked before any other family's key, so a field Krea 2 adds
+    /// later under a name another family uses cannot move it to that family.
+    @Test func theTagWinsOverAnotherFamilysKey() throws {
+        let json = Self.taggedKrea2.replacingOccurrences(of: "{", with: #"{"modelVariant": "z-image", "#)
+        #expect(try classify("krea2_1.png", json) == [.krea2])
+    }
+
+    /// A tag this build does not know (a newer build's family) falls back to the
+    /// key checks, as a sidecar without a tag does.
+    @Test func anUnknownTagFallsBackToTheKeys() throws {
+        let json = Self.qwen21.replacingOccurrences(of: "{", with: #"{"family": "future-model", "#)
+        #expect(try classify("renamed.png", json) == [.qwen21])
+    }
+
+    /// What Krea 2 writes today carries the tag. Older builds ignore the key:
+    /// a synthesized decoder skips keys it does not know.
+    @Test func krea2WritesItsFamilyTag() throws {
+        let path = try image("krea2_1.png", sidecar: nil)
+        defer { try? FileManager.default.removeItem(atPath: (path as NSString).deletingLastPathComponent) }
+        MetadataSidecar.write(Krea2Metadata.from(job: Krea2Job(prompt: "k")), for: path)
+        let data = try Data(contentsOf: MetadataSidecar.sidecarURL(for: path))
+        let object = try JSONSerialization.jsonObject(with: data) as? [String: Any]
+        #expect(object?["family"] as? String == "krea2")
     }
 
     @Test func aQwenPrefixDoesNotHideAnotherFamily() throws {
