@@ -266,7 +266,6 @@
 		C2E906145E54E00866C69345 /* Tips.storekit in Resources */ = {isa = PBXBuildFile; fileRef = 1B27E9DF7057F99605191072 /* Tips.storekit */; };
 		C3026C4F528E4C48E54F1B18 /* FluxJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */; };
 		C311D3D64481B109BBBFC919 /* BackgroundSignalsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E9941365DEC0EAED7E96C3 /* BackgroundSignalsTests.swift */; };
-		C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */ = {isa = PBXBuildFile; fileRef = 221656805C1026EDD0D6B9EA /* PassiveTextField.swift */; };
 		C43B03BB2FA61D5548DC5BB7 /* PromptHistoryPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B26244A619EF7BFE99AE9FB /* PromptHistoryPickerView.swift */; };
 		C45315FC4F03EB7604454F1F /* TipJarStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76F9A333C3A9565799C169B2 /* TipJarStoreTests.swift */; };
 		C4567389EC4696B14D85DA93 /* WeightDownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17949F8190AF15B8FF337DC5 /* WeightDownloadStore.swift */; };
@@ -400,7 +399,6 @@
 		20929E59AB251C273A8C9999 /* OpenAIChat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenAIChat.swift; sourceTree = "<group>"; };
 		210AD648086077896627DBBC /* SupportNudgeBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportNudgeBanner.swift; sourceTree = "<group>"; };
 		21E9941365DEC0EAED7E96C3 /* BackgroundSignalsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackgroundSignalsTests.swift; sourceTree = "<group>"; };
-		221656805C1026EDD0D6B9EA /* PassiveTextField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PassiveTextField.swift; sourceTree = "<group>"; };
 		2288F848C8AC536F933F7831 /* TimingModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TimingModelTests.swift; sourceTree = "<group>"; };
 		230A5E0F0E02CA6ED9B8976C /* StorageSettingsRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StorageSettingsRows.swift; sourceTree = "<group>"; };
 		2343F17A1DDAC106C6101819 /* IdeogramCaptionGeneratorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGeneratorTests.swift; sourceTree = "<group>"; };
@@ -816,7 +814,6 @@
 				DB287891C14528C187C1AC45 /* LogTextView.swift */,
 				0CA3C504DBC0F7DFB47DB2A1 /* ModelDownloadStatusRow.swift */,
 				620B629F83341AF0145AA278 /* NotepadView.swift */,
-				221656805C1026EDD0D6B9EA /* PassiveTextField.swift */,
 				7C53E533C3BFD36AF422078B /* PathField.swift */,
 				1CAFABDBFAB1501FDEBA8F28 /* SectionCard.swift */,
 				540284DBEC5FBB9FC0CBC4D9 /* StepsSeedRow.swift */,
@@ -1536,7 +1533,6 @@
 				6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */,
 				CD14F4A85DA57D9FAFA02045 /* ParamsPanelState.swift in Sources */,
 				005E0F995DD16933C0AC8E21 /* ParamsPanelView.swift in Sources */,
-				C39DDE672CEEACCB8116B7B7 /* PassiveTextField.swift in Sources */,
 				3BF83B845A0523CA60387F43 /* PathCopy.swift in Sources */,
 				4072F5590CAD03FD0649A6B2 /* PathField.swift in Sources */,
 				1C3461DA31C785854CF04C3E /* PidDecode.swift in Sources */,

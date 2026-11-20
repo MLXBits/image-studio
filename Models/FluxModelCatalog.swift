@@ -282,6 +282,8 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     /// Pattern used to match the model's base-weight directory in the HF hub cache.
+    /// FLUX 3 and Qwen-Image 2.1 have none: they publish a BF16 repo, and
+    /// ``hubCacheFolder(quantize:hubDir:)`` matches that by its exact name.
     var bf16CacheKey: String {
         switch self {
         case .flux2Klein9B: "flux.2-klein-9b"
@@ -292,10 +294,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "krea-2-turbo"
         case .zimageTurbo: "z-image-turbo"
         case .zimage: "tongyi-mai--z-image"
-        case .flux3Klein: "flux-3-image-klein"
-        case .flux3KleinBase: "flux-3-image-klein-base"
-        case .qwen21Turbo: "qwen-image-2-1-turbo"
-        case .custom: ""
+        case .flux3Klein, .flux3KleinBase, .qwen21Turbo, .custom: ""
         }
     }
 

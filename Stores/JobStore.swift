@@ -17,30 +17,11 @@ final class JobStore: @MainActor ProfileScopedJobStore {
         jobs.filter { $0.status == .pending }
     }
 
-    var runningJob: FluxJob? {
-        jobs.first { $0.status == .running }
-    }
-
     // MARK: - Queue management
 
     func add(_ job: FluxJob) {
         jobs.insert(job, at: 0)
         pruneIfNeeded()
-        save()
-    }
-
-    func remove(ids: Set<UUID>, deleteFiles: Bool = false) {
-        if deleteFiles {
-            for id in ids {
-                if let job = jobs.first(where: { $0.id == id }),
-                   let path = job.outputPath {
-                    try? FileManager.default.removeItem(atPath: path)
-                    let sidecar = MetadataSidecar.sidecarURL(for: path)
-                    try? FileManager.default.removeItem(at: sidecar)
-                }
-            }
-        }
-        jobs.removeAll { ids.contains($0.id) }
         save()
     }
 

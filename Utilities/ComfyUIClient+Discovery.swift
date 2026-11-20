@@ -104,7 +104,6 @@ extension ComfyUIClient {
         info.vaes = optionsFor("VAELoader", "vae_name") ?? []
         info.loras = try await fetchLoras()
         info.samplers = optionsFor("KSampler", "sampler_name") ?? ["euler"]
-        info.schedulers = optionsFor("KSampler", "scheduler") ?? ["normal"]
         return info
     }
 
