@@ -51,7 +51,7 @@ formatting. Lint before you build to avoid a confusing second diff.
 ## Repo map
 
 ```
-App/           Entry point + ContentView root layout
+App/           Entry point, ContentView root layout, the Generate press and cross-family queues
 Models/        Job models, model catalog, LoRA entries, prompt history/templates
 Runner/        Generic JobRunner<Spec> engine, per-family specs, warm-driver controller
 Stores/        @Observable app state (settings, per-family job stores, gallery, timings)
@@ -153,7 +153,9 @@ Adding Z-Image touched 24 files. In dependency order:
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
    `ModelDefaultsView.swift`.
 9. Wire the surfaces that switch on family: `App/ContentView.swift`,
-   `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
+   `App/FamilyQueues.swift` (the store and runner, pump, stop and retry),
+   `App/GenerateAction.swift` (the family's Generate; a prompt-field family
+   fans out through `PromptFanOut`), `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
    (a `PreviewState` case and its `jobPreview` branch), `Views/Gallery/GenerationGalleryView.swift`,
    `Views/PreviewPane/GalleryItemDetailView.swift`.
