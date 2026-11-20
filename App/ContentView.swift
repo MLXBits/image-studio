@@ -1979,26 +1979,32 @@ struct ContentView: View {
     /// Each runner drains its own queue internally; this hands off to the next family once
     /// the current one is fully idle (invoked from the `isRunning` onChange handlers).
     private func pumpQueues() {
-        guard !isAnyStoreRunning else { return }
-        if !store.pendingJobs.isEmpty {
-            runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-        } else if !ideogram4Store.pendingJobs.isEmpty {
+        guard !isAnyStoreRunning,
+              let family = GenerationCoordinator.nextFamily(hasWaitingJobs: { hasWaitingJobs($0) }) else { return }
+        // A hand-off to any family but Flux ejects the warm driver's model first, so two
+        // models are never resident at once (holding both risks OOM).
+        if family != .flux {
             driverController.eject(reason: "model_switch")
+        }
+        switch family {
+        case .flux: runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
+        case .ideogram4:
             ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
-        } else if !krea2Store.pendingJobs.isEmpty {
-            driverController.eject(reason: "model_switch")
-            krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
-        } else if !zimageStore.pendingJobs.isEmpty {
-            driverController.eject(reason: "model_switch")
-            zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
-        } else if !qwen21Store.pendingJobs.isEmpty {
-            driverController.eject(reason: "model_switch")
-            qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
-        } else if !seedVR2Store.pendingJobs.isEmpty {
-            // Free any warm generative model before the upscale — SeedVR2 loads its own
-            // weights in a fresh CLI process, and holding both risks OOM.
-            driverController.eject(reason: "model_switch")
-            seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
+        case .krea2: krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
+        case .zimage: zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
+        case .qwen21: qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
+        case .seedvr2: seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
+        }
+    }
+
+    private func hasWaitingJobs(_ family: ModelFamily) -> Bool {
+        switch family {
+        case .flux: !store.pendingJobs.isEmpty
+        case .ideogram4: !ideogram4Store.pendingJobs.isEmpty
+        case .krea2: !krea2Store.pendingJobs.isEmpty
+        case .zimage: !zimageStore.pendingJobs.isEmpty
+        case .qwen21: !qwen21Store.pendingJobs.isEmpty
+        case .seedvr2: !seedVR2Store.pendingJobs.isEmpty
         }
     }
 }
