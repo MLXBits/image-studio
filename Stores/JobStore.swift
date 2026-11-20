@@ -29,14 +29,6 @@ final class JobStore: @MainActor ProfileScopedJobStore {
         save()
     }
 
-    func addBatch(_ jobs: [FluxJob]) {
-        for job in jobs.reversed() {
-            self.jobs.insert(job, at: 0)
-        }
-        pruneIfNeeded()
-        save()
-    }
-
     func remove(ids: Set<UUID>, deleteFiles: Bool = false) {
         if deleteFiles {
             for id in ids {
@@ -81,9 +73,7 @@ final class JobStore: @MainActor ProfileScopedJobStore {
         job.startedAt = nil
         job.completedAt = nil
         job.latestStepwisePath = nil
-        // Move to front so it runs next
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(job, at: 0)
+        placeNext(job)
         save()
     }
 }

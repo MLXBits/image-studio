@@ -69,6 +69,9 @@ protocol ProfileScopedJobStore: AnyObject {
     var jobs: [PersistedJob] { get set }
     var isRunning: Bool { get set }
     var history: JobHistoryFile { get }
+
+    /// Resets a finished job to pending and places it to run next.
+    func restart(_ job: PersistedJob)
 }
 
 extension ProfileScopedJobStore {
@@ -173,8 +176,7 @@ extension ProfileScopedJobStore where PersistedJob: QueueListedJob {
         job.startedAt = nil
         job.completedAt = nil
         job.latestStepwisePath = nil
-        jobs.removeAll { $0.id == job.id }
-        jobs.insert(job, at: 0)
+        placeNext(job)
         save()
     }
 }
