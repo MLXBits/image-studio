@@ -24,6 +24,12 @@ nonisolated struct ImageZoomState: Equatable {
         }
     }
 
+    /// A drag in progress: the offset when it began, and its translation so far.
+    private struct Drag: Equatable {
+        var base: CGSize
+        var translation: CGSize
+    }
+
     static let minScale: CGFloat = 1
     static let maxScale: CGFloat = 12
 
@@ -42,8 +48,8 @@ nonisolated struct ImageZoomState: Equatable {
 
     private(set) var scale: CGFloat = minScale
     private(set) var offset: CGSize = .zero
-    /// The offset when the current drag began; nil between drags.
-    private var panBase: CGSize?
+    /// Nil between drags.
+    private var drag: Drag?
 
     var isZoomed: Bool {
         scale > Self.minScale
@@ -58,10 +64,6 @@ nonisolated struct ImageZoomState: Equatable {
         guard newScale != scale else { return }
         let applied = newScale / scale
         scale = newScale
-        guard isZoomed else {
-            offset = .zero
-            return
-        }
         var proposed = offset
         if let pointer {
             // The pointer relative to the pane's centre, the scale anchor.
@@ -69,18 +71,23 @@ nonisolated struct ImageZoomState: Equatable {
             let vy = pointer.y - fit.frame.midY
             proposed = CGSize(width: vx - applied * (vx - offset.width), height: vy - applied * (vy - offset.height))
         }
-        offset = clamped(proposed, in: fit)
+        offset = isZoomed ? clamped(proposed, in: fit) : .zero
+        // A zoom mid-drag moved the image: re-base the drag on where it is now,
+        // so its next movement continues from here instead of jumping back.
+        if let translation = drag?.translation {
+            drag?.base = CGSize(width: offset.width - translation.width, height: offset.height - translation.height)
+        }
     }
 
     /// Moves the image by a drag's total `translation` since the drag began.
     mutating func pan(by translation: CGSize, in fit: Fit) {
-        let base = panBase ?? offset
-        panBase = base
+        let base = drag?.base ?? offset
+        drag = Drag(base: base, translation: translation)
         offset = clamped(CGSize(width: base.width + translation.width, height: base.height + translation.height), in: fit)
     }
 
     mutating func endPan(in fit: Fit) {
-        panBase = nil
+        drag = nil
         offset = clamped(offset, in: fit)
     }
 

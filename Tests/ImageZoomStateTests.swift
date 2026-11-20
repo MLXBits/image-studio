@@ -114,6 +114,18 @@ struct ImageZoomStateTests {
         #expect(state.offset == CGSize(width: 50, height: 100))
     }
 
+    @Test func zoomingMidDragKeepsTheDragFromJumping() {
+        var state = ImageZoomState()
+        state.zoom(by: 2, toward: nil, in: fit(square))
+        state.pan(by: CGSize(width: 40, height: 0), in: fit(square))
+        // Scrolling during the drag: 2× → 4× about the centre doubles the offset.
+        state.zoom(by: 2, toward: CGPoint(x: 220, y: 220), in: fit(square))
+        #expect(state.offset == CGSize(width: 80, height: 0))
+        // The drag moves 10 more: the image follows from where the zoom left it.
+        state.pan(by: CGSize(width: 50, height: 0), in: fit(square))
+        #expect(state.offset == CGSize(width: 90, height: 0))
+    }
+
     @Test func resetReturnsToFit() {
         var state = ImageZoomState()
         state.zoom(by: 5, toward: CGPoint(x: 400, y: 400), in: fit(square))
