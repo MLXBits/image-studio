@@ -145,8 +145,7 @@ extension Qwen21Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, isEditMode, editImagePaths, matchReferenceSize, prompt, customModelRepo
         case steps, quantize, width, height, seed, seeds, loras, lowRam, board, enhancePrompt
-        case status, log, outputPath, resolvedSeed, thumbnailData
-        case currentStep, totalSteps, createdAt, startedAt, completedAt
+        case createdAt
     }
 
     convenience init(from decoder: Decoder) throws {
@@ -154,32 +153,24 @@ extension Qwen21Job: Codable {
         let defaults = Qwen21Job()
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
-            isEditMode: c.decodeIfPresent(Bool.self, forKey: .isEditMode) ?? false,
-            editImagePaths: c.decodeIfPresent([String].self, forKey: .editImagePaths) ?? [],
-            matchReferenceSize: c.decodeIfPresent(Bool.self, forKey: .matchReferenceSize) ?? true,
-            prompt: c.decodeIfPresent(String.self, forKey: .prompt) ?? "",
-            customModelRepo: c.decodeIfPresent(String.self, forKey: .customModelRepo) ?? "",
-            steps: c.decodeIfPresent(Int.self, forKey: .steps) ?? defaults.steps,
-            quantize: c.decodeIfPresent(Int.self, forKey: .quantize) ?? defaults.quantize,
-            width: c.decodeIfPresent(Int.self, forKey: .width) ?? defaults.width,
-            height: c.decodeIfPresent(Int.self, forKey: .height) ?? defaults.height,
-            seed: c.decodeIfPresent(Int.self, forKey: .seed) ?? -1,
-            seeds: c.decodeIfPresent([Int].self, forKey: .seeds) ?? [],
-            loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
-            lowRam: c.decodeIfPresent(Bool.self, forKey: .lowRam) ?? false,
-            board: c.decodeIfPresent(String.self, forKey: .board) ?? "Default",
-            enhancePrompt: c.decodeIfPresent(Bool.self, forKey: .enhancePrompt) ?? false,
-            createdAt: c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
+            isEditMode: c.lenient(.isEditMode) ?? false,
+            editImagePaths: c.lenient(.editImagePaths) ?? [],
+            matchReferenceSize: c.lenient(.matchReferenceSize) ?? true,
+            prompt: c.lenient(.prompt) ?? "",
+            customModelRepo: c.lenient(.customModelRepo) ?? "",
+            steps: c.lenient(.steps) ?? defaults.steps,
+            quantize: c.lenient(.quantize) ?? defaults.quantize,
+            width: c.lenient(.width) ?? defaults.width,
+            height: c.lenient(.height) ?? defaults.height,
+            seed: c.lenient(.seed) ?? -1,
+            seeds: c.lenient(.seeds) ?? [],
+            loras: c.lenient(.loras) ?? [],
+            lowRam: c.lenient(.lowRam) ?? false,
+            board: c.lenient(.board) ?? "Default",
+            enhancePrompt: c.lenient(.enhancePrompt) ?? false,
+            createdAt: c.lenient(.createdAt) ?? Date()
         )
-        status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log = try c.decodeIfPresent(String.self, forKey: .log) ?? ""
-        outputPath = try c.decodeIfPresent(String.self, forKey: .outputPath)
-        resolvedSeed = try c.decodeIfPresent(Int.self, forKey: .resolvedSeed)
-        thumbnailData = try c.decodeIfPresent(Data.self, forKey: .thumbnailData)
-        currentStep = try c.decodeIfPresent(Int.self, forKey: .currentStep) ?? 0
-        totalSteps = try c.decodeIfPresent(Int.self, forKey: .totalSteps) ?? steps
-        startedAt = try c.decodeIfPresent(Date.self, forKey: .startedAt)
-        completedAt = try c.decodeIfPresent(Date.self, forKey: .completedAt)
+        try decodeRunState(from: decoder, defaultTotalSteps: steps)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -200,15 +191,7 @@ extension Qwen21Job: Codable {
         try c.encode(lowRam, forKey: .lowRam)
         try c.encode(board, forKey: .board)
         try c.encode(enhancePrompt, forKey: .enhancePrompt)
-        try c.encode(status, forKey: .status)
-        try c.encode(log, forKey: .log)
-        try c.encode(currentStep, forKey: .currentStep)
-        try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(createdAt, forKey: .createdAt)
-        try c.encodeIfPresent(outputPath, forKey: .outputPath)
-        try c.encodeIfPresent(resolvedSeed, forKey: .resolvedSeed)
-        try c.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
-        try c.encodeIfPresent(startedAt, forKey: .startedAt)
-        try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try encodeRunState(to: encoder)
     }
 }
