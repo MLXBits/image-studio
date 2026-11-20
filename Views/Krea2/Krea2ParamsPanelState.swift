@@ -132,7 +132,7 @@ final class Krea2ParamsPanelState {
     /// refinement varies the exact base instead of re-sampling.
     func adoptResolvedPromptForImg2Img(at path: String) {
         guard WildcardExpander.containsWildcards(prompt),
-              let meta = MetadataSidecar.readKrea2(for: path) else { return }
+              let meta = MetadataSidecar.read(Krea2Metadata.self, for: path) else { return }
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt ?? ""
     }

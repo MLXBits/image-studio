@@ -100,7 +100,7 @@ final class ParamsPanelState {
     /// hand-written plain prompt.
     func adoptResolvedPromptForImg2Img(at path: String) {
         guard WildcardExpander.containsWildcards(prompt),
-              let meta = MetadataSidecar.read(for: path) else { return }
+              let meta = MetadataSidecar.read(GenerationMetadata.self, for: path) else { return }
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt
     }

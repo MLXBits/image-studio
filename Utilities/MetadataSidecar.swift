@@ -25,6 +25,9 @@ nonisolated struct Ideogram4Metadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     /// Custom checkpoint this was generated from, when the picker's `Custom…`
     /// entry was loaded as Ideogram 4. Optional so pre-field sidecars decode.
     var customModelRepo: String?
@@ -84,6 +87,9 @@ nonisolated struct GenerationMetadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     var prompt: String
     var negativePrompt: String
     var model: FluxModelVariant
@@ -143,6 +149,9 @@ nonisolated struct Krea2Metadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     /// Custom checkpoint this was generated from, when the picker's `Custom…`
     /// entry was loaded as Krea 2. Optional so pre-field sidecars decode.
     var customModelRepo: String?
@@ -203,6 +212,9 @@ nonisolated struct ZImageMetadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     /// Which Z-Image variant produced the image (Turbo or base). Optional so
     /// sidecars written before the field decode; defaults to Turbo on read.
     var modelVariant: FluxModelVariant?
@@ -349,53 +361,15 @@ nonisolated struct SeedVR2Metadata: Codable {
     }
 
     /// Reads the source image's sidecar so the upscale can stand on its own once the
-    /// original is deleted. At most one family is non-nil (the reads are mutually
-    /// exclusive — a sidecar decodes as exactly one family). If the source is itself
-    /// an upscale, its already-inherited source is carried forward so chained
-    /// upscales don't lose the original recipe (no recursion — one hop, flattened).
+    /// original is deleted. If the source is itself an upscale, its own source is
+    /// carried forward (``SeedVR2Source/init(_:)``).
     nonisolated static func resolveSource(for sourcePath: String) -> SeedVR2Source {
-        // Z-Image and Krea 2 sidecars share an identical required-field shape, so a
-        // blind decode is ambiguous (a Z-Image sidecar decodes cleanly as Krea 2).
-        // Disambiguate by the source filename prefix first — mirroring
-        // GalleryStore's classifier — before the generic decode chain below.
-        let name = (sourcePath as NSString).lastPathComponent.lowercased()
-        if name.hasPrefix("zimage"), let zimage = MetadataSidecar.readZImage(for: sourcePath) {
-            return SeedVR2Source(zimage: zimage)
-        }
-        if name.hasPrefix("krea2"), let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
-            return SeedVR2Source(krea2: krea2)
-        }
-        if name.hasPrefix("qwen21"), let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
-            return SeedVR2Source(qwen21: qwen21)
-        }
-        if let flux = MetadataSidecar.read(for: sourcePath) {
-            return SeedVR2Source(flux: flux)
-        }
-        if let ideogram4 = MetadataSidecar.readIdeogram4(for: sourcePath) {
-            return SeedVR2Source(ideogram4: ideogram4)
-        }
-        if let krea2 = MetadataSidecar.readKrea2(for: sourcePath) {
-            return SeedVR2Source(krea2: krea2)
-        }
-        if let zimage = MetadataSidecar.readZImage(for: sourcePath) {
-            return SeedVR2Source(zimage: zimage)
-        }
-        // Unambiguous without the prefix: it has no `guidance`, which Krea 2 and Z-Image require.
-        if let qwen21 = MetadataSidecar.readQwen21(for: sourcePath) {
-            return SeedVR2Source(qwen21: qwen21)
-        }
-        if let priorUpscale = MetadataSidecar.readSeedVR2(for: sourcePath) {
-            return SeedVR2Source(
-                flux: priorUpscale.sourceFlux,
-                ideogram4: priorUpscale.sourceIdeogram4,
-                krea2: priorUpscale.sourceKrea2,
-                zimage: priorUpscale.sourceZImage,
-                qwen21: priorUpscale.sourceQwen21
-            )
-        }
-        return SeedVR2Source()
+        SeedVR2Source(AnySidecar.read(forImageAt: sourcePath))
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     var sourcePath: String
     var model: String
     var scale: Int
@@ -420,64 +394,26 @@ nonisolated struct SeedVR2Metadata: Codable {
 }
 
 enum MetadataSidecar {
-    static func write(_ metadata: GenerationMetadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    static func writeIdeogram4(_ metadata: Ideogram4Metadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    static func writeKrea2(_ metadata: Krea2Metadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    static func writeZImage(_ metadata: ZImageMetadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    static func writeSeedVR2(_ metadata: SeedVR2Metadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    nonisolated static func read(for imagePath: String) -> GenerationMetadata? {
-        readJSON(for: imagePath)
-    }
-
-    nonisolated static func readIdeogram4(for imagePath: String) -> Ideogram4Metadata? {
-        readJSON(for: imagePath)
-    }
-
-    nonisolated static func readKrea2(for imagePath: String) -> Krea2Metadata? {
-        readJSON(for: imagePath)
-    }
-
-    nonisolated static func readZImage(for imagePath: String) -> ZImageMetadata? {
-        readJSON(for: imagePath)
-    }
-
-    nonisolated static func readSeedVR2(for imagePath: String) -> SeedVR2Metadata? {
-        readJSON(for: imagePath)
-    }
-
-    static func writeQwen21(_ metadata: Qwen21Metadata, for imagePath: String) {
-        writeJSON(metadata, for: imagePath)
-    }
-
-    nonisolated static func readQwen21(for imagePath: String) -> Qwen21Metadata? {
-        readJSON(for: imagePath)
-    }
-
-    private static func writeJSON(_ metadata: some Encodable, for imagePath: String) {
+    /// Writes `metadata` as the sidecar of `imagePath`, tagged with its family.
+    /// The tag comes from the type, so every sidecar carries the right one.
+    static func write<T: SidecarMetadata>(_ metadata: T, for imagePath: String) {
+        var tagged = metadata
+        tagged.family = T.sidecarFamily.rawValue
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         encoder.dateEncodingStrategy = .iso8601
-        guard let data = try? encoder.encode(metadata) else { return }
+        guard let data = try? encoder.encode(tagged) else { return }
         try? data.write(to: sidecarURL(for: imagePath), options: .atomic)
     }
 
-    nonisolated private static func readJSON<T: Decodable>(for imagePath: String) -> T? {
+    /// The sidecar beside `imagePath`, read as `type`. Nil when there is none or
+    /// it does not decode as that type; use ``AnySidecar`` to find the family.
+    nonisolated static func read<T: SidecarMetadata>(_ type: T.Type, for imagePath: String) -> T? {
         guard let data = try? Data(contentsOf: sidecarURL(for: imagePath)) else { return nil }
+        return decode(type, from: data)
+    }
+
+    nonisolated static func decode<T: Decodable>(_: T.Type, from data: Data) -> T? {
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try? decoder.decode(T.self, from: data)

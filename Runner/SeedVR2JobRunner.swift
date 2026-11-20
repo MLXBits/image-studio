@@ -55,7 +55,7 @@ enum SeedVR2RunnerSpec: @MainActor JobRunnerSpec {
         meta.seed = seed
         meta.startedAt = startedAt
         meta.generatedAt = generatedAt
-        MetadataSidecar.writeSeedVR2(meta, for: path)
+        MetadataSidecar.write(meta, for: path)
     }
 
     /// Remote upscale on ComfyUI's core SeedVR2 nodes. Every Upscale-sheet control carries over except quantize: the server

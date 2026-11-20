@@ -156,7 +156,10 @@ Adding Z-Image touched 24 files. In dependency order:
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`,
    `Views/Queue/QueueDrawerView.swift`, `Views/Gallery/GenerationGalleryView.swift`,
    `Views/PreviewPane/GalleryItemDetailView.swift`.
-10. Metadata and constraints: `Utilities/MetadataSidecar.swift`,
+10. Metadata and constraints: `Utilities/MetadataSidecar.swift` (the sidecar
+    type, with an optional `family` field), `Utilities/AnySidecar.swift` (a
+    `SidecarFamily` case, the `SidecarMetadata` conformance, and a `decode` case;
+    never a `legacyFamily` rule, since new sidecars are always tagged),
     `Views/Shared/ImageMetadataInfo.swift`, `Views/Shared/DimensionConstraints.swift`,
     `Stores/GalleryStore.swift`, `Utilities/PythonTool.swift` (a case for the
     new CLI) plus `Runtime/tools.txt` (same name), and the catalog's `generateTool`.

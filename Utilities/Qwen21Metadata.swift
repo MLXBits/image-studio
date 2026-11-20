@@ -24,6 +24,9 @@ nonisolated struct Qwen21Metadata: Codable {
         )
     }
 
+    /// The family tag (``SidecarFamily``), set by ``MetadataSidecar/write(_:for:)``.
+    /// `nil` in sidecars written before the tag.
+    var family: String?
     var isEditMode: Bool
     var editImagePaths: [String]?
     var matchReferenceSize: Bool?
