@@ -163,43 +163,34 @@ extension ZImageJob: Codable {
     enum CodingKeys: String, CodingKey {
         case id, modelVariant, customModelRepo, prompt, negativePrompt
         case width, height, seed, seeds, steps, guidance, quantize, loras, imagePath, imageStrength, board
-        case status, log, outputPath, resolvedSeed, thumbnailData
         case pidDecode, pidDegradeSigma
-        case currentStep, totalSteps, createdAt, startedAt, completedAt
+        case createdAt
     }
 
     convenience init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
-            modelVariant: (try? c.decode(FluxModelVariant.self, forKey: .modelVariant)) ?? .zimageTurbo,
-            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
-            prompt: (try? c.decode(String.self, forKey: .prompt)) ?? "",
-            negativePrompt: (try? c.decode(String.self, forKey: .negativePrompt)) ?? "",
-            width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,
-            height: (try? c.decode(Int.self, forKey: .height)) ?? 1024,
-            seed: (try? c.decode(Int.self, forKey: .seed)) ?? -1,
-            seeds: (try? c.decode([Int].self, forKey: .seeds)) ?? [],
-            steps: (try? c.decode(Int.self, forKey: .steps)) ?? 9,
-            guidance: (try? c.decode(Double.self, forKey: .guidance)) ?? 1.0,
-            quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 8,
-            loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
-            imagePath: (try? c.decode(String.self, forKey: .imagePath)) ?? "",
-            imageStrength: (try? c.decode(Double.self, forKey: .imageStrength)) ?? 0.75,
-            board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
-            pidDecode: (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false,
-            pidDegradeSigma: (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0,
-            createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
+            modelVariant: c.lenient(.modelVariant) ?? .zimageTurbo,
+            customModelRepo: c.lenient(.customModelRepo) ?? "",
+            prompt: c.lenient(.prompt) ?? "",
+            negativePrompt: c.lenient(.negativePrompt) ?? "",
+            width: c.lenient(.width) ?? 1024,
+            height: c.lenient(.height) ?? 1024,
+            seed: c.lenient(.seed) ?? -1,
+            seeds: c.lenient(.seeds) ?? [],
+            steps: c.lenient(.steps) ?? 9,
+            guidance: c.lenient(.guidance) ?? 1.0,
+            quantize: c.lenient(.quantize) ?? 8,
+            loras: c.lenient(.loras) ?? [],
+            imagePath: c.lenient(.imagePath) ?? "",
+            imageStrength: c.lenient(.imageStrength) ?? 0.75,
+            board: c.lenient(.board) ?? "Default",
+            pidDecode: c.lenient(.pidDecode) ?? false,
+            pidDegradeSigma: c.lenient(.pidDegradeSigma) ?? 0.0,
+            createdAt: c.lenient(.createdAt) ?? Date()
         )
-        status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log = (try? c.decode(String.self, forKey: .log)) ?? ""
-        outputPath = try? c.decode(String.self, forKey: .outputPath)
-        resolvedSeed = try? c.decode(Int.self, forKey: .resolvedSeed)
-        thumbnailData = try? c.decode(Data.self, forKey: .thumbnailData)
-        currentStep = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
-        totalSteps = (try? c.decode(Int.self, forKey: .totalSteps)) ?? steps
-        startedAt = try? c.decode(Date.self, forKey: .startedAt)
-        completedAt = try? c.decode(Date.self, forKey: .completedAt)
+        try decodeRunState(from: decoder, defaultTotalSteps: steps)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -222,15 +213,7 @@ extension ZImageJob: Codable {
         try c.encode(board, forKey: .board)
         try c.encode(pidDecode, forKey: .pidDecode)
         try c.encode(pidDegradeSigma, forKey: .pidDegradeSigma)
-        try c.encode(status, forKey: .status)
-        try c.encode(log, forKey: .log)
-        try c.encode(currentStep, forKey: .currentStep)
-        try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(createdAt, forKey: .createdAt)
-        try c.encodeIfPresent(outputPath, forKey: .outputPath)
-        try c.encodeIfPresent(resolvedSeed, forKey: .resolvedSeed)
-        try c.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
-        try c.encodeIfPresent(startedAt, forKey: .startedAt)
-        try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try encodeRunState(to: encoder)
     }
 }

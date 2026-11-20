@@ -135,42 +135,33 @@ extension Ideogram4Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, customModelRepo, preset, caption, usePlainPrompt, plainPrompt
         case width, height, seed, seeds, quantize, lowRam, strictValidation, loras, board
-        case status, log, outputPath, resolvedSeed, thumbnailData
         case pidDecode, pidDegradeSigma
-        case currentStep, totalSteps, createdAt, startedAt, completedAt
+        case createdAt
     }
 
     convenience init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
-            customModelRepo: (try? c.decode(String.self, forKey: .customModelRepo)) ?? "",
-            preset: (try? c.decode(Ideogram4Preset.self, forKey: .preset)) ?? .normal,
-            caption: (try? c.decode(LenientIdeogramCaption.self, forKey: .caption))?.caption ?? .empty(),
-            usePlainPrompt: (try? c.decode(Bool.self, forKey: .usePlainPrompt)) ?? false,
-            plainPrompt: (try? c.decode(String.self, forKey: .plainPrompt)) ?? "",
-            width: (try? c.decode(Int.self, forKey: .width)) ?? 1024,
-            height: (try? c.decode(Int.self, forKey: .height)) ?? 1024,
-            seed: (try? c.decode(Int.self, forKey: .seed)) ?? -1,
-            seeds: (try? c.decode([Int].self, forKey: .seeds)) ?? [],
-            quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 0,
-            lowRam: (try? c.decode(Bool.self, forKey: .lowRam)) ?? false,
-            strictValidation: (try? c.decode(Bool.self, forKey: .strictValidation)) ?? false,
-            loras: (try? c.decode([LoraEntry].self, forKey: .loras)) ?? [],
-            board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
-            pidDecode: (try? c.decode(Bool.self, forKey: .pidDecode)) ?? false,
-            pidDegradeSigma: (try? c.decode(Double.self, forKey: .pidDegradeSigma)) ?? 0.0,
-            createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
+            customModelRepo: c.lenient(.customModelRepo) ?? "",
+            preset: c.lenient(.preset) ?? .normal,
+            caption: c.lenient(.caption, as: LenientIdeogramCaption.self)?.caption ?? .empty(),
+            usePlainPrompt: c.lenient(.usePlainPrompt) ?? false,
+            plainPrompt: c.lenient(.plainPrompt) ?? "",
+            width: c.lenient(.width) ?? 1024,
+            height: c.lenient(.height) ?? 1024,
+            seed: c.lenient(.seed) ?? -1,
+            seeds: c.lenient(.seeds) ?? [],
+            quantize: c.lenient(.quantize) ?? 0,
+            lowRam: c.lenient(.lowRam) ?? false,
+            strictValidation: c.lenient(.strictValidation) ?? false,
+            loras: c.lenient(.loras) ?? [],
+            board: c.lenient(.board) ?? "Default",
+            pidDecode: c.lenient(.pidDecode) ?? false,
+            pidDegradeSigma: c.lenient(.pidDegradeSigma) ?? 0.0,
+            createdAt: c.lenient(.createdAt) ?? Date()
         )
-        status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log = (try? c.decode(String.self, forKey: .log)) ?? ""
-        outputPath = try? c.decode(String.self, forKey: .outputPath)
-        resolvedSeed = try? c.decode(Int.self, forKey: .resolvedSeed)
-        thumbnailData = try? c.decode(Data.self, forKey: .thumbnailData)
-        currentStep = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
-        totalSteps = (try? c.decode(Int.self, forKey: .totalSteps)) ?? preset.stepCount
-        startedAt = try? c.decode(Date.self, forKey: .startedAt)
-        completedAt = try? c.decode(Date.self, forKey: .completedAt)
+        try decodeRunState(from: decoder, defaultTotalSteps: preset.stepCount)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -192,15 +183,7 @@ extension Ideogram4Job: Codable {
         try c.encode(board, forKey: .board)
         try c.encode(pidDecode, forKey: .pidDecode)
         try c.encode(pidDegradeSigma, forKey: .pidDegradeSigma)
-        try c.encode(status, forKey: .status)
-        try c.encode(log, forKey: .log)
-        try c.encode(currentStep, forKey: .currentStep)
-        try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(createdAt, forKey: .createdAt)
-        try c.encodeIfPresent(outputPath, forKey: .outputPath)
-        try c.encodeIfPresent(resolvedSeed, forKey: .resolvedSeed)
-        try c.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
-        try c.encodeIfPresent(startedAt, forKey: .startedAt)
-        try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try encodeRunState(to: encoder)
     }
 }

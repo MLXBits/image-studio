@@ -114,34 +114,25 @@ final class SeedVR2Job: Identifiable {
 extension SeedVR2Job: Codable {
     enum CodingKeys: String, CodingKey {
         case id, sourcePath, scale, softness, is7B, quantize, seed, board, width, height
-        case status, log, outputPath, resolvedSeed, thumbnailData
-        case currentStep, totalSteps, createdAt, startedAt, completedAt
+        case createdAt
     }
 
     convenience init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         try self.init(
             id: c.decode(UUID.self, forKey: .id),
-            sourcePath: (try? c.decode(String.self, forKey: .sourcePath)) ?? "",
-            scale: (try? c.decode(Int.self, forKey: .scale)) ?? 2,
-            softness: (try? c.decode(Double.self, forKey: .softness)) ?? 0.0,
-            is7B: (try? c.decode(Bool.self, forKey: .is7B)) ?? false,
-            quantize: (try? c.decode(Int.self, forKey: .quantize)) ?? 8,
-            seed: (try? c.decode(Int.self, forKey: .seed)) ?? -1,
-            board: (try? c.decode(String.self, forKey: .board)) ?? "Default",
-            width: (try? c.decode(Int.self, forKey: .width)) ?? 0,
-            height: (try? c.decode(Int.self, forKey: .height)) ?? 0,
-            createdAt: (try? c.decode(Date.self, forKey: .createdAt)) ?? Date()
+            sourcePath: c.lenient(.sourcePath) ?? "",
+            scale: c.lenient(.scale) ?? 2,
+            softness: c.lenient(.softness) ?? 0.0,
+            is7B: c.lenient(.is7B) ?? false,
+            quantize: c.lenient(.quantize) ?? 8,
+            seed: c.lenient(.seed) ?? -1,
+            board: c.lenient(.board) ?? "Default",
+            width: c.lenient(.width) ?? 0,
+            height: c.lenient(.height) ?? 0,
+            createdAt: c.lenient(.createdAt) ?? Date()
         )
-        status = (try? c.decode(JobStatus.self, forKey: .status)) ?? .pending
-        log = (try? c.decode(String.self, forKey: .log)) ?? ""
-        outputPath = try? c.decode(String.self, forKey: .outputPath)
-        resolvedSeed = try? c.decode(Int.self, forKey: .resolvedSeed)
-        thumbnailData = try? c.decode(Data.self, forKey: .thumbnailData)
-        currentStep = (try? c.decode(Int.self, forKey: .currentStep)) ?? 0
-        totalSteps = (try? c.decode(Int.self, forKey: .totalSteps)) ?? 0
-        startedAt = try? c.decode(Date.self, forKey: .startedAt)
-        completedAt = try? c.decode(Date.self, forKey: .completedAt)
+        try decodeRunState(from: decoder, defaultTotalSteps: 0)
     }
 
     func encode(to encoder: Encoder) throws {
@@ -156,15 +147,7 @@ extension SeedVR2Job: Codable {
         try c.encode(board, forKey: .board)
         try c.encode(width, forKey: .width)
         try c.encode(height, forKey: .height)
-        try c.encode(status, forKey: .status)
-        try c.encode(log, forKey: .log)
-        try c.encode(currentStep, forKey: .currentStep)
-        try c.encode(totalSteps, forKey: .totalSteps)
         try c.encode(createdAt, forKey: .createdAt)
-        try c.encodeIfPresent(outputPath, forKey: .outputPath)
-        try c.encodeIfPresent(resolvedSeed, forKey: .resolvedSeed)
-        try c.encodeIfPresent(thumbnailData, forKey: .thumbnailData)
-        try c.encodeIfPresent(startedAt, forKey: .startedAt)
-        try c.encodeIfPresent(completedAt, forKey: .completedAt)
+        try encodeRunState(to: encoder)
     }
 }

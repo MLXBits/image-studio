@@ -252,6 +252,7 @@
 		B07EA41ABCC4E6848B15B36D /* PidDecodeToggleView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8B8D8F6C6D0A83EFFA1B519D /* PidDecodeToggleView.swift */; };
 		B08D7C57B54E52F41D91B8AD /* Ideogram4ParamsPanelView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */; };
 		B0DE260C6EA30B7AD3CE68BB /* SeedVR2UpscaleSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 377A29E68001F77B550EBF53 /* SeedVR2UpscaleSheet.swift */; };
+		B25620081139646A4AB3AF82 /* JobCodable.swift in Sources */ = {isa = PBXBuildFile; fileRef = 04ECEB411D6B42B59B8EAAA2 /* JobCodable.swift */; };
 		B3ABE3D77F1AC8AEBFCFE13E /* ModelDefaultsView+Krea2Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C5A00F53C846D0792D55029 /* ModelDefaultsView+Krea2Form.swift */; };
 		B611E0103CE51E9EADA44210 /* MfluxProbesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 83F4696B11E2E0690A71816C /* MfluxProbesTests.swift */; };
 		B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */; };
@@ -287,6 +288,7 @@
 		CF596B2952ECED2CB446B1FE /* FileAccessPath.swift in Sources */ = {isa = PBXBuildFile; fileRef = 89BFE2281C9D0F3F494471F9 /* FileAccessPath.swift */; };
 		CFE9109A3F6CD4F2AF7D281F /* ComfyModelStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */; };
 		D1094CC00BD2E11264BBE490 /* ProfileBootstrapTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEBC098467186F40B0AA4214 /* ProfileBootstrapTests.swift */; };
+		D294B0FC44AB221F56028EFA /* JobStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 328B342AFBD0A949FEE41F4A /* JobStatus.swift */; };
 		D380D3C1477B19506CEEB0BF /* Debouncer.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB933A545C60752280A661AE /* Debouncer.swift */; };
 		D3D60E654F4ACB2FBEF7D421 /* ComfyUITypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3080256EAB6D9613685431D3 /* ComfyUITypes.swift */; };
 		D6790A930D98AEE79CFC9574 /* PythonTool.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5272500A8F29CFDE53E23ACB /* PythonTool.swift */; };
@@ -358,6 +360,7 @@
 		038221717CE794F77B7AEBF1 /* ComfyModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyModelStore.swift; sourceTree = "<group>"; };
 		041A9FFA059AD1587FDA4199 /* SeedVR2JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2JobRunner.swift; sourceTree = "<group>"; };
 		04991A0086D680A3F52A907C /* ViewerFullScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ViewerFullScreen.swift; sourceTree = "<group>"; };
+		04ECEB411D6B42B59B8EAAA2 /* JobCodable.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobCodable.swift; sourceTree = "<group>"; };
 		050EE7381BE7F16200F99AD6 /* ZImageParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ZImageParamsPanelState.swift; sourceTree = "<group>"; };
 		05B27E98F56D49A90BFE958B /* SeedVR2PreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SeedVR2PreviewViews.swift; sourceTree = "<group>"; };
 		05CA771F0E532D1912B3F076 /* DimensionConstraintsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionConstraintsTests.swift; sourceTree = "<group>"; };
@@ -424,6 +427,7 @@
 		31D1B6601E2D504919DAD2AE /* AppSettings+ModelCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+ModelCache.swift"; sourceTree = "<group>"; };
 		32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HFCacheVerdictStore.swift; sourceTree = "<group>"; };
 		3234A469CF76361C6396BF01 /* MLXBits Image Studio.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "MLXBits Image Studio.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		328B342AFBD0A949FEE41F4A /* JobStatus.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobStatus.swift; sourceTree = "<group>"; };
 		32928AD081B6EF992C7BF1B1 /* ProfileBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrap.swift; sourceTree = "<group>"; };
 		33566A6171AB3874C5DAF10A /* WarmDriverEligibilityTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WarmDriverEligibilityTests.swift; sourceTree = "<group>"; };
 		35DEFE532DC648483265CCB7 /* ModelDefaultsView+SeedVR2Form.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "ModelDefaultsView+SeedVR2Form.swift"; sourceTree = "<group>"; };
@@ -1168,6 +1172,8 @@
 				2E769B611A03FA4372F553CA /* Ideogram4Job.swift */,
 				915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */,
 				607FDAD831E19BE75C734220 /* IdeogramCaption.swift */,
+				04ECEB411D6B42B59B8EAAA2 /* JobCodable.swift */,
+				328B342AFBD0A949FEE41F4A /* JobStatus.swift */,
 				3C7D5CB437681D008AB6A05A /* KeyboardShortcutCatalog.swift */,
 				ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */,
 				DB5B056C022208F02D3ED376 /* LibraryStatus.swift */,
@@ -1483,11 +1489,13 @@
 				C4868184D5FE8BBD4CA73D13 /* ImagePasteboard.swift in Sources */,
 				F14D3C7DD61093CF32259D13 /* InfoButton.swift in Sources */,
 				66343C5D9463A03976D60C07 /* InsetTextEditor.swift in Sources */,
+				B25620081139646A4AB3AF82 /* JobCodable.swift in Sources */,
 				02F1FD138C93997026C79E86 /* JobHistoryFile.swift in Sources */,
 				51A29791F2755F3AECE191B9 /* JobPreviewViews.swift in Sources */,
 				A5E4FC7135897262F01BA62D /* JobProgressParser.swift in Sources */,
 				58B6986FAB5E9B156E999A48 /* JobQueueOrder.swift in Sources */,
 				F7381B712009ADD1034BB1F9 /* JobRunner.swift in Sources */,
+				D294B0FC44AB221F56028EFA /* JobStatus.swift in Sources */,
 				7BA338B1191C52728553F91B /* JobStore.swift in Sources */,
 				9C199D8389B2C3232381B142 /* KeyboardShortcutCatalog.swift in Sources */,
 				5037139F21C87347EE80DCB4 /* KeyboardShortcutsView.swift in Sources */,
