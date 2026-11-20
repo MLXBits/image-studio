@@ -17,13 +17,11 @@ extension BBoxEditorView {
                         if let sel = selectedID, let el = element(withID: sel),
                            BBoxGeometry.contains(normStart, bbox: el.bbox) {
                             dragOriginalBBox = el.bbox
-                            moveOffset = .zero
                         } else {
                             let hit = hitTest(normStart)
                             selectedID = hit?.id
                             if let hit {
                                 dragOriginalBBox = hit.bbox
-                                moveOffset = .zero
                             }
                         }
                     }

@@ -146,15 +146,6 @@ struct GenerationGalleryView: View {
                         deleteTarget = item
                         showingDeleteConfirm = true
                     },
-                    onDeleteImmediate: { item in
-                        let adjacent = adjacentItem(to: item)
-                        selection.remove(item.id)
-                        if anchorItemId == item.id {
-                            anchorItemId = adjacent?.id
-                            selectedItem = adjacent
-                        }
-                        registerUndo(gallery.delete(item, outputDir: settings.outputDir))
-                    },
                     onCopyPath: { item, isRelative in
                         // One path per line, the whole selection when the clicked item is in it.
                         let items = selection.contains(item.id) ? selectionInGridOrder() : [item]

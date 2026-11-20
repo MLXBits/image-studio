@@ -30,11 +30,6 @@ final class SeedVR2JobStore: @MainActor ProfileScopedJobStore {
     /// No-op: SeedVR2 jobs are single-output, so the engine never fans them out.
     func expandBatchJob(_: SeedVR2Job) {}
 
-    func remove(ids: Set<UUID>) {
-        jobs.removeAll { ids.contains($0.id) }
-        save()
-    }
-
     func cancelJob(_ job: SeedVR2Job) {
         guard case .pending = job.status else { return }
         job.status = .cancelled

@@ -21,11 +21,6 @@ final class Ideogram4JobStore: @MainActor ProfileScopedJobStore {
         save()
     }
 
-    func remove(ids: Set<UUID>) {
-        jobs.removeAll { ids.contains($0.id) }
-        save()
-    }
-
     func cancelJob(_ job: Ideogram4Job) {
         guard case .pending = job.status else { return }
         job.status = .cancelled

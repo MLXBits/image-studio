@@ -953,7 +953,6 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onRangeSelect: (GalleryItem) -> Void
     var onItemAppear: (GalleryItem) -> Void
     var onDeleteRequest: (GalleryItem) -> Void
-    var onDeleteImmediate: (GalleryItem) -> Void
     var onCopyPath: (GalleryItem, Bool) -> Void
     var onDeleteMultiRequest: () -> Void
     var onDeleteMultiImmediate: () -> Void

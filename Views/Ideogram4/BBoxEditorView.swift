@@ -49,7 +49,6 @@ struct BBoxEditorView: View {
     @State var isDragging: Bool = false
     @State var activeHandle: BBoxResizeHandle?
     @State var dragOriginalBBox: [Int] = []
-    @State var moveOffset: CGSize = .zero
     @State var showExpandedSheet: Bool = false
     @State var focusRequest: Int = 0
     @FocusState var isPopoverFocused: Bool

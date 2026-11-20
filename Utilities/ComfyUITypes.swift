@@ -62,7 +62,6 @@ struct ComfyModelInfo: Equatable {
     var vaes: [String] = []
     var loras: [String] = []
     var samplers: [String] = []
-    var schedulers: [String] = []
 }
 
 /// One server-side output file, as recorded under a node's `outputs` in the history record.
