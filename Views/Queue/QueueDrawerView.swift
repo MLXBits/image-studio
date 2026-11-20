@@ -1,358 +1,10 @@
-// swiftlint:disable file_length
 import SwiftUI
-
-struct QueueDrawerView: View {
-    @Environment(JobStore.self) private var store
-    @Environment(FluxJobRunner.self) private var runner
-    @Environment(AppSettings.self) private var settings
-    @Environment(GenerationCoordinator.self) private var coordinator
-    @Environment(TimingStore.self) private var timing
-
-    @Binding var selectedJob: FluxJob?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            if store.jobs.isEmpty {
-                emptyState
-            } else {
-                jobList
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Queue")
-                .font(.headline)
-            Spacer()
-            if store.jobs.contains(where: \.status.isTerminal) {
-                PurgeFinishedButton { store.purgeTerminal() }
-            }
-            if store.isRunning {
-                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .foregroundStyle(.red)
-                    .focusable(false)
-                    .help(runner.isStopping
-                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
-                        : "Stop the current job; remaining pending jobs continue")
-
-                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
-                    runner.cancel()
-                    store.cancelAllPending()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(.red)
-                .focusable(false)
-                .help(runner.isStopping
-                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
-                    : "Stop the current job and cancel all pending jobs")
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private var jobList: some View {
-        List(selection: Binding(
-            get: { selectedJob?.id },
-            set: { id in selectedJob = store.jobs.first { $0.id == id } }
-        )) {
-            ForEach(store.jobs) { job in
-                QueueJobRow(
-                    job: job,
-                    onRestart: isRestartable(job) ? { restart(job) } : nil,
-                    onCancel: isCancellable(job) ? { cancelJob(job) } : nil
-                )
-                .tag(job.id)
-                .queueRowActions(job, in: store, start: startNext)
-            }
-            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
-        }
-        .listStyle(.sidebar)
-    }
-
-    private var emptyState: some View {
-        VStack {
-            Spacer()
-            Text("No jobs")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-    }
-
-    private func isRestartable(_ job: FluxJob) -> Bool {
-        switch job.status {
-        case .failed, .cancelled: true
-        default: false
-        }
-    }
-
-    private func isCancellable(_ job: FluxJob) -> Bool {
-        switch job.status {
-        case .pending, .running: true
-        default: false
-        }
-    }
-
-    private func restart(_ job: FluxJob) {
-        store.restart(job)
-        startNext()
-    }
-
-    private func startNext() {
-        runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-    }
-
-    private func cancelJob(_ job: FluxJob) {
-        if case .running = job.status {
-            runner.cancel()
-        } else {
-            store.cancelJob(job)
-        }
-    }
-}
-
-// MARK: - Ideogram4QueueDrawerView
-
-/// Queue drawer for the Ideogram 4 pipeline. Mirrors ``QueueDrawerView`` but is
-/// backed by ``Ideogram4JobStore`` / ``Ideogram4JobRunner`` so single-shot and
-/// batch Ideogram jobs show up while that pipeline is the active model family.
-struct Ideogram4QueueDrawerView: View {
-    @Environment(Ideogram4JobStore.self) private var store
-    @Environment(Ideogram4JobRunner.self) private var runner
-    @Environment(AppSettings.self) private var settings
-    @Environment(GenerationCoordinator.self) private var coordinator
-    @Environment(TimingStore.self) private var timing
-
-    @Binding var selectedJob: Ideogram4Job?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            if store.jobs.isEmpty {
-                emptyState
-            } else {
-                jobList
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Queue")
-                .font(.headline)
-            Spacer()
-            if store.jobs.contains(where: \.status.isTerminal) {
-                PurgeFinishedButton { store.purgeTerminal() }
-            }
-            if store.isRunning {
-                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .foregroundStyle(.red)
-                    .focusable(false)
-                    .help(runner.isStopping
-                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
-                        : "Stop the current job; remaining pending jobs continue")
-
-                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
-                    runner.cancel()
-                    store.cancelAllPending()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(.red)
-                .focusable(false)
-                .help(runner.isStopping
-                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
-                    : "Stop the current job and cancel all pending jobs")
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private var jobList: some View {
-        List(selection: Binding(
-            get: { selectedJob?.id },
-            set: { id in selectedJob = store.jobs.first { $0.id == id } }
-        )) {
-            ForEach(store.jobs) { job in
-                Ideogram4QueueJobRow(
-                    job: job,
-                    onRestart: isRestartable(job) ? { restart(job) } : nil,
-                    onCancel: isCancellable(job) ? { cancelJob(job) } : nil
-                )
-                .tag(job.id)
-                .queueRowActions(job, in: store, start: startNext)
-            }
-            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
-        }
-        .listStyle(.sidebar)
-    }
-
-    private var emptyState: some View {
-        VStack {
-            Spacer()
-            Text("No jobs")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-    }
-
-    private func isRestartable(_ job: Ideogram4Job) -> Bool {
-        switch job.status {
-        case .failed, .cancelled: true
-        default: false
-        }
-    }
-
-    private func isCancellable(_ job: Ideogram4Job) -> Bool {
-        switch job.status {
-        case .pending, .running: true
-        default: false
-        }
-    }
-
-    private func restart(_ job: Ideogram4Job) {
-        store.restart(job)
-        startNext()
-    }
-
-    private func startNext() {
-        runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-    }
-
-    private func cancelJob(_ job: Ideogram4Job) {
-        if case .running = job.status {
-            runner.cancel()
-        } else {
-            store.cancelJob(job)
-        }
-    }
-}
-
-// MARK: - QueueJobRow
-
-private struct QueueJobRow: View {
-    let job: FluxJob
-    var onRestart: (() -> Void)?
-    var onCancel: (() -> Void)?
-
-    var body: some View {
-        HStack(spacing: 8) {
-            statusIcon
-            VStack(alignment: .leading, spacing: 2) {
-                Text(job.prompt.isEmpty ? "(empty prompt)" : job.prompt)
-                    .font(.caption)
-                    .lineLimit(2)
-                Text(job.displayName)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if let onCancel {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                // Compact: queue rows are dense and cancel/restart sit side by side.
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Cancel this job")
-                .accessibilityLabel("Cancel job")
-            }
-            if let onRestart {
-                Button(action: onRestart) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Re-queue this job")
-                .accessibilityLabel("Re-queue job")
-            }
-        }
-        .padding(.vertical, 2)
-        .failureHelp(job.status)
-    }
-
-    private var statusIcon: some View {
-        JobStatusIcon(status: job.status)
-    }
-}
-
-// MARK: - Ideogram4QueueJobRow
-
-private struct Ideogram4QueueJobRow: View {
-    let job: Ideogram4Job
-    var onRestart: (() -> Void)?
-    var onCancel: (() -> Void)?
-
-    /// Ideogram jobs have no single `prompt` field — surface the plain prompt or
-    /// the structured caption's high-level description, whichever is in use.
-    private var promptText: String {
-        let text = job.usePlainPrompt ? job.plainPrompt : job.caption.highLevelDescription
-        return text.isEmpty ? "(empty prompt)" : text
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            JobStatusIcon(status: job.status)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(promptText)
-                    .font(.caption)
-                    .lineLimit(2)
-                Text(job.displayName)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if let onCancel {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                // Compact: queue rows are dense and cancel/restart sit side by side.
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Cancel this job")
-                .accessibilityLabel("Cancel job")
-            }
-            if let onRestart {
-                Button(action: onRestart) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Re-queue this job")
-                .accessibilityLabel("Re-queue job")
-            }
-        }
-        .padding(.vertical, 2)
-        .failureHelp(job.status)
-    }
-}
 
 // MARK: - FamilyQueueDrawerView
 
-/// Queue drawer for a family whose jobs are ``QueueListedJob``s (Krea 2,
-/// Qwen-Image 2.1, Z-Image), driven by that family's runner spec.
+/// The queue drawer for any family, driven by that family's runner spec.
 struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
-    where Spec.Job: QueueListedJob & SeedSplittableJob, Spec.Store: ProfileScopedJobStore & Observable,
+    where Spec.Job: QueueListedJob, Spec.Store: ProfileScopedJobStore & Observable,
     Spec.Store.PersistedJob == Spec.Job {
     @Environment(Spec.Store.self) private var store
     @Environment(JobRunner<Spec>.self) private var runner
@@ -361,6 +13,8 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
     @Environment(TimingStore.self) private var timing
 
     @Binding var selectedJob: Spec.Job?
+    /// The row menu's Duplicate. Nil for SeedVR2, whose upscales cannot be copied.
+    private let duplicate: (@MainActor (Spec.Store, Spec.Job) -> Void)?
 
     var body: some View {
         VStack(spacing: 0) {
@@ -421,7 +75,7 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
                     onCancel: isCancellable(job) ? { cancelJob(job) } : nil
                 )
                 .tag(job.id)
-                .queueRowActions(job, in: store, start: startNext)
+                .queueRowActions(job, in: store, duplicate: duplicate.map { fn in { fn(store, job) } }, start: startNext)
             }
             .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
         }
@@ -436,6 +90,20 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
                 .foregroundStyle(.tertiary)
             Spacer()
         }
+    }
+
+    /// The drawer for a generating family: its rows can be duplicated.
+    init(selectedJob: Binding<Spec.Job?>) where Spec.Job: SeedSplittableJob {
+        _selectedJob = selectedJob
+        duplicate = { store, job in store.duplicate(job) }
+    }
+
+    /// The drawer for SeedVR2, whose rows have no Duplicate. A separate label,
+    /// not an overload: a family that lost its `SeedSplittableJob` conformance
+    /// would otherwise build here and lose Duplicate silently.
+    init(selectedJobWithoutDuplicate selectedJob: Binding<Spec.Job?>) {
+        _selectedJob = selectedJob
+        duplicate = nil
     }
 
     private func isRestartable(_ job: Spec.Job) -> Bool {
@@ -481,7 +149,7 @@ private struct FamilyQueueJobRow<Job: QueueListedJob>: View {
         HStack(spacing: 8) {
             JobStatusIcon(status: job.status)
             VStack(alignment: .leading, spacing: 2) {
-                Text(job.prompt.isEmpty ? "(empty prompt)" : job.prompt)
+                Text(job.queueRowTitle)
                     .font(.caption)
                     .lineLimit(2)
                 Text(job.displayName)
@@ -518,188 +186,8 @@ private struct FamilyQueueJobRow<Job: QueueListedJob>: View {
     }
 }
 
-// MARK: - SeedVR2QueueDrawerView
+// MARK: - Header and status pieces
 
-/// Queue drawer for the SeedVR2 upscaler. Mirrors ``FamilyQueueDrawerView`` but is
-/// backed by ``SeedVR2JobStore`` / ``SeedVR2JobRunner``. SeedVR2 is not a
-/// picker-selected family — upscales are an action applied to an existing image —
-/// so the queue sheet surfaces this drawer whenever an upscale is running or the
-/// preview is showing one, rather than keying on the active model family.
-struct SeedVR2QueueDrawerView: View {
-    @Environment(SeedVR2JobStore.self) private var store
-    @Environment(SeedVR2JobRunner.self) private var runner
-    @Environment(AppSettings.self) private var settings
-    @Environment(GenerationCoordinator.self) private var coordinator
-    @Environment(TimingStore.self) private var timing
-
-    @Binding var selectedJob: SeedVR2Job?
-
-    var body: some View {
-        VStack(spacing: 0) {
-            header
-            Divider()
-            if store.jobs.isEmpty {
-                emptyState
-            } else {
-                jobList
-            }
-        }
-    }
-
-    private var header: some View {
-        HStack {
-            Text("Queue")
-                .font(.headline)
-            Spacer()
-            if store.jobs.contains(where: \.status.isTerminal) {
-                PurgeFinishedButton { store.purgeTerminal() }
-            }
-            if store.isRunning {
-                Button(runner.isStopping ? "Force Stop" : "Stop") { runner.cancel() }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .foregroundStyle(.red)
-                    .focusable(false)
-                    .help(runner.isStopping
-                        ? "Stop immediately without waiting for the current step; the warm model is unloaded"
-                        : "Stop the current job; remaining pending jobs continue")
-
-                Button(runner.isStopping ? "Force Stop All" : "Stop All") {
-                    runner.cancel()
-                    store.cancelAllPending()
-                }
-                .buttonStyle(.bordered)
-                .controlSize(.small)
-                .tint(.red)
-                .focusable(false)
-                .help(runner.isStopping
-                    ? "Stop immediately without waiting for the current step, and cancel all pending jobs"
-                    : "Stop the current job and cancel all pending jobs")
-            }
-        }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
-    }
-
-    private var jobList: some View {
-        List(selection: Binding(
-            get: { selectedJob?.id },
-            set: { id in selectedJob = store.jobs.first { $0.id == id } }
-        )) {
-            ForEach(store.jobs) { job in
-                SeedVR2QueueJobRow(
-                    job: job,
-                    onRestart: isRestartable(job) ? { restart(job) } : nil,
-                    onCancel: isCancellable(job) ? { cancelJob(job) } : nil
-                )
-                .tag(job.id)
-                .queueRowActionsWithoutDuplicate(job, in: store, start: startNext)
-            }
-            .onMove { store.movePending(fromOffsets: $0, toOffset: $1) }
-        }
-        .listStyle(.sidebar)
-    }
-
-    private var emptyState: some View {
-        VStack {
-            Spacer()
-            Text("No jobs")
-                .font(.callout)
-                .foregroundStyle(.tertiary)
-            Spacer()
-        }
-    }
-
-    private func isRestartable(_ job: SeedVR2Job) -> Bool {
-        switch job.status {
-        case .failed, .cancelled: true
-        default: false
-        }
-    }
-
-    private func isCancellable(_ job: SeedVR2Job) -> Bool {
-        switch job.status {
-        case .pending, .running: true
-        default: false
-        }
-    }
-
-    private func restart(_ job: SeedVR2Job) {
-        store.restart(job)
-        startNext()
-    }
-
-    private func startNext() {
-        runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-    }
-
-    private func cancelJob(_ job: SeedVR2Job) {
-        if case .running = job.status {
-            runner.cancel()
-        } else {
-            store.cancelJob(job)
-        }
-    }
-}
-
-// MARK: - SeedVR2QueueJobRow
-
-private struct SeedVR2QueueJobRow: View {
-    let job: SeedVR2Job
-    var onRestart: (() -> Void)?
-    var onCancel: (() -> Void)?
-
-    /// SeedVR2 jobs have no prompt — surface the source image's filename so the row
-    /// is identifiable, with the upscale settings on the secondary line.
-    private var sourceName: String {
-        let name = (job.sourcePath as NSString).lastPathComponent
-        return name.isEmpty ? "(upscale)" : name
-    }
-
-    var body: some View {
-        HStack(spacing: 8) {
-            JobStatusIcon(status: job.status)
-            VStack(alignment: .leading, spacing: 2) {
-                Text(sourceName)
-                    .font(.caption)
-                    .lineLimit(2)
-                Text(job.displayName)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            Spacer()
-            if let onCancel {
-                Button(action: onCancel) {
-                    Image(systemName: "xmark.circle.fill")
-                        .font(.caption)
-                        .foregroundStyle(.red)
-                }
-                // Compact: queue rows are dense and cancel/restart sit side by side.
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Cancel this job")
-                .accessibilityLabel("Cancel job")
-            }
-            if let onRestart {
-                Button(action: onRestart) {
-                    Image(systemName: "arrow.counterclockwise")
-                        .font(.caption)
-                        .foregroundStyle(.secondary)
-                }
-                .buttonStyle(.iconButtonCompact)
-                .focusable(false)
-                .help("Re-queue this job")
-                .accessibilityLabel("Re-queue job")
-            }
-        }
-        .padding(.vertical, 2)
-        .failureHelp(job.status)
-    }
-}
-
-// MARK: - JobStatusIcon
-
-/// Shared status glyph for Flux, Ideogram, Krea 2, and SeedVR2 queue rows.
 /// Clears finished jobs from a queue drawer, after a confirmation: their logs go with them.
 private struct PurgeFinishedButton: View {
     let purge: () -> Void
@@ -725,6 +213,7 @@ private struct PurgeFinishedButton: View {
     }
 }
 
+/// A queue row's status glyph.
 private struct JobStatusIcon: View {
     let status: JobStatus
 

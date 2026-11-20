@@ -8,7 +8,12 @@ import Foundation
 /// low-RAM ones, which stay on the one-shot CLI.
 typealias Qwen21JobRunner = JobRunner<Qwen21RunnerSpec>
 
-extension Qwen21Job: @MainActor QueueListedJob {}
+extension Qwen21Job: @MainActor QueueListedJob {
+    var queueTitle: String {
+        prompt
+    }
+}
+
 extension Qwen21JobStore: @MainActor GenerationJobStore {}
 
 enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {

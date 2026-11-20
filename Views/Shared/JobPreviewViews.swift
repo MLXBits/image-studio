@@ -1,10 +1,11 @@
 import SwiftUI
 
-/// Live stepwise preview for a running job of any family built on
-/// ``GeneratedJob`` (Krea 2, Qwen-Image 2.1, Z-Image).
+/// Live stepwise preview for a running job of any family.
 struct JobStepwisePreviewView<Job: GeneratedJob>: View {
     let job: Job
     let onCancel: () -> Void
+    /// Shown until the first stepwise frame lands.
+    var placeholder = "Generating…"
 
     @Environment(AppSettings.self) private var settings
     @State private var displayedImage: NSImage?
@@ -73,7 +74,7 @@ struct JobStepwisePreviewView<Job: GeneratedJob>: View {
     private var generatingPlaceholder: some View {
         VStack(spacing: 12) {
             ProgressView().scaleEffect(1.5)
-            Text("Generating…")
+            Text(placeholder)
                 .font(.callout)
                 .foregroundStyle(.secondary)
         }
@@ -119,16 +120,21 @@ struct JobStepwisePreviewView<Job: GeneratedJob>: View {
     }
 }
 
-/// Completed-image preview for a job of any family built on ``GeneratedJob``:
-/// the image, its metadata panel, and Remix / Apply Settings. (In practice the
-/// preview flips to the gallery item on completion; this is the queue-reselect path.)
+/// Completed-image preview for a job of any family: the image, its metadata
+/// panel, and whichever actions the family supports. (In practice the preview
+/// flips to the gallery item on completion; this is the queue-reselect path.)
 struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
     let job: Job
-    /// The job's metadata for replay, and its metadata-panel contents.
-    let metadataOf: (Job) -> Meta
+    /// The job's metadata for replay (nil when it has none), and its
+    /// metadata-panel contents.
+    let metadataOf: (Job) -> Meta?
     let infoOf: (Job) -> ImageMetadataInfo
     var onRemix: ((Meta) -> Void)?
     var onApplySettings: ((Meta) -> Void)?
+    var onUseInImg2Img: ((String) -> Void)?
+    var onShowFullSize: ((NSImage) -> Void)?
+    var onUpscale: ((String) -> Void)?
+    var logTitle = "Generation Log"
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
@@ -146,40 +152,23 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipShape(RoundedRectangle(cornerRadius: 8))
             .padding()
-            .contextMenu {
-                if let path = job.outputPath {
-                    Button("Copy Image") {
-                        guard let img = NSImage(contentsOfFile: path) else { return }
-                        NSPasteboard.general.clearContents()
-                        NSPasteboard.general.writeObjects([img])
-                    }
-                    Divider()
-                }
-                if let fn = onApplySettings {
-                    Button("Apply Settings") { fn(metadata) }
-                }
-                if let fn = onRemix {
-                    Button("Remix (new seed)") { fn(metadata) }
-                }
-                if let path = job.outputPath {
-                    Divider()
-                    CopyPathMenu(path: path)
-                    Button("Reveal in Finder") {
-                        NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
-                    }
+            .onTapGesture(count: 2) {
+                if let image {
+                    onShowFullSize?(image)
                 }
             }
+            .contextMenu { contextMenu }
 
             ImageMetadataPanel(
                 info: infoOf(job),
-                onApplySettings: onApplySettings.map { fn in { fn(metadata) } },
-                onRemix: onRemix.map { fn in { fn(metadata) } },
-                onUseInImg2Img: nil,
-                onRevealInFinder: job.outputPath.map { path in {
+                onApplySettings: replay(onApplySettings),
+                onRemix: replay(onRemix),
+                onUseInImg2Img: withOutput(onUseInImg2Img),
+                onRevealInFinder: withOutput { path in
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
-                }
                 },
-                onShowLog: job.log.isEmpty ? nil : { showingLog = true }
+                onShowLog: job.log.isEmpty ? nil : { showingLog = true },
+                onUpscale: withOutput(onUpscale)
             )
         }
         .onAppear { loadImage() }
@@ -187,15 +176,44 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
         .sheet(isPresented: $showingLog) { logSheet }
     }
 
-    private var metadata: Meta {
-        metadataOf(job)
+    @ViewBuilder private var contextMenu: some View {
+        if let path = job.outputPath {
+            Button("Copy Image") {
+                guard let img = NSImage(contentsOfFile: path) else { return }
+                NSPasteboard.general.clearContents()
+                NSPasteboard.general.writeObjects([img])
+            }
+            Divider()
+        }
+        if let apply = replay(onApplySettings) {
+            Button("Apply Settings", action: apply)
+        }
+        if let remix = replay(onRemix) {
+            Button("Remix (new seed)", action: remix)
+        }
+        if let path = job.outputPath {
+            if let onUseInImg2Img {
+                Button("Use as Img2Img Input") { onUseInImg2Img(path) }
+            }
+            if let onUpscale {
+                Button("Upscale…") { onUpscale(path) }
+            }
+            Divider()
+            CopyPathMenu(path: path)
+            Button("Reveal in Finder") {
+                NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
+            }
+        }
+        if !job.log.isEmpty {
+            Button("Show Log") { showingLog = true }
+        }
     }
 
     private var logSheet: some View {
         NavigationStack {
             LogTextView(text: job.log, fontSize: NSFont.smallSystemFontSize)
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .navigationTitle("Generation Log")
+                .navigationTitle(logTitle)
                 .toolbar {
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Done") { showingLog = false }
@@ -203,6 +221,18 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
                 }
         }
         .frame(width: 640, height: 480)
+    }
+
+    /// `action` bound to this job's metadata, when it has both.
+    private func replay(_ action: ((Meta) -> Void)?) -> (() -> Void)? {
+        guard let action, let meta = metadataOf(job) else { return nil }
+        return { action(meta) }
+    }
+
+    /// `action` bound to this job's output image, when it has both.
+    private func withOutput(_ action: ((String) -> Void)?) -> (() -> Void)? {
+        guard let action, let path = job.outputPath else { return nil }
+        return { action(path) }
     }
 
     private func loadImage() {

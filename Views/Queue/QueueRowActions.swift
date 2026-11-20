@@ -54,23 +54,14 @@ private struct QueueRowActions<Store: ProfileScopedJobStore>: ViewModifier {
 }
 
 extension View {
-    /// The queue row menu, with Duplicate.
+    /// The queue row menu. `duplicate` is nil for a family whose jobs cannot be
+    /// copied (SeedVR2); see ``FamilyQueueDrawerView``'s two initializers.
     func queueRowActions<Store: ProfileScopedJobStore>(
         _ job: Store.PersistedJob,
         in store: Store,
-        start: @escaping () -> Void
-    ) -> some View where Store.PersistedJob: SeedSplittableJob {
-        modifier(QueueRowActions(job: job, store: store, duplicate: { store.duplicate(job) }, start: start))
-    }
-
-    /// The queue row menu for a family whose jobs cannot be copied (SeedVR2).
-    /// A separate name, not an overload: a generic drawer that forgot its
-    /// `SeedSplittableJob` constraint would otherwise fall back here silently.
-    func queueRowActionsWithoutDuplicate<Store: ProfileScopedJobStore>(
-        _ job: Store.PersistedJob,
-        in store: Store,
+        duplicate: (() -> Void)?,
         start: @escaping () -> Void
     ) -> some View {
-        modifier(QueueRowActions(job: job, store: store, duplicate: nil, start: start))
+        modifier(QueueRowActions(job: job, store: store, duplicate: duplicate, start: start))
     }
 }

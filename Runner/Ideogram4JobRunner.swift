@@ -6,6 +6,19 @@ import Foundation
 typealias Ideogram4JobRunner = JobRunner<Ideogram4RunnerSpec>
 
 extension Ideogram4Job: @MainActor GeneratedJob {}
+
+extension Ideogram4Job: @MainActor QueueListedJob {
+    /// The plain prompt, or the structured caption's high-level description,
+    /// whichever the job uses.
+    var queueTitle: String {
+        usePlainPrompt ? plainPrompt : caption.highLevelDescription
+    }
+
+    var steps: Int {
+        preset.stepCount
+    }
+}
+
 extension Ideogram4JobStore: @MainActor GenerationJobStore {}
 
 enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
