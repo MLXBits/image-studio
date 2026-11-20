@@ -42,7 +42,7 @@ struct PromptFanOutTests {
 
     @Test mutating func fanOutStopsAtTenJobs() {
         let options = (1 ... 12).map(String.init).joined(separator: "|")
-        #expect(jobs("kite {\(options)}").count == PromptFanOut.maxVariants)
+        #expect(jobs("kite {\(options)}").count == 10)
     }
 
     @Test mutating func theNegativeFansOutAlongsideThePrompt() {
