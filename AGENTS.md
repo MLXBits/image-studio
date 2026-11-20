@@ -77,7 +77,7 @@ Six model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
 | Runner spec | `Runner/<Family>JobRunner.swift` — `enum <Family>RunnerSpec: JobRunnerSpec` plus `typealias <Family>JobRunner = JobRunner<<Family>RunnerSpec>` |
 | Job store | `Stores/<Family>JobStore.swift` |
 | Params UI | `Views/<Family>/<Family>ParamsPanelView.swift` + `…ParamsPanelState.swift` |
-| Preview UI | `Views/<Family>/<Family>PreviewViews.swift` |
+| Preview UI | none: shared views, wired in `Views/PreviewPane/PreviewPaneView.swift` (see below) |
 | Settings form | `Views/Settings/ModelDefaultsView+<Family>Form.swift` |
 
 Glob for these rather than grepping file contents.
@@ -89,8 +89,9 @@ Glob for these rather than grepping file contents.
    views live in `Views/ParamsPanel/`, not `Views/Flux/`. There is no
    `Views/Flux/` directory.
 2. **SeedVR2 has no `Views/SeedVR2/`.** It is an upscale action on an existing
-   image, not a pickable family, so its UI lives in
-   `Views/PreviewPane/SeedVR2PreviewViews.swift` and `SeedVR2UpscaleSheet.swift`.
+   image, not a pickable family, so its own UI is
+   `Views/PreviewPane/SeedVR2UpscaleSheet.swift`; its queue and previews are
+   the shared ones.
    It appears in `ModelFamily` only to get its own `GenerationCoordinator` gate
    identity (the OOM guard that serializes it against generative runs).
    `ModelFamily.generative` is the list that excludes it.
@@ -148,13 +149,13 @@ Adding Z-Image touched 24 files. In dependency order:
 4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, the typealias.
 5. `Stores/<Family>JobStore.swift` — conform to `GenerationJobStore`.
 6. `Stores/AppSettings.swift` — persisted per-family defaults.
-7. `Views/<Family>/` — params panel, panel state, preview views.
+7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
    `ModelDefaultsView.swift`.
 9. Wire the surfaces that switch on family: `App/ContentView.swift`,
    `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
-   `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`,
-   `Views/Queue/QueueDrawerView.swift`, `Views/Gallery/GenerationGalleryView.swift`,
+   `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
+   (a `PreviewState` case and its `jobPreview` branch), `Views/Gallery/GenerationGalleryView.swift`,
    `Views/PreviewPane/GalleryItemDetailView.swift`.
 10. Metadata and constraints: `Utilities/MetadataSidecar.swift` (the sidecar
     type, with an optional `family` field), `Utilities/AnySidecar.swift` (a
@@ -172,11 +173,11 @@ Grepping for `ZImage` is the fastest way to find any touchpoint this list misses
 Don't write a per-family store, queue drawer, or preview views for a new family:
 CI fails a PR that raises jscpd's duplicated-token share by more than 0.1 points.
 Conform the job to `QueueListedJob` (`Stores/JobHistoryFile.swift`) and use the
-shared pieces, as Krea 2, Qwen-Image 2.1 and Z-Image do: the store extension's queue
-operations, `FamilyQueueDrawerView<Spec>`, `JobStepwisePreviewView` and
-`JobCompletedPreviewView` (`Views/Shared/JobPreviewViews.swift`), `StepsSeedRow`,
-and `EditImageListView` for a reference list. Those families have no
-`<Family>PreviewViews.swift`.
+shared pieces, as every family does: the store extension's queue operations,
+`FamilyQueueDrawerView<Spec>` (one `case` in `ContentView.queueSheet`),
+`JobStepwisePreviewView` and `JobCompletedPreviewView`
+(`Views/Shared/JobPreviewViews.swift`, through `PreviewPaneView.jobPreview`),
+`StepsSeedRow`, and `EditImageListView` for a reference list.
 
 ## Icon buttons and hit targets
 

@@ -6,6 +6,13 @@ import Foundation
 typealias FluxJobRunner = JobRunner<FluxRunnerSpec>
 
 extension FluxJob: @MainActor GeneratedJob {}
+
+extension FluxJob: @MainActor QueueListedJob {
+    var queueTitle: String {
+        prompt
+    }
+}
+
 extension JobStore: @MainActor GenerationJobStore {}
 
 /// Where a job's weights come from, which decides its `--model` value and whether

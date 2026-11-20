@@ -1,4 +1,3 @@
-// swiftlint:disable file_length
 import AppKit
 import SwiftUI
 
@@ -11,6 +10,20 @@ enum PreviewState {
     case activeQwen21Job(Qwen21Job)
     case activeSeedVR2Job(SeedVR2Job)
     case galleryItem(GalleryItem)
+
+    /// The queue job the preview shows, of whichever family. Nil when idle or
+    /// showing a gallery item.
+    var previewedJob: (any GeneratedJob)? {
+        switch self {
+        case let .activeJob(job): job
+        case let .activeIdeogram4Job(job): job
+        case let .activeKrea2Job(job): job
+        case let .activeZImageJob(job): job
+        case let .activeQwen21Job(job): job
+        case let .activeSeedVR2Job(job): job
+        case .idle, .galleryItem: nil
+        }
+    }
 }
 
 struct PreviewPaneView: View {
@@ -63,155 +76,100 @@ struct PreviewPaneView: View {
                     idleView
 
                 case let .activeJob(job):
-                    switch job.status {
-                    case .running:
-                        StepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        CompletedImageView(
-                            job: job,
-                            onApplySettings: onApplySettings,
+                    jobPreview(job) {
+                        completedPreview(
+                            job,
+                            metadataOf: { $0.outputPath.flatMap { MetadataSidecar.read(GenerationMetadata.self, for: $0) } },
+                            infoOf: { ImageMetadataInfo(job: $0) },
                             onRemix: onRemix,
-                            onUseInImg2Img: onUseInImg2Img,
-                            onShowFullSize: onShowFullSize,
-                            onUpscale: onUpscale
+                            onApplySettings: onApplySettings
                         )
-
-                    case let .failed(msg):
-                        failedView(message: msg, job: job)
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        pendingView(job: job)
+                    } failed: { message in
+                        failedView(message: message, job: job)
                     }
 
                 case let .activeIdeogram4Job(job):
-                    switch job.status {
-                    case .running:
-                        Ideogram4StepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        Ideogram4CompletedPreviewView(
-                            job: job,
+                    jobPreview(job) {
+                        // Ideogram 4 has no img2img.
+                        completedPreview(
+                            job,
+                            metadataOf: { Ideogram4Metadata.from(job: $0) },
+                            infoOf: { ImageMetadataInfo(ideogram4Job: $0) },
                             onRemix: onRemixIdeogram,
-                            onApplySettings: onApplyIdeogramSettings
+                            onApplySettings: onApplyIdeogramSettings,
+                            takesImg2Img: false
                         )
-
-                    case let .failed(msg):
+                    } failed: { message in
                         FailedJobView(
-                            message: msg, log: job.log,
+                            message: message, log: job.log,
                             repoURL: FluxModelVariant.ideogram4.hfRepoURL(quantize: job.quantize),
                             onRetry: onRetry
                         ) { onApplyIdeogramSettings(Ideogram4Metadata.from(job: job)) }
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        ideogram4PendingView(job: job)
                     }
 
                 case let .activeKrea2Job(job):
-                    switch job.status {
-                    case .running:
-                        JobStepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        JobCompletedPreviewView(
-                            job: job,
+                    jobPreview(job) {
+                        completedPreview(
+                            job,
                             metadataOf: { Krea2Metadata.from(job: $0) },
                             infoOf: { ImageMetadataInfo(krea2Job: $0) },
                             onRemix: onRemixKrea2,
                             onApplySettings: onApplyKrea2Settings
                         )
-
-                    case let .failed(msg):
+                    } failed: { message in
                         FailedJobView(
-                            message: msg, log: job.log, onRetry: onRetry,
+                            message: message, log: job.log, onRetry: onRetry,
                             onLoadSettings: onApplyKrea2Settings.map { fn in { fn(Krea2Metadata.from(job: job)) } }
                         )
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        queuedView(displayName: job.displayName)
                     }
 
                 case let .activeQwen21Job(job):
-                    switch job.status {
-                    case .running:
-                        JobStepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        JobCompletedPreviewView(
-                            job: job,
+                    jobPreview(job) {
+                        completedPreview(
+                            job,
                             metadataOf: { Qwen21Metadata.from(job: $0) },
                             infoOf: { ImageMetadataInfo(qwen21Job: $0) },
                             onRemix: onRemixQwen21,
                             onApplySettings: onApplyQwen21Settings
                         )
-
-                    case let .failed(msg):
+                    } failed: { message in
                         FailedJobView(
-                            message: msg, log: job.log, onRetry: onRetry,
+                            message: message, log: job.log, onRetry: onRetry,
                             onLoadSettings: onApplyQwen21Settings.map { fn in { fn(Qwen21Metadata.from(job: job)) } }
                         )
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        queuedView(displayName: job.displayName)
                     }
 
                 case let .activeZImageJob(job):
-                    switch job.status {
-                    case .running:
-                        JobStepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        JobCompletedPreviewView(
-                            job: job,
+                    jobPreview(job) {
+                        completedPreview(
+                            job,
                             metadataOf: { ZImageMetadata.from(job: $0) },
                             infoOf: { ImageMetadataInfo(zimageJob: $0) },
                             onRemix: onRemixZImage,
                             onApplySettings: onApplyZImageSettings
                         )
-
-                    case let .failed(msg):
+                    } failed: { message in
                         FailedJobView(
-                            message: msg, log: job.log,
+                            message: message, log: job.log,
                             repoURL: job.modelVariant.hfRepoURL(quantize: job.quantize),
                             onRetry: onRetry,
                             onLoadSettings: onApplyZImageSettings.map { fn in { fn(ZImageMetadata.from(job: job)) } }
                         )
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        queuedView(displayName: job.displayName)
                     }
 
                 case let .activeSeedVR2Job(job):
-                    switch job.status {
-                    case .running:
-                        SeedVR2StepwisePreviewView(job: job, onCancel: onCancel)
-
-                    case .completed:
-                        SeedVR2CompletedPreviewView(job: job)
-
-                    case let .failed(msg):
-                        FailedJobView(title: "Upscale failed", message: msg, log: job.log, onRetry: onRetry)
-
-                    case .cancelled:
-                        cancelledView
-
-                    case .pending:
-                        seedVR2PendingView(job: job)
+                    jobPreview(job, placeholder: "Upscaling…") {
+                        // An upscale has no settings to replay, so no Remix or Apply Settings.
+                        JobCompletedPreviewView(
+                            job: job,
+                            metadataOf: { _ -> Never? in nil },
+                            infoOf: { ImageMetadataInfo(seedVR2Job: $0) },
+                            onShowFullSize: onShowFullSize,
+                            onUpscale: onUpscale,
+                            logTitle: "Upscale Log"
+                        )
+                    } failed: { message in
+                        FailedJobView(title: "Upscale failed", message: message, log: job.log, onRetry: onRetry)
                     }
 
                 case let .galleryItem(item):
@@ -301,48 +259,12 @@ struct PreviewPaneView: View {
         }
     }
 
+    /// Every state but idle and a running job has a ✕ (a running job has Cancel).
     private var showsClearButton: Bool {
-        switch state {
-        case .idle: return false
-
-        case let .activeJob(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case let .activeIdeogram4Job(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case let .activeKrea2Job(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case let .activeZImageJob(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case let .activeQwen21Job(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case let .activeSeedVR2Job(job):
-            if case .running = job.status {
-                return false
-            }
-            return true
-
-        case .galleryItem: return true
+        if case .idle = state {
+            return false
         }
+        return state.previewedJob?.status != .running
     }
 
     private var idleView: some View {
@@ -429,34 +351,6 @@ struct PreviewPaneView: View {
         })
     }
 
-    private func ideogram4PendingView(job: Ideogram4Job) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Waiting in queue")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text(job.displayName)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
-    private func pendingView(job: FluxJob) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Waiting in queue")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text(job.displayName)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
-        }
-    }
-
     private func queuedView(displayName: String) -> some View {
         VStack(spacing: 12) {
             Image(systemName: "clock")
@@ -471,18 +365,44 @@ struct PreviewPaneView: View {
         }
     }
 
-    private func seedVR2PendingView(job: SeedVR2Job) -> some View {
-        VStack(spacing: 12) {
-            Image(systemName: "clock")
-                .font(.system(size: 40))
-                .foregroundStyle(.tertiary)
-            Text("Waiting in queue")
-                .font(.title3)
-                .foregroundStyle(.secondary)
-            Text(job.displayName)
-                .font(.caption)
-                .foregroundStyle(.tertiary)
+    /// One queue job's preview by status, the same for every family; the
+    /// family supplies its completed and failed views.
+    @ViewBuilder
+    private func jobPreview(
+        _ job: some QueueListedJob,
+        placeholder: String = "Generating…",
+        @ViewBuilder completed: () -> some View,
+        @ViewBuilder failed: (String) -> some View
+    ) -> some View {
+        switch job.status {
+        case .running: JobStepwisePreviewView(job: job, onCancel: onCancel, placeholder: placeholder)
+        case .completed: completed()
+        case let .failed(message): failed(message)
+        case .cancelled: cancelledView
+        case .pending: queuedView(displayName: job.displayName)
         }
+    }
+
+    /// A generated image's completed preview, with the pane's full-size,
+    /// upscale and (unless the family has none) img2img actions.
+    private func completedPreview<Job: GeneratedJob, Meta>(
+        _ job: Job,
+        metadataOf: @escaping (Job) -> Meta?,
+        infoOf: @escaping (Job) -> ImageMetadataInfo,
+        onRemix: ((Meta) -> Void)?,
+        onApplySettings: ((Meta) -> Void)?,
+        takesImg2Img: Bool = true
+    ) -> some View {
+        JobCompletedPreviewView(
+            job: job,
+            metadataOf: metadataOf,
+            infoOf: infoOf,
+            onRemix: onRemix,
+            onApplySettings: onApplySettings,
+            onUseInImg2Img: takesImg2Img ? onUseInImg2Img : nil,
+            onShowFullSize: onShowFullSize,
+            onUpscale: onUpscale
+        )
     }
 
     // MARK: - Escape monitor

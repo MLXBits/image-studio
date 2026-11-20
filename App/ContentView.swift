@@ -728,115 +728,41 @@ struct ContentView: View {
                     // SeedVR2 isn't a picker-selected family, so key off the running
                     // upscale / previewed upscale instead of `params.modelFamily`;
                     // otherwise upscale jobs never appear in the queue drawer.
-                    SeedVR2QueueDrawerView(selectedJob: Binding(
-                        get: {
-                            if case let .activeSeedVR2Job(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeSeedVR2Job(j)
-                            }
-                        }
-                    ))
+                    FamilyQueueDrawerView<SeedVR2RunnerSpec>(
+                        selectedJobWithoutDuplicate: previewSelection(PreviewState.activeSeedVR2Job)
+                    )
                     .environment(seedVR2Store)
                     .environment(seedVR2Runner)
-                    .environment(settings)
-                    .environment(coordinator)
-                } else if params.modelFamily == .ideogram4 {
-                    Ideogram4QueueDrawerView(selectedJob: Binding(
-                        get: {
-                            if case let .activeIdeogram4Job(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeIdeogram4Job(j)
-                            }
-                        }
-                    ))
-                    .environment(ideogram4Store)
-                    .environment(ideogram4Runner)
-                    .environment(settings)
-                    .environment(coordinator)
-                } else if params.modelFamily == .krea2 {
-                    FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: Binding(
-                        get: {
-                            if case let .activeKrea2Job(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeKrea2Job(j)
-                            }
-                        }
-                    ))
-                    .environment(krea2Store)
-                    .environment(krea2Runner)
-                    .environment(settings)
-                    .environment(coordinator)
-                } else if params.modelFamily == .qwen21 {
-                    FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: Binding(
-                        get: {
-                            if case let .activeQwen21Job(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeQwen21Job(j)
-                            }
-                        }
-                    ))
-                    .environment(qwen21Store)
-                    .environment(qwen21Runner)
-                    .environment(settings)
-                    .environment(coordinator)
-                } else if params.modelFamily == .zimage {
-                    FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: Binding(
-                        get: {
-                            if case let .activeZImageJob(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeZImageJob(j)
-                            }
-                        }
-                    ))
-                    .environment(zimageStore)
-                    .environment(zimageRunner)
-                    .environment(settings)
-                    .environment(coordinator)
                 } else {
-                    QueueDrawerView(selectedJob: Binding(
-                        get: {
-                            if case let .activeJob(j) = previewState {
-                                return j
-                            }
-                            return nil
-                        },
-                        set: { job in
-                            if let j = job {
-                                previewState = .activeJob(j)
-                            }
-                        }
-                    ))
-                    .environment(store)
-                    .environment(runner)
-                    .environment(settings)
-                    .environment(coordinator)
+                    switch params.modelFamily {
+                    case .ideogram4:
+                        FamilyQueueDrawerView<Ideogram4RunnerSpec>(
+                            selectedJob: previewSelection(PreviewState.activeIdeogram4Job)
+                        )
+                        .environment(ideogram4Store)
+                        .environment(ideogram4Runner)
+                    case .krea2:
+                        FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: previewSelection(PreviewState.activeKrea2Job))
+                            .environment(krea2Store)
+                            .environment(krea2Runner)
+                    case .qwen21:
+                        FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: previewSelection(PreviewState.activeQwen21Job))
+                            .environment(qwen21Store)
+                            .environment(qwen21Runner)
+                    case .zimage:
+                        FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: previewSelection(PreviewState.activeZImageJob))
+                            .environment(zimageStore)
+                            .environment(zimageRunner)
+                    case .flux, .seedvr2:
+                        // SeedVR2 is never the picker family; it is handled above.
+                        FamilyQueueDrawerView<FluxRunnerSpec>(selectedJob: previewSelection(PreviewState.activeJob))
+                            .environment(store)
+                            .environment(runner)
+                    }
                 }
             }
+            .environment(settings)
+            .environment(coordinator)
             .navigationTitle("Queue")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -1065,6 +991,19 @@ struct ContentView: View {
     /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Qwen-Image 2.1).
     /// Families without one (`ModelFamily.acceptsSourceImage`) ignore it. Paths go
     /// through `settings.adoptSourceImage(_:)` like the panels' own drop handlers.
+    /// A queue drawer's selection: the previewed job when it belongs to that
+    /// drawer's family. Choosing a row previews it.
+    private func previewSelection<Job: GeneratedJob>(_ preview: @escaping (Job) -> PreviewState) -> Binding<Job?> {
+        Binding(
+            get: { previewState.previewedJob as? Job },
+            set: { job in
+                if let job {
+                    previewState = preview(job)
+                }
+            }
+        )
+    }
+
     private func useInImg2Img(_ path: String) {
         switch params.modelFamily {
         case .flux:

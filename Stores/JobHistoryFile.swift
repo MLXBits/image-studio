@@ -126,13 +126,21 @@ extension ProfileScopedJobStore {
     }
 }
 
-/// A job the generic queue drawer can list and the shared queue operations can
-/// re-queue (``Krea2Job``, ``Qwen21Job``, ``ZImageJob``).
+/// A job the shared queue drawer lists and the shared queue operations run.
+/// Every family's job is one.
 @MainActor
 protocol QueueListedJob: GeneratedJob {
-    var prompt: String { get }
+    /// The row's first line: the prompt, or what stands in for one.
+    var queueTitle: String { get }
     var displayName: String { get }
+    /// The step count a fresh run starts from, before the runner reports one.
     var steps: Int { get }
+}
+
+extension QueueListedJob {
+    var queueRowTitle: String {
+        queueTitle.isEmpty ? "(empty prompt)" : queueTitle
+    }
 }
 
 /// Queue operations shared by the stores whose jobs are ``QueueListedJob``s.

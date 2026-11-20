@@ -9,6 +9,20 @@ import Foundation
 typealias SeedVR2JobRunner = JobRunner<SeedVR2RunnerSpec>
 
 extension SeedVR2Job: @MainActor GeneratedJob {}
+
+extension SeedVR2Job: @MainActor QueueListedJob {
+    /// An upscale has no prompt: its source image's file name.
+    var queueTitle: String {
+        let name = (sourcePath as NSString).lastPathComponent
+        return name.isEmpty ? "(upscale)" : name
+    }
+
+    /// Zero until the runner reports the upscale's steps.
+    var steps: Int {
+        0
+    }
+}
+
 extension SeedVR2JobStore: @MainActor GenerationJobStore {}
 
 enum SeedVR2RunnerSpec: @MainActor JobRunnerSpec {
