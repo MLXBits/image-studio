@@ -12,10 +12,10 @@ box and color palette).
   canvas overlaid on the output aspect ratio.
 - **Color palettes** — per-element and per-style palettes with editable hex entry,
   so an exact color can be reused across elements.
-- **Precision** — FP8 / Q8 / Q4 selector. Q8/Q4 load pre-quantized MLX weights
-  directly; FP8 quantizes once via `mflux-save`.
+- **Precision** — BF16 / Q8 / Q4 selector. Each loads its
+  `mflux-community/ideogram-4-mflux-*` repo directly; Q8/Q4 are pre-quantized.
 
-> **Before first use:** the model is gated on HuggingFace, so accept the terms on
-> the model page before the first download. The bundled mflux supports it. With a
+> **Before first use:** the Q8 and Q4 repos are gated on HuggingFace, so accept the
+> terms on the repo page before the first download (BF16 is not gated). The bundled mflux supports it. With a
 > Custom Python (DMG only), any model whose CLI is missing from that install is
 > disabled in the model picker with a note saying so.

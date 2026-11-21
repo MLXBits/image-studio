@@ -131,7 +131,7 @@ struct ModelDefaultsView: View {
             Section("Ideogram") {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Ideogram 4").font(.callout)
-                    Text("Preset-based · gated · FP8/Q8/Q4")
+                    Text("Preset-based · BF16/Q8/Q4")
                         .font(.caption2).foregroundStyle(.secondary)
                 }
                 .padding(.vertical, 2)
@@ -225,7 +225,7 @@ struct ModelDefaultsView: View {
             typeLabel = "Preset-based"
         } else {
             quantize = settings.defaults(for: selectedModel).quantize ?? selectedModel.recommendedQuantize
-            typeLabel = selectedModel.isDistilled ? "Distilled" : "Base model"
+            typeLabel = selectedModel.isStepDistilled ? "Distilled" : "Base model"
         }
         let vramGB = selectedModel.approximateRAMGB(quantize: quantize, settings: settings)
         let quantLabel = quantize == 0 ? selectedModel.baseWeightLabel : "Q\(quantize)"
@@ -238,7 +238,7 @@ struct ModelDefaultsView: View {
             HStack(spacing: 10) {
                 Label(
                     typeLabel,
-                    systemImage: selectedModel.isDistilled ? "bolt.fill" : "cpu"
+                    systemImage: selectedModel.isStepDistilled ? "bolt.fill" : "cpu"
                 )
                 .font(.caption)
                 .foregroundStyle(.secondary)
@@ -264,12 +264,11 @@ struct ModelDefaultsView: View {
 
             if selectedModel.isIdeogram4 {
                 // Single string literal (no `+`) so the markdown links render and stay
-                // clickable. FP8 is Ideogram's gated repo; Q8/Q4 are the mflux-community
-                // mflux-save conversions, each gated on their own card.
+                // clickable. The mflux-community Q8/Q4 repos are gated, each on its own
+                // card; the BF16 one is not.
                 Text("""
-                Gated — accept access on each source repo, then set your HF token in \
+                Q8 and Q4 are gated — accept access on each repo, then set your HF token in \
                 Settings → Advanced. \
-                FP8: [ideogram-ai/ideogram-4-fp8](https://huggingface.co/ideogram-ai/ideogram-4-fp8). \
                 Q8: [mflux-community/ideogram-4-mflux-q8](https://huggingface.co/mflux-community/ideogram-4-mflux-q8). \
                 Q4: [mflux-community/ideogram-4-mflux-q4](https://huggingface.co/mflux-community/ideogram-4-mflux-q4).
                 """)
@@ -398,13 +397,6 @@ struct ModelDefaultsView: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 8) {
                 ProgressView().controlSize(.small)
-                // Only an mflux-save pass from base weights already on disk is a
-                // conversion; a pass that fetches them downloads first.
-                let converting: Bool = {
-                    guard case .save = run.plan, run.quantize != 0 else { return false }
-                    return run.model.isOnDisk(quantize: 0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
-                }()
-                let verb = converting ? "Converting" : "Downloading"
                 // hf download emits noisy parallel progress bars that don't render
                 // well in a plain log, so poll the on-disk payload for live feedback.
                 TimelineView(.periodic(from: run.startedAt, by: 1)) { ctx in
@@ -412,7 +404,7 @@ struct ModelDefaultsView: View {
                     let mm = elapsed / 60
                     let ss = elapsed % 60
                     let time = "\(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s"
-                    Text("\(verb)… \(time)\(downloadedSuffix(run))")
+                    Text("Downloading… \(time)\(downloadedSuffix(run))")
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
@@ -425,10 +417,9 @@ struct ModelDefaultsView: View {
     }
 
     /// " · 4.4 / 27 GB" while the run's download is landing, polled from its blobs
-    /// dir (includes in-flight `.incomplete` files). Empty when it downloads nothing
-    /// or no bytes have landed yet.
+    /// dir (includes in-flight `.incomplete` files). Empty until bytes have landed.
     private func downloadedSuffix(_ run: WeightDownloadStore.Run) -> String {
-        guard let target = WeightDownloadStore.progressTarget(of: run, hubDir: settings.hfHubDir) else { return "" }
+        let target = WeightDownloadStore.progressTarget(of: run, hubDir: settings.hfHubDir)
         let bytes = ModelDownloadStore.blobBytes(in: target.folder)
         guard bytes > 0 else { return "" }
         let gb = Double(bytes) / 1_073_741_824

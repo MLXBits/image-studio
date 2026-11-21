@@ -42,13 +42,23 @@ DEFINITIONS = {
 }
 
 
-def download_patterns(family, repo):
+def layout(family, repo):
+    # The download patterns and mflux-save subdirs the family's loader passes to
+    # PathResolution (WeightLoader.load). The app loads mflux-community repos, which are
+    # mflux-save uploads: Krea 2's keeps its transformer shards at the root, where the
+    # patterns only name turbo.safetensors, so without the subdirs a complete download
+    # would never count.
+    from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
+
     module, name = DEFINITIONS[family]
     definition = getattr(importlib.import_module(module), name)
     # Krea 2 picks its patterns by model name (Turbo or Raw), which is the repo ID.
     if family == "krea2":
-        return definition.get_download_patterns(repo)
-    return definition.get_download_patterns()
+        patterns = definition.get_download_patterns(repo)
+    else:
+        patterns = definition.get_download_patterns()
+    saved_subdirs = list(ComponentDefinition.save_subdirs(definition.get_components()).values())
+    return patterns, saved_subdirs
 
 
 def probe(hub, requests):
@@ -59,10 +69,10 @@ def probe(hub, requests):
     verdicts = {}
     for family, repo in requests:
         try:
-            patterns = download_patterns(family, repo)
+            patterns, saved_subdirs = layout(family, repo)
         except Exception:  # noqa: BLE001 - an unknown family or an mflux without it: no answer
             continue
-        verdicts[repo] = PathResolution._find_complete_cached_snapshot(repo, patterns) is not None
+        verdicts[repo] = PathResolution._find_complete_cached_snapshot(repo, patterns, saved_subdirs) is not None
     return verdicts
 
 

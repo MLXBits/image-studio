@@ -7,7 +7,7 @@ import Testing
 /// answer, while current, overrides it.
 struct HFCacheVerdictStoreTests {
     private let root = FakeRuntime.tempDirectory("HFCacheVerdictStoreTests")
-    private let repo = "mlx-community/flux2-klein-9b-8bit"
+    private let repo = "mflux-community/flux2-klein-9b-mflux-q8"
 
     private var hub: URL {
         root.appendingPathComponent("hub", isDirectory: true)
@@ -110,11 +110,16 @@ struct HFCacheVerdictStoreTests {
     }
 
     @Test func eachModelFolderIsAskedAboutOnceWithItsFamily() throws {
-        for name in ["models--mlx-community--flux2-klein-9b-8bit", "models--krea--Krea-2-Turbo", "models--org--unrelated"] {
+        for name in [
+            "models--mflux-community--flux2-klein-9b-mflux-q8", "models--mflux-community--krea-2-turbo-mflux-q4",
+            "models--krea--Krea-2-Turbo", "models--org--unrelated",
+        ] {
             try FileManager.default.createDirectory(at: hub.appendingPathComponent(name), withIntermediateDirectories: true)
         }
         let asked = HFCacheVerdictStore.requests(hubDir: hub).map { "\($0.family)=\($0.repo)" }
-        #expect(asked.sorted() == ["flux.2=mlx-community/flux2-klein-9b-8bit", "krea2=krea/Krea-2-Turbo"])
+        #expect(asked.sorted() == [
+            "flux.2=mflux-community/flux2-klein-9b-mflux-q8", "krea2=mflux-community/krea-2-turbo-mflux-q4",
+        ])
     }
 
     /// The probe looks families up by ``ModelFamily/id``; a family it doesn't

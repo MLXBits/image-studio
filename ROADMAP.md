@@ -38,9 +38,8 @@ Alibaba Tongyi's single-stream DiT text-to-image model, shipped as a new
 Turbo** (9-step) and the classifier-free-guidance **base Z-Image** (~50-step,
 negative prompt). Full Krea 2 parity — one-shot CLI + warm persistent driver,
 LoRA, img2img (image-strength), a BF16/Q8/Q4 precision selector, metadata
-sidecars with remix/apply, and a Settings → Models form per variant. Turbo Q4
-loads the pre-quantized `filipstrand/Z-Image-Turbo-mflux-4bit` repo directly;
-other precisions use the one-time `mflux-save` pass. Drives
+sidecars with remix/apply, and a Settings → Models form per variant. Every
+precision loads its `mflux-community/z-image-{turbo,base}-mflux-*` repo directly. Drives
 `mflux-generate-z-image-turbo` / `mflux-generate-z-image`.
 
 ### SeedVR2 upscaler

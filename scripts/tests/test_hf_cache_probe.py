@@ -14,19 +14,31 @@ from pathlib import Path
 PROBE = Path(__file__).resolve().parents[2] / "Resources" / "hf_cache_probe.py"
 
 # A repo counts as complete when its cache folder has a `complete` marker for
-# the patterns asked for, so the tests can see which patterns arrived.
+# the patterns asked for, or a `saved` marker for the mflux-save subdirs asked
+# for, so the tests can see which layout arrived.
 PATH_RESOLUTION = '''
 import os
 from pathlib import Path
 
 class PathResolution:
     @staticmethod
-    def {name}(repo_id, patterns):
+    def {name}(repo_id, patterns, saved_subdirs=None):
         folder = Path(os.environ["HF_HUB_CACHE"]) / ("models--" + repo_id.replace("/", "--"))
         marker = folder / "complete"
         if marker.is_file() and marker.read_text() == ",".join(patterns):
             return folder
+        saved = folder / "saved"
+        if saved_subdirs and saved.is_file() and saved.read_text() == ",".join(saved_subdirs):
+            return folder
         return None
+'''
+
+# The real save_subdirs maps each component to its directory; the fake components are those names.
+WEIGHT_DEFINITION = '''
+class ComponentDefinition:
+    @staticmethod
+    def save_subdirs(components):
+        return {{c: c for c in components}}
 '''
 
 DEFINITION = '''
@@ -34,6 +46,10 @@ class {cls}:
     @staticmethod
     def get_download_patterns({param}):
         return {patterns}
+
+    @staticmethod
+    def get_components():
+        return {components}
 '''
 
 FAMILIES = {
@@ -44,7 +60,9 @@ FAMILIES = {
     ),
     "ideogram4/weights/ideogram4_weight_definition.py": ("Ideogram4WeightDefinition", "", '["vae/*.safetensors"]'),
     "krea2/weights/krea2_weight_definition.py": (
-        "Krea2WeightDefinition", "model_name=None", '["raw.safetensors" if "raw" in model_name.lower() else "turbo.safetensors"]'
+        "Krea2WeightDefinition", "model_name=None", '["raw.safetensors" if "raw" in model_name.lower() else "turbo.safetensors"]',
+        # An mflux-save of Krea 2 keeps the transformer at the root.
+        '["", "vae"]',
     ),
     "z_image/weights/z_image_weight_definition.py": ("ZImageWeightDefinition", "", '["vae/*.safetensors"]'),
     "qwen21/weights/qwen_image21_weight_definition.py": ("QwenImage21WeightDefinition", "", '["vae/*.safetensors"]'),
@@ -67,10 +85,16 @@ class HFCacheProbeTests(unittest.TestCase):
     def write_mflux(self, private_name="_find_complete_cached_snapshot", families=FAMILIES):
         shutil.rmtree(self.site, ignore_errors=True)
         models = self.site / "mflux/models"
-        files = {"common/resolution/path_resolution.py": PATH_RESOLUTION.format(name=private_name)}
-        for path, (cls, param, patterns) in families.items():
+        files = {
+            "common/resolution/path_resolution.py": PATH_RESOLUTION.format(name=private_name),
+            "common/weights/loading/weight_definition.py": WEIGHT_DEFINITION.format(),
+        }
+        for path, (cls, param, patterns, *rest) in families.items():
+            components = rest[0] if rest else '["transformer", "vae"]'
             classes = cls if isinstance(cls, list) else [cls]
-            files[path] = "".join(DEFINITION.format(cls=c, param=param, patterns=patterns) for c in classes)
+            files[path] = "".join(
+                DEFINITION.format(cls=c, param=param, patterns=patterns, components=components) for c in classes
+            )
         for path, source in files.items():
             target = models / path
             target.parent.mkdir(parents=True, exist_ok=True)
@@ -82,6 +106,11 @@ class HFCacheProbeTests(unittest.TestCase):
         folder = self.hub / ("models--" + repo.replace("/", "--"))
         folder.mkdir()
         (folder / "complete").write_text(",".join(patterns))
+
+    def cache_saved(self, repo, subdirs):
+        folder = self.hub / ("models--" + repo.replace("/", "--"))
+        folder.mkdir()
+        (folder / "saved").write_text(",".join(subdirs))
 
     def run_probe(self, *args):
         env = dict(os.environ, PYTHONPATH=str(self.site))
@@ -103,6 +132,21 @@ class HFCacheProbeTests(unittest.TestCase):
             "org/flux-missing": False,
             "krea/Krea-2-Turbo": True,
             "org/ideogram-wrong": False,
+        })
+
+    def test_counts_an_mflux_save_upload_by_its_saved_subdirs(self):
+        # mflux-community/krea-2-turbo-mflux-q4 has no turbo.safetensors: its transformer
+        # shards sit at the root, so only the saved layout says it is complete.
+        self.cache_saved("mflux-community/krea-2-turbo-mflux-q4", ["", "vae"])
+        self.cache_saved("mflux-community/krea-2-turbo-mflux-q8", ["vae"])
+        result = self.run_probe(
+            "--hub", str(self.hub),
+            "krea2=mflux-community/krea-2-turbo-mflux-q4", "krea2=mflux-community/krea-2-turbo-mflux-q8",
+        )
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {
+            "mflux-community/krea-2-turbo-mflux-q4": True,
+            "mflux-community/krea-2-turbo-mflux-q8": False,
         })
 
     def test_leaves_out_families_this_mflux_cannot_answer_for(self):

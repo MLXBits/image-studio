@@ -28,7 +28,7 @@ struct ToolchainTests {
         let custom = try customVenv()
         let toolchain = runtime.toolchain(customPython: custom)
         #expect(try toolchain.command(.flux2).executable == custom)
-        #expect(try toolchain.command(.save).executable == custom)
+        #expect(try toolchain.command(.seedVR2).executable == custom)
         #expect(try toolchain.mfluxInterpreter() == custom)
         #expect(try toolchain.command(.hf).executable == runtime.python.path)
         #expect(try toolchain.command(.mlxLmGenerate).executable == runtime.python.path)

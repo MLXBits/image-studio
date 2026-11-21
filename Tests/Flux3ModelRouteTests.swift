@@ -73,16 +73,6 @@ struct Flux3ModelRouteTests {
         #expect(FluxRunnerSpec.driverRequest(job: job(model: .flux2Klein9B, quantize: 8), ctx: ctx, settings: settings()) != nil)
     }
 
-    @Test(arguments: [0, 8, 4])
-    func downloadPlanIsThePlainHfDownload(quantize: Int) throws {
-        let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        for model in [FluxModelVariant.flux3Klein, .flux3KleinBase] {
-            let expected = try #require(model.preQuantizedRepoID(quantize: quantize))
-            // A plain `hf download` — no mflux-save pass, so BFL's gated source is never fetched.
-            #expect(WeightDownloadStore.plan(model: model, quantize: quantize, cacheDir: dir, hubDir: dir) == .download(repo: expected))
-        }
-    }
-
     // MARK: - CLI quirk gating
 
     @Test func distilledKleinOmitsGuidanceButBaseKeepsIt() {
@@ -176,11 +166,13 @@ struct Flux3ModelRouteTests {
 
     // MARK: - Which routes wait for the --base-model probe
 
-    /// FLUX 3 routes pass --base-model unconditionally and the bare registry name never
-    /// passes it, so neither waits on the probe after launch or an interpreter change.
+    /// FLUX 3 routes pass --base-model unconditionally, so they never wait on the probe
+    /// after launch or an interpreter change. (The bare registry name never passes it either,
+    /// but no stock level reaches it now: FLUX.2 BF16 loads its published repo too.)
     @Test func routesThatNeverAskTheProbeDoNotWaitOnIt() {
         let s = settings()
-        #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux2Klein9B, quantize: 0), settings: s).needsBaseModelProbe)
+        #expect(!FluxModelRoute.registry.needsBaseModelProbe)
+        #expect(FluxRunnerSpec.modelRoute(job: job(model: .flux2Klein9B, quantize: 0), settings: s).needsBaseModelProbe)
         #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux3Klein, quantize: 8), settings: s).needsBaseModelProbe)
         #expect(!FluxRunnerSpec.modelRoute(job: job(model: .flux3KleinBase, quantize: 0), settings: s).needsBaseModelProbe)
         let flux3Custom = FluxJob(model: .custom, customModelRepo: "org/tune", customBaseModel: .flux3Klein)

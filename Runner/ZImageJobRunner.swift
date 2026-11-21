@@ -2,11 +2,10 @@ import Foundation
 
 /// Executes Z-Image generation jobs by driving the `mflux-generate-z-image` /
 /// `mflux-generate-z-image-turbo` CLIs. The shared ``JobRunner`` engine owns the
-/// process lifecycle; this spec supplies the Z-Image-specific behavior. Weights
-/// come from `Tongyi-MAI/Z-Image[-Turbo]`; Turbo Q4 loads the pre-quantized
-/// `filipstrand/Z-Image-Turbo-mflux-4bit` repo directly, while every other
-/// quantized variant runs a one-time `mflux-save` pass into the mflux cache dir.
-/// BF16 loads the repo directly.
+/// process lifecycle; this spec supplies the Z-Image-specific behavior. Every
+/// precision loads its `mflux-community/z-image-{turbo,base}-mflux-*` repo directly
+/// (see ``FluxModelVariant/publishedRepoID(quantize:)``), unless a legacy mflux-save
+/// copy is already on disk.
 typealias ZImageJobRunner = JobRunner<ZImageRunnerSpec>
 
 extension ZImageJob: @MainActor QueueListedJob {
@@ -45,21 +44,6 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
         return (loras + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
     }
 
-    /// Q8/Q4: one-time mflux-save quantization pass into the cache dir — unless a
-    /// pre-quantized repo exists (Turbo Q4) or the source is custom/overridden,
-    /// all of which load directly.
-    static func quantSaveDestination(job: ZImageJob, settings: AppSettings) -> URL? {
-        guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
-        if job.modelVariant.preQuantizedRepoID(quantize: job.quantize) != nil {
-            return nil
-        }
-        return job.modelVariant.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveModelID(job: ZImageJob) -> String {
-        job.modelVariant.mfluxModelID
-    }
-
     /// img2img runs fewer denoise steps than requested (the image-strength schedule
     /// drops the leading steps), so the tqdm total can be < job.steps.
     static func acceptsProgressTotal(_ total: Int, job: ZImageJob) -> Bool {
@@ -96,23 +80,22 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
         return override.isEmpty ? nil : override
     }
 
-    /// Resolves the `--model` argument (custom repo, Settings override, repo ID,
-    /// pre-quantized repo, or local mflux-saved dir), mirroring `buildArgs`, plus
-    /// the in-memory quantize fallback. Returns `(model, quantizeArg)`.
+    /// Resolves the `--model` argument and the in-memory `--quantize` that goes with it,
+    /// mirroring `buildArgs`. Precedence: custom repo → Settings override → a legacy
+    /// mflux-saved copy → the published repo for the precision → the registry name,
+    /// which no stock level reaches. Returns `(model, quantizeArg)`.
     private static func resolveModel(job: ZImageJob, settings: AppSettings) -> (model: String, quantize: Int?) {
         if let source = modelSourceOverride(job: job, settings: settings) {
-            // Names specific weights — the repo/dir carries its own quantization.
             return (source, nil)
         }
-        guard job.quantize > 0 else { return (job.modelVariant.mfluxModelID, nil) }
-        if let preQuant = job.modelVariant.preQuantizedRepoID(quantize: job.quantize) {
-            return (preQuant, nil)
+        let variant = job.modelVariant
+        if let saved = variant.legacySavedWeights(quantize: job.quantize, in: settings.effectiveMfluxCacheDir) {
+            return (saved.path, nil)
         }
-        let savedPath = job.modelVariant.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-        if FluxModelVariant.hasSavedWeights(at: savedPath) {
-            return (savedPath.path, nil)
+        if let repo = variant.publishedRepoID(quantize: job.quantize) {
+            return (repo, nil)
         }
-        return (job.modelVariant.mfluxModelID, job.quantize)
+        return (variant.mfluxModelID, job.quantize > 0 ? job.quantize : nil)
     }
 
     /// Driver eligibility + request. Every Z-Image job qualifies; model resolution

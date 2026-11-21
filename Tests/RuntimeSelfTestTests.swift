@@ -22,12 +22,12 @@ struct RuntimeSelfTestTests {
         // $1 is run_tool.py (or -c), $2 the tool name (or the import line).
         let runtime = try FakeRuntime(python: """
         #!/bin/sh
-        if [ "$2" = "mflux-save" ]; then echo "boom" >&2; exit 3; fi
+        if [ "$2" = "mflux-upscale-seedvr2" ]; then echo "boom" >&2; exit 3; fi
         exit 0
         """)
         let (status, lines) = run(runtime)
         #expect(status == 1)
-        #expect(lines.contains { $0.hasPrefix("FAIL mflux-save") && $0.contains("exit 3") && $0.contains("boom") })
+        #expect(lines.contains { $0.hasPrefix("FAIL mflux-upscale-seedvr2") && $0.contains("exit 3") && $0.contains("boom") })
         #expect(lines.last == "Runtime self-test: 1 failed")
     }
 

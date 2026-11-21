@@ -2,9 +2,9 @@ import Foundation
 
 /// Executes Krea 2 Turbo generation jobs by driving the `mflux-generate-krea2` CLI.
 /// The shared ``JobRunner`` engine owns the process lifecycle; this spec supplies the
-/// Krea-specific behavior. Weights come from `krea/Krea-2-Turbo`; for Q8/Q4 the
-/// engine first runs a one-time `mflux-save` pass into the mflux cache dir, then
-/// loads the saved dir on subsequent runs. BF16 loads the repo directly.
+/// Krea-specific behavior. Every precision loads its `mflux-community/krea-2-turbo-mflux-*`
+/// repo directly (see ``FluxModelVariant/publishedRepoID(quantize:)``), unless a legacy
+/// mflux-save copy is already on disk.
 typealias Krea2JobRunner = JobRunner<Krea2RunnerSpec>
 
 extension Krea2Job: @MainActor QueueListedJob {
@@ -32,18 +32,6 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     static func accessPaths(job: Krea2Job) -> [String] {
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .krea2 }.map(\.path)
         return (loras + [job.customModelRepo, job.imagePath]).filter(FileAccessPath.isLocal)
-    }
-
-    /// Q8/Q4: one-time mflux-save quantization pass into the cache dir. Skipped
-    /// for a custom or overridden model source — those name a specific repo/path
-    /// that carries its own quantization metadata.
-    static func quantSaveDestination(job: Krea2Job, settings: AppSettings) -> URL? {
-        guard job.quantize > 0, modelSourceOverride(job: job, settings: settings) == nil else { return nil }
-        return FluxModelVariant.krea2.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveModelID(job _: Krea2Job) -> String {
-        FluxModelVariant.krea2.mfluxModelID
     }
 
     /// img2img runs fewer denoise steps than requested (the image-strength schedule
@@ -84,22 +72,21 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     }
 
     /// Resolves the `--model` value and the `--quantize` level that goes with it.
-    /// Precedence: custom repo → Settings override → local mflux-saved weights →
-    /// the stock repo (quantized on the fly).
+    /// Precedence: custom repo → Settings override → a legacy mflux-saved copy →
+    /// the published repo for the precision. Each carries its own quantization, so
+    /// `--quantize` rides along only on the registry fallback, which no stock level reaches.
     static func resolveModel(job: Krea2Job, settings: AppSettings) -> (model: String, quantize: Int?) {
         if let source = modelSourceOverride(job: job, settings: settings) {
-            // Names specific weights — the repo/dir carries its own quantization.
             return (source, nil)
         }
-        guard job.quantize > 0 else { return (FluxModelVariant.krea2.mfluxModelID, nil) }
-        let savedPath = FluxModelVariant.krea2.savedModelPath(
-            quantize: job.quantize, in: settings.effectiveMfluxCacheDir
-        )
-        if FluxModelVariant.hasSavedWeights(at: savedPath) {
-            // Local mflux-saved weights: pass the dir directly, mflux detects stored_q.
-            return (savedPath.path, nil)
+        let variant = FluxModelVariant.krea2
+        if let saved = variant.legacySavedWeights(quantize: job.quantize, in: settings.effectiveMfluxCacheDir) {
+            return (saved.path, nil)
         }
-        return (FluxModelVariant.krea2.mfluxModelID, job.quantize)
+        if let repo = variant.publishedRepoID(quantize: job.quantize) {
+            return (repo, nil)
+        }
+        return (variant.mfluxModelID, job.quantize > 0 ? job.quantize : nil)
     }
 
     /// Driver eligibility + request. Low-RAM jobs stream blocks from disk and
@@ -228,8 +215,7 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
             args += ["--seed"] + job.seeds.map { "\($0)" }
         }
 
-        // No saved weights yet (mflux-save unavailable/failed): quantize in memory.
-        // Nil for a custom/overridden source, which carries its own quantization.
+        // Only the registry fallback quantizes in memory; every published repo is pre-quantized.
         if let quantizeArg {
             args += ["--quantize", "\(quantizeArg)"]
         }

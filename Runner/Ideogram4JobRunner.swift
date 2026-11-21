@@ -40,20 +40,6 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
         return (loras + [job.customModelRepo]).filter(FileAccessPath.isLocal)
     }
 
-    /// Q8/Q4 load pre-quantized mflux-save weights directly from the published repo —
-    /// no one-time mflux-save quantization pass needed for them, nor for a
-    /// custom/overridden source that names specific weights.
-    static func quantSaveDestination(job: Ideogram4Job, settings: AppSettings) -> URL? {
-        guard job.quantize > 0,
-              modelSourceOverride(job: job, settings: settings) == nil,
-              FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize) == nil else { return nil }
-        return FluxModelVariant.ideogram4.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveModelID(job _: Ideogram4Job) -> String {
-        "ideogram4"
-    }
-
     /// Structured captions travel as a JSON prompt file; plain prompts go inline.
     static func makePromptFile(job: Ideogram4Job) -> URL? {
         guard !job.usePlainPrompt, let json = job.caption.toJSON() else { return nil }
@@ -98,24 +84,17 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
     }
 
     /// Resolves the `--model` value and the `--quantize` level that goes with it.
-    /// Precedence: custom repo → Settings override → pre-quantized MLX repo →
-    /// local mflux-saved weights → the built-in `ideogram4` name.
+    /// Precedence: custom repo → Settings override → the published repo for the
+    /// precision (BF16 included) → the built-in `ideogram4` name, which no stock
+    /// level reaches. Old mflux-save copies are never loaded: they may be stale.
     private static func resolveModel(job: Ideogram4Job, settings: AppSettings) -> (model: String, quantize: Int?) {
         if let source = modelSourceOverride(job: job, settings: settings) {
             return (source, nil)
         }
-        guard job.quantize > 0 else { return ("ideogram4", nil) }
-        if let preQuantizedRepo = FluxModelVariant.ideogram4.preQuantizedRepoID(quantize: job.quantize) {
-            // Pre-quantized MLX weights — passed directly, no --quantize flag.
-            return (preQuantizedRepo, nil)
+        if let repo = FluxModelVariant.ideogram4.publishedRepoID(quantize: job.quantize) {
+            return (repo, nil)
         }
-        let savedPath = FluxModelVariant.ideogram4.savedModelPath(
-            quantize: job.quantize, in: settings.effectiveMfluxCacheDir
-        )
-        if FluxModelVariant.hasSavedWeights(at: savedPath) {
-            return (savedPath.path, nil)
-        }
-        return ("ideogram4", job.quantize)
+        return ("ideogram4", job.quantize > 0 ? job.quantize : nil)
     }
 
     /// Driver eligibility + request. Low-RAM jobs stream blocks from disk and
@@ -188,7 +167,7 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
         }
 
         // Nil whenever the resolved source already carries its own quantization
-        // (custom/override repo, pre-quantized repo, or saved weights).
+        // (custom/override repo or published repo).
         if let quantizeArg {
             args += ["--quantize", "\(quantizeArg)"]
         }
