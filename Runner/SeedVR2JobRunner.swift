@@ -42,15 +42,6 @@ enum SeedVR2RunnerSpec: @MainActor JobRunnerSpec {
         [job.sourcePath].filter(FileAccessPath.isLocal)
     }
 
-    /// SeedVR2 loads weights directly by builtin name; no one-time save pass.
-    static func quantSaveDestination(job _: SeedVR2Job, settings _: AppSettings) -> URL? {
-        nil
-    }
-
-    static func saveModelID(job _: SeedVR2Job) -> String {
-        "" // unused — quantSaveDestination is always nil
-    }
-
     /// Accept SeedVR2's own tqdm bar whatever its step count (often just 1 step).
     static func acceptsProgressTotal(_: Int, job _: SeedVR2Job) -> Bool {
         true

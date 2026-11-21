@@ -15,7 +15,7 @@ struct WeightDownloadStoreTests {
             self.script = script
         }
 
-        func make(_: WeightDownloadStore.Plan, _: AppSettings) -> Process {
+        func make(_: String, _: AppSettings) -> Process {
             launches += 1
             let process = Process()
             process.executableURL = URL(fileURLWithPath: "/bin/sh")
@@ -51,81 +51,43 @@ struct WeightDownloadStoreTests {
         }
     }
 
-    // MARK: - Plans
+    // MARK: - Starting
 
-    @Test func aPublishedRepoIsDownloadedAsIs() {
-        let cache = FakeRuntime.tempDirectory("WeightDownloadStoreTests")
-        let hub = cache.appendingPathComponent("hub")
-        #expect(WeightDownloadStore.plan(model: .flux2Klein9B, quantize: 8, cacheDir: cache, hubDir: hub)
-            == .download(repo: "mlx-community/flux2-klein-9b-8bit"))
-        #expect(WeightDownloadStore.plan(model: .ideogram4, quantize: 4, cacheDir: cache, hubDir: hub)
-            == .download(repo: "mflux-community/ideogram-4-mflux-q4"))
-        #expect(WeightDownloadStore.plan(model: .ideogram4, quantize: 0, cacheDir: cache, hubDir: hub)
-            == .download(repo: "ideogram-ai/ideogram-4-fp8"))
+    /// Every level downloads the mflux-community repo the runner loads — never
+    /// the upstream BF16 repo, and never an mflux-save pass (the Krea 2 Q4 that
+    /// ran out of memory on a 24 GB Mac converting from BF16).
+    @Test(arguments: [
+        (FluxModelVariant.krea2, 4, "mflux-community/krea-2-turbo-mflux-q4"),
+        (.krea2, 0, "mflux-community/krea-2-turbo-mflux-bf16"),
+        (.flux2Klein9B, 8, "mflux-community/flux2-klein-9b-mflux-q8"),
+        (.flux2KleinBase4B, 4, "mflux-community/flux-2-klein-base-4b-mflux-q4"),
+        (.zimage, 8, "mflux-community/z-image-base-mflux-q8"),
+        (.ideogram4, 0, "mflux-community/ideogram-4-mflux-bf16"),
+    ])
+    func aRunDownloadsThePublishedRepo(model: FluxModelVariant, quantize: Int, repo: String) async throws {
+        let store = store(FakeTool("exit 0"))
+        store.start(model: model, quantize: quantize, settings: settings())
+        let run = try #require(store.runs[model])
+        #expect(run.repo == repo)
+        try await waitUntil { run.phase == .done }
     }
 
-    @Test func aConversionWithoutLocalBaseWeightsFetchesThem() {
-        let cache = FakeRuntime.tempDirectory("WeightDownloadStoreTests")
-        let savePath = FluxModelVariant.flux2Klein9B.savedModelPath(quantize: 4, in: cache)
-        let plan = WeightDownloadStore.plan(
-            model: .flux2Klein9B, quantize: 4, cacheDir: cache, hubDir: cache.appendingPathComponent("hub")
-        )
-        #expect(plan == .save(
-            args: ["--model", "flux2-klein-9b", "--quantize", "4", "--path", savePath.path],
-            savePath: savePath, fetchesBase: true
-        ))
-    }
-
-    @Test func aConversionFromSavedBaseWeightsFetchesNothing() throws {
-        let cache = FakeRuntime.tempDirectory("WeightDownloadStoreTests")
-        let base = FluxModelVariant.flux2Klein9B.savedModelPath(quantize: 0, in: cache)
-        try FileManager.default.createDirectory(at: base, withIntermediateDirectories: true)
-        try Data().write(to: base.appendingPathComponent("model.safetensors"))
-        let savePath = FluxModelVariant.flux2Klein9B.savedModelPath(quantize: 4, in: cache)
-        let plan = WeightDownloadStore.plan(
-            model: .flux2Klein9B, quantize: 4, cacheDir: cache, hubDir: cache.appendingPathComponent("hub")
-        )
-        #expect(plan == .save(
-            args: ["--model", base.path, "--quantize", "4", "--path", savePath.path],
-            savePath: savePath, fetchesBase: false
-        ))
+    @Test func aCustomModelHasNothingToDownload() {
+        let tool = FakeTool("exit 0")
+        let store = store(tool)
+        store.start(model: .custom, quantize: 4, settings: settings())
+        #expect(store.runs[.custom] == nil)
+        #expect(tool.launches == 0)
     }
 
     // MARK: - Progress (#26)
 
-    /// The case from #26: Q8 is downloaded and the Quantization setting, and Q4
-    /// is being converted. Progress measures the base repo mflux is fetching,
-    /// against the base size, not the finished Q8 repo.
-    @Test func aConversionMeasuresTheBaseRepoBeingFetched() throws {
+    @Test func aDownloadMeasuresItsOwnRepo() {
         let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
-        for folder in ["models--mlx-community--flux2-klein-9b-8bit", "models--black-forest-labs--FLUX.2-klein-9B"] {
-            try FileManager.default.createDirectory(
-                at: hub.appendingPathComponent(folder), withIntermediateDirectories: true
-            )
-        }
-        let run = WeightDownloadStore.Run(
-            model: .flux2Klein9B, quantize: 4, plan: .save(args: [], savePath: hub, fetchesBase: true)
-        )
-        let target = try #require(WeightDownloadStore.progressTarget(of: run, hubDir: hub))
-        #expect(target.folder.lastPathComponent == "models--black-forest-labs--FLUX.2-klein-9B")
-        #expect(target.totalGB == FluxModelVariant.flux2Klein9B.approximateSizeGB(quantize: 0))
-    }
-
-    @Test func aDownloadMeasuresItsOwnRepo() throws {
-        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
-        let run = WeightDownloadStore.Run(
-            model: .ideogram4, quantize: 4, plan: .download(repo: "mflux-community/ideogram-4-mflux-q4")
-        )
-        let target = try #require(WeightDownloadStore.progressTarget(of: run, hubDir: hub))
-        #expect(target.folder.lastPathComponent == "models--mflux-community--ideogram-4-mflux-q4")
-        #expect(target.totalGB == 14)
-    }
-
-    @Test func aConversionFromLocalWeightsHasNoDownloadProgress() {
-        let run = WeightDownloadStore.Run(
-            model: .flux2Klein9B, quantize: 4, plan: .save(args: [], savePath: URL(fileURLWithPath: "/"), fetchesBase: false)
-        )
-        #expect(WeightDownloadStore.progressTarget(of: run, hubDir: URL(fileURLWithPath: "/")) == nil)
+        let run = WeightDownloadStore.Run(model: .krea2, quantize: 4, repo: "mflux-community/krea-2-turbo-mflux-q4")
+        let target = WeightDownloadStore.progressTarget(of: run, hubDir: hub)
+        #expect(target.folder.lastPathComponent == "models--mflux-community--krea-2-turbo-mflux-q4")
+        #expect(target.totalGB == FluxModelVariant.krea2.approximateSizeGB(quantize: 4))
     }
 
     // MARK: - Deleting
@@ -143,13 +105,14 @@ struct WeightDownloadStoreTests {
             == ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hub.path])
     }
 
-    @Test func deletingAMatchedHubFolderRemovesItsRepo() throws {
+    /// Only the repo the level loads is the model's: an old upstream or third-party
+    /// folder that merely names it is left alone.
+    @Test func deletingIgnoresFoldersThatOnlyNameTheModel() throws {
         let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
         try FileManager.default.createDirectory(
             at: hub.appendingPathComponent("models--mlx-community--flux2-klein-9b-4bit"), withIntermediateDirectories: true
         )
-        #expect(WeightDownloadStore.removeArgs(model: .flux2Klein9B, quantize: 4, hubDir: hub)?.prefix(3)
-            == ["cache", "rm", "model/mlx-community/flux2-klein-9b-4bit"])
+        #expect(WeightDownloadStore.removeArgs(model: .flux2Klein9B, quantize: 4, hubDir: hub) == nil)
     }
 
     @Test func deletingWithNothingInTheHubCacheRunsNoHF() {
@@ -166,7 +129,7 @@ struct WeightDownloadStoreTests {
         try await waitUntil { store.runs[.flux2Klein9B]?.phase != .running }
         let run = try #require(store.runs[.flux2Klein9B])
         #expect(run.quantize == 4)
-        #expect(run.phase == .failed("mflux-save exited with status 3. Check the log below."))
+        #expect(run.phase == .failed("hf exited with status 3. Check the log below."))
     }
 
     @Test func aFinishedDownloadReportsAndBumpsTheRevision() async throws {

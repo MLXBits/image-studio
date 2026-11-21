@@ -37,7 +37,6 @@ struct Qwen21RouteTests {
         #expect(value(after: "--model", in: args) == repo)
         #expect(value(after: "--base-model", in: args) == "qwen-image-2.1-turbo")
         #expect(!args.contains("--quantize"))
-        #expect(Qwen21RunnerSpec.quantSaveDestination(job: Qwen21Job(quantize: quantize), settings: settings()) == nil)
     }
 
     @Test func customCheckpointStillNamesTheTurboBase() {
@@ -172,7 +171,7 @@ struct Qwen21RouteTests {
         settings.updateDefaults(lowRam, for: model)
         #expect(model.approximateRAMGB(quantize: 0, settings: settings) == 24.8) // low RAM stays on the CLI
         #expect(model.approximateSizeGB(quantize: 0) == 32.5)
-        #expect(FluxModelVariant.krea2.approximateRAMGB(quantize: 8, settings: settings) == 21)
+        #expect(FluxModelVariant.krea2.approximateRAMGB(quantize: 8, settings: settings) == 22.2)
 
         // Routed to ComfyUI, the server's memory is what counts: the label falls back to the weight size.
         settings.comfyBackendEnabled[ModelFamily.qwen21.id] = true

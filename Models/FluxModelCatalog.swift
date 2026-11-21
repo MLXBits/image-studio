@@ -53,7 +53,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         return ModelDownloadStore.blobBytes(in: dirURL) > 1_073_741_824
     }
 
-    /// Returns true if mflux-saved weights already exist at the given path.
+    /// Returns true if mflux-saved weights exist at the given path.
     /// mflux-save writes component subdirectories (transformer/, text_encoder/, vae/, tokenizer/)
     /// each containing .safetensors files, so we check one level deep.
     static func hasSavedWeights(at url: URL) -> Bool {
@@ -119,8 +119,15 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
+    /// Guidance-distilled: guidance is fixed at 1.0 and the field is hidden. Krea 2 Turbo is
+    /// step-distilled but keeps CFG for its negative prompt, so it is not one — see ``isStepDistilled``.
     var isDistilled: Bool {
         self == .flux2Klein4B || self == .flux2Klein9B || self == .zimageTurbo || self == .flux3Klein || self == .qwen21Turbo
+    }
+
+    /// Step-distilled (a turbo few-step checkpoint): what Settings → Models labels "Distilled".
+    var isStepDistilled: Bool {
+        isDistilled || self == .krea2
     }
 
     /// Both FLUX 3 Image Klein variants. They share the `.flux` pipeline but run
@@ -188,19 +195,6 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    var approximateBF16SizeGB: Double {
-        switch self {
-        case .flux2Klein4B, .flux2KleinBase4B: 15.0
-        case .flux2Klein9B, .flux2KleinBase9B: 35.0
-        case .ideogram4: 28.0 // FP8 checkpoint
-        case .krea2: 27.0 // krea/Krea-2-Turbo (~26.6 GB bf16)
-        case .zimageTurbo, .zimage: 20.0 // 6.15B DiT + Qwen3-4B encoder + VAE, bf16
-        case .flux3Klein, .flux3KleinBase: 18.5 // mflux-community BF16 repo (text encoder + transformer + VAE)
-        case .qwen21Turbo: 32.5 // mflux-community BF16 repo (17.5 GB of it is the Qwen3-VL text encoder)
-        case .custom: 0
-        }
-    }
-
     var recommendedQuantize: Int {
         8
     }
@@ -256,46 +250,9 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// Label for the Q0 (base) weights. BF16 for Flux, FP8 for Ideogram 4.
+    /// Label for the Q0 (base) weights. Every model loads its mflux-community BF16 repo there.
     var baseWeightLabel: String {
-        self == .ideogram4 ? "FP8" : "BF16"
-    }
-
-    /// BF16/FP8 source repo on HuggingFace (used when no pre-quantized repo exists).
-    /// FLUX 3 points at the ungated mflux-community MLX layout instead of the gated BFL
-    /// source — same weights, re-sharded for direct load, ~4× smaller than the raw repo.
-    var bf16HFRepoID: String? {
-        switch self {
-        case .flux2Klein9B: "mlx-community/flux2-klein-9b-bf16"
-        case .flux2Klein4B: "mlx-community/flux2-klein-4b-bf16"
-        case .flux2KleinBase9B: "black-forest-labs/FLUX.2-klein-base-9B"
-        case .flux2KleinBase4B: "black-forest-labs/FLUX.2-klein-base-4B"
-        case .ideogram4: nil // gated — user must accept terms manually
-        case .krea2: "krea/Krea-2-Turbo"
-        case .zimageTurbo: "Tongyi-MAI/Z-Image-Turbo"
-        case .zimage: "Tongyi-MAI/Z-Image"
-        case .flux3Klein: "mflux-community/flux-3-image-klein-mflux-bf16"
-        case .flux3KleinBase: "mflux-community/flux-3-image-klein-base-mflux-bf16"
-        case .qwen21Turbo: "mflux-community/qwen-image-2-1-turbo-mflux-bf16"
-        case .custom: nil
-        }
-    }
-
-    /// Pattern used to match the model's base-weight directory in the HF hub cache.
-    /// FLUX 3 and Qwen-Image 2.1 have none: they publish a BF16 repo, and
-    /// ``hubCacheFolder(quantize:hubDir:)`` matches that by its exact name.
-    var bf16CacheKey: String {
-        switch self {
-        case .flux2Klein9B: "flux.2-klein-9b"
-        case .flux2Klein4B: "flux.2-klein-4b"
-        case .flux2KleinBase9B: "flux.2-klein-base-9b"
-        case .flux2KleinBase4B: "flux.2-klein-base-4b"
-        case .ideogram4: "ideogram-4-fp8"
-        case .krea2: "krea-2-turbo"
-        case .zimageTurbo: "z-image-turbo"
-        case .zimage: "tongyi-mai--z-image"
-        case .flux3Klein, .flux3KleinBase, .qwen21Turbo, .custom: ""
-        }
+        "BF16"
     }
 
     /// The key ``hf_cache_probe.py``'s weight-definition table uses for this
@@ -311,94 +268,74 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         }
     }
 
-    /// Local path where mflux-save writes quantized weights for this model + quantize level.
-    /// Stored under {MFLUX_CACHE_DIR}/saved/{rawValue}-q{quantize}/.
+    /// The `<stem>` of this model's `mflux-community/<stem>-mflux-<level>` repos, the stem
+    /// mflux's own registry gives it (`mflux_repo_stem`). Nil for `custom`.
+    var communityRepoStem: String? {
+        switch self {
+        case .flux2Klein4B: "flux2-klein-4b"
+        case .flux2Klein9B: "flux2-klein-9b"
+        case .flux2KleinBase4B: "flux-2-klein-base-4b"
+        case .flux2KleinBase9B: "flux-2-klein-base-9b"
+        case .flux3Klein: "flux-3-image-klein"
+        case .flux3KleinBase: "flux-3-image-klein-base"
+        case .ideogram4: "ideogram-4"
+        case .krea2: "krea-2-turbo"
+        case .zimageTurbo: "z-image-turbo"
+        case .zimage: "z-image-base"
+        case .qwen21Turbo: "qwen-image-2-1-turbo"
+        case .custom: nil
+        }
+    }
+
+    /// Whether a legacy `saved/` copy (written by the app's old mflux-save pass) is still
+    /// loaded in preference to the published repo, so nobody downloads a model twice. Not for
+    /// Ideogram 4, whose old copies are stale, nor FLUX 3 and Qwen-Image 2.1, which never had any.
+    var usesLegacySavedWeights: Bool {
+        !isIdeogram4 && !isFlux3 && !isQwen21 && self != .custom
+    }
+
+    /// Where the app's old mflux-save pass wrote this model + quantize level:
+    /// {MFLUX_CACHE_DIR}/saved/{rawValue}-q{quantize}/. Nothing writes here now; see
+    /// ``legacySavedWeights(quantize:in:)``.
     func savedModelPath(quantize: Int, in cacheDir: URL) -> URL {
         cacheDir.appendingPathComponent("saved/\(rawValue)-q\(quantize)", isDirectory: true)
     }
 
-    /// Returns the HuggingFace repo URL for this model + quantize combination, if known.
-    /// Used to link users directly to the gated repo so they can accept terms.
-    /// Ideogram 4 has no `bf16HFRepoID`, so its FP8 page is the fallback.
+    /// The Hugging Face page of the repo this model loads at `quantize`, for the
+    /// failed-job view's link to it.
     func hfRepoURL(quantize: Int) -> URL? {
-        let fallback = self == .ideogram4 ? "ideogram-ai/ideogram-4-fp8" : bf16HFRepoID
-        let repoID = preQuantizedRepoID(quantize: quantize) ?? fallback
-        return repoID.flatMap { URL(string: "https://huggingface.co/\($0)") }
+        publishedRepoID(quantize: quantize).flatMap { URL(string: "https://huggingface.co/\($0)") }
     }
 
-    /// Returns the HF repo ID of a pre-saved model published by mlx-community / mflux-community,
-    /// if one is known. When present, mflux is passed this repo directly (no --quantize flag) so it
-    /// loads pre-quantized weights without needing the full BF16 model in memory. FLUX 3 has a
-    /// published repo at every precision — including BF16 — because its BFL source repos are gated;
-    /// those are ungated mirrors of the same weights, re-sharded in mflux layout with a manifest.
-    func preQuantizedRepoID(quantize: Int) -> String? {
-        switch (self, quantize) {
-        case (.flux2Klein9B, 8): "mlx-community/flux2-klein-9b-8bit"
-        case (.flux2Klein4B, 8): "mlx-community/flux2-klein-4b-8bit"
-        case (.ideogram4, 8): "mflux-community/ideogram-4-mflux-q8"
-        case (.ideogram4, 4): "mflux-community/ideogram-4-mflux-q4"
-        case (.zimageTurbo, 4): "filipstrand/Z-Image-Turbo-mflux-4bit"
-        case (.flux3Klein, 0): "mflux-community/flux-3-image-klein-mflux-bf16"
-        case (.flux3Klein, 8): "mflux-community/flux-3-image-klein-mflux-q8"
-        case (.flux3Klein, 4): "mflux-community/flux-3-image-klein-mflux-q4"
-        case (.flux3KleinBase, 0): "mflux-community/flux-3-image-klein-base-mflux-bf16"
-        case (.flux3KleinBase, 8): "mflux-community/flux-3-image-klein-base-mflux-q8"
-        case (.flux3KleinBase, 4): "mflux-community/flux-3-image-klein-base-mflux-q4"
-        case (.qwen21Turbo, 0): "mflux-community/qwen-image-2-1-turbo-mflux-bf16"
-        case (.qwen21Turbo, 8): "mflux-community/qwen-image-2-1-turbo-mflux-q8"
-        case (.qwen21Turbo, 4): "mflux-community/qwen-image-2-1-turbo-mflux-q4"
-        default: nil
+    /// The mflux-community repo this model loads at `quantize` (0 = BF16, 8, 4), passed to mflux
+    /// as `--model` with no `--quantize`. These are mflux-save uploads: ungated, only the files
+    /// mflux reads, and already quantized, so a Q4 run never downloads or loads the BF16 weights.
+    /// mflux 0.24.0 infers each one's config from the name, except FLUX 3 (``baseModelKey``).
+    /// Nil for `custom`, or a level the app doesn't offer.
+    func publishedRepoID(quantize: Int) -> String? {
+        guard let stem = communityRepoStem else { return nil }
+        switch quantize {
+        case 0: return "mflux-community/\(stem)-mflux-bf16"
+        case 4, 8: return "mflux-community/\(stem)-mflux-q\(quantize)"
+        default: return nil
         }
     }
 
-    /// Approximate on-disk / unified-memory footprint in GB for a quantize level.
-    /// Ideogram 4 ships as FP8 (already 8-bit), so its Q8 is roughly FP8-sized while
-    /// Q4 roughly halves it — the generic BF16×factor model doesn't apply.
+    /// Approximate on-disk / unified-memory footprint in GB for a quantize level: the
+    /// measured size of the mflux-community repo it loads (HF API, 2026-11-21).
     func approximateSizeGB(quantize: Int) -> Double {
-        if self == .ideogram4 {
-            switch quantize {
-            case 4: return 14
-            case 8: return 26
-            default: return 28
-            }
+        // BF16, Q8, Q4.
+        let sizes: [Double] = switch self {
+        case .flux2Klein4B, .flux2KleinBase4B: [16.0, 8.6, 4.6]
+        case .flux2Klein9B, .flux2KleinBase9B: [33.5, 17.9, 9.5]
+        case .flux3Klein, .flux3KleinBase: [18.5, 9.9, 5.3]
+        case .ideogram4: [27.0, 27.9, 14.9] // measured: its q8 repo is slightly larger than its bf16 one
+        case .krea2: [34.2, 22.2, 15.8]
+        case .zimageTurbo, .zimage: [20.5, 11.0, 5.9]
+        case .qwen21Turbo: [32.5, 17.8, 10.0]
+        case .custom: [0, 0, 0]
         }
-        // Krea 2 quantizes only the transformer; the Qwen3-VL text encoder + VAE stay
-        // BF16, so the saved dir is larger than the generic BF16×factor estimate.
-        if self == .krea2 {
-            switch quantize {
-            case 4: return 12
-            case 8: return 21
-            default: return 27
-            }
-        }
-        // Z-Image quantizes the transformer; the Qwen3-4B encoder + VAE stay BF16,
-        // so the footprint sits above the generic BF16×factor estimate.
-        if isZImage {
-            switch quantize {
-            case 4: return 10
-            case 8: return 14
-            default: return 20
-            }
-        }
-        // FLUX 3 downloads a pre-saved mflux-community repo per precision, so use the
-        // measured sizes of those repos rather than scaling BF16 by a generic factor.
-        if isFlux3 {
-            switch quantize {
-            case 4: return 5.3
-            case 8: return 9.9
-            default: return 18.5
-            }
-        }
-        // Measured sizes of the three mflux-community repos (the q8/q4 ones quantize the text encoder too).
-        if isQwen21 {
-            switch quantize {
-            case 4: return 10.0
-            case 8: return 17.8
-            default: return 32.5
-            }
-        }
-        let factor: Double = quantize == 4 ? 0.25 : quantize == 8 ? 0.5 : 1.0
-        return approximateBF16SizeGB * factor
+        return sizes[quantize == 4 ? 2 : quantize == 8 ? 1 : 0]
     }
 
     /// The "≈N GB RAM" label's figure: the measured peak for the path the job will run where it is known
@@ -420,22 +357,18 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         return settings.warmTextEncoderPolicy == .evict ? peaks[2] : peaks[1]
     }
 
-    /// Returns true for a specific quantize level, checking the mflux saved-weights dir first,
-    /// then falling back to the HuggingFace hub cache.
+    /// Returns true for a specific quantize level: a legacy mflux-save copy the runner still
+    /// loads (``usesLegacySavedWeights``), else the published repo in the hub cache.
     func isOnDisk(quantize: Int, savedIn cacheDir: URL, hubDir: URL) -> Bool {
-        // Ideogram Q8/Q4 load pre-quantized weights straight from the HF cache; the
-        // legacy mflux-save dir is never used for them and may be stale, so ignore it
-        // and report on-disk purely from the published repo's cache. Qwen-Image 2.1
-        // loads a published repo at every precision, BF16 included.
-        let publishedOnly = isQwen21 || (isIdeogram4 && quantize > 0)
-        if publishedOnly, preQuantizedRepoID(quantize: quantize) != nil {
-            return isOnDisk(quantize: quantize, hubDir: hubDir)
-        }
-        let savePath = savedModelPath(quantize: quantize, in: cacheDir)
-        if Self.hasSavedWeights(at: savePath) {
-            return true
-        }
-        return isOnDisk(quantize: quantize, hubDir: hubDir)
+        legacySavedWeights(quantize: quantize, in: cacheDir) != nil || isOnDisk(quantize: quantize, hubDir: hubDir)
+    }
+
+    /// The legacy mflux-save copy the runner loads at `quantize`, or nil when there is none
+    /// (or the model ignores them, see ``usesLegacySavedWeights``).
+    func legacySavedWeights(quantize: Int, in cacheDir: URL) -> URL? {
+        guard usesLegacySavedWeights else { return nil }
+        let path = savedModelPath(quantize: quantize, in: cacheDir)
+        return Self.hasSavedWeights(at: path) ? path : nil
     }
 
     /// Returns true for a specific quantize level (0=bf16, 4=q4, 8=q8), only if fully downloaded.
@@ -454,38 +387,11 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
     }
 
     /// The HF hub cache directory the given quantize level downloads into, when
-    /// it exists, complete or not.
+    /// it exists, complete or not: the published repo's `models--org--name`.
     func hubCacheFolder(quantize: Int, hubDir: URL) -> URL? {
-        guard self != .custom, let entries = try? FileManager.default.contentsOfDirectory(atPath: hubDir.path) else { return nil }
-        // A published pre-saved repo maps directly to its hub cache dir (models--org--name),
-        // so match it explicitly rather than by substring. FLUX 3 uses one at every precision,
-        // and the exact name also keeps Klein from claiming Base's nested folder.
-        let cacheName = { (repo: String) in "models--" + repo.replacingOccurrences(of: "/", with: "--") }
-        if let repo = preQuantizedRepoID(quantize: quantize) {
-            return entries.contains(cacheName(repo)) ? hubDir.appendingPathComponent(cacheName(repo)) : nil
-        }
-        if quantize == 0, let repo = bf16HFRepoID, entries.contains(cacheName(repo)) {
-            return hubDir.appendingPathComponent(cacheName(repo))
-        }
-        // The substring fallback must skip every variant's own repo folder, or
-        // Z-Image's `z-image` key claims Z-Image-Turbo's weights.
-        let claimed = Set(Self.allCases.flatMap { variant in
-            ([variant.bf16HFRepoID] + [0, 4, 8].map { variant.preQuantizedRepoID(quantize: $0) }).compactMap { $0 }.map { cacheName($0) }
-        })
-        let candidates = entries.filter { !claimed.contains($0) }
-        let match: String?
-        switch quantize {
-        case 8:
-            let key = rawValue.lowercased()
-            match = candidates.first { $0.lowercased().contains(key) && $0.contains("8bit") }
-        case 4:
-            let key = rawValue.lowercased()
-            match = candidates.first { $0.lowercased().contains(key) && $0.contains("4bit") }
-        default:
-            guard !bf16CacheKey.isEmpty else { return nil }
-            match = candidates.first { $0.lowercased().contains(bf16CacheKey) }
-        }
-        return match.map { hubDir.appendingPathComponent($0) }
+        guard let repo = publishedRepoID(quantize: quantize) else { return nil }
+        let folder = ModelDownloadStore.cacheFolder(repo: repo, hubDir: hubDir)
+        return FileManager.default.fileExists(atPath: folder.path) ? folder : nil
     }
 }
 
