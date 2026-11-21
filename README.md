@@ -60,9 +60,10 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, Qwen-Image 2.1, and Ideogr
 | [Ideogram 4](docs/models/ideogram4.md) | preset | Structured-caption model; BF16/Q8/Q4 precision selector (Q8/Q4 are gated — accept terms on HuggingFace) |
 | Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
 
-Every built-in model offers BF16, Q8 and Q4, and each precision downloads its own
+Every model in this table offers BF16, Q8 and Q4, and each precision downloads its own
 [mflux-community](https://huggingface.co/mflux-community) repo: Q4 and Q8 arrive
-already quantized, so a Q4 run never fetches or loads the full BF16 weights.
+already quantized, so a Q4 run never fetches or loads the full BF16 weights. The
+SeedVR2 upscaler is the exception: it loads its full weights and quantizes them in memory.
 
 ---
 
