@@ -313,3 +313,17 @@ second document to keep in sync. Recreate the link after a fresh clone.
 If you ever stage the link, use a plain `git add`. Do **not** use `git add -N`
 on it: unstaging an intent-to-add symlink writes the empty blob over the link
 target and silently breaks it.
+
+## Agent skills
+
+### Issue tracker
+
+GitHub — issues live in `MLXBits/image-studio` via the `gh` CLI. See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default five-role vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: `GLOSSARY.md` + `docs/adr/` at the repo root. See `docs/agents/domain.md`.
