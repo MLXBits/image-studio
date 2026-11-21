@@ -18,7 +18,7 @@ extension JobStore: @MainActor GenerationJobStore {}
 /// Where a job's weights come from, which decides its `--model` value and whether
 /// `--base-model` rides along. Chosen once by ``FluxRunnerSpec/modelRoute(job:settings:)`` for both
 /// ``FluxRunnerSpec/modelArgs(job:settings:python:)`` and ``FluxRunnerSpec/prepareArgs(job:settings:python:)``.
-enum FluxModelRoute {
+enum FluxModelRoute: Equatable {
     /// A custom checkpoint (repo id or local path), loaded as `base`.
     case custom(repo: String, base: FluxModelVariant)
     /// The user's repo override (HF repo ID or local path) for `model`.
@@ -26,9 +26,10 @@ enum FluxModelRoute {
     /// A published pre-saved community repo; `baseKey` names its root config when the
     /// repo name matches no alias mflux can infer from (FLUX 3).
     case published(repo: String, baseKey: String?)
-    /// Local mflux-saved weights.
+    /// A legacy mflux-saved copy (see ``FluxModelVariant/legacySavedWeights(quantize:in:)``).
     case saved(URL)
-    /// The bare registry name: in-memory quantization or an unquantized builtin.
+    /// The bare registry name, quantized in memory. No stock level reaches it: each has a
+    /// published repo.
     case registry
 
     /// Whether the route sends `--base-model` only when the probe says mflux accepts it.
@@ -73,18 +74,6 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         return (loras + model + images).filter(FileAccessPath.isLocal)
     }
 
-    /// For quantized non-custom models without a published pre-quantized repo, a local
-    /// saved copy lets every subsequent load skip in-memory quantization.
-    static func quantSaveDestination(job: FluxJob, settings: AppSettings) -> URL? {
-        guard job.quantize > 0, job.model != .custom,
-              job.model.preQuantizedRepoID(quantize: job.quantize) == nil else { return nil }
-        return job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-    }
-
-    static func saveModelID(job: FluxJob) -> String {
-        job.model.mfluxModelID
-    }
-
     /// img2img runs fewer denoise steps than requested (the image-strength schedule
     /// drops the leading steps), so the tqdm total can be < job.steps. Accept any
     /// genuine tqdm bar up to the requested count rather than requiring exact equality.
@@ -120,25 +109,16 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     static func driverRequest(job: FluxJob, ctx: JobRunContext, settings: AppSettings) -> DriverGenerateRequest? {
         guard !job.isEditMode, !job.lowRam, job.model != .custom, !job.model.isFlux3 else { return nil }
 
-        // Resolve the model argument exactly like buildArgs: override repo →
-        // pre-quantized repo → locally saved weights → base repo (+ in-memory
-        // quantize only in the last case).
-        var model = job.model.mfluxModelID
-        var quantizeArg: Int?
-        if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
-            model = override
-        } else if job.quantize > 0 {
-            if let preQuantizedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
-                model = preQuantizedRepo
-            } else {
-                let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-                if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                    model = savedPath.path
-                } else {
-                    quantizeArg = job.quantize
-                }
-            }
+        // Resolve the model argument exactly like buildArgs (``modelRoute``), with the
+        // in-memory quantize only on the registry fallback.
+        let route = modelRoute(job: job, settings: settings)
+        let model: String = switch route {
+        case let .override(override): override
+        case let .published(repo, _): repo
+        case let .saved(path): path.path
+        case .custom, .registry: job.model.mfluxModelID
         }
+        let quantizeArg = inMemoryQuantize(route: route, job: job)
 
         let loras = job.loras.filter { $0.enabled && $0.isValid && $0.modelFamily == .flux }
 
@@ -207,8 +187,8 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     }
 
     /// Picks the job's ``FluxModelRoute`` in priority order: custom checkpoint, user override,
-    /// published pre-saved community repo, locally saved weights (mflux-save output), and
-    /// finally the bare registry name.
+    /// a legacy mflux-saved copy (so nobody downloads a model twice), the published
+    /// mflux-community repo, and finally the bare registry name.
     static func modelRoute(job: FluxJob, settings: AppSettings) -> FluxModelRoute {
         if job.model == .custom {
             // For a fine-tune, `customBaseModel` is the architecture; an mlx-community quantized
@@ -219,16 +199,23 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         if let override = settings.defaults(for: job.model).modelRepoOverride, !override.isEmpty {
             return .override(override)
         }
-        if let publishedRepo = job.model.preQuantizedRepoID(quantize: job.quantize) {
+        if let saved = job.model.legacySavedWeights(quantize: job.quantize, in: settings.effectiveMfluxCacheDir) {
+            return .saved(saved)
+        }
+        if let publishedRepo = job.model.publishedRepoID(quantize: job.quantize) {
             return .published(repo: publishedRepo, baseKey: job.model.baseModelKey)
         }
-        if job.quantize > 0 {
-            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-            if FluxModelVariant.hasSavedWeights(at: savedPath) {
-                return .saved(savedPath)
-            }
-        }
         return .registry
+    }
+
+    /// The `--quantize` level for in-memory quantization: a custom checkpoint and the registry
+    /// fallback take one. Overrides, published repos and saved copies carry stored_q in their metadata.
+    static func inMemoryQuantize(route: FluxModelRoute, job: FluxJob) -> Int? {
+        guard job.quantize > 0 else { return nil }
+        switch route {
+        case .custom, .registry: return job.quantize
+        case .override, .published, .saved: return nil
+        }
     }
 
     /// Resolves the `--model` value for the job's ``FluxModelRoute``: mflux detects stored_q on
@@ -303,16 +290,8 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
             args += ["--seed"] + job.seeds.map { "\($0)" }
         }
 
-        // Only pass --quantize when falling back to in-memory quantization (BF16 base model).
-        // Overrides, pre-quantized repos, and locally saved weights carry stored_q in metadata.
-        if job.quantize > 0 {
-            let hasOverride = !(settings.defaults(for: job.model).modelRepoOverride ?? "").isEmpty
-            let hasPreQuantizedRepo = job.model != .custom && job.model.preQuantizedRepoID(quantize: job.quantize) != nil
-            let savedPath = job.model.savedModelPath(quantize: job.quantize, in: settings.effectiveMfluxCacheDir)
-            let hasSaved = job.model != .custom && FluxModelVariant.hasSavedWeights(at: savedPath)
-            if !hasOverride && !hasPreQuantizedRepo && !hasSaved {
-                args += ["--quantize", "\(job.quantize)"]
-            }
+        if let quantize = inMemoryQuantize(route: modelRoute(job: job, settings: settings), job: job) {
+            args += ["--quantize", "\(quantize)"]
         }
         if job.lowRam {
             args.append("--low-ram")

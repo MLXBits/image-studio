@@ -2,7 +2,7 @@ import SwiftUI
 
 // MARK: - Ideogram 4 default form
 //
-// Ideogram 4 is a preset-based model whose options (presets, FP8/Q8/Q4 quantize,
+// Ideogram 4 is a preset-based model whose options (presets, BF16/Q8/Q4 quantize,
 // CFG truncation, strict caption validation) diverge from the generic FLUX
 // form, so it lives in its own form built from the shared rows in
 // `ModelDefaultsView+Rows`. New special models should follow this template:
@@ -46,7 +46,7 @@ extension ModelDefaultsView {
 
             LabeledContent("Quantization") {
                 Picker("", selection: settingsBinding(\.lastIdeogramQuantize, default: 8)) {
-                    Text("FP8").tag(0)
+                    Text("BF16").tag(0)
                     Text("Q8").tag(8)
                     Text("Q4").tag(4)
                 }
@@ -57,10 +57,10 @@ extension ModelDefaultsView {
 
             ModelSourceField(
                 repo: repoBinding,
-                placeholder: "ideogram-ai/ideogram-4-fp8",
+                placeholder: "mflux-community/ideogram-4-mflux-bf16",
                 infoTitle: "Model source override",
-                infoDescription: "HF repo ID or absolute local path to the Ideogram 4 FP8 weights."
-                    + " Leave empty to use the mflux default."
+                infoDescription: "HF repo ID or absolute local path to Ideogram 4 weights."
+                    + " Leave empty to use the mflux-community repo for the precision."
             ) { browseModelDir(binding: repoBinding) }
 
             InfoToggleRow(

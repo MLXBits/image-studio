@@ -40,14 +40,6 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
         return (enabledLoras(job).map(\.path) + [job.customModelRepo] + images).filter(FileAccessPath.isLocal)
     }
 
-    static func quantSaveDestination(job _: Qwen21Job, settings _: AppSettings) -> URL? {
-        nil
-    }
-
-    static func saveModelID(job _: Qwen21Job) -> String {
-        FluxModelVariant.qwen21Turbo.mfluxModelID
-    }
-
     static func acceptsProgressTotal(_ total: Int, job: Qwen21Job) -> Bool {
         total == job.steps
     }
@@ -76,7 +68,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             return custom
         }
         let variant = FluxModelVariant.qwen21Turbo
-        return variant.preQuantizedRepoID(quantize: job.quantize) ?? variant.mfluxModelID
+        return variant.publishedRepoID(quantize: job.quantize) ?? variant.mfluxModelID
     }
 
     /// Low-RAM jobs stream blocks from disk, which a resident model defeats, so

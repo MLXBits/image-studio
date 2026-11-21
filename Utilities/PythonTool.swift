@@ -13,7 +13,6 @@ nonisolated enum PythonTool: String, CaseIterable, Sendable {
     case zImageTurbo = "mflux-generate-z-image-turbo"
     case qwen21Edit = "mflux-generate-qwen-2.1-edit"
     case seedVR2 = "mflux-upscale-seedvr2"
-    case save = "mflux-save"
     case hf
     case mlxLmGenerate = "mlx_lm.generate"
     case mlxVlmGenerate = "mlx_vlm.generate"

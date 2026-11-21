@@ -40,10 +40,9 @@ struct ModelPickerView: View {
                 + " Clear the override in Settings to choose precision again."
         }
         if model.isIdeogram4 {
-            return "Ideogram 4 ships as FP8 (~28 GB)."
-                + " Q8 (~27 GB) and Q4 (~15 GB) load pre-quantized MLX weights from MLXBits"
-                + " with no one-time save step."
-                + " All variants are gated — accept terms on the model card and set an HF token"
+            return "Each precision loads its own mflux-community repo: BF16 (~27 GB),"
+                + " Q8 (~28 GB) or Q4 (~15 GB), already quantized."
+                + " Q8 and Q4 are gated — accept terms on the repo page and set an HF token"
                 + " in Settings → Advanced."
         }
         return "Choose your model and weight precision."

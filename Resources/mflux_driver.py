@@ -177,9 +177,19 @@ class WarmModel:
         from mflux.models.common.weights.loading.weight_applier import WeightApplier
         from mflux.models.common.weights.loading.weight_loader import WeightLoader
 
+        from mflux.models.common.weights.loading.weight_definition import ComponentDefinition
+
         definition, encoder = self._te_definition_and_encoder()
-        component = next(c for c in definition.get_components() if c.name == "text_encoder")
-        root = PathResolution.resolve(path=self.model_path, patterns=definition.get_download_patterns())
+        components = definition.get_components()
+        component = next(c for c in components if c.name == "text_encoder")
+        # The saved subdirs, as WeightLoader.load passes them: an mflux-community repo is an
+        # mflux-save upload, and Krea 2's keeps its transformer at the root, where the download
+        # patterns name only turbo.safetensors. Without them its cached snapshot doesn't count
+        # and the reload goes back to the Hub.
+        saved_subdirs = list(ComponentDefinition.save_subdirs(components).values())
+        root = PathResolution.resolve(
+            path=self.model_path, patterns=definition.get_download_patterns(), saved_subdirs=saved_subdirs
+        )
         raw, q_level, version = WeightLoader._load_component(root, component)
         loaded = LoadedWeights(
             components={"text_encoder": raw},

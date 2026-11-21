@@ -71,11 +71,6 @@ protocol JobRunnerSpec {
     /// source images). FileAccess holds them open while it runs (spec §4).
     /// Repo IDs and empty fields are left out.
     static func accessPaths(job: Job) -> [String]
-    /// Where a one-time `mflux-save` quantization pass should write, or nil when the
-    /// job loads weights directly (BF16, pre-quantized repo, or repo override).
-    static func quantSaveDestination(job: Job, settings: AppSettings) -> URL?
-    /// `--model` argument for the `mflux-save` pass.
-    static func saveModelID(job: Job) -> String
     /// Optional auxiliary prompt file written before launch and deleted after the run
     /// (Ideogram 4 structured captions). Default: none.
     static func makePromptFile(job: Job) -> URL?
@@ -186,8 +181,6 @@ struct JobRunContext {
 @MainActor
 final class JobRunner<Spec: JobRunnerSpec> {
     typealias Job = Spec.Job
-
-    private enum SaveResult { case success, cancelled, failed }
 
     /// Per-driver-run state shared between the event handler and finalization.
     /// A class so the escaping event closure can mutate it.
@@ -430,22 +423,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
         }
         if command.executable != settings.toolchain.bundledPython {
             job.log += "▸ Python: \(command.executable)\n"
-        }
-
-        // One-time mflux-save quantization pass, so every subsequent load skips
-        // in-memory quantization. The spec decides whether the job needs it.
-        if let savedPath = Spec.quantSaveDestination(job: job, settings: settings),
-           !FluxModelVariant.hasSavedWeights(at: savedPath) {
-            switch await runSave(job: job, savePath: savedPath, settings: settings) {
-            case .success:
-                job.statusLine = ""
-            case .cancelled:
-                finishJob(job, status: .cancelled, stepDir: stepDir)
-                return
-            case .failed:
-                finishJob(job, status: .failed("Failed to save quantized model weights"), stepDir: stepDir)
-                return
-            }
         }
 
         // Warm-driver path: eligible jobs go to the persistent driver; any
@@ -773,62 +750,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.log += "▸ Saved \(paths.count) images  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
         }
         finishJob(job, status: .completed, stepDir: stepDir)
-    }
-
-    // MARK: - mflux-save for quantized weights
-
-    private func runSave(job: Job, savePath: URL, settings: AppSettings) async -> SaveResult {
-        // A Custom Python may lack the mflux-save launcher; quantize in memory instead.
-        guard settings.toolchain.hasTool(.save), let save = try? settings.toolchain.command(.save) else {
-            job.log += "⚠️  mflux-save unavailable — falling back to in-memory quantization.\n"
-            return .success // non-fatal: generate will quantize in-memory instead
-        }
-        try? FileManager.default.createDirectory(at: savePath, withIntermediateDirectories: true)
-        job.log += "▸ Downloading and saving Q\(job.quantize) weights (one-time)...\n"
-        job.statusLine = "Downloading model…"
-
-        let args = ["--model", Spec.saveModelID(job: job), "--quantize", "\(job.quantize)", "--path", savePath.path]
-        let process = Process()
-        process.executableURL = save.executableURL
-        process.arguments = save.arguments + args
-        process.environment = settings.buildEnvironment(interpreter: save.executable)
-
-        currentProcess = process
-        let stream = RunnerSupport.outputStream(for: process)
-
-        do { try process.run() } catch {
-            currentProcess = nil
-            job.log += "⚠️  mflux-save failed: \(error.localizedDescription)\n"
-            return .failed
-        }
-
-        for await chunk in stream {
-            job.log = RunnerSupport.appendLog(chunk, to: job.log)
-            // Surface the latest download/quantize line (skip the shell command echo).
-            // Only the log tail — scanning the whole log per chunk is O(n²).
-            if let last = RunnerSupport.logTail(job.log).components(separatedBy: "\n")
-                .last(where: { !$0.trimmingCharacters(in: .whitespaces).isEmpty && !$0.hasPrefix("$") }) {
-                job.statusLine = last
-            }
-        }
-        process.waitUntilExit()
-        currentProcess = nil
-
-        if process.terminationStatus == 0 {
-            job.log += "▸ Weights saved.\n"
-            return .success
-        }
-        if process.terminationReason == .uncaughtSignal {
-            try? FileManager.default.removeItem(at: savePath)
-            guard stoppedProcess === process else {
-                job.log += "⚠️  \(RunnerSupport.crashReason("mflux-save", signal: process.terminationStatus))\n"
-                return .failed
-            }
-            return .cancelled
-        }
-        job.log += "⚠️  mflux-save exited with status \(process.terminationStatus).\n"
-        try? FileManager.default.removeItem(at: savePath)
-        return .failed
     }
 
     // MARK: - Batch polling

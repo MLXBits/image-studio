@@ -95,10 +95,10 @@ struct Ideogram4ParamsPanelView: View {
                 }
             )
 
-            // HF token warning — every Ideogram variant (FP8 + the mflux-community Q8/Q4
-            // repos) is gated, so a token is required unless a model-source override
-            // points elsewhere. Low RAM and strict validation live in Settings.
-            if (settings.ideogram4ModelRepoOverride ?? "").isEmpty,
+            // HF token warning — the mflux-community Q8/Q4 repos are gated (BF16 is not),
+            // so they need a token unless a model-source override points elsewhere.
+            // Low RAM and strict validation live in Settings.
+            if (settings.ideogram4ModelRepoOverride ?? "").isEmpty, params.quantize != 0,
                settings.hfToken.isEmpty, !settings.ideogram4ModelOnDisk(quantize: params.quantize) {
                 hfTokenWarning
             }
@@ -238,7 +238,7 @@ struct Ideogram4ParamsPanelView: View {
                     .font(.caption)
                     .fontWeight(.semibold)
                 Text(
-                    "Ideogram 4 is gated (all precisions). Request access on the model card, "
+                    "Ideogram 4's Q8 and Q4 repos are gated. Request access on the repo page, "
                         + "then set your HF token in Settings → Advanced."
                 )
                 .font(.caption)

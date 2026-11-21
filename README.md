@@ -54,11 +54,16 @@ A native macOS Swift app for **FLUX, Krea 2, Z-Image, Qwen-Image 2.1, and Ideogr
 | [FLUX.2 Klein 4B](docs/models/flux2-4b.md) (base)      | ~50   | Full diffusion                                                          |
 | [FLUX.2 Klein 9B](docs/models/flux2-9b.md) (base)      | ~50   | Full diffusion                                                          |
 | Krea 2 Turbo                | 8     | Fast photographic model; text-to-image and img2img                      |
-| Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img; BF16/Q8/Q4 (Q4 loads a pre-quantized MLX repo) |
+| Z-Image Turbo               | 9     | Tongyi's distilled 6B single-stream model; guidance-free, text-to-image and img2img |
 | Z-Image (base)              | ~50   | Base Z-Image with classifier-free guidance and a negative prompt        |
 | Qwen-Image 2.1 Turbo        | 8     | Guidance-free; Generate (text-to-image) or Edit (up to 10 reference images); BF16/Q8/Q4, each a pre-quantized mflux-community repo |
-| [Ideogram 4](docs/models/ideogram4.md) | preset | Structured-caption model; FP8/Q8/Q4 precision selector (gated repo — accept terms on HuggingFace) |
+| [Ideogram 4](docs/models/ideogram4.md) | preset | Structured-caption model; BF16/Q8/Q4 precision selector (Q8/Q4 are gated — accept terms on HuggingFace) |
 | Custom                      | any   | Any HuggingFace repo ID or local path, loaded as any model above — pick the architecture it matches under "Loads as" |
+
+Every model in this table offers BF16, Q8 and Q4, and each precision downloads its own
+[mflux-community](https://huggingface.co/mflux-community) repo: Q4 and Q8 arrive
+already quantized, so a Q4 run never fetches or loads the full BF16 weights. The
+SeedVR2 upscaler is the exception: it loads its full weights and quantizes them in memory.
 
 ---
 
