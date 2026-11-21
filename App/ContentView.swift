@@ -90,18 +90,21 @@ struct ContentView: View {
     /// being clipped when the window (or a wide gallery) over-constrains the layout.
     @State private var contentWidth: CGFloat = 0
 
-    /// The running job's ID, whichever family it belongs to.
-    private var activeJobID: UUID? {
-        let ids: [UUID?] = [
-            runner.activeJob?.id, ideogram4Runner.activeJob?.id, krea2Runner.activeJob?.id,
-            zimageRunner.activeJob?.id, qwen21Runner.activeJob?.id, seedVR2Runner.activeJob?.id,
-        ]
-        return ids.lazy.compactMap(\.self).first
+    /// Every family's store and runner, for queueing, stopping and the hand-off.
+    private var queues: FamilyQueues {
+        FamilyQueues(
+            settings: settings, coordinator: coordinator, timing: timing, driverController: driverController,
+            flux: store, fluxRunner: runner, ideogram4: ideogram4Store, ideogram4Runner: ideogram4Runner,
+            krea2: krea2Store, krea2Runner: krea2Runner, zimage: zimageStore, zimageRunner: zimageRunner,
+            qwen21: qwen21Store, qwen21Runner: qwen21Runner, seedVR2: seedVR2Store, seedVR2Runner: seedVR2Runner
+        )
     }
 
-    private var isAnyStoreRunning: Bool {
-        store.isRunning || ideogram4Store.isRunning || krea2Store.isRunning
-            || zimageStore.isRunning || qwen21Store.isRunning || seedVR2Store.isRunning
+    private var generateAction: GenerateAction {
+        GenerateAction(
+            settings: settings, params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
+            zimageParams: zimageParams, qwen21Params: qwen21Params, queues: queues
+        )
     }
 
     /// What the menu bar acts on while this window is in front.
@@ -110,11 +113,11 @@ struct ContentView: View {
             sheetIsUp: showingQueue || showingNotepad || showingOutputDirPrompt || boxOverlay != nil
                 || upscaleTarget != nil || profileAction != nil,
             canGenerate: canGenerate,
-            isGenerating: isAnyStoreRunning,
+            isGenerating: queues.isAnyRunning,
             generate: { generate() },
             batchCount: settings.batchShortcutCount,
             generateBatch: { generate(count: settings.batchShortcutCount) },
-            stop: stopAll,
+            stop: { queues.stopAll() },
             showingParams: showingParams,
             toggleParams: { showingParams.toggle() },
             showingQueue: showingQueue,
@@ -148,9 +151,11 @@ struct ContentView: View {
     private var paramsPane: some View {
         ParamsPanelView(
             params: params, ideogramParams: ideogramParams,
-            krea2Params: krea2Params, zimageParams: zimageParams, qwen21Params: qwen21Params,
-            onQueueScenarioBatch: queueScenarioBatch
-        )
+            krea2Params: krea2Params, zimageParams: zimageParams, qwen21Params: qwen21Params
+        ) { prompts in
+            // A scenario batch: one image job per rolled prompt, in the live family.
+            generate(count: prompts.count, scenarioPrompts: prompts)
+        }
         .frame(width: 350)
         .frame(maxHeight: .infinity)
     }
@@ -265,14 +270,14 @@ struct ContentView: View {
             onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
             onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
             onUseInImg2Img: useInImg2Img,
-            onCancel: stopAll,
+            onCancel: { queues.stopAll() },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
             onShowFullSize: { img in withAnimation(.easeInOut(duration: 0.2)) { fullSizeImage = img } },
-            onSetGalleryFlag: { flag in setPreviewFlag(flag) },
-            onSetGalleryRating: { rating in setPreviewRating(rating) },
+            onSetGalleryFlag: { flag in updatePreviewItem { gallery.setFlag(flag, for: $0) } },
+            onSetGalleryRating: { rating in updatePreviewItem { gallery.setRating(rating, for: $0) } },
             onUpscale: { path in promptUpscale(paths: [path]) },
-            onRetry: retryPreviewJob,
+            onRetry: { queues.restart(previewState) },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -357,7 +362,7 @@ struct ContentView: View {
     private var bodyBase: some View {
         mainContent
             // At most one family runs at a time (GenerationCoordinator), so one ID covers them all.
-            .onChange(of: activeJobID) { _, id in
+            .onChange(of: queues.activeJobID) { _, id in
                 guard id != nil else { return }
                 selectedGalleryItem = nil
                 restoreActiveJobPreview()
@@ -409,7 +414,7 @@ struct ContentView: View {
             .onChange(of: settings.comfyBackendEnabled) { _, _ in backendModels.restart() }
             .onChange(of: settings.openAIBaseURL) { _, _ in backendModels.restart() }
             .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
-            .task(id: isAnyStoreRunning) { backendModels.localRunInFlight = isAnyStoreRunning }
+            .task(id: queues.isAnyRunning) { backendModels.localRunInFlight = queues.isAnyRunning }
             .onChange(of: loraLibrary.allDefaultLoras) { old, updated in
                 let flux = LoraLibraryStore.followingDefaults(params.loras, from: old, to: updated)
                 if flux != params.loras {
@@ -422,7 +427,7 @@ struct ContentView: View {
             }
             // A profile switch tears this view down while the outgoing profile
             // is still active, so the unsaved form drafts are kept with it.
-            .onDisappear { saveContentDrafts() }
+            .onDisappear { generateAction.saveContentDrafts() }
     }
 
     var body: some View {
@@ -474,10 +479,10 @@ struct ContentView: View {
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
             // (the GenerationCoordinator gate), so this is what keeps queued work draining.
-            // One handler on the union: pumpQueues only starts work once every store is idle.
-            .onChange(of: isAnyStoreRunning) { _, running in
+            // One handler on the union: pump only starts work once every store is idle.
+            .onChange(of: queues.isAnyRunning) { _, running in
                 if !running {
-                    pumpQueues()
+                    queues.pump()
                 }
             }
             .onChange(of: gallery.items) { _, newItems in
@@ -571,7 +576,7 @@ struct ContentView: View {
             }
 
             if let select = compareSelectItem, let candidate = compareCandidateItem {
-                let siblings = compareSiblings(of: select)
+                let siblings = GalleryCull.siblings(of: select, in: gallery.items, family: params.modelFamily)
                 CompareView(
                     selectItem: select,
                     candidateItem: candidate,
@@ -579,7 +584,7 @@ struct ContentView: View {
                     candidateCount: siblings.count,
                     onDismiss: { withAnimation(.easeInOut(duration: 0.2)) { comparePair = nil } },
                     onCycleCandidate: { delta in cycleCompareCandidate(delta) },
-                    onSwap: { swapCompare() },
+                    onSwap: { comparePair = comparePair?.swapped },
                     onFlagCandidate: { flag in compareFlagCandidate(flag) },
                     onRateCandidate: { rating in compareRateCandidate(rating) }
                 )
@@ -846,7 +851,7 @@ struct ContentView: View {
                 }
                 .buttonStyle(.plain)
                 .focusEffectDisabled()
-                .help(isAnyStoreRunning
+                .help(queues.isAnyRunning
                     ? "Generating — click to view queue (\(KeyboardShortcutCatalog.toggleQueue.symbols))"
                     : "Show queue (\(KeyboardShortcutCatalog.toggleQueue.symbols))")
 
@@ -856,8 +861,7 @@ struct ContentView: View {
             HStack(spacing: 6) {
                 headerModelPicker
                 Spacer(minLength: 0)
-                backendPills()
-                warmModelChip()
+                ResidencyPills(family: params.modelFamily)
             }
         }
         .padding(.horizontal, 16)
@@ -964,11 +968,7 @@ struct ContentView: View {
 
     private var galleryNavInfo: (hasPrev: Bool, hasNext: Bool) {
         guard let item = selectedGalleryItem else { return (false, false) }
-        // Match the gallery's own filtering (board + model family) so the prev/next arrows
-        // never page outside the set actually on screen.
-        let items = gallery.items.filter { $0.board == item.board && $0.modelFamily == params.modelFamily }
-        guard let idx = items.firstIndex(where: { $0.id == item.id }) else { return (false, false) }
-        return (idx > 0, idx < items.count - 1)
+        return GalleryCull.edges(of: item, in: gallery.items, family: params.modelFamily)
     }
 
     /// "3/10 images" while a batch job runs, else how many jobs are left including the running one.
@@ -1215,18 +1215,13 @@ struct ContentView: View {
     /// the generative families), flipping the preview to the first active upscale when
     /// idle. Batch jobs queue behind it and run one at a time.
     private func startUpscale(_ jobs: [SeedVR2Job]) {
-        guard let first = jobs.first else { return }
-        let wasIdle = !isAnyStoreRunning
-        for job in jobs {
-            seedVR2Store.add(job)
-        }
-        if wasIdle {
+        guard !jobs.isEmpty else { return }
+        if !queues.isAnyRunning {
             // Free any warm generative model before the upscale spawns its own process
-            // (holding both risks OOM). When not idle, pumpQueues ejects at hand-off.
+            // (holding both risks OOM). When not idle, the hand-off ejects it.
             driverController.eject(reason: "model_switch")
         }
-        seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
-        if wasIdle {
+        if queues.enqueue(jobs, in: seedVR2Store, on: seedVR2Runner), let first = jobs.first {
             selectedGalleryItem = nil
             previewState = .activeSeedVR2Job(first)
         }
@@ -1248,24 +1243,16 @@ struct ContentView: View {
     }
 
     private func navigateGallery(_ delta: Int) {
-        guard let current = selectedGalleryItem else { return }
-        // Same board + model-family filter as the on-screen gallery (see galleryNavInfo).
-        let items = gallery.items.filter { $0.board == current.board && $0.modelFamily == params.modelFamily }
-        guard !items.isEmpty else { return }
-        if let idx = items.firstIndex(where: { $0.id == current.id }) {
-            let next = max(0, min(items.count - 1, idx + delta))
-            if next != idx {
-                selectedGalleryItem = items[next]
-            }
-        }
+        guard let current = selectedGalleryItem,
+              let next = GalleryCull.step(from: current, by: delta, in: gallery.items, family: params.modelFamily) else { return }
+        selectedGalleryItem = next
     }
 
     // MARK: - Full-size culling
 
     private func cullFullSize(flag: PickFlag?) {
         guard let item = fullSizeCullItem else { return }
-        let newFlag = item.flag == flag ? nil : flag
-        gallery.setFlag(newFlag, for: item)
+        gallery.setFlag(GalleryCull.toggled(item.flag, pressing: flag), for: item)
         refreshSelectedGalleryItem()
     }
 
@@ -1282,23 +1269,13 @@ struct ContentView: View {
         selectedGalleryItem = gallery.items.first { $0.id == id }
     }
 
-    /// Detail-pane cull actions. The detail view already resolves the toggle, so these
-    /// set the value directly, then refresh both the selection snapshot and the preview
-    /// state (same id, so no image reload) so the badge/stars update in place.
-    private func setPreviewFlag(_ flag: PickFlag?) {
+    /// Detail-pane cull actions. The detail view already resolves the toggle, so `change`
+    /// sets the value directly; then both the selection snapshot and the preview state
+    /// are refreshed (same id, so no image reload) so the badge/stars update in place.
+    private func updatePreviewItem(_ change: (GalleryItem) -> Void) {
         guard let id = selectedGalleryItem?.id,
               let item = gallery.items.first(where: { $0.id == id }) else { return }
-        gallery.setFlag(flag, for: item)
-        if let fresh = gallery.items.first(where: { $0.id == id }) {
-            selectedGalleryItem = fresh
-            previewState = .galleryItem(fresh)
-        }
-    }
-
-    private func setPreviewRating(_ rating: Int) {
-        guard let id = selectedGalleryItem?.id,
-              let item = gallery.items.first(where: { $0.id == id }) else { return }
-        gallery.setRating(rating, for: item)
+        change(item)
         if let fresh = gallery.items.first(where: { $0.id == id }) {
             selectedGalleryItem = fresh
             previewState = .galleryItem(fresh)
@@ -1307,31 +1284,19 @@ struct ContentView: View {
 
     // MARK: - Compare
 
-    /// The candidate's cycle set: same board + model family as the pinned select,
-    /// matching the gallery's own filtering.
-    private func compareSiblings(of item: GalleryItem) -> [GalleryItem] {
-        gallery.items.filter { $0.board == item.board && $0.modelFamily == params.modelFamily }
-    }
-
     private func cycleCompareCandidate(_ delta: Int) {
         guard let pair = comparePair,
-              let select = gallery.items.first(where: { $0.id == pair.selectId }) else { return }
-        let siblings = compareSiblings(of: select).filter { $0.id != pair.selectId }
-        guard !siblings.isEmpty else { return }
-        let current = siblings.firstIndex { $0.id == pair.candidateId } ?? 0
-        let next = (current + delta + siblings.count) % siblings.count
-        comparePair = ComparePair(selectId: pair.selectId, candidateId: siblings[next].id)
-    }
-
-    private func swapCompare() {
-        guard let pair = comparePair else { return }
-        comparePair = ComparePair(selectId: pair.candidateId, candidateId: pair.selectId)
+              let select = gallery.items.first(where: { $0.id == pair.selectId }),
+              let next = pair.cyclingCandidate(
+                  by: delta, through: GalleryCull.siblings(of: select, in: gallery.items, family: params.modelFamily)
+              ) else { return }
+        comparePair = next
     }
 
     private func compareFlagCandidate(_ flag: PickFlag?) {
         guard let id = comparePair?.candidateId,
               let item = gallery.items.first(where: { $0.id == id }) else { return }
-        gallery.setFlag(item.flag == flag ? nil : flag, for: item)
+        gallery.setFlag(GalleryCull.toggled(item.flag, pressing: flag), for: item)
     }
 
     private func compareRateCandidate(_ rating: Int) {
@@ -1341,525 +1306,17 @@ struct ContentView: View {
     }
 
     // MARK: - Generate
-    /// Keeps the prompts typed but not yet generated with the current profile.
-    /// Generating saves these too; this covers leaving the profile first.
-    private func saveContentDrafts() {
-        settings.lastPrompt = params.prompt
-        settings.lastLoras = params.loras
-        settings.lastKrea2 = krea2Params.snapshot()
-        settings.lastZImage = zimageParams.snapshot()
-        settings.lastQwen21 = qwen21Params.snapshot()
-    }
 
-    /// One Generate press. `scenarioPrompts`, when supplied, is a batch of prompts
-    /// independently rolled by the scenario generator — each becomes its own job,
-    /// bypassing the prompt field and the wildcard expander.
+    /// One Generate press. The preview follows the first new job when nothing else was running.
     private func generate(count: Int = 1, scenarioPrompts: [String]? = nil) {
         NSApp.keyWindow?.makeFirstResponder(nil)
-
-        // Several prompts pasted into the field, split by `---` lines, queue one job
-        // each — the same one-job-per-prompt shape as a scenario batch.
-        if scenarioPrompts == nil, let field = batchablePromptField() {
-            let prompts = PromptBatchSplitter.split(field)
-            if prompts.count > 1 {
-                if params.modelFamily == .flux {
-                    settings.lastPrompt = field
-                }
-                settings.recordPromptUse(field)
-                generate(count: prompts.count, scenarioPrompts: prompts)
-                return
-            }
-        }
-
-        // Remember the custom checkpoint and the family it loads as, so the
-        // selection is intact on relaunch. Each family branch below sets
-        // `lastModel`; these two are what make `.custom` mean something again.
-        if params.model == .custom {
-            settings.lastCustomModelRepo = params.customModelRepo
-            settings.lastCustomBaseModel = params.customBaseModel
-        }
-
-        switch params.modelFamily {
-        case .flux:
-            // A scenario batch brings its own prompts, so an empty prompt field is fine.
-            guard scenarioPrompts?.isEmpty == false
-                || !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-                !params.isEditMode || !params.editImagePaths.isEmpty else { return }
-            if scenarioPrompts == nil {
-                // Skip for scenario batches: N rolled prompts would swamp the history,
-                // and each image's sidecar already records the prompt it used.
-                settings.lastPrompt = params.prompt
-                settings.recordPromptUse(params.prompt)
-            }
-            settings.lastWidth = params.width
-            settings.lastHeight = params.height
-            settings.lastLoras = params.loras
-            settings.lastModel = params.model
-            settings.lastQuantize = params.quantize
-            // Low RAM lives in Settings -> Models; read it now so a toggle applies to
-            // this run instead of only after a relaunch.
-            params.applyMemoryDefaults(from: settings)
-            let wasIdle = !isAnyStoreRunning
-            let jobs = fluxJobs(count: count, scenarioPrompts: scenarioPrompts)
-            for job in jobs {
-                store.add(job)
-            }
-            runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-            if wasIdle, let firstJob = jobs.first {
-                selectedGalleryItem = nil
-                previewState = .activeJob(firstJob)
-            }
-
-        case .ideogram4:
-            guard ideogramParams.isReadyToGenerate(settings: settings) else { return }
-            // Remember the picker selection across sessions — `custom` must survive
-            // as itself, not be flattened to the family it happens to load as.
-            settings.lastModel = params.model == .custom ? .custom : .ideogram4
-            settings.lastIdeogramPreset = ideogramParams.preset
-            settings.lastIdeogramWidth = ideogramParams.width
-            settings.lastIdeogramHeight = ideogramParams.height
-            settings.lastIdeogramQuantize = ideogramParams.quantize
-            settings.lastIdeogramCaption = ideogramParams.caption
-            settings.lastIdeogramPlainPrompt = ideogramParams.plainPrompt
-            settings.lastIdeogramUsePlainPrompt = ideogramParams.usePlainPrompt
-            settings.lastIdeogramSeed = ideogramParams.seed
-            // Low-RAM and strict-validation live in Settings → Models → Ideogram;
-            // pull the current values so live edits apply to this run.
-            ideogramParams.lowRam = settings.ideogram4LowRam
-            ideogramParams.strictValidation = settings.ideogram4StrictValidation
-            let job = ideogramParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)
-            let wasIdle = !isAnyStoreRunning
-            ideogram4Store.add(job)
-            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
-            if wasIdle {
-                selectedGalleryItem = nil
-                previewState = .activeIdeogram4Job(job)
-            }
-
-        case .krea2:
-            generateKrea2(count: count, scenarioPrompts: scenarioPrompts)
-
-        case .zimage:
-            generateZImage(count: count, scenarioPrompts: scenarioPrompts)
-
-        case .qwen21:
-            generateQwen21(count: count, scenarioPrompts: scenarioPrompts)
-
-        case .seedvr2:
-            break // upscaler — never the picker-selected family; started via startUpscale
-        }
-    }
-
-    /// Enqueues Krea 2 jobs for one Generate press. Wildcards fan out — one job
-    /// per option of the largest {a|b} group (capped 10); a batch count overrides
-    /// — each with its own resolved prompt + sidecar.
-    private func generateKrea2(count: Int, scenarioPrompts: [String]? = nil) {
-        guard krea2Params.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return }
-        // Remember the picker selection across sessions — `custom` must survive as
-        // itself, not be flattened to the family it happens to load as.
-        settings.lastModel = params.model == .custom ? .custom : .krea2
-        settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
-        // Low-RAM lives in Settings → Models → Krea 2; pull it so live edits apply to this run.
-        krea2Params.lowRam = settings.resolvedDefaults(for: .krea2).lowRam
-        if scenarioPrompts == nil {
-            settings.recordPromptUse(krea2Params.prompt)
-        }
-        let wasIdle = !isAnyStoreRunning
-        let directive = AspectDirective.extract(from: krea2Params.prompt)
-        let size = AspectDirective.size(ratio: directive.ratio, width: krea2Params.width, height: krea2Params.height, constraints: .krea2)
-        let variants = min(WildcardExpander.variantCount(directive.prompt), 10)
-        let jobs: [Krea2Job]
-        if let scenarioPrompts, !scenarioPrompts.isEmpty {
-            jobs = scenarioPrompts.map {
-                let directive = AspectDirective.extract(from: $0)
-                return krea2Params.makeJob(
-                    count: 1,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards((directive.prompt, krea2Params.negativePrompt)),
-                    size: AspectDirective.size(
-                        ratio: directive.ratio, width: krea2Params.width, height: krea2Params.height, constraints: .krea2
-                    )
-                )
-            }
-        } else if variants > 1 {
-            let jobCount = count > 1 ? count : variants
-            let positives = WildcardExpander.expandVariants(directive.prompt, count: jobCount)
-            let negatives = WildcardExpander.expandVariants(krea2Params.negativePrompt, count: jobCount)
-            jobs = (0 ..< jobCount).map {
-                krea2Params.makeJob(
-                    count: 1,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: (positives[$0], negatives[$0]),
-                    size: size
-                )
-            }
-        } else {
-            jobs = [
-                krea2Params.makeJob(
-                    count: count,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards((directive.prompt, krea2Params.negativePrompt)),
-                    size: size
-                ),
-            ]
-        }
-        for job in jobs {
-            krea2Store.add(job)
-        }
-        krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
-        if wasIdle, let firstJob = jobs.first {
+        if let preview = generateAction(count: count, scenarioPrompts: scenarioPrompts) {
             selectedGalleryItem = nil
-            previewState = .activeKrea2Job(firstJob)
+            previewState = preview
         }
-    }
-
-    /// Enqueues Qwen-Image 2.1 jobs for one Generate press. Wildcards fan out like
-    /// Krea 2's; an edit's references and size choice ride along unchanged.
-    private func generateQwen21(count: Int, scenarioPrompts: [String]? = nil) {
-        let hasReferences = !qwen21Params.isEditMode || !qwen21Params.editImagePaths.isEmpty
-        guard qwen21Params.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return }
-        settings.lastModel = params.model == .custom ? .custom : .qwen21Turbo
-        settings.lastQwen21 = qwen21Params.snapshot()
-        qwen21Params.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
-        qwen21Params.routesToComfy = Qwen21RunnerSpec.routesToComfy(settings: settings)
-        if scenarioPrompts == nil {
-            settings.recordPromptUse(qwen21Params.prompt)
-        }
-        let wasIdle = !isAnyStoreRunning
-        let repo = params.effectiveCustomRepo
-        // One (prompt, size) per job: scenario prompts, wildcard variants, or the field itself.
-        let sized = { (text: String) -> (String, (width: Int, height: Int)?) in
-            let directive = AspectDirective.extract(from: text)
-            let size = AspectDirective.size(
-                ratio: directive.ratio, width: qwen21Params.width, height: qwen21Params.height, constraints: .qwen21
-            )
-            return (directive.prompt, size)
-        }
-        let jobs: [Qwen21Job]
-        if let scenarioPrompts, !scenarioPrompts.isEmpty {
-            jobs = scenarioPrompts.map {
-                let (text, size) = sized($0)
-                return qwen21Params.makeJob(customModelRepo: repo, resolvedPrompt: collapseWildcards((text, "")).positive, size: size)
-            }
-        } else {
-            let (text, size) = sized(qwen21Params.prompt)
-            let variants = min(WildcardExpander.variantCount(text), 10)
-            if variants > 1 {
-                jobs = WildcardExpander.expandVariants(text, count: count > 1 ? count : variants).map {
-                    qwen21Params.makeJob(customModelRepo: repo, resolvedPrompt: $0, size: size)
-                }
-            } else {
-                let job = qwen21Params.makeJob(
-                    count: count, customModelRepo: repo, resolvedPrompt: collapseWildcards((text, "")).positive, size: size
-                )
-                jobs = [job]
-            }
-        }
-        for job in jobs {
-            qwen21Store.add(job)
-        }
-        qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
-        if wasIdle, let firstJob = jobs.first {
-            selectedGalleryItem = nil
-            previewState = .activeQwen21Job(firstJob)
-        }
-    }
-
-    /// Enqueues Z-Image jobs for one Generate press. Wildcards fan out like the
-    /// Krea 2 path — one job per option of the largest {a|b} group (capped 10); a
-    /// batch count overrides — each with its own resolved prompt + sidecar.
-    private func generateZImage(count: Int, scenarioPrompts: [String]? = nil) {
-        guard zimageParams.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return }
-        // Remember the picker selection across sessions — `custom` must survive as
-        // itself, not be flattened to the variant it happens to load as.
-        settings.lastModel = params.model == .custom ? .custom : zimageParams.variant
-        settings.lastZImage = zimageParams.snapshot() // remember the form across launches
-        if scenarioPrompts == nil {
-            settings.recordPromptUse(zimageParams.prompt)
-        }
-        let wasIdle = !isAnyStoreRunning
-        let directive = AspectDirective.extract(from: zimageParams.prompt)
-        let size = AspectDirective.size(
-            ratio: directive.ratio, width: zimageParams.width, height: zimageParams.height, constraints: .zimage
-        )
-        let variants = min(WildcardExpander.variantCount(directive.prompt), 10)
-        let jobs: [ZImageJob]
-        if let scenarioPrompts, !scenarioPrompts.isEmpty {
-            jobs = scenarioPrompts.map {
-                let directive = AspectDirective.extract(from: $0)
-                return zimageParams.makeJob(
-                    count: 1,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards((directive.prompt, zimageParams.negativePrompt)),
-                    size: AspectDirective.size(
-                        ratio: directive.ratio, width: zimageParams.width, height: zimageParams.height, constraints: .zimage
-                    )
-                )
-            }
-        } else if variants > 1 {
-            let jobCount = count > 1 ? count : variants
-            let positives = WildcardExpander.expandVariants(directive.prompt, count: jobCount)
-            let negatives = WildcardExpander.expandVariants(zimageParams.negativePrompt, count: jobCount)
-            jobs = (0 ..< jobCount).map {
-                zimageParams.makeJob(
-                    count: 1,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: (positives[$0], negatives[$0]),
-                    size: size
-                )
-            }
-        } else {
-            jobs = [
-                zimageParams.makeJob(
-                    count: count,
-                    customModelRepo: params.effectiveCustomRepo,
-                    resolvedPrompt: collapseWildcards((directive.prompt, zimageParams.negativePrompt)),
-                    size: size
-                ),
-            ]
-        }
-        for job in jobs {
-            zimageStore.add(job)
-        }
-        zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
-        if wasIdle, let firstJob = jobs.first {
-            selectedGalleryItem = nil
-            previewState = .activeZImageJob(firstJob)
-        }
-    }
-
-    // MARK: - Warm model chip (LM Studio-style eject)
-
-    /// Header indicator for the driver's resident model: name, measured
-    /// memory, and an eject button. Hidden when nothing is warm.
-    @ViewBuilder
-    private func warmModelChip() -> some View {
-        if let label = driverController.loadedModelLabel {
-            HStack(spacing: 6) {
-                Image(systemName: "memorychip")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(label)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                    if let gb = driverController.loadedMemoryGB {
-                        Text(String(format: "%.1f GB warm", gb))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                Button {
-                    driverController.eject()
-                } label: {
-                    Image(systemName: "eject.fill")
-                        .font(.caption2)
-                }
-                // Compact so the target stays inside the warm-model chip.
-                .buttonStyle(.iconButtonCompact)
-                .foregroundStyle(.secondary)
-                .disabled(driverController.isGenerating)
-                .help(driverController.isGenerating ? "Generating — cannot eject" : "Eject warm model")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.fill.quaternary, in: Capsule())
-        }
-    }
-
-    // MARK: - External backend residency pills (ComfyUI + LM Studio)
-
-    /// Header indicators for the two *external* inference hosts this app can reach, shown in the same
-    /// trailing cluster as ``warmModelChip()``. Each is hidden until its server is configured and reachable,
-    /// so an unconfigured box costs nothing visually. The pills mirror the warm-model chip's shape: an icon,
-    /// a label (model name / size), and — only when something is resident — an eject button.
-    @ViewBuilder
-    private func backendPills() -> some View {
-        comfyBackendPill()
-        lmStudioPill()
-    }
-
-    /// ComfyUI residency pill: shows "Resident · ~X GB" when VRAM is meaningfully below the idle baseline,
-    /// or just "ComfyUI" (no size) while the server is reachable but the baseline hasn't locked yet. Eject
-    /// fires `POST /free` — ComfyUI's only eject is a global unload of everything resident. Shown only while the
-    /// selected family routes to ComfyUI, so a local family's warm-driver pill has the header to itself; the
-    /// `activeComfyURL` check also hides a reachable report from a poll that was in flight when routing changed.
-    @ViewBuilder
-    private func comfyBackendPill() -> some View {
-        if settings.activeComfyURL != nil, settings.comfyBackendEnabled[params.modelFamily.id] == true,
-           backendModels.comfy.reachable {
-            let gb = backendModels.comfyResidentGB
-            HStack(spacing: 6) {
-                Image(systemName: "server.rack")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                VStack(alignment: .leading, spacing: 0) {
-                    Text("ComfyUI")
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                    if let gb {
-                        Text(String(format: "%.1f GB resident", gb))
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    } else if backendModels.isComfyEjecting {
-                        Text("Freeing…")
-                            .font(.caption2)
-                            .foregroundStyle(.secondary)
-                    }
-                }
-                // Eject only when we actually know something is resident — not mid-warmup, not offline.
-                if backendModels.canEjectComfy {
-                    Button {
-                        backendModels.ejectComfy()
-                    } label: {
-                        Image(systemName: "eject.fill")
-                            .font(.caption2)
-                    }
-                    .buttonStyle(.iconButtonCompact)
-                    .foregroundStyle(.secondary)
-                    // Don't let a user free ComfyUI's VRAM while our own local run is holding the GPU —
-                    // the delta would be misattributed, and freeing mid-run could OOM the active job.
-                    .disabled(backendModels.localRunInFlight)
-                    .help(backendModels.localRunInFlight ? "Local run in progress" : "Unload all ComfyUI models")
-                }
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.fill.quaternary, in: Capsule())
-        }
-    }
-
-    /// LM Studio residency pill: lists each loaded model's short name and (first instance's) context length.
-    /// Eject unloads every resident instance (native `/api/v1/models/unload` on LM Studio; `/models/unload`
-    /// on llama.cpp). Hidden entirely when no remote LLM backend is configured, or when the server is
-    /// reachable but speaks no session API at all.
-    @ViewBuilder
-    private func lmStudioPill() -> some View {
-        let entries = backendModels.lmLoadedEntries
-        if settings.llmBackend == .remote && backendModels.lm.reachable, !entries.isEmpty {
-            HStack(spacing: 6) {
-                Image(systemName: "brain.profile")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                VStack(alignment: .leading, spacing: 0) {
-                    // One line per loaded model; a two-model box still fits the pill's width budget because we
-                    // use the short key (last path component) and the context length, not full `org/model-quant`.
-                    ForEach(Array(entries.enumerated()), id: \.element.model.key) { index, entry in
-                        HStack(spacing: 3) {
-                            Text(entry.model.shortKey)
-                                .font(.caption2)
-                                .fontWeight(index == 0 ? .medium : .regular)
-                            if let ctx = entry.firstContextLength {
-                                Text("\(ctx / 1000)k")
-                                    .font(.caption2)
-                                    .foregroundStyle(.secondary)
-                            }
-                        }
-                    }
-                }
-                Button {
-                    backendModels.ejectAllLM()
-                } label: {
-                    Image(systemName: "eject.fill")
-                        .font(.caption2)
-                }
-                .buttonStyle(.iconButtonCompact)
-                .foregroundStyle(.secondary)
-                .help("Unload all models")
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.fill.quaternary, in: Capsule())
-        } else if settings.llmBackend == .remote && backendModels.lm.reachable && backendModels.isEjectingAll {
-            // Models are mid-unload — show a "Freeing…" placeholder rather than the pill vanishing for one poll.
-            HStack(spacing: 6) {
-                Image(systemName: "brain.profile")
-                    .font(.caption)
-                    .foregroundStyle(Color.accentColor)
-                Text("Freeing…")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(.fill.quaternary, in: Capsule())
-        }
-    }
-
-    /// Builds the Flux jobs for one Generate press. Wildcards expand by
-    /// independent sampling: the largest {a|b|c} group is covered (each option
-    /// once), other groups vary per job, and full combinations are de-duped.
-    /// Plain Generate runs one job per option of the largest group (capped 10);
-    /// a batch count overrides. Each job gets its own resolved prompt + sidecar.
-    ///
-    /// A scenario batch takes the same one-job-per-prompt shape, but the prompts
-    /// come from the LLM instead of the wildcard expander.
-    private func fluxJobs(count: Int, scenarioPrompts: [String]? = nil) -> [FluxJob] {
-        let constraints: DimensionConstraints = params.model.isFlux ? .flux2 : .legacy
-        if let scenarioPrompts, !scenarioPrompts.isEmpty {
-            return scenarioPrompts.map {
-                let directive = AspectDirective.extract(from: $0)
-                return params.makeJob(
-                    count: 1,
-                    resolvedPrompt: collapseWildcards(
-                        params.templatedPrompts(templates: settings.activeTemplates, overriding: directive.prompt)
-                    ),
-                    size: AspectDirective.size(ratio: directive.ratio, width: params.width, height: params.height, constraints: constraints)
-                )
-            }
-        }
-        let directive = AspectDirective.extract(from: params.prompt)
-        let size = AspectDirective.size(ratio: directive.ratio, width: params.width, height: params.height, constraints: constraints)
-        let templated = params.templatedPrompts(templates: settings.activeTemplates, overriding: directive.prompt)
-        let variants = min(WildcardExpander.variantCount(templated.positive), 10)
-        guard variants > 1 else {
-            return [params.makeJob(count: count, resolvedPrompt: collapseWildcards(templated), size: size)]
-        }
-        let jobCount = count > 1 ? count : variants
-        let positives = WildcardExpander.expandVariants(templated.positive, count: jobCount)
-        let negatives = WildcardExpander.expandVariants(templated.negative, count: jobCount)
-        return (0 ..< jobCount).map {
-            params.makeJob(count: 1, resolvedPrompt: (positives[$0], negatives[$0]), size: size)
-        }
-    }
-
-    /// Hands a batch of scenario-generated prompts to the active family — one image
-    /// job per prompt. Passed to ``ParamsPanelView`` as a function reference so each
-    /// press reads the live family and params.
-    private func queueScenarioBatch(_ prompts: [String]) {
-        generate(count: prompts.count, scenarioPrompts: prompts)
-    }
-
-    /// The active family's prompt field, for ``PromptBatchSplitter``. Nil for
-    /// Ideogram 4, whose caption is a structured document with no per-prompt path.
-    private func batchablePromptField() -> String? {
-        switch params.modelFamily {
-        case .flux: params.prompt
-        case .krea2: krea2Params.prompt
-        case .zimage: zimageParams.prompt
-        case .qwen21: qwen21Params.prompt
-        case .ideogram4, .seedvr2: nil
-        }
-    }
-
-    /// Collapses any {a|b} groups a scenario prompt happens to contain down to one
-    /// sample. A queued batch gets its variety from re-rolling the LLM, so a group the
-    /// model emitted anyway must not fan the job out a second time.
-    private func collapseWildcards(
-        _ pair: (positive: String, negative: String)
-    ) -> (positive: String, negative: String) {
-        (
-            WildcardExpander.expandVariants(pair.positive, count: 1).first ?? pair.positive,
-            WildcardExpander.expandVariants(pair.negative, count: 1).first ?? pair.negative
-        )
     }
 
     // MARK: - Menu commands
-
-    private func stopAll() {
-        runner.cancel(); ideogram4Runner.cancel(); krea2Runner.cancel()
-        zimageRunner.cancel(); qwen21Runner.cancel(); seedVR2Runner.cancel()
-    }
 
     private func imageActions(for item: GalleryItem) -> MainWindowActions.ImageActions {
         let prompt = ImageMetadataInfo(galleryItem: item).prompt
@@ -1897,53 +1354,5 @@ struct ContentView: View {
             return { applyQwen21(meta, newSeed: false) }
         }
         return nil
-    }
-
-    /// Puts the failed job the preview shows back at the front of its family's
-    /// queue, then starts it once the gate is free.
-    private func retryPreviewJob() {
-        switch previewState {
-        case let .activeJob(job): store.restart(job)
-        case let .activeIdeogram4Job(job): ideogram4Store.restart(job)
-        case let .activeKrea2Job(job): krea2Store.restart(job)
-        case let .activeZImageJob(job): zimageStore.restart(job)
-        case let .activeQwen21Job(job): qwen21Store.restart(job)
-        case let .activeSeedVR2Job(job): seedVR2Store.restart(job)
-        case .idle, .galleryItem: return
-        }
-        pumpQueues()
-    }
-
-    /// Starts the next pending job across all families, but only when the gate is free.
-    /// Each runner drains its own queue internally; this hands off to the next family once
-    /// the current one is fully idle (invoked from the `isRunning` onChange handlers).
-    private func pumpQueues() {
-        guard !isAnyStoreRunning,
-              let family = GenerationCoordinator.nextFamily(hasWaitingJobs: { hasWaitingJobs($0) }) else { return }
-        // A hand-off to any family but Flux ejects the warm driver's model first, so two
-        // models are never resident at once (holding both risks OOM).
-        if family != .flux {
-            driverController.eject(reason: "model_switch")
-        }
-        switch family {
-        case .flux: runner.runNext(in: store, settings: settings, coordinator: coordinator, timing: timing)
-        case .ideogram4:
-            ideogram4Runner.runNext(in: ideogram4Store, settings: settings, coordinator: coordinator, timing: timing)
-        case .krea2: krea2Runner.runNext(in: krea2Store, settings: settings, coordinator: coordinator, timing: timing)
-        case .zimage: zimageRunner.runNext(in: zimageStore, settings: settings, coordinator: coordinator, timing: timing)
-        case .qwen21: qwen21Runner.runNext(in: qwen21Store, settings: settings, coordinator: coordinator, timing: timing)
-        case .seedvr2: seedVR2Runner.runNext(in: seedVR2Store, settings: settings, coordinator: coordinator, timing: timing)
-        }
-    }
-
-    private func hasWaitingJobs(_ family: ModelFamily) -> Bool {
-        switch family {
-        case .flux: !store.pendingJobs.isEmpty
-        case .ideogram4: !ideogram4Store.pendingJobs.isEmpty
-        case .krea2: !krea2Store.pendingJobs.isEmpty
-        case .zimage: !zimageStore.pendingJobs.isEmpty
-        case .qwen21: !qwen21Store.pendingJobs.isEmpty
-        case .seedvr2: !seedVR2Store.pendingJobs.isEmpty
-        }
     }
 }
