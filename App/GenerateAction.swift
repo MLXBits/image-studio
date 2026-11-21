@@ -36,7 +36,8 @@ struct GenerateAction {
 
     /// Queues the press's jobs. `scenarioPrompts`, when supplied, is a batch of
     /// prompts independently rolled by the scenario generator — each becomes its
-    /// own job, bypassing the prompt field and the wildcard expander.
+    /// own job, bypassing the prompt field and wildcard fan-out. A wildcard group
+    /// in a scenario prompt is still resolved, to one sampled option.
     ///
     /// Returns the first job's preview when every queue was idle, for the preview
     /// pane to follow; nil when nothing was queued or other work runs first.

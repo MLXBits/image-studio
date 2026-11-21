@@ -147,7 +147,9 @@ Adding Z-Image touched 24 files. In dependency order:
 2. `Models/<Family>Job.swift` — the job model, conforming to `GeneratedJob`.
 3. `Models/FluxModelCatalog.swift` — model IDs, variants, defaults.
 4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, the typealias.
-5. `Stores/<Family>JobStore.swift` — conform to `GenerationJobStore`.
+5. `Stores/<Family>JobStore.swift` — conform to `ProfileScopedJobStore`, with
+   `PersistedJob` as the family's job, and to `GenerationJobStore` (declared in
+   the runner file). `FamilyQueues.enqueue` needs both.
 6. `Stores/AppSettings.swift` — persisted per-family defaults.
 7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in

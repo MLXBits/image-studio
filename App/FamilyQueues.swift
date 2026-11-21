@@ -69,8 +69,9 @@ struct FamilyQueues {
     func pump() {
         guard !isAnyRunning,
               let family = GenerationCoordinator.nextFamily(hasWaitingJobs: { hasWaitingJobs($0) }) else { return }
-        // A hand-off to any family but Flux ejects the warm driver's model first, so two
-        // models are never resident at once (holding both risks OOM).
+        // A hand-off to any family but Flux first asks the warm driver to unload its model,
+        // since holding two models risks OOM. The request is not awaited: the next run
+        // starts without waiting for the driver's `unloaded` reply.
         if family != .flux {
             driverController.eject(reason: "model_switch")
         }

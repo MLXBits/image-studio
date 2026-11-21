@@ -30,6 +30,7 @@ struct PromptFanOutTests {
 
     @Test mutating func aWildcardGroupFansOutOneJobPerOption() {
         let result = jobs("a {red|green|blue} kite", count: 1)
+        #expect(result.count == 3)
         #expect(Set(result.map(\.positive)) == ["a red kite", "a green kite", "a blue kite"])
         #expect(result.allSatisfy { $0.count == 1 })
     }
@@ -57,6 +58,7 @@ struct PromptFanOutTests {
             prompt: "a kite", scenarioPrompts: nil, count: 1,
             resolve: { ("\($0), {dawn|dusk}", "") }, using: &rng
         )
+        #expect(result.count == 2)
         #expect(Set(result.map(\.positive)) == ["a kite, dawn", "a kite, dusk"])
     }
 
