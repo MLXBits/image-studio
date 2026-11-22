@@ -31,13 +31,22 @@ struct ModelManagerListRow: View {
                 ProgressView().controlSize(.small)
             }
             ForEach(row.quants.filter(\.cached), id: \.quantize) { quant in
-                Text(quant.label)
-                    .font(.caption2)
-                    .padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(.green.opacity(0.15), in: Capsule())
-                    .foregroundStyle(.green)
-                    .accessibilityLabel("\(quant.label) cached")
+                CachedChip(label: quant.label)
             }
         }
+    }
+}
+
+/// The green capsule that marks a cached quant or tool in the sidebar.
+struct CachedChip: View {
+    let label: String
+
+    var body: some View {
+        Text(label)
+            .font(.caption2)
+            .padding(.horizontal, 6).padding(.vertical, 1)
+            .background(.green.opacity(0.15), in: Capsule())
+            .foregroundStyle(.green)
+            .accessibilityLabel("\(label) cached")
     }
 }

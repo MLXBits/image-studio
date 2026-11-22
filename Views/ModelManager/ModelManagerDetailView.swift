@@ -48,6 +48,9 @@ struct ModelManagerDetailView: View {
                         QuantRowView(model: model, status: status)
                     }
                 }
+                if row.quants.contains(where: { weightDownloads.runs[.weights(model, quantize: $0.quantize)]?.phase == .running }) {
+                    BackgroundDownloadCaption()
+                }
                 Divider()
                 useFooter(row)
             }

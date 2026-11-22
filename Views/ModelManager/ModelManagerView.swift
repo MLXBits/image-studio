@@ -11,6 +11,7 @@ struct ModelManagerView: View {
 
     /// mflux's SeedVR2 download specs, probed once per window appearance.
     @State private var seedVR2Specs: [String: HFDownloadSpec]?
+    @State private var seedVR2Probing = true
     @State private var diskBytes: Int64 = 0
 
     var body: some View {
@@ -48,6 +49,7 @@ struct ModelManagerView: View {
             seedVR2Specs = await Task.detached {
                 script.flatMap { MfluxProbes.downloadSpecs(python: python, script: $0, names: names) }
             }.value
+            seedVR2Probing = false
         }
         .task(id: diskKey) {
             let hubDir = settings.hfHubDir
@@ -60,6 +62,8 @@ struct ModelManagerView: View {
         .onChange(of: router.selection) { old, _ in
             if case let .model(previous)? = old {
                 weightDownloads.dismissFinished(previous)
+            } else if case .seedVR2? = old {
+                weightDownloads.dismissFinishedSeedVR2()
             }
         }
     }
@@ -67,7 +71,7 @@ struct ModelManagerView: View {
     @ViewBuilder private var detail: some View {
         switch router.selection {
         case let .model(model): ModelManagerDetailView(model: model).id(model)
-        case .seedVR2: SeedVR2DetailView(specs: seedVR2Specs)
+        case .seedVR2: SeedVR2DetailView(specs: seedVR2Specs, loading: seedVR2Probing)
         case .gemma: GemmaDetailView()
         case nil: EmptyView()
         }
@@ -101,12 +105,7 @@ struct ModelManagerView: View {
             Text(title).lineLimit(1)
             Spacer(minLength: 4)
             ForEach(chips, id: \.self) { chip in
-                Text(chip)
-                    .font(.caption2)
-                    .padding(.horizontal, 6).padding(.vertical, 1)
-                    .background(.green.opacity(0.15), in: Capsule())
-                    .foregroundStyle(.green)
-                    .accessibilityLabel("\(chip) cached")
+                CachedChip(label: chip)
             }
         }
     }

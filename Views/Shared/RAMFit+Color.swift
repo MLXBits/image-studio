@@ -1,6 +1,6 @@
 import SwiftUI
 
-extension RAMFit {
+nonisolated extension RAMFit {
     var color: Color {
         switch self {
         case .comfortable: .green

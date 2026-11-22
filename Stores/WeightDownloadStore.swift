@@ -207,6 +207,15 @@ final class WeightDownloadStore {
         }
     }
 
+    /// Clears every finished SeedVR2 run, as the Models window leaves its row.
+    func dismissFinishedSeedVR2() {
+        for (target, _) in runs {
+            if case .seedVR2 = target {
+                dismiss(target)
+            }
+        }
+    }
+
     /// Drops every run that isn't running.
     func dismissFinished() {
         runs = runs.filter { $0.value.phase == .running }

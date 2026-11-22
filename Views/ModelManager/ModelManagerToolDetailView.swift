@@ -16,6 +16,8 @@ struct SeedVR2DetailView: View {
     @Environment(WeightDownloadStore.self) private var weightDownloads
     /// mflux's download specs by name, from the window's probe; nil until it answers or if it fails.
     let specs: [String: HFDownloadSpec]?
+    /// True while the probe is still asking mflux, as opposed to having failed.
+    let loading: Bool
     @State private var confirmingRemove = false
 
     var body: some View {
@@ -28,6 +30,9 @@ struct SeedVR2DetailView: View {
         ) {
             ForEach(Self.sizes, id: \.name) { size in
                 sizeRow(size)
+            }
+            if isDownloading {
+                BackgroundDownloadCaption()
             }
             Divider()
             Button("Remove SeedVR2 weights", role: .destructive) { confirmingRemove = true }
@@ -72,6 +77,9 @@ struct SeedVR2DetailView: View {
                             }
                         }
                     )
+                } else if loading {
+                    ProgressView().controlSize(.small)
+                    Text("Checking mflux…").font(.caption).foregroundStyle(.secondary)
                 } else {
                     Text("Downloads on first upscale").font(.caption).foregroundStyle(.secondary)
                 }
@@ -118,6 +126,9 @@ struct GemmaDetailView: View {
                 Text("Local model — managed outside the app").foregroundStyle(.secondary)
             } else {
                 row
+                if phase == .running {
+                    BackgroundDownloadCaption()
+                }
             }
         }
         .alert("Delete Gemma weights?", isPresented: $confirmingRemove) {
@@ -149,8 +160,11 @@ struct GemmaDetailView: View {
                     phase: phase, cached: cached, start: start,
                     cancel: { modelDownloads.cancel(repo) },
                     remove: { confirmingRemove = true },
-                    progress: downloadingText
+                    progress: downloadingText, canStart: !settings.hfOffline
                 )
+            }
+            if settings.hfOffline, !cached, phase == nil {
+                Text("Offline mode is on (Settings ▸ Advanced)").font(.caption).foregroundStyle(.secondary)
             }
             if case let .failed(message)? = phase {
                 DownloadFailureView(message: message, log: nil)

@@ -13,6 +13,10 @@ struct QuantRowView: View {
         weightDownloads.runs[.weights(model, quantize: status.quantize)]
     }
 
+    private var isRunning: Bool {
+        run?.phase == .running
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             HStack(spacing: 12) {
@@ -27,16 +31,19 @@ struct QuantRowView: View {
                 }
                 .help(status.fit.tooltip)
                 Spacer(minLength: 8)
-                DownloadStateView(
-                    phase: run?.phase, cached: status.cached, start: start,
-                    cancel: { weightDownloads.cancel(.weights(model, quantize: status.quantize)) },
-                    remove: { confirmingRemove = true },
-                    progress: Group {
-                        if let run {
-                            DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
-                        }
-                    }
-                )
+                if !isRunning {
+                    DownloadStateView(
+                        phase: run?.phase, cached: status.cached, start: start,
+                        cancel: cancel, remove: { confirmingRemove = true }, progress: EmptyView()
+                    )
+                }
+            }
+            if isRunning, let run {
+                HStack(spacing: 12) {
+                    DownloadRunningView(
+                        cancel: cancel, progress: DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
+                    )
+                }
             }
             if case let .failed(message)? = run?.phase, let run {
                 DownloadFailureView(message: message, log: run.log)
@@ -54,6 +61,10 @@ struct QuantRowView: View {
                     + " \(model.displayName) from disk. You can re-download them later."
             )
         }
+    }
+
+    private func cancel() {
+        weightDownloads.cancel(.weights(model, quantize: status.quantize))
     }
 
     private func start() {

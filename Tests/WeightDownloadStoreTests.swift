@@ -2,7 +2,7 @@ import Foundation
 @testable import MLXBits_Image_Studio
 import Testing
 
-/// Settings ▸ Models downloads. Each run keeps the level it was started for
+/// Models window downloads. Each run keeps the level it was started for
 /// (#26), outlives its page (#27), and writes only to itself (#43). The tools
 /// are `/bin/sh` stand-ins, and both caches are fresh temp folders.
 struct WeightDownloadStoreTests {

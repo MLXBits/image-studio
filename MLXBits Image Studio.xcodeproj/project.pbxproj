@@ -44,7 +44,6 @@
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		1692B1A4B63301919B9B815C /* LoraRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */; };
 		16DC20A31C83D44C009AA770 /* WildcardExpander.swift in Sources */ = {isa = PBXBuildFile; fileRef = 989B03F4B6A6D224348122FD /* WildcardExpander.swift */; };
-		1738085217BFC1D696D3D841 /* ModelManagerRows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AFC054E7FFA3C869A053964 /* ModelManagerRows.swift */; };
 		17AF7719ED55FFB98B1D8BA1 /* ModelDownloadStoreTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9B121900DDBD270C3FBC01E /* ModelDownloadStoreTests.swift */; };
 		17BB82D3EA71B0E329AAC2BE /* LoraManagerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E51BC029522E1FCAFAE847DA /* LoraManagerView.swift */; };
 		1836C414A8DA805C4EB57B3D /* EditImageListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 67B0C09644643CB75AE6003E /* EditImageListView.swift */; };
@@ -197,6 +196,7 @@
 		7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76C1DDB5C97F9B016DFFF1D1 /* AppMain.swift */; };
 		7883B20D9BF52E3DC9B5C005 /* AppDelegateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = BACAD8AEF0C40407E8B5D4AE /* AppDelegateTests.swift */; };
 		78C05BFAB33F1EF3E0269AA6 /* ComfyBundleLoadTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7078E40C3BE8D10011113841 /* ComfyBundleLoadTests.swift */; };
+		793E45C9CF209FA385820A6E /* AppSettings+ModelInventoryRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 128D62D133A12DE190A9DA46 /* AppSettings+ModelInventoryRow.swift */; };
 		79A52A4EFE11E18330D636B9 /* PromptTemplatePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3FB1B6C26FA3FEC50290D3 /* PromptTemplatePickerView.swift */; };
 		79D26622904A8808F662A7C5 /* QueueRowActions.swift in Sources */ = {isa = PBXBuildFile; fileRef = F992455B1B7D36978500F3D6 /* QueueRowActions.swift */; };
 		7A4295660278E9FD1D06E5DC /* BBoxEditorView+Subviews.swift in Sources */ = {isa = PBXBuildFile; fileRef = 16A563E555A53728042A51DB /* BBoxEditorView+Subviews.swift */; };
@@ -409,6 +409,7 @@
 		1172C86DEB5264DC82C02963 /* PublishedRepoRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PublishedRepoRouteTests.swift; sourceTree = "<group>"; };
 		11E02470B77B4F1E1D2CB614 /* Krea2ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2ParamsPanelView.swift; sourceTree = "<group>"; };
 		1214D5AA57C649C55EEDF350 /* PromptTokenEstimatorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PromptTokenEstimatorTests.swift; sourceTree = "<group>"; };
+		128D62D133A12DE190A9DA46 /* AppSettings+ModelInventoryRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "AppSettings+ModelInventoryRow.swift"; sourceTree = "<group>"; };
 		129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioPanelController.swift; sourceTree = "<group>"; };
 		138ECB7E18FDB462914EEDFE /* ImageDropTarget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageDropTarget.swift; sourceTree = "<group>"; };
 		141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutputDirectoryPromptView.swift; sourceTree = "<group>"; };
@@ -615,7 +616,6 @@
 		98C2542F243EB199767C2092 /* GemmaChatRunnerRunTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GemmaChatRunnerRunTests.swift; sourceTree = "<group>"; };
 		9A2923FC771E89E8E3C9E978 /* ComfySystemStatsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfySystemStatsTests.swift; sourceTree = "<group>"; };
 		9A9E9EFBB359CD527076035F /* ModelChangeObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelChangeObserverTests.swift; sourceTree = "<group>"; };
-		9AFC054E7FFA3C869A053964 /* ModelManagerRows.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelManagerRows.swift; sourceTree = "<group>"; };
 		9BC3FBDB50D99DB1D44723A9 /* Ideogram4ModelRouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ModelRouteTests.swift; sourceTree = "<group>"; };
 		9C9BA2D815A71C1489245DC8 /* GallerySearch.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GallerySearch.swift; sourceTree = "<group>"; };
 		9DE82B7F1C42F9508BF95185 /* ScenarioGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioGenerator.swift; sourceTree = "<group>"; };
@@ -825,11 +825,11 @@
 		169F50FA53D848D55A16CAB0 /* ModelManager */ = {
 			isa = PBXGroup;
 			children = (
+				128D62D133A12DE190A9DA46 /* AppSettings+ModelInventoryRow.swift */,
 				E01E97428CC41A1A99403420 /* DownloadStateView.swift */,
 				F9F0F856AD83A947B1A770F3 /* ModelManagerDetailView.swift */,
 				16CD95F8529EB62AAC691C2C /* ModelManagerFooter.swift */,
 				C0FA602F305AA9A771D27318 /* ModelManagerListRow.swift */,
-				9AFC054E7FFA3C869A053964 /* ModelManagerRows.swift */,
 				0F4CC7E1F5A13D252FFD3918 /* ModelManagerToolDetailView.swift */,
 				E8FA3F6FF98DBA0D3A3F05C3 /* ModelManagerView.swift */,
 				0846745C4351347A7B11537E /* QuantRowView.swift */,
@@ -1497,6 +1497,7 @@
 				7780AA0AFE3488A2AADA4683 /* AppMain.swift in Sources */,
 				A5DA058778AC0E6C6FAB56D6 /* AppSettings+FileAccess.swift in Sources */,
 				CDE3ED1509016EE4CBD8501B /* AppSettings+ModelCache.swift in Sources */,
+				793E45C9CF209FA385820A6E /* AppSettings+ModelInventoryRow.swift in Sources */,
 				911A9B2C112DF441D647EB8A /* AppSettings+ProfileStored.swift in Sources */,
 				CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */,
 				C29B7E8637CDABB049D8D3C2 /* AspectDirective.swift in Sources */,
@@ -1642,7 +1643,6 @@
 				21006684B1897834F7D1993A /* ModelManagerFooter.swift in Sources */,
 				62E68AAAE6EC97FC89220C9B /* ModelManagerListRow.swift in Sources */,
 				922FCB4CD5F6EF7FEE61B24C /* ModelManagerRouter.swift in Sources */,
-				1738085217BFC1D696D3D841 /* ModelManagerRows.swift in Sources */,
 				4443633F213D42A0DC7D12EA /* ModelManagerToolDetailView.swift in Sources */,
 				837E10D5EB890BACDA9118AB /* ModelManagerView.swift in Sources */,
 				639CA53247594FC6C48CE257 /* ModelPickerView.swift in Sources */,
