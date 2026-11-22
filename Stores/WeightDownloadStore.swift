@@ -87,17 +87,22 @@ final class WeightDownloadStore {
         (ModelDownloadStore.cacheFolder(repo: run.repo, hubDir: hubDir), run.expectedGB)
     }
 
-    /// The `hf cache rm` arguments that delete `model` at `quantize` from the
-    /// hub cache, or nil when it has no folder there. huggingface_hub links a
-    /// repo's blobs into hub/blobs/, a store shared across the whole cache, so
-    /// removing the repo folder by hand leaves the weights behind and the next
-    /// `hf download` relinks them instead of fetching. `hf cache rm` frees them
-    /// once no other repo uses them.
+    /// The `hf cache rm` arguments that delete `repo` from the hub cache.
+    /// huggingface_hub links a repo's blobs into hub/blobs/, a store shared
+    /// across the whole cache, so removing the repo folder by hand leaves the
+    /// weights behind and the next `hf download` relinks them instead of
+    /// fetching. `hf cache rm` frees them once no other repo uses them.
+    static func removeArgs(repo: String, hubDir: URL) -> [String] {
+        ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
+    }
+
+    /// ``removeArgs(repo:hubDir:)`` for `model` at `quantize`, or nil when it
+    /// has no folder in the hub cache.
     static func removeArgs(model: FluxModelVariant, quantize: Int, hubDir: URL) -> [String]? {
         guard let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
               let repo = HFCacheVerdictStore.repoID(cacheFolder: folder.lastPathComponent)
         else { return nil }
-        return ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
+        return removeArgs(repo: repo, hubDir: hubDir)
     }
 
     /// Appends tool output to a log the way a terminal shows it: `\r` rewinds
@@ -197,7 +202,8 @@ final class WeightDownloadStore {
             }
             return nil
         }
-        return matches.first { $0.phase == .running } ?? matches.first
+        return matches.filter { $0.phase == .running }.max { $0.startedAt < $1.startedAt }
+            ?? matches.max { $0.startedAt < $1.startedAt }
     }
 
     /// Clears every finished run of `model`, as its Settings page closes.
@@ -215,10 +221,7 @@ final class WeightDownloadStore {
     }
 
     /// Deletes `model`'s weights at `quantize`: any legacy mflux-save folder the
-    /// app's old save pass wrote, and its hub cache repo through `hf cache rm`
-    /// (see ``removeArgs(model:quantize:hubDir:)``).
-    /// If hf can't run, removes the repo folder by hand, as before; `hf cache
-    /// prune` reclaims what that leaves in the shared store.
+    /// app's old save pass wrote, and its hub cache repo through ``deleteRepo(_:settings:)``.
     func delete(model: FluxModelVariant, quantize: Int, settings: AppSettings) async {
         try? FileManager.default.removeItem(at: model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir))
         let hubDir = settings.hfHubDir
@@ -231,10 +234,11 @@ final class WeightDownloadStore {
     }
 
     /// Deletes `repo` from the hub cache through `hf cache rm`, removing its
-    /// folder by hand if hf can't run. Bumps ``revision``.
+    /// folder by hand if hf can't run (`hf cache prune` reclaims what that
+    /// leaves in the shared store). Bumps ``revision``.
     func deleteRepo(_ repo: String, settings: AppSettings) async {
         let hubDir = settings.hfHubDir
-        let args = ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
+        let args = Self.removeArgs(repo: repo, hubDir: hubDir)
         if await !runHF(args, settings: settings) {
             try? FileManager.default.removeItem(at: ModelDownloadStore.cacheFolder(repo: repo, hubDir: hubDir))
         }

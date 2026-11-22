@@ -119,6 +119,12 @@ struct WeightDownloadStoreTests {
         #expect(WeightDownloadStore.removeArgs(model: .flux2Klein9B, quantize: 4, hubDir: hub) == nil)
     }
 
+    @Test func removeArgsForARepoNameTheRepoAndHubDir() {
+        let hub = URL(fileURLWithPath: "/tmp/hub")
+        #expect(WeightDownloadStore.removeArgs(repo: "numz/SeedVR2_comfyUI", hubDir: hub)
+            == ["cache", "rm", "model/numz/SeedVR2_comfyUI", "--yes", "--cache-dir", "/tmp/hub"])
+    }
+
     @Test func deletingWithNothingInTheHubCacheRunsNoHF() {
         let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
         #expect(WeightDownloadStore.removeArgs(model: .flux3Klein, quantize: 4, hubDir: hub) == nil)
