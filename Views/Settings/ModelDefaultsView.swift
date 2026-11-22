@@ -4,17 +4,18 @@ import SwiftUI
 ///
 /// The form bodies live in `ModelDefaultsView+Forms` and the reusable field
 /// builders in `ModelDefaultsView+Fields`; both reach `settings` (internal here)
-/// and the shared helpers. Downloads belong to ``WeightDownloadStore``.
+/// and the shared helpers. Downloads and removal live in the Models window.
 struct ModelDefaultsView: View {
     /// Sidebar selection: a generative FLUX/Ideogram/Krea model, or the SeedVR2
-    /// upscaler (which isn't a ``FluxModelVariant`` and has no weight-cache rows).
+    /// upscaler (which isn't a ``FluxModelVariant``).
     enum Selection: Hashable {
         case model(FluxModelVariant)
         case seedVR2
     }
 
     @Environment(AppSettings.self) var settings
-    @Environment(WeightDownloadStore.self) private var weightDownloads
+    @Environment(ModelManagerRouter.self) private var router
+    @Environment(\.openWindow) private var openWindow
     @State private var selection: Selection = .model(.builtIn[0])
 
     /// The selected FLUX model, or the first built-in as a placeholder while the
@@ -26,9 +27,6 @@ struct ModelDefaultsView: View {
         return .builtIn[0]
     }
 
-    /// Changes when weights are deleted here; downloads bump the store's revision.
-    @State private var cacheRevision = UUID()
-    @State private var pendingDeleteVariant: (model: FluxModelVariant, quantize: Int)?
     /// Discovered ComfyUI model lists, bound to the remote-capable forms. Owned by ``SettingsView``, which shares it with the LoRAs tab.
     @Environment(ComfyModelStore.self) private var comfyModels
 
@@ -41,17 +39,6 @@ struct ModelDefaultsView: View {
             // Right: settings for selected model
             modelForm
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        }
-        // Ask mflux which models are downloaded (#19) on open, after each
-        // download or deletion, and when the models folder moves.
-        .task(id: "\(cacheRevision) \(weightDownloads.revision) \(settings.hfHubDir.path)") {
-            await HFCacheVerdictStore.shared.refresh(settings: settings)
-        }
-        // Leaving a page clears its finished row and log; a download keeps going (#27).
-        .onChange(of: selection) { old, _ in
-            if case let .model(model) = old {
-                weightDownloads.dismissFinished(model)
-            }
         }
         .onChange(of: settings.comfyURL) { _, newURL in
             let trimmed = newURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -67,30 +54,6 @@ struct ModelDefaultsView: View {
                 comfyModels.cancel()
             } else {
                 comfyModels.refresh(baseURL: trimmed)
-            }
-        }
-        .alert("Delete cached weights?", isPresented: Binding(
-            get: { pendingDeleteVariant != nil },
-            set: {
-                if !$0 {
-                    pendingDeleteVariant = nil
-                }
-            }
-        )) {
-            Button("Delete", role: .destructive) {
-                if let pending = pendingDeleteVariant {
-                    deleteCachedVariant(model: pending.model, quantize: pending.quantize)
-                }
-                pendingDeleteVariant = nil
-            }
-            Button("Cancel", role: .cancel) { pendingDeleteVariant = nil }
-        } message: {
-            if let pending = pendingDeleteVariant {
-                let qLabel = pending.quantize == 0 ? pending.model.baseWeightLabel : "Q\(pending.quantize)"
-                Text(
-                    "This will permanently delete the \(qLabel) weights for"
-                        + " \(pending.model.displayName) from disk. You can re-download them later."
-                )
             }
         }
     }
@@ -189,8 +152,13 @@ struct ModelDefaultsView: View {
     @ViewBuilder
     private var modelForm: some View {
         if case .seedVR2 = selection {
-            ScrollView { seedVR2FormContent(models: comfyModels) }
-                .task { await ensureComfyDiscovery() }
+            ScrollView {
+                VStack(alignment: .leading, spacing: 0) {
+                    manageDownloadsButton.padding([.horizontal, .top])
+                    seedVR2FormContent(models: comfyModels)
+                }
+            }
+            .task { await ensureComfyDiscovery() }
         } else {
             ScrollView {
                 VStack(alignment: .leading, spacing: 0) {
@@ -256,11 +224,7 @@ struct ModelDefaultsView: View {
                 }
             }
 
-            cacheStatusRow(model: selectedModel)
-
-            if let run = weightDownloads.run(for: selectedModel) {
-                cacheLogView(run)
-            }
+            manageDownloadsButton
 
             if selectedModel.isIdeogram4 {
                 // Single string literal (no `+`) so the markdown links render and stay
@@ -289,6 +253,17 @@ struct ModelDefaultsView: View {
         .padding()
     }
 
+    /// Opens the Models window on the selected row; downloads and removal live there.
+    private var manageDownloadsButton: some View {
+        Button("Manage Downloads…") {
+            switch selection {
+            case .seedVR2: router.show(.seedVR2, open: openWindow)
+            case let .model(model): router.show(.model(model), open: openWindow)
+            }
+        }
+        .controlSize(.small)
+    }
+
     /// Trigger ComfyUI model discovery when a remote-capable form (Krea 2, SeedVR2) appears, but only if some family is in
     /// remote mode with a URL set and lists haven't already loaded for that exact server. This is what populates the pickers
     /// on first open (the `.onChange` handlers alone never fire unless a value actually changes).
@@ -298,112 +273,6 @@ struct ModelDefaultsView: View {
         guard !trimmed.isEmpty else { return }
         if !comfyModels.hasLoaded(for: trimmed) {
             comfyModels.refresh(baseURL: trimmed)
-        }
-    }
-
-    // MARK: - Cache log
-
-    private func cacheLogView(_ run: WeightDownloadStore.Run) -> some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                Text(run.log.isEmpty ? "Starting…" : run.log)
-                    .font(.system(size: 10, design: .monospaced))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(6)
-                    .textSelection(.enabled)
-                Color.clear.frame(height: 1).id("cacheLogEnd")
-            }
-            .frame(height: 120)
-            .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
-            .onChange(of: run.log) { _, _ in proxy.scrollTo("cacheLogEnd") }
-            .onAppear { proxy.scrollTo("cacheLogEnd") }
-        }
-    }
-
-    @ViewBuilder
-    private func cacheStatusRow(model: FluxModelVariant) -> some View {
-        switch weightDownloads.run(for: model)?.phase {
-        case .running:
-            if let run = weightDownloads.run(for: model) {
-                runningRow(run)
-            }
-
-        case let .failed(message):
-            VStack(alignment: .leading, spacing: 4) {
-                HStack(spacing: 8) {
-                    Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                        .font(.caption).foregroundStyle(.red)
-                    Button("Retry") {
-                        if case let .weights(_, quantize)? = weightDownloads.run(for: model)?.target {
-                            weightDownloads.start(model: model, quantize: quantize, settings: settings)
-                        }
-                    }
-                    .buttonStyle(.bordered).controlSize(.small)
-                    Spacer()
-                }
-                Text(message)
-                    .font(.caption2).foregroundStyle(.red.opacity(0.8))
-            }
-
-        case nil, .done:
-            HStack(spacing: 6) {
-                // swiftlint:disable:next redundant_discardable_let
-                let _ = (cacheRevision, weightDownloads.revision) // invalidates view when cache changes on disk
-                let cachedVariants = [0, 8, 4].filter {
-                    model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
-                }
-                ForEach(cachedVariants, id: \.self) { qLevel in
-                    HStack(spacing: 3) {
-                        Text(qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)")
-                            .font(.caption2).fontWeight(.medium)
-                        Button {
-                            pendingDeleteVariant = (model, qLevel)
-                        } label: {
-                            Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
-                        }
-                        // Compact so the target stays inside the capsule chip. This
-                        // deletes cached weights — it was a 7pt glyph before.
-                        .buttonStyle(.iconButtonCompact)
-                    }
-                    .padding(.horizontal, 6).padding(.vertical, 2)
-                    .background(.green.opacity(0.15), in: Capsule())
-                    .foregroundStyle(.green)
-                }
-                let cacheDir = settings.effectiveMfluxCacheDir
-                ForEach(
-                    [0, 8, 4].filter { !model.isOnDisk(quantize: $0, savedIn: cacheDir, hubDir: settings.hfHubDir) },
-                    id: \.self
-                ) { qLevel in
-                    let qLabel = qLevel == 0 ? model.baseWeightLabel : "Q\(qLevel)"
-                    Button("Download \(qLabel)") {
-                        weightDownloads.start(model: model, quantize: qLevel, settings: settings)
-                    }
-                    .buttonStyle(.bordered).controlSize(.small)
-                }
-                Spacer()
-            }
-        }
-    }
-
-    private func deleteCachedVariant(model: FluxModelVariant, quantize: Int) {
-        Task {
-            await weightDownloads.delete(model: model, quantize: quantize, settings: settings)
-            cacheRevision = UUID()
-        }
-    }
-
-    private func runningRow(_ run: WeightDownloadStore.Run) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 8) {
-                ProgressView().controlSize(.small)
-                DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
-                Spacer()
-                Button("Cancel") { weightDownloads.cancel(run.target) }
-                    .buttonStyle(.bordered).controlSize(.small)
-            }
-            Text("You can close Settings — this continues in the background.")
-                .font(.caption2).foregroundStyle(.tertiary)
         }
     }
 }

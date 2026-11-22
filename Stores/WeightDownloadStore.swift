@@ -96,15 +96,6 @@ final class WeightDownloadStore {
         ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
     }
 
-    /// ``removeArgs(repo:hubDir:)`` for `model` at `quantize`, or nil when it
-    /// has no folder in the hub cache.
-    static func removeArgs(model: FluxModelVariant, quantize: Int, hubDir: URL) -> [String]? {
-        guard let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
-              let repo = HFCacheVerdictStore.repoID(cacheFolder: folder.lastPathComponent)
-        else { return nil }
-        return removeArgs(repo: repo, hubDir: hubDir)
-    }
-
     /// Appends tool output to a log the way a terminal shows it: `\r` rewinds
     /// the line, and an ANSI cursor-up removes it (hf's stacked progress bars).
     static func appendLog(_ chunk: String, to log: String) -> String {
@@ -193,20 +184,7 @@ final class WeightDownloadStore {
         }
     }
 
-    /// The run to show for `model` while the Settings page still has its own
-    /// download UI: a running quant first, else any finished one.
-    func run(for model: FluxModelVariant) -> Run? {
-        let matches = runs.compactMap { target, run -> Run? in
-            if case let .weights(variant, _) = target, variant == model {
-                return run
-            }
-            return nil
-        }
-        return matches.filter { $0.phase == .running }.max { $0.startedAt < $1.startedAt }
-            ?? matches.max { $0.startedAt < $1.startedAt }
-    }
-
-    /// Clears every finished run of `model`, as its Settings page closes.
+    /// Clears every finished run of `model`, as the Models window leaves it.
     func dismissFinished(_ model: FluxModelVariant) {
         for (target, _) in runs {
             if case let .weights(variant, _) = target, variant == model {

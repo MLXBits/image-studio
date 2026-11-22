@@ -99,35 +99,10 @@ struct WeightDownloadStoreTests {
     /// A repo's blobs link into hub/blobs/, the cache-wide shared store, so
     /// deleting the repo folder by hand left the weights behind for the next
     /// download to relink. `hf cache rm` sweeps them.
-    @Test func deletingAPublishedRepoGoesThroughHFCacheRm() throws {
-        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
-        let repo = "mflux-community/flux-3-image-klein-mflux-q4"
-        try FileManager.default.createDirectory(
-            at: ModelDownloadStore.cacheFolder(repo: repo, hubDir: hub), withIntermediateDirectories: true
-        )
-        #expect(WeightDownloadStore.removeArgs(model: .flux3Klein, quantize: 4, hubDir: hub)
-            == ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hub.path])
-    }
-
-    /// Only the repo the level loads is the model's: an old upstream or third-party
-    /// folder that merely names it is left alone.
-    @Test func deletingIgnoresFoldersThatOnlyNameTheModel() throws {
-        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
-        try FileManager.default.createDirectory(
-            at: hub.appendingPathComponent("models--mlx-community--flux2-klein-9b-4bit"), withIntermediateDirectories: true
-        )
-        #expect(WeightDownloadStore.removeArgs(model: .flux2Klein9B, quantize: 4, hubDir: hub) == nil)
-    }
-
     @Test func removeArgsForARepoNameTheRepoAndHubDir() {
         let hub = URL(fileURLWithPath: "/tmp/hub")
         #expect(WeightDownloadStore.removeArgs(repo: "numz/SeedVR2_comfyUI", hubDir: hub)
             == ["cache", "rm", "model/numz/SeedVR2_comfyUI", "--yes", "--cache-dir", "/tmp/hub"])
-    }
-
-    @Test func deletingWithNothingInTheHubCacheRunsNoHF() {
-        let hub = FakeRuntime.tempDirectory("WeightDownloadStoreTests").appendingPathComponent("hub")
-        #expect(WeightDownloadStore.removeArgs(model: .flux3Klein, quantize: 4, hubDir: hub) == nil)
     }
 
     // MARK: - Runs

@@ -56,7 +56,7 @@ Models/        Job models, model catalog, LoRA entries, prompt history/templates
 Runner/        Generic JobRunner<Spec> engine, per-family specs, warm-driver controller
 Stores/        @Observable app state (settings, per-family job stores, gallery, timings)
 Utilities/     Keychain, metadata sidecars, progress parsing, the Python toolchain, caption/scenario LLMs
-Views/         SwiftUI, one subdirectory per surface (see below)
+Views/         SwiftUI, one subdirectory per surface (see below); `Views/ModelManager/` is the Models window
 Tests/         Swift Testing unit tests — pure logic only, no UI tests
 Resources/     Info.plist, entitlements, and the Python drivers shipped in the bundle
 project.yml    XcodeGen manifest — source of truth for targets, sources, Info.plist
@@ -145,7 +145,9 @@ Adding Z-Image touched 24 files. In dependency order:
 1. `Models/ModelFamily.swift` — add the case; add to `.generative` unless it is
    an action like SeedVR2.
 2. `Models/<Family>Job.swift` — the job model, conforming to `GeneratedJob`.
-3. `Models/FluxModelCatalog.swift` — model IDs, variants, defaults.
+3. `Models/FluxModelCatalog.swift` — model IDs, variants, defaults. Also the variant's
+   `guide` (`Models/ModelGuide.swift`; the compiler enforces it) and its section in
+   `ModelInventory.sections` (a test enforces it), which feed the Models window.
 4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, the typealias.
 5. `Stores/<Family>JobStore.swift` — conform to `ProfileScopedJobStore`, with
    `PersistedJob` as the family's job, and to `GenerationJobStore` (declared in
