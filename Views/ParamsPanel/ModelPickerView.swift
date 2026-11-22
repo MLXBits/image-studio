@@ -234,17 +234,7 @@ struct ModelPickerView: View {
         let diskGB = model.approximateSizeGB(quantize: quantize)
         guard gb > 0 else { return nil }
         let label = "≈\(String(format: "%.0f", gb)) GB RAM"
-        // Color relative to this machine's physical memory, not fixed GB cutoffs:
-        // green with comfortable headroom for activations + OS, yellow when tight,
-        // orange when it likely won't fit, red when it almost certainly won't.
-        let totalRAMGB = Double(ProcessInfo.processInfo.physicalMemory) / 1_073_741_824
-        let ramFraction = totalRAMGB > 0 ? gb / totalRAMGB : 1.0
-        let color: Color = switch ramFraction {
-        case ..<0.6: .green
-        case ..<0.8: .yellow
-        case ..<0.9: .orange
-        default: .red
-        }
+        let color = RAMFit.of(ramGB: gb, physicalGB: RAMFit.physicalGB).color
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
         // The disk pill is a binary download-state signal — green when cached,
         // neutral "download" otherwise. Size-based warning colors live on the RAM
