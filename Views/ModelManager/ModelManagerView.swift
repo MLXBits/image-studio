@@ -71,9 +71,12 @@ struct ModelManagerView: View {
             let gemmaRepo = FileAccessPath.isLocal(settings.gemmaModel) ? nil : settings.gemmaModel
             let folders = ModelInventory.listedRepoFolders(hubDir: hubDir, seedVR2Repo: seedVR2Repo, gemmaRepo: gemmaRepo)
             let saved = ModelInventory.legacySavedFolders(cacheDir: settings.effectiveMfluxCacheDir)
-            diskBytes = await Task.detached {
+            let bytes = await Task.detached {
                 ModelInventory.diskBytes(repoFolders: folders) + ModelInventory.folderBytes(saved)
             }.value
+            // A newer key cancelled this scan; its own result is the one to show.
+            guard !Task.isCancelled else { return }
+            diskBytes = bytes
         }
         .onDisappear { weightDownloads.dismissFinished() }
         .onChange(of: router.selection) { old, _ in

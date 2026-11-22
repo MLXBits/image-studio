@@ -25,6 +25,7 @@ struct DownloadStateView<Progress: View>: View {
                 .fixedSize()
             Button("Retry", action: start)
                 .modelManagerButton()
+                .disabled(!canStart)
 
         case nil, .done:
             if cached {

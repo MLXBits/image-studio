@@ -102,7 +102,8 @@ struct GemmaDetailView: View {
     @Environment(WeightDownloadStore.self) private var weightDownloads
     @Environment(ModelDownloadStore.self) private var modelDownloads
     @State private var confirmingRemove = false
-    @State private var downloadError: String?
+    /// The last failed fetch and the repo it was for, so a failure never shows against another Gemma setting.
+    @State private var downloadError: (repo: String, message: String)?
 
     private var repo: String {
         settings.gemmaModel
@@ -112,7 +113,8 @@ struct GemmaDetailView: View {
         if modelDownloads.active[repo] != nil {
             return .running
         }
-        return downloadError.map { .failed($0) }
+        guard let downloadError, downloadError.repo == repo else { return nil }
+        return .failed(downloadError.message)
     }
 
     var body: some View {
@@ -189,7 +191,7 @@ struct GemmaDetailView: View {
             } catch is CancellationError {
                 // The person pressed Cancel: not a failure.
             } catch {
-                downloadError = error.localizedDescription
+                downloadError = (repo, error.localizedDescription)
             }
         }
     }
