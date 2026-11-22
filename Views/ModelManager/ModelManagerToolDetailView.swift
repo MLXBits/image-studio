@@ -31,7 +31,7 @@ struct SeedVR2DetailView: View {
             }
             Divider()
             Button("Remove SeedVR2 weights", role: .destructive) { confirmingRemove = true }
-                .disabled(specs == nil || !Self.sizes.contains { cached($0.name) })
+                .disabled(specs == nil || isDownloading || !Self.sizes.contains { cached($0.name) })
         }
         .alert("Delete SeedVR2 weights?", isPresented: $confirmingRemove) {
             Button("Delete", role: .destructive) {
@@ -43,6 +43,10 @@ struct SeedVR2DetailView: View {
         } message: {
             Text("This deletes both the 3B and 7B SeedVR2 weights from disk. You can re-download them later.")
         }
+    }
+
+    private var isDownloading: Bool {
+        Self.sizes.contains { weightDownloads.runs[.seedVR2(is7B: $0.is7B)]?.phase == .running }
     }
 
     private func cached(_ name: String) -> Bool {
@@ -165,6 +169,8 @@ struct GemmaDetailView: View {
         Task {
             do {
                 try await modelDownloads.ensureAvailable(repo, settings: settings)
+            } catch is CancellationError {
+                // The person pressed Cancel: not a failure.
             } catch {
                 downloadError = error.localizedDescription
             }

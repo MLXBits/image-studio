@@ -81,11 +81,18 @@ struct ModelManagerView: View {
     }
 
     private var diskKey: String {
-        "\(weightDownloads.revision) \(settings.hfHubDir.path) \(seedVR2Specs?.values.first?.repo ?? "") \(settings.gemmaModel)"
+        let repo = seedVR2Specs?.values.first?.repo ?? ""
+        return "\(weightDownloads.revision) \(settings.hfHubDir.path) \(repo) \(settings.gemmaModel) \(gemmaDownloading)"
+    }
+
+    /// Flips when a Gemma fetch starts or ends, so the chip and disk total recompute.
+    private var gemmaDownloading: Bool {
+        modelDownloads.active[settings.gemmaModel] != nil
     }
 
     private var gemmaCached: Bool {
-        !FileAccessPath.isLocal(settings.gemmaModel)
+        _ = gemmaDownloading
+        return !FileAccessPath.isLocal(settings.gemmaModel)
             && ModelDownloadStore.hasCachedWeights(repo: settings.gemmaModel, hubDir: settings.hfHubDir)
     }
 
