@@ -34,11 +34,16 @@ struct ModelManagerView: View {
             await HFCacheVerdictStore.shared.refresh(settings: settings)
         }
         .onDisappear { weightDownloads.dismissFinished() }
+        .onChange(of: router.selection) { old, _ in
+            if case let .model(previous)? = old {
+                weightDownloads.dismissFinished(previous)
+            }
+        }
     }
 
     @ViewBuilder private var detail: some View {
         switch router.selection {
-        case let .model(model): Text(model.displayName)
+        case let .model(model): ModelManagerDetailView(model: model).id(model)
         case .seedVR2: Text("SeedVR2")
         case .gemma: Text("Gemma")
         case nil: EmptyView()
@@ -46,13 +51,7 @@ struct ModelManagerView: View {
     }
 
     private func row(for model: FluxModelVariant) -> ModelRow {
-        ModelInventory.row(
-            for: model,
-            isCached: { model.isOnDisk(quantize: $0, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir) },
-            ramGB: { model.approximateRAMGB(quantize: $0, settings: settings) },
-            physicalGB: RAMFit.physicalGB,
-            toolMissing: model.generateTool.map { !settings.toolchain.hasTool($0) } ?? false
-        )
+        settings.inventoryRow(for: model)
     }
 
     private func isDownloading(_ model: FluxModelVariant) -> Bool {
