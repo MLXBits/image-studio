@@ -31,17 +31,17 @@ nonisolated extension FluxModelVariant {
         case .flux2KleinBase4B:
             ModelGuide(
                 blurb: """
-                The full-diffusion FLUX.2 Klein 4B. It runs about 50 steps with guidance and takes a negative \
-                prompt, so it is slower but gives you more control than the 4-step model.
+                The full-diffusion FLUX.2 Klein 4B. It runs about 50 steps with guidance, so it is slower \
+                but gives you more control than the 4-step model.
                 """,
-                greatAt: ["Fine control", "Guidance", "Negative prompts"],
+                greatAt: ["Fine control", "Guidance", "Detail"],
                 note: nil
             )
         case .flux2KleinBase9B:
             ModelGuide(
                 blurb: """
-                The full-diffusion FLUX.2 Klein 9B. About 50 steps with guidance and a negative prompt, for the most \
-                control in the FLUX.2 family at the cost of speed.
+                The full-diffusion FLUX.2 Klein 9B. About 50 steps with guidance, for the most control in the \
+                FLUX.2 family at the cost of speed.
                 """,
                 greatAt: ["Fine control", "Guidance", "Detail"],
                 note: nil
@@ -68,8 +68,7 @@ nonisolated extension FluxModelVariant {
             ModelGuide(
                 blurb: """
                 A model that takes a structured caption instead of a single prompt: a scene, an optional style, and \
-                regional elements you can place with bounding boxes and color palettes. It is the largest download \
-                here.
+                regional elements you can place with bounding boxes and color palettes.
                 """,
                 greatAt: ["Layout control", "Exact colors", "Structured captions"],
                 note: """
@@ -84,7 +83,7 @@ nonisolated extension FluxModelVariant {
                 to about 1,000 tokens.
                 """,
                 greatAt: ["Quick results", "Long prompts"],
-                note: nil
+                note: "A negative prompt works when guidance is above 1; at 1.0 it is not used."
             )
         case .zimageTurbo:
             ModelGuide(
@@ -99,7 +98,7 @@ nonisolated extension FluxModelVariant {
                 slower than Turbo but lets you steer what to avoid.
                 """,
                 greatAt: ["Negative prompts", "Guidance", "Fine control"],
-                note: "Takes a negative prompt, which the turbo models ignore."
+                note: "Takes a negative prompt. Z-Image Turbo has none."
             )
         case .qwen21Turbo:
             ModelGuide(
