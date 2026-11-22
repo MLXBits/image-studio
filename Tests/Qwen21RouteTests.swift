@@ -243,7 +243,7 @@ struct Qwen21RouteTests {
         let resolved = SeedVR2Metadata.resolveSource(for: source)
         #expect(resolved.qwen21?.prompt == "a fox in snow")
         let fields = try #require(SeedVR2DisplayFields(source: resolved))
-        #expect(fields.sourceModel == "Qwen-Image 2.1 Turbo")
+        #expect(fields.sourceModel == "Qwen Image 2.1 Turbo")
         #expect(fields.seed == 7 && fields.width == 1344 && fields.height == 768)
     }
 

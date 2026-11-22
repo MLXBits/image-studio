@@ -112,7 +112,7 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         case .krea2: "Krea 2 Turbo"
         case .zimageTurbo: "Z-Image Turbo"
         case .zimage: "Z-Image"
-        case .qwen21Turbo: "Qwen-Image 2.1 Turbo"
+        case .qwen21Turbo: "Qwen Image 2.1 Turbo"
         case .flux3Klein: "FLUX.3 Klein"
         case .flux3KleinBase: "FLUX.3 Klein Base"
         case .custom: "Custom Model"

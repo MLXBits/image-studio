@@ -103,7 +103,7 @@ nonisolated extension FluxModelVariant {
         case .qwen21Turbo:
             ModelGuide(
                 blurb: """
-                A distilled Qwen-Image 2.1 that makes an image in 8 steps. One model handles both generating from a \
+                A distilled Qwen Image 2.1 that makes an image in 8 steps. One model handles both generating from a \
                 prompt and editing an existing image.
                 """,
                 greatAt: ["Generate and Edit", "Quick results"],

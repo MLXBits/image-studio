@@ -66,7 +66,7 @@ extension ModelDefaultsView {
                     settings.updateDefaults(ModelDefaults(), for: model)
                 }
                 .foregroundStyle(.red)
-                .accessibilityLabel("Reset Qwen-Image 2.1 Turbo to built-in defaults")
+                .accessibilityLabel("Reset Qwen Image 2.1 Turbo to built-in defaults")
             }
         }
         .formStyle(.grouped)
