@@ -229,7 +229,7 @@ struct ModelDefaultsView: View {
         }
         let vramGB = selectedModel.approximateRAMGB(quantize: quantize, settings: settings)
         let quantLabel = quantize == 0 ? selectedModel.baseWeightLabel : "Q\(quantize)"
-        let vramColor: Color = vramGB > 30 ? .orange : vramGB > 18 ? .yellow : .green
+        let vramColor = RAMFit.of(ramGB: vramGB, physicalGB: RAMFit.physicalGB).color
 
         return VStack(alignment: .leading, spacing: 6) {
             Text(selectedModel.displayName)
