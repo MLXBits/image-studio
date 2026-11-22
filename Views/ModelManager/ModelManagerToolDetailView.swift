@@ -88,6 +88,7 @@ struct SeedVR2DetailView: View {
                 DownloadFailureView(message: message, log: run.log)
             }
         }
+        .cachedRowHighlight(cached(size.name) && run?.phase != .running)
     }
 }
 
@@ -170,6 +171,7 @@ struct GemmaDetailView: View {
                 DownloadFailureView(message: message, log: nil)
             }
         }
+        .cachedRowHighlight(cached && phase != .running)
     }
 
     private var downloadingText: some View {

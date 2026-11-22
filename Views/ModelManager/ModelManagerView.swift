@@ -3,11 +3,15 @@ import SwiftUI
 /// The Models window: every model under its family, with what is cached.
 struct ModelManagerView: View {
     static let windowID = "model-manager"
+    static let sidebarMinWidth: CGFloat = 250
+    /// Wide enough that no quant row squeezes its buttons.
+    static let detailMinWidth: CGFloat = 570
 
     @Environment(AppSettings.self) private var settings
     @Environment(WeightDownloadStore.self) private var weightDownloads
     @Environment(ModelManagerRouter.self) private var router
     @Environment(ModelDownloadStore.self) private var modelDownloads
+    @Environment(\.dismissWindow) private var dismissWindow
 
     /// mflux's SeedVR2 download specs, probed once per window appearance.
     @State private var seedVR2Specs: [String: HFDownloadSpec]?
@@ -31,14 +35,24 @@ struct ModelManagerView: View {
                     toolRow("Gemma", chips: gemmaCached ? ["✓"] : []).tag(ModelManagerRouter.Item.gemma)
                 }
             }
-            .navigationSplitViewColumnWidth(min: 230, ideal: 260)
+            .navigationSplitViewColumnWidth(min: Self.sidebarMinWidth, ideal: 280)
             .safeAreaInset(edge: .bottom, spacing: 0) {
-                ModelManagerFooter(hubDir: settings.hfHubDir, bytes: diskBytes)
+                ModelManagerFooter(hubDir: settings.hfHubDir, savedDir: settings.effectiveMfluxCacheDir, bytes: diskBytes)
             }
         } detail: {
-            detail
+            // A quant row measures 513pt at its narrowest (Download + Use), plus the pane's 40pt padding.
+            detail.frame(minWidth: Self.detailMinWidth)
         }
-        .frame(minWidth: 640, minHeight: 420)
+        // No hand-summed minWidth: the split view adds the sidebar's own chrome to the column minimums.
+        // A sum of the two columns alone squeezed the sidebar and cut its leading edge.
+        .frame(minHeight: 420)
+        // Escape closes the window, as in Keyboard Shortcuts.
+        .background {
+            Button("") { dismissWindow(id: Self.windowID) }
+                .keyboardShortcut(.cancelAction)
+                .hidden()
+                .accessibilityHidden(true)
+        }
         .task(id: "\(weightDownloads.revision) \(settings.hfHubDir.path)") {
             await HFCacheVerdictStore.shared.refresh(settings: settings)
         }
@@ -56,7 +70,10 @@ struct ModelManagerView: View {
             let seedVR2Repo = seedVR2Specs?.values.first?.repo
             let gemmaRepo = FileAccessPath.isLocal(settings.gemmaModel) ? nil : settings.gemmaModel
             let folders = ModelInventory.listedRepoFolders(hubDir: hubDir, seedVR2Repo: seedVR2Repo, gemmaRepo: gemmaRepo)
-            diskBytes = await Task.detached { ModelInventory.diskBytes(repoFolders: folders) }.value
+            let saved = ModelInventory.legacySavedFolders(cacheDir: settings.effectiveMfluxCacheDir)
+            diskBytes = await Task.detached {
+                ModelInventory.diskBytes(repoFolders: folders) + ModelInventory.folderBytes(saved)
+            }.value
         }
         .onDisappear { weightDownloads.dismissFinished() }
         .onChange(of: router.selection) { old, _ in
@@ -86,7 +103,8 @@ struct ModelManagerView: View {
 
     private var diskKey: String {
         let repo = seedVR2Specs?.values.first?.repo ?? ""
-        return "\(weightDownloads.revision) \(settings.hfHubDir.path) \(repo) \(settings.gemmaModel) \(gemmaDownloading)"
+        let saved = settings.effectiveMfluxCacheDir.path
+        return "\(weightDownloads.revision) \(settings.hfHubDir.path) \(saved) \(repo) \(settings.gemmaModel) \(gemmaDownloading)"
     }
 
     /// Flips when a Gemma fetch starts or ends, so the chip and disk total recompute.
@@ -101,12 +119,9 @@ struct ModelManagerView: View {
     }
 
     private func toolRow(_ title: String, chips: [String]) -> some View {
-        HStack(spacing: 6) {
+        VStack(alignment: .leading, spacing: 3) {
             Text(title).lineLimit(1)
-            Spacer(minLength: 4)
-            ForEach(chips, id: \.self) { chip in
-                CachedChip(label: chip)
-            }
+            ModelManagerRowDetail(chips: chips)
         }
     }
 

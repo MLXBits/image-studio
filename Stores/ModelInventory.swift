@@ -75,11 +75,6 @@ enum ModelInventory {
         return ModelRow(model: model, quants: quants, toolMissing: toolMissing)
     }
 
-    /// The largest cached quant that fits this Mac, else Q8.
-    static func preferredQuantize(_ row: ModelRow) -> Int {
-        row.quants.first { $0.cached && ($0.fit == .comfortable || $0.fit == .tight) }?.quantize ?? 8
-    }
-
     /// Bytes under the repos' `blobs/` folders, following links and counting each resolved file once.
     nonisolated static func diskBytes(repoFolders: [URL]) -> Int64 {
         var seen = Set<String>()
@@ -117,5 +112,28 @@ enum ModelInventory {
             .map { ModelDownloadStore.cacheFolder(repo: $0, hubDir: hubDir) }
             .filter { FileManager.default.fileExists(atPath: $0.path) }
         return models + tools
+    }
+
+    /// The old mflux-save copies the runner still loads instead of a hub repo
+    /// (``FluxModelVariant/legacySavedWeights(quantize:in:)``). Those models show as
+    /// cached, so the disk total counts these folders as well as the repos.
+    static func legacySavedFolders(cacheDir: URL) -> [URL] {
+        FluxModelVariant.allModels.flatMap { model in
+            quantOrder.compactMap { model.legacySavedWeights(quantize: $0, in: cacheDir) }
+        }
+    }
+
+    /// Bytes of every regular file under `folders`, which hold plain files (no hub links).
+    nonisolated static func folderBytes(_ folders: [URL]) -> Int64 {
+        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
+        var total: Int64 = 0
+        for folder in folders {
+            let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys)
+            while let url = walk?.nextObject() as? URL {
+                guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
+                total += Int64(values.fileSize ?? 0)
+            }
+        }
+        return total
     }
 }

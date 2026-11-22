@@ -141,7 +141,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(router)
                 .environment(coordinator)
         }
-        .defaultSize(width: 760, height: 520)
+        .defaultSize(width: 900, height: 560)
+        .windowResizability(.contentMinSize)
         .defaultPosition(.center)
 
         Window("Support MLXBits Image Studio", id: SupportView.windowID) {

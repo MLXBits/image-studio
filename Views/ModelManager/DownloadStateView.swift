@@ -1,13 +1,14 @@
 import SwiftUI
 
 /// The trailing half of a Models window download row: progress and Cancel while running,
-/// Failed and Retry after an error, else Cached with Remove or a Download button.
+/// Failed and Retry after an error, else Remove or a Download button. A cached row says so
+/// with ``View/cachedRowHighlight(_:)``, not a label.
 struct DownloadStateView<Progress: View>: View {
     let phase: WeightDownloadStore.Phase?
     let cached: Bool
     let start: () -> Void
     let cancel: () -> Void
-    /// nil shows Cached without a Remove button.
+    /// nil leaves a cached row without a Remove button.
     let remove: (() -> Void)?
     let progress: Progress
     /// False greys out Download, e.g. while HF offline mode would make it do nothing.
@@ -21,22 +22,30 @@ struct DownloadStateView<Progress: View>: View {
         case .failed:
             Label("Failed", systemImage: "exclamationmark.triangle.fill")
                 .font(.caption).foregroundStyle(.red)
+                .fixedSize()
             Button("Retry", action: start)
-                .buttonStyle(.bordered).controlSize(.regular)
+                .modelManagerButton()
 
         case nil, .done:
             if cached {
-                Text("Cached").font(.caption).foregroundStyle(.green)
                 if let remove {
                     Button("Remove", role: .destructive, action: remove)
-                        .buttonStyle(.bordered).controlSize(.regular)
+                        .modelManagerButton()
                 }
             } else {
                 Button("Download", action: start)
-                    .buttonStyle(.bordered).controlSize(.regular)
+                    .modelManagerButton()
                     .disabled(!canStart)
             }
         }
+    }
+}
+
+extension View {
+    /// A Models window row button: bordered, regular size, and never squeezed into "Do…"
+    /// by a narrow pane (the pane's minimum width leaves room for it instead).
+    func modelManagerButton() -> some View {
+        buttonStyle(.bordered).controlSize(.regular).fixedSize()
     }
 }
 
@@ -49,7 +58,16 @@ struct DownloadRunningView<Progress: View>: View {
         ProgressView().controlSize(.small)
         progress
         Button("Cancel", action: cancel)
-            .buttonStyle(.bordered).controlSize(.regular)
+            .modelManagerButton()
+    }
+}
+
+extension View {
+    /// The faint green wash on a Models window row whose weights are on disk.
+    func cachedRowHighlight(_ cached: Bool) -> some View {
+        padding(.horizontal, 8)
+            .padding(.vertical, 6)
+            .background(cached ? Color.green.opacity(0.07) : .clear, in: RoundedRectangle(cornerRadius: 6))
     }
 }
 

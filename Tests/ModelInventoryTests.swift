@@ -34,20 +34,6 @@ struct ModelInventoryTests {
         #expect(row.quants[0].fit == .comfortable)
     }
 
-    private func preferred(cached: Set<Int>, ram: [Int: Double]) -> Int {
-        let row = ModelInventory.row(
-            for: .krea2, isCached: { cached.contains($0) }, ramGB: { ram[$0] ?? 1 }, physicalGB: 10, toolMissing: false
-        )
-        return ModelInventory.preferredQuantize(row)
-    }
-
-    @Test func preferredQuantizeIsTheLargestCachedQuantThatFits() {
-        #expect(preferred(cached: [8, 4], ram: [8: 8.5, 4: 2]) == 4)
-        #expect(preferred(cached: [0, 8], ram: [0: 2, 8: 2]) == 0)
-        #expect(preferred(cached: [], ram: [:]) == 8)
-        #expect(preferred(cached: [4], ram: [4: 20]) == 8)
-    }
-
     @Test func aBlobLinkedFromTwoReposCountsOnce() throws {
         let root = FakeRuntime.tempDirectory("ModelInventoryTests")
         let fm = FileManager.default
@@ -104,5 +90,33 @@ struct ModelInventoryTests {
         let listed = ModelInventory.listedRepoFolders(hubDir: hub, seedVR2Repo: "numz/SeedVR2_comfyUI", gemmaRepo: "org/gemma")
         #expect(Set(listed) == [kreaFolder, gemmaFolder])
         #expect(listed.count == 2)
+    }
+
+    /// A model the runner loads from an old mflux-save copy shows as cached, so its
+    /// folder counts toward the total too.
+    @Test func legacySavedFoldersListOnlyCopiesWithWeights() throws {
+        let cache = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let fm = FileManager.default
+        let krea = FluxModelVariant.krea2.savedModelPath(quantize: 8, in: cache)
+        try fm.createDirectory(at: krea.appendingPathComponent("transformer"), withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: krea.appendingPathComponent("transformer/0.safetensors"))
+        // Configs only: not a copy the runner would load.
+        let zimage = FluxModelVariant.zimage.savedModelPath(quantize: 8, in: cache)
+        try fm.createDirectory(at: zimage, withIntermediateDirectories: true)
+        try Data("{}".utf8).write(to: zimage.appendingPathComponent("config.json"))
+        // Ideogram 4 ignores its old copies, so they are not listed.
+        let ideogram = FluxModelVariant.ideogram4.savedModelPath(quantize: 8, in: cache)
+        try fm.createDirectory(at: ideogram, withIntermediateDirectories: true)
+        try Data("x".utf8).write(to: ideogram.appendingPathComponent("0.safetensors"))
+        #expect(ModelInventory.legacySavedFolders(cacheDir: cache) == [krea])
+    }
+
+    @Test func folderBytesSumsEveryNestedFile() throws {
+        let root = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let fm = FileManager.default
+        try fm.createDirectory(at: root.appendingPathComponent("a/b"), withIntermediateDirectories: true)
+        try Data(count: 1000).write(to: root.appendingPathComponent("a/one.safetensors"))
+        try Data(count: 24).write(to: root.appendingPathComponent("a/b/two.safetensors"))
+        #expect(ModelInventory.folderBytes([root.appendingPathComponent("a"), root.appendingPathComponent("missing")]) == 1024)
     }
 }
