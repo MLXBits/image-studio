@@ -279,13 +279,13 @@
   // ModelDownloadStore
   func forget(_ repo: String)                       // removes every `ready` key for repo
   // ModelInventory
-  nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool   // snapshots/<commit>/<each include> exists (follows links); <commit> is the revision when it is a 40-hex commit, else refs/<revision> (nil ⇒ refs/main)
+  nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool   // snapshots/<commit>/<each include> exists (follows links); snapshots/<revision> when that folder exists (a pinned commit), else the commit in refs/<revision> (nil ⇒ refs/main)
   static func listedRepoFolders(hubDir: URL, seedVR2Repo: String?, gemmaRepo: String?) -> [URL]  // every allModels × quantOrder hubCacheFolder that exists + tool folders that exist
   ```
 
 - [ ] **Step 1: Failing tests:**
   - `forgetMakesTheNextEnsureFetchAgain` (ModelDownloadStoreTests): a counting `fetch` stub; `ensureAvailable("org/gemma", …)` twice ⇒ 1 fetch; `forget("org/gemma")`; once more ⇒ 2 fetches.
-  - `aSpecIsCachedWhenEveryIncludeIsInItsRevision` (ModelInventoryTests): temp `models--numz--SeedVR2_comfyUI/snapshots/rev123/` with both files ⇒ true; one file missing ⇒ false; files under another revision only ⇒ false; nil or branch revision resolved through `refs/` with the files in its commit ⇒ true.
+  - `aSpecIsCachedWhenEveryIncludeIsInItsRevision` (ModelInventoryTests): temp `models--numz--SeedVR2_comfyUI/snapshots/<40-hex commit>/` with both files, spec pinned to that commit ⇒ true; one file missing ⇒ false; files under another revision only ⇒ false; nil or branch revision resolved through `refs/` with the files in its commit ⇒ true.
   - `listedRepoFoldersSkipMissingOnes`: create only the Krea 2 Q4 folder and a Gemma folder ⇒ exactly those two URLs.
 - [ ] **Step 2: Run, expect FAIL.**
 - [ ] **Step 3: Implement** `forget`, `isCached`, `listedRepoFolders`.
