@@ -8,6 +8,20 @@ nonisolated struct HFDownloadSpec: Hashable, Sendable {
     let include: [String]
 }
 
+/// A probe's answer may omit `include`, which then means "the whole repo".
+nonisolated extension HFDownloadSpec: Decodable {
+    private enum CodingKeys: String, CodingKey {
+        case repo, revision, include
+    }
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        repo = try container.decode(String.self, forKey: .repo)
+        revision = try container.decodeIfPresent(String.self, forKey: .revision)
+        include = try container.decodeIfPresent([String].self, forKey: .include) ?? []
+    }
+}
+
 /// What a download is for. Each target downloads independently of the others.
 enum DownloadTarget: Hashable {
     case weights(FluxModelVariant, quantize: Int)

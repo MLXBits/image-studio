@@ -1,6 +1,7 @@
 """Asks mflux which Hugging Face cache entries it can load without downloading.
 
     python3.14 hf_cache_probe.py --hub <hub dir> <family>=<org/repo> ...
+    python3.14 hf_cache_probe.py --download-spec <name> ...
     python3.14 hf_cache_probe.py --check
 
 Prints one JSON object, {"<org/repo>": true | false, ...}. True means mflux's
@@ -14,8 +15,13 @@ shared store (huggingface_hub 2.x).
 A family this mflux can't answer for is left out of the result, and the app
 keeps its own size check for those repos.
 
+`--download-spec` prints what mflux downloads for a model the app fetches from
+an upstream repo, {"<name>": {"repo", "revision", "include"}}: the repo and
+pinned revision mflux resolves, and the file patterns its weight definition
+asks for. Only SeedVR2's names are known; others are left out.
+
 `--check` runs the probe for every family against an empty cache and fails
-unless each answers. `_find_complete_cached_snapshot` is private to mflux, so
+unless each answers, and unless both SeedVR2 names answer a download spec. `_find_complete_cached_snapshot` is private to mflux, so
 the runtime build runs it: an mflux bump that renames it fails the build, not
 the app.
 """
@@ -39,6 +45,12 @@ DEFINITIONS = {
     "z-image": ("mflux.models.z_image.weights.z_image_weight_definition", "ZImageWeightDefinition"),
     # The edit pipeline's definition: the app runs both modes through mflux-generate-qwen-2.1-edit.
     "qwenimage2.1": ("mflux.models.qwen21.weights.qwen_image21_weight_definition", "QwenImage21WeightDefinition"),
+}
+
+# The weight definition behind each name `--download-spec` answers.
+SPECS = {
+    "seedvr2-3b": ("mflux.models.seedvr2.weights.seedvr2_weight_definition", "SeedVR2WeightDefinition3B"),
+    "seedvr2-7b": ("mflux.models.seedvr2.weights.seedvr2_weight_definition", "SeedVR2WeightDefinition7B"),
 }
 
 
@@ -76,6 +88,26 @@ def probe(hub, requests):
     return verdicts
 
 
+def download_specs(names):
+    specs = {}
+    for name in names:
+        try:
+            from mflux.models.common.config.model_config import AVAILABLE_MODELS
+            from mflux.models.common.resolution.model_revisions import ModelRevisions
+
+            module, cls = SPECS[name]
+            definition = getattr(importlib.import_module(module), cls)
+            repo = AVAILABLE_MODELS[name].model_name
+            specs[name] = {
+                "repo": repo,
+                "revision": ModelRevisions.get(repo),
+                "include": list(definition.get_download_patterns()),
+            }
+        except Exception:  # noqa: BLE001 - an unknown name or an mflux without it: no answer
+            continue
+    return specs
+
+
 def parse(argv):
     if len(argv) < 2 or argv[0] != "--hub":
         raise ValueError("usage: hf_cache_probe.py --hub <hub dir> <family>=<org/repo> ... | --check")
@@ -96,12 +128,19 @@ def check():
     if missing:
         print(f"hf_cache_probe: no answer for {missing}", file=sys.stderr)
         return 1
+    unanswered = [name for name in SPECS if name not in download_specs(SPECS)]
+    if unanswered:
+        print(f"hf_cache_probe: no download spec for {unanswered}", file=sys.stderr)
+        return 1
     return 0
 
 
 def main(argv):
     if argv == ["--check"]:
         return check()
+    if argv[:1] == ["--download-spec"]:
+        print(json.dumps(download_specs(argv[1:])))
+        return 0
     try:
         hub, requests = parse(argv)
     except ValueError as error:

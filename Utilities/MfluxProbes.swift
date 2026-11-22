@@ -248,6 +248,18 @@ nonisolated enum MfluxProbes {
         return try? JSONDecoder().decode([String: Bool].self, from: data)
     }
 
+    /// What mflux downloads for each of `names` (`seedvr2-3b`, `seedvr2-7b`): the upstream repo,
+    /// the revision mflux pins it to, and the file patterns its weight definition loads. Asks
+    /// `script` (the bundled `hf_cache_probe.py --download-spec`) so a download fetches exactly
+    /// what the installed mflux will load. Not cached. Nil when the probe fails; names it can't
+    /// answer for are left out.
+    nonisolated static func downloadSpecs(python: String?, script: URL, names: [String]) -> [String: HFDownloadSpec]? {
+        guard let python, !names.isEmpty,
+              let out = runProbe(python: python, arguments: [script.path, "--download-spec"] + names),
+              let data = out.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode([String: HFDownloadSpec].self, from: data)
+    }
+
     /// Runs `python -c code` with the toolchain environment and returns its
     /// trimmed stdout, or nil when the process cannot start, writes nothing, or
     /// outlives `timeout`. Callers wait on it (a Flux job awaits the base-model
