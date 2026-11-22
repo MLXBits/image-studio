@@ -59,10 +59,12 @@ struct ModelInventoryTests {
 
     @Test func aSpecIsCachedWhenEveryIncludeIsInItsRevision() throws {
         let hub = FakeRuntime.tempDirectory("ModelInventoryTests")
-        let spec = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: "rev123", include: ["a.safetensors", "b.safetensors"])
+        // A pinned spec names a real commit, as mflux's pins do.
+        let commit = "09ced71023636e9bc8cdf9cdecfb2625d1e691e8"
+        let spec = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: commit, include: ["a.safetensors", "b.safetensors"])
         let folder = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hub)
         let fm = FileManager.default
-        let revision = folder.appendingPathComponent("snapshots/rev123", isDirectory: true)
+        let revision = folder.appendingPathComponent("snapshots/\(commit)", isDirectory: true)
         try fm.createDirectory(at: revision, withIntermediateDirectories: true)
         try Data("a".utf8).write(to: revision.appendingPathComponent("a.safetensors"))
         #expect(!ModelInventory.isCached(spec, hubDir: hub))
@@ -71,7 +73,7 @@ struct ModelInventoryTests {
 
         let other = FakeRuntime.tempDirectory("ModelInventoryTests")
         let elsewhere = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: other)
-            .appendingPathComponent("snapshots/other", isDirectory: true)
+            .appendingPathComponent("snapshots/1111111111111111111111111111111111111111", isDirectory: true)
         try fm.createDirectory(at: elsewhere, withIntermediateDirectories: true)
         for name in spec.include {
             try Data("x".utf8).write(to: elsewhere.appendingPathComponent(name))
