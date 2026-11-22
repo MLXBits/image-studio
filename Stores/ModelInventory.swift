@@ -92,11 +92,22 @@ enum ModelInventory {
     }
 
     /// Whether every file `spec` includes is in its revision's snapshot (links followed, so an
-    /// include whose blob never landed doesn't count). A spec without a revision or includes isn't cached.
+    /// include whose blob never landed doesn't count). A spec without includes isn't cached.
+    ///
+    /// hf files snapshots by commit. A pinned commit names its snapshot folder directly; a branch,
+    /// or no revision at all (the default branch, `main`), goes through `refs/<branch>` to its commit.
     nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool {
-        guard let revision = spec.revision, !spec.include.isEmpty else { return false }
-        let snapshot = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hubDir)
-            .appendingPathComponent("snapshots/\(revision)", isDirectory: true)
+        guard !spec.include.isEmpty else { return false }
+        let folder = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hubDir)
+        let snapshots = folder.appendingPathComponent("snapshots", isDirectory: true)
+        let revision = spec.revision ?? "main"
+        var snapshot = snapshots.appendingPathComponent(revision, isDirectory: true)
+        if !FileManager.default.fileExists(atPath: snapshot.path) {
+            let ref = folder.appendingPathComponent("refs/\(revision)")
+            guard let commit = (try? String(contentsOf: ref, encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !commit.isEmpty else { return false }
+            snapshot = snapshots.appendingPathComponent(commit, isDirectory: true)
+        }
         return spec.include.allSatisfy {
             FileManager.default.fileExists(atPath: snapshot.appendingPathComponent($0).path)
         }

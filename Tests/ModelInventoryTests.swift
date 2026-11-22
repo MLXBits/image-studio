@@ -79,6 +79,29 @@ struct ModelInventoryTests {
         #expect(!ModelInventory.isCached(spec, hubDir: other))
     }
 
+    /// hf files a branch or unpinned download under the commit its `refs/<branch>` names, so an
+    /// mflux that stops pinning SeedVR2 (or pins a branch) still finds a complete download.
+    @Test func aBranchOrUnpinnedSpecResolvesThroughRefs() throws {
+        let hub = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let fm = FileManager.default
+        let folder = ModelDownloadStore.cacheFolder(repo: "numz/SeedVR2_comfyUI", hubDir: hub)
+        let commit = String(repeating: "a", count: 40)
+        let snapshot = folder.appendingPathComponent("snapshots/\(commit)", isDirectory: true)
+        try fm.createDirectory(at: snapshot, withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: snapshot.appendingPathComponent("a.safetensors"))
+        try fm.createDirectory(at: folder.appendingPathComponent("refs"), withIntermediateDirectories: true)
+        try Data("\(commit)\n".utf8).write(to: folder.appendingPathComponent("refs/main"))
+
+        let unpinned = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: nil, include: ["a.safetensors"])
+        let branch = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: "main", include: ["a.safetensors"])
+        let pinned = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: commit, include: ["a.safetensors"])
+        #expect(ModelInventory.isCached(unpinned, hubDir: hub))
+        #expect(ModelInventory.isCached(branch, hubDir: hub))
+        #expect(ModelInventory.isCached(pinned, hubDir: hub))
+        let otherBranch = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: "dev", include: ["a.safetensors"])
+        #expect(!ModelInventory.isCached(otherBranch, hubDir: hub))
+    }
+
     @Test func listedRepoFoldersSkipMissingOnes() throws {
         let hub = FakeRuntime.tempDirectory("ModelInventoryTests")
         let fm = FileManager.default
