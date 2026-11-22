@@ -50,7 +50,7 @@ struct ModelDefaultsView: View {
         // Leaving a page clears its finished row and log; a download keeps going (#27).
         .onChange(of: selection) { old, _ in
             if case let .model(model) = old {
-                weightDownloads.dismiss(model)
+                weightDownloads.dismissFinished(model)
             }
         }
         .onChange(of: settings.comfyURL) { _, newURL in
@@ -258,7 +258,7 @@ struct ModelDefaultsView: View {
 
             cacheStatusRow(model: selectedModel)
 
-            if let run = weightDownloads.runs[selectedModel] {
+            if let run = weightDownloads.run(for: selectedModel) {
                 cacheLogView(run)
             }
 
@@ -322,9 +322,9 @@ struct ModelDefaultsView: View {
 
     @ViewBuilder
     private func cacheStatusRow(model: FluxModelVariant) -> some View {
-        switch weightDownloads.runs[model]?.phase {
+        switch weightDownloads.run(for: model)?.phase {
         case .running:
-            if let run = weightDownloads.runs[model] {
+            if let run = weightDownloads.run(for: model) {
                 runningRow(run)
             }
 
@@ -334,8 +334,8 @@ struct ModelDefaultsView: View {
                     Label("Failed", systemImage: "exclamationmark.triangle.fill")
                         .font(.caption).foregroundStyle(.red)
                     Button("Retry") {
-                        if let run = weightDownloads.runs[model] {
-                            weightDownloads.start(model: model, quantize: run.quantize, settings: settings)
+                        if case let .weights(_, quantize)? = weightDownloads.run(for: model)?.target {
+                            weightDownloads.start(model: model, quantize: quantize, settings: settings)
                         }
                     }
                     .buttonStyle(.bordered).controlSize(.small)
@@ -408,7 +408,7 @@ struct ModelDefaultsView: View {
                         .font(.caption).foregroundStyle(.secondary)
                 }
                 Spacer()
-                Button("Cancel") { weightDownloads.cancel(run.model) }
+                Button("Cancel") { weightDownloads.cancel(run.target) }
                     .buttonStyle(.bordered).controlSize(.small)
             }
             Text("You can close Settings — this continues in the background.")
