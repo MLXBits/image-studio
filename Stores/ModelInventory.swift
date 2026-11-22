@@ -45,6 +45,15 @@ enum ModelInventory {
         ModelSection(title: "Z-Image", models: [.zimageTurbo, .zimage]),
     ]
 
+    /// The detail pane's subtitle: section family, type, and default steps (Ideogram 4 is preset-driven).
+    static func headerLine(for model: FluxModelVariant) -> String {
+        let family = sections.first { $0.models.contains(model) }?.title ?? model.displayName
+        if model.isIdeogram4 {
+            return "\(family) · Preset-based"
+        }
+        return "\(family) · \(model.isStepDistilled ? "Distilled" : "Base") · \(model.defaultSteps) steps"
+    }
+
     static func row(
         for model: FluxModelVariant,
         isCached: (Int) -> Bool,

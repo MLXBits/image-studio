@@ -14,6 +14,15 @@ struct ModelInventoryTests {
         #expect(Set(flat) == Set(FluxModelVariant.allModels))
     }
 
+    @Test func headerLineNamesTheSectionFamilyAndType() {
+        #expect(ModelInventory.headerLine(for: .flux3Klein) == "FLUX.3 · Distilled · 16 steps")
+        #expect(ModelInventory.headerLine(for: .flux3KleinBase) == "FLUX.3 · Base · 50 steps")
+        #expect(ModelInventory.headerLine(for: .krea2) == "Krea · Distilled · 8 steps")
+        #expect(ModelInventory.headerLine(for: .ideogram4) == "Ideogram · Preset-based")
+        #expect(ModelInventory.headerLine(for: .flux2Klein4B) == "FLUX.2 · Distilled · 4 steps")
+        #expect(ModelInventory.headerLine(for: .zimage) == "Z-Image · Base · 50 steps")
+    }
+
     @Test func aRowCarriesEachQuantInOrder() {
         let row = ModelInventory.row(
             for: .krea2, isCached: { $0 == 4 }, ramGB: { _ in 10 }, physicalGB: 32, toolMissing: false

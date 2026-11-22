@@ -59,7 +59,7 @@ struct ModelManagerDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(model.displayName).font(.title2.bold())
-            Text("\(model.family.rawValue) · \(model.isDistilled ? "Distilled" : "Base") · \(model.defaultSteps) steps")
+            Text(ModelInventory.headerLine(for: model))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
