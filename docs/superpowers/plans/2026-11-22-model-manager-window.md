@@ -279,20 +279,20 @@
   // ModelDownloadStore
   func forget(_ repo: String)                       // removes every `ready` key for repo
   // ModelInventory
-  nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool   // snapshots/<revision>/<each include> exists (follows links)
+  nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool   // snapshots/<commit>/<each include> exists (follows links); <commit> is the revision when it is a 40-hex commit, else refs/<revision> (nil ⇒ refs/main)
   static func listedRepoFolders(hubDir: URL, seedVR2Repo: String?, gemmaRepo: String?) -> [URL]  // every allModels × quantOrder hubCacheFolder that exists + tool folders that exist
   ```
 
 - [ ] **Step 1: Failing tests:**
   - `forgetMakesTheNextEnsureFetchAgain` (ModelDownloadStoreTests): a counting `fetch` stub; `ensureAvailable("org/gemma", …)` twice ⇒ 1 fetch; `forget("org/gemma")`; once more ⇒ 2 fetches.
-  - `aSpecIsCachedWhenEveryIncludeIsInItsRevision` (ModelInventoryTests): temp `models--numz--SeedVR2_comfyUI/snapshots/rev123/` with both files ⇒ true; one file missing ⇒ false; files under another revision only ⇒ false.
+  - `aSpecIsCachedWhenEveryIncludeIsInItsRevision` (ModelInventoryTests): temp `models--numz--SeedVR2_comfyUI/snapshots/rev123/` with both files ⇒ true; one file missing ⇒ false; files under another revision only ⇒ false; nil or branch revision resolved through `refs/` with the files in its commit ⇒ true.
   - `listedRepoFoldersSkipMissingOnes`: create only the Krea 2 Q4 folder and a Gemma folder ⇒ exactly those two URLs.
 - [ ] **Step 2: Run, expect FAIL.**
 - [ ] **Step 3: Implement** `forget`, `isCached`, `listedRepoFolders`.
-- [ ] **Step 4: Tool detail view.** On appear, `Task.detached` → `MfluxProbes.downloadSpecs(python: try? settings.toolchain.mfluxInterpreter(), script: <bundled hf_cache_probe.py>, names: ["seedvr2-3b", "seedvr2-7b"])`.
+- [ ] **Step 4: Tool detail view.** On appear, read `let python = try? settings.toolchain.mfluxInterpreter()` on the main actor, then `Task.detached` → `MfluxProbes.downloadSpecs(python: python, script: <bundled hf_cache_probe.py>, names: ["seedvr2-3b", "seedvr2-7b"])`.
   - **SeedVR2**: copy "Upscales an existing image. 3B is fast; 7B is sharper and slower. Both are quantized in memory, so there's one download per size." Two rows (3B, 7B): Cached / Downloading x/y GB + Cancel / Download (`start(.seedVR2(is7B:), spec:, expectedGB: <bytes of the include files once known, else 0>, …)`) / Failed + Retry. No spec ⇒ Download replaced by "Downloads on first upscale". One "Remove SeedVR2 weights" with confirm "This deletes both the 3B and 7B SeedVR2 weights from disk. You can re-download them later." → `deleteRepo(spec.repo)`.
   - **Gemma**: repo `settings.gemmaModel`; if `FileAccessPath.isLocal(repo)` show "Local model — managed outside the app" and no actions. Else Cached (`ModelDownloadStore.hasCachedWeights` + `bytesOnDisk`) + Remove (confirm, `deleteRepo` then `modelDownloads.forget(repo)`), or Download → `Task { do { try await modelDownloads.ensureAvailable(repo, settings:) } catch { downloadError = error.localizedDescription } }`, progress from `modelDownloads.active[repo]`, Cancel → `modelDownloads.cancel(repo)`. Copy: "The local language model behind the Scenario Generator and Ideogram captions."
   - List rows in Tools: chips "3B"/"7B" for SeedVR2, "✓" for Gemma.
-- [ ] **Step 5: Footer** (`.safeAreaInset(edge: .bottom)` on the sidebar): `"\(GB) GB in \(hubDir path, tilde-abbreviated)"` from `diskBytes(repoFolders: listedRepoFolders(…))` computed in `Task.detached` keyed on `weightDownloads.revision`, plus a "Show in Finder" `.iconButtonCompact` (`NSWorkspace.shared.activateFileViewerSelecting([hubDir])`).
+- [ ] **Step 5: Footer** (`.safeAreaInset(edge: .bottom)` on the sidebar): `"\(GB) GB in \(hubDir path, tilde-abbreviated)"` from `diskBytes(repoFolders: listedRepoFolders(…))` computed in `Task.detached` keyed on `weightDownloads.revision`, the hub path, the Gemma repo and whether a Gemma download is running (a Gemma fetch never bumps the revision), plus a "Show in Finder" `.iconButtonCompact` (`NSWorkspace.shared.activateFileViewerSelecting([hubDir])`).
 - [ ] **Step 6: Full gate; launch; manual check:** SeedVR2 3B download fetches only its two files (`hf cache ls` size ≈ the files, not the whole repo) and the 3B chip appears; an upscale then starts without downloading; Remove clears both sizes. Gemma Remove, then run the Scenario Generator ⇒ it re-downloads. Footer total matches `hf cache ls` for the listed repos. Build the App Store scheme too.
 - [ ] **Step 7: Commit** `feat: manage SeedVR2 and Gemma weights and show total disk use`. CodeRabbit review; open PR 3.
