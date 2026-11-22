@@ -35,7 +35,7 @@ struct SeedVR2DetailView: View {
         }
         .alert("Delete SeedVR2 weights?", isPresented: $confirmingRemove) {
             Button("Delete", role: .destructive) {
-                if let repo = specs?.values.first?.repo {
+                if !isDownloading, let repo = specs?.values.first?.repo {
                     Task { await weightDownloads.deleteRepo(repo, settings: settings) }
                 }
             }
@@ -65,7 +65,7 @@ struct SeedVR2DetailView: View {
                         phase: run?.phase, cached: cached(size.name),
                         start: { weightDownloads.start(target, spec: spec, expectedGB: 0, settings: settings) },
                         cancel: { weightDownloads.cancel(target) },
-                        remove: { confirmingRemove = true },
+                        remove: nil,
                         progress: Group {
                             if let run {
                                 DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
@@ -123,6 +123,7 @@ struct GemmaDetailView: View {
         .alert("Delete Gemma weights?", isPresented: $confirmingRemove) {
             Button("Delete", role: .destructive) {
                 let repo = repo
+                guard modelDownloads.active[repo] == nil else { return }
                 Task {
                     await weightDownloads.deleteRepo(repo, settings: settings)
                     modelDownloads.forget(repo)

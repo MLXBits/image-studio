@@ -7,7 +7,8 @@ struct DownloadStateView<Progress: View>: View {
     let cached: Bool
     let start: () -> Void
     let cancel: () -> Void
-    let remove: () -> Void
+    /// nil shows Cached without a Remove button.
+    let remove: (() -> Void)?
     let progress: Progress
 
     var body: some View {
@@ -27,8 +28,10 @@ struct DownloadStateView<Progress: View>: View {
         case nil, .done:
             if cached {
                 Text("Cached").font(.caption).foregroundStyle(.green)
-                Button("Remove", role: .destructive, action: remove)
-                    .buttonStyle(.bordered).controlSize(.regular)
+                if let remove {
+                    Button("Remove", role: .destructive, action: remove)
+                        .buttonStyle(.bordered).controlSize(.regular)
+                }
             } else {
                 Button("Download", action: start)
                     .buttonStyle(.bordered).controlSize(.regular)

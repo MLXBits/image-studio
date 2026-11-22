@@ -44,6 +44,7 @@ struct QuantRowView: View {
         }
         .alert("Delete cached weights?", isPresented: $confirmingRemove) {
             Button("Delete", role: .destructive) {
+                guard run?.phase != .running else { return }
                 Task { await weightDownloads.delete(model: model, quantize: status.quantize, settings: settings) }
             }
             Button("Cancel", role: .cancel) {}
