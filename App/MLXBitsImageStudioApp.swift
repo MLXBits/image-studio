@@ -51,6 +51,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var modelDownloads = ModelDownloadStore()
     /// Settings ▸ Models downloads, which outlive the Settings window (#27).
     @State private var weightDownloads = WeightDownloadStore()
+    @State private var router = ModelManagerRouter()
     @State private var support: SupportStore
     @State private var tipJar: TipJarStore
 
@@ -81,6 +82,7 @@ struct MLXBitsImageStudioApp: App {
                 .environment(updateChecker)
                 .environment(backendModels)
                 .environment(modelDownloads)
+                .environment(router)
                 .environment(support)
                 .frame(minWidth: 900, minHeight: 600)
                 // Launch-time update check; drives the toolbar badge when a newer
@@ -128,7 +130,19 @@ struct MLXBitsImageStudioApp: App {
                 .environment(loraLibrary)
                 .environment(support)
                 .environment(weightDownloads)
+                .environment(router)
         }
+
+        Window("Models", id: ModelManagerView.windowID) {
+            ModelManagerView()
+                .environment(settings)
+                .environment(weightDownloads)
+                .environment(modelDownloads)
+                .environment(router)
+                .environment(coordinator)
+        }
+        .defaultSize(width: 760, height: 520)
+        .defaultPosition(.center)
 
         Window("Support MLXBits Image Studio", id: SupportView.windowID) {
             SupportView()

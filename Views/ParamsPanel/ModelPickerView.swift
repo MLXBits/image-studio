@@ -19,6 +19,8 @@ struct ModelPickerView: View {
     @Binding var customBaseModel: FluxModelVariant
     @Binding var quantize: Int
     @Environment(AppSettings.self) private var settings
+    @Environment(ModelManagerRouter.self) private var router
+    @Environment(\.openWindow) private var openWindow
 
     /// Non-nil when a model-source override is set in Settings for the selected
     /// model. The override names a specific repo/path carrying its own
@@ -127,6 +129,15 @@ struct ModelPickerView: View {
                 if model != .custom {
                     InfoButton(title: "Model & Precision", description: infoDescription)
                 }
+
+                Button {
+                    router.show(ModelManagerRouter.item(for: model), open: openWindow)
+                } label: {
+                    Image(systemName: "questionmark.circle").font(.caption)
+                }
+                .buttonStyle(.iconButton)
+                .help("Which model? Open the Models window")
+                .accessibilityLabel("Open Models window")
 
                 if model == .custom {
                     customRepoField
