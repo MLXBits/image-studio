@@ -47,6 +47,7 @@ struct ContentView: View {
     @Environment(LoraLibraryStore.self) private var loraLibrary
     @Environment(UpdateChecker.self) private var updates
     @Environment(BackendModelStore.self) private var backendModels
+    @Environment(ModelManagerRouter.self) private var router
     @Environment(\.openSettings) private var openSettings
     @Environment(\.openURL) private var openURL
     @Environment(\.openWindow) private var openWindow
@@ -59,6 +60,8 @@ struct ContentView: View {
     @State private var profileAction: ProfileAction?
     @State private var showingOutputDirPrompt: Bool = false
     @AppStorage(ModelsFolderStepView.doneKey) private var modelsFolderStepDone = false
+    /// The Models window opens once, when the first-run sheet closes.
+    @AppStorage("firstRun.modelManagerShown") private var modelManagerShown = false
     /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
     @State private var upscaleTarget: UpscaleTarget?
     @State private var params = ParamsPanelState()
@@ -72,6 +75,8 @@ struct ContentView: View {
     /// gallery replay (Apply Settings / Remix). Each handler consumes its own
     /// entry once. See ``ModelChangeObserver``.
     @State private var suppressedModelObservers: Set<ModelChangeObserver> = []
+    /// The precision a "Use this model" switch sets once the picker's reset to defaults has run.
+    @State private var pendingUseQuantize: Int?
     @State private var fullSizeImage: NSImage?
     @State private var fullSizeLoadTask: Task<Void, Never>?
     /// Takes the window into real full-screen while `fullSizeImage` is up, so the
@@ -206,6 +211,14 @@ struct ContentView: View {
             quantize: unifiedQuantize
         )
         .onChange(of: params.model) { _, m in
+            // "Use this model" picks a precision with the model. Apply it on the way out, after
+            // the reset below (or the family form's early return) has set that family's default.
+            defer {
+                if let quantize = pendingUseQuantize {
+                    unifiedQuantize.wrappedValue = quantize
+                    pendingUseQuantize = nil
+                }
+            }
             // Pattern 5: a committed model switch proactively evicts a warm
             // model of a different variant (debounced in the controller). A
             // custom checkpoint reports the variant it loads as — the driver
@@ -219,25 +232,7 @@ struct ContentView: View {
             if suppressedModelObservers.remove(.model) != nil {
                 return
             }
-            if adoptFamilyForm(m) {
-                return
-            }
-            guard m != .custom else { return }
-            let d = settings.resolvedDefaults(for: m)
-            params.steps = d.steps
-            params.guidance = d.guidance
-            params.quantize = d.quantize
-            params.lowRam = d.lowRam
-            params.negativePrompt = d.negativePrompt
-            params.width = d.width
-            params.height = d.height
-            params.loras = loraLibrary.defaultLoras(for: .flux)
-            params.isEditMode = false
-            params.editImagePaths = []
-            // FLUX 3 has no img2img mode — don't carry a reference image across into it.
-            if m.isFlux3 {
-                params.imagePath = ""
-            }
+            resetForm(for: m)
         }
         // A custom checkpoint runs through whichever family it loads as, so
         // changing that target has to realign the same per-family form state a
@@ -371,15 +366,29 @@ struct ContentView: View {
             .onChange(of: img2imgLockedPaths) { _, paths in
                 gallery.lockedPaths = paths
             }
-            .sheet(isPresented: $showingOutputDirPrompt) {
-                OutputDirectoryPromptView(
-                    isPresented: $showingOutputDirPrompt,
-                    includeModelsStep: needsModelsStep,
-                    startAtModelsStep: !settings.outputDir.isEmpty
-                )
-                .environment(settings)
-                .environment(profiles)
+            // The Models window's "Use this model", while this window is open.
+            .onChange(of: router.pendingUse) { _, request in
+                guard let request else { return }
+                router.pendingUse = nil
+                applyUse(request)
             }
+            .sheet(
+                isPresented: $showingOutputDirPrompt,
+                onDismiss: {
+                    guard !modelManagerShown else { return }
+                    modelManagerShown = true
+                    router.show(.model(.flux3Klein), open: openWindow)
+                },
+                content: {
+                    OutputDirectoryPromptView(
+                        isPresented: $showingOutputDirPrompt,
+                        includeModelsStep: needsModelsStep,
+                        startAtModelsStep: !settings.outputDir.isEmpty
+                    )
+                    .environment(settings)
+                    .environment(profiles)
+                }
+            )
             .sheet(item: $boxOverlay) { ctx in
                 boxOverlaySheet(ctx)
             }
@@ -389,6 +398,7 @@ struct ContentView: View {
                 // the model (and thus fire onChange). If lastModel already equals
                 // the initial default, onChange won't fire and the flag must stay
                 // down so the next genuine user switch isn't swallowed.
+                let launchModel = params.model
                 suppressedModelObservers = settings.lastModel != params.model ? [.model] : []
                 params.applyDefaults(from: settings, library: loraLibrary)
                 ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
@@ -400,6 +410,18 @@ struct ContentView: View {
                 try? ScenarioExamplePrompts.seedIfNeeded()
                 if settings.outputDir.isEmpty || needsModelsStep {
                     showingOutputDirPrompt = true
+                }
+                #if DEBUG
+                    // `-showFirstRunPrompt YES` replays the first-run sheet (it lands in the
+                    // arguments domain of `UserDefaults.standard`).
+                    if UserDefaults.standard.bool(forKey: "showFirstRunPrompt") {
+                        showingOutputDirPrompt = true
+                    }
+                #endif
+                // "Use this model" pressed while this window was closed.
+                if let request = router.pendingUse {
+                    router.pendingUse = nil
+                    applyUseAtLaunch(request, launchModel: launchModel)
                 }
                 if !settings.outputDir.isEmpty {
                     gallery.scan(outputDir: settings.outputDir)
@@ -1080,6 +1102,64 @@ struct ContentView: View {
             return true
         }
         return false
+    }
+
+    /// What a switch of the model picker to `m` resets: the family form for a non-Flux
+    /// model, else `m`'s Flux defaults. A custom checkpoint keeps the form as it is.
+    private func resetForm(for m: FluxModelVariant) {
+        if adoptFamilyForm(m) {
+            return
+        }
+        guard m != .custom else { return }
+        let d = settings.resolvedDefaults(for: m)
+        params.steps = d.steps
+        params.guidance = d.guidance
+        params.quantize = d.quantize
+        params.lowRam = d.lowRam
+        params.negativePrompt = d.negativePrompt
+        params.width = d.width
+        params.height = d.height
+        params.loras = loraLibrary.defaultLoras(for: .flux)
+        params.isEditMode = false
+        params.editImagePaths = []
+        // FLUX 3 has no img2img mode — don't carry a reference image across into it.
+        if m.isFlux3 {
+            params.imagePath = ""
+        }
+    }
+
+    /// Applies "Use this model" as a pick from the picker menu. A model switch sets the
+    /// precision in the `params.model` handler, after its reset; `onChange` runs on the next
+    /// update, so setting it here would be overwritten.
+    private func applyUse(_ request: ModelManagerRouter.UseRequest) {
+        let busy = coordinator.activeFamily != nil
+        switch ModelManagerRouter.outcome(of: request, currentModel: params.model, busy: busy) {
+        case .ignore:
+            break
+        case .setQuantize:
+            unifiedQuantize.wrappedValue = request.quantize
+        case .switchModel:
+            pendingUseQuantize = request.quantize
+            params.model = request.model
+        }
+    }
+
+    /// Applies a "Use this model" request on top of the launch restore, when the request
+    /// opened this window. The `params.model` handler compares against `launchModel`, so it
+    /// may not fire at all: reset the form here, and arm it to skip its reset if it does fire.
+    private func applyUseAtLaunch(_ request: ModelManagerRouter.UseRequest, launchModel: FluxModelVariant) {
+        let busy = coordinator.activeFamily != nil
+        switch ModelManagerRouter.outcome(of: request, currentModel: params.model, busy: busy) {
+        case .ignore:
+            return
+        case .setQuantize:
+            break
+        case .switchModel:
+            suppressedModelObservers = launchModel != request.model ? [.model] : []
+            params.model = request.model
+            resetForm(for: request.model)
+        }
+        unifiedQuantize.wrappedValue = request.quantize
     }
 
     private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {

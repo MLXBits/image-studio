@@ -1,16 +1,31 @@
 import Foundation
 
-/// Settings ▸ Models downloads: an `hf download` of the mflux-community repo a
-/// model loads at a precision (``FluxModelVariant/publishedRepoID(quantize:)``).
+/// What an `hf download` fetches: a repo, optionally pinned to a revision and
+/// narrowed to files matching `include` patterns.
+nonisolated struct HFDownloadSpec: Hashable, Sendable {
+    let repo: String
+    let revision: String?
+    let include: [String]
+}
+
+/// What a download is for. Each target downloads independently of the others.
+enum DownloadTarget: Hashable {
+    case weights(FluxModelVariant, quantize: Int)
+    case seedVR2(is7B: Bool)
+}
+
+/// Model downloads: an `hf download` of the mflux-community repo a model loads
+/// at a precision (``FluxModelVariant/publishedRepoID(quantize:)``), or another
+/// ``HFDownloadSpec``.
 ///
-/// The app owns them, not the page, so switching models or closing Settings
-/// doesn't stop one (#27). There is at most one run per model, and a run only
+/// The app owns them, not the page, so switching models or closing a window
+/// doesn't stop one (#27). There is at most one run per target, and a run only
 /// ever writes to itself, so a run that was cancelled or replaced can't launch
 /// or change a newer one's row (#43).
 @Observable
 final class WeightDownloadStore {
     /// Builds the process that downloads a repo. Swapped out in tests.
-    typealias MakeProcess = (_ repo: String, _ settings: AppSettings) throws -> Process
+    typealias MakeProcess = (_ spec: HFDownloadSpec, _ settings: AppSettings) throws -> Process
 
     enum Phase: Equatable {
         case running, done, failed(String)
@@ -18,54 +33,67 @@ final class WeightDownloadStore {
 
     @Observable
     final class Run {
-        let model: FluxModelVariant
-        /// The level this run fetches: what its row reports, and what Retry
-        /// starts again (#26). Not the model's Quantization setting.
-        let quantize: Int
+        /// What this run is for. For weights, the level it fetches is part of
+        /// it: what the row reports, and what Retry starts again (#26).
+        let target: DownloadTarget
+        let spec: HFDownloadSpec
+        /// The size the download heads for, in GB.
+        let expectedGB: Double
         /// The repo this run downloads.
-        let repo: String
+        var repo: String {
+            spec.repo
+        }
+
         let startedAt = Date()
         var phase: Phase = .running
         var log = ""
         @ObservationIgnored fileprivate var process: Process?
         @ObservationIgnored fileprivate var cancelled = false
 
-        init(model: FluxModelVariant, quantize: Int, repo: String) {
-            self.model = model
-            self.quantize = quantize
-            self.repo = repo
+        init(target: DownloadTarget, spec: HFDownloadSpec, expectedGB: Double) {
+            self.target = target
+            self.spec = spec
+            self.expectedGB = expectedGB
         }
     }
 
     /// The bundled (or Custom Python) `hf`.
-    private static let toolProcess: MakeProcess = { repo, settings in
+    private static let toolProcess: MakeProcess = { spec, settings in
         // The Hugging Face CLI is `hf` now — `huggingface-cli` is a deprecated no-op shim.
         let hf = try settings.toolchain.command(.hf)
         let process = Process()
         process.executableURL = hf.executableURL
-        process.arguments = hf.arguments + ["download", repo]
+        process.arguments = hf.arguments + downloadArgs(spec)
         process.environment = settings.buildEnvironment()
         return process
+    }
+
+    /// The `hf` arguments for `spec`.
+    static func downloadArgs(_ spec: HFDownloadSpec) -> [String] {
+        var args = ["download", spec.repo]
+        if let revision = spec.revision {
+            args += ["--revision", revision]
+        }
+        for pattern in spec.include {
+            args += ["--include", pattern]
+        }
+        return args
     }
 
     // MARK: - Progress
 
     /// The hub folder a run's download lands in, and the size it heads for.
     static func progressTarget(of run: Run, hubDir: URL) -> (folder: URL, totalGB: Double) {
-        (ModelDownloadStore.cacheFolder(repo: run.repo, hubDir: hubDir), run.model.approximateSizeGB(quantize: run.quantize))
+        (ModelDownloadStore.cacheFolder(repo: run.repo, hubDir: hubDir), run.expectedGB)
     }
 
-    /// The `hf cache rm` arguments that delete `model` at `quantize` from the
-    /// hub cache, or nil when it has no folder there. huggingface_hub links a
-    /// repo's blobs into hub/blobs/, a store shared across the whole cache, so
-    /// removing the repo folder by hand leaves the weights behind and the next
-    /// `hf download` relinks them instead of fetching. `hf cache rm` frees them
-    /// once no other repo uses them.
-    static func removeArgs(model: FluxModelVariant, quantize: Int, hubDir: URL) -> [String]? {
-        guard let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
-              let repo = HFCacheVerdictStore.repoID(cacheFolder: folder.lastPathComponent)
-        else { return nil }
-        return ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
+    /// The `hf cache rm` arguments that delete `repo` from the hub cache.
+    /// huggingface_hub links a repo's blobs into hub/blobs/, a store shared
+    /// across the whole cache, so removing the repo folder by hand leaves the
+    /// weights behind and the next `hf download` relinks them instead of
+    /// fetching. `hf cache rm` frees them once no other repo uses them.
+    static func removeArgs(repo: String, hubDir: URL) -> [String] {
+        ["cache", "rm", "model/\(repo)", "--yes", "--cache-dir", hubDir.path]
     }
 
     /// Appends tool output to a log the way a terminal shows it: `\r` rewinds
@@ -107,8 +135,8 @@ final class WeightDownloadStore {
         return result
     }
 
-    /// The current run for each model: running, or finished and not yet dismissed.
-    private(set) var runs: [FluxModelVariant: Run] = [:]
+    /// The current run for each target: running, or finished and not yet dismissed.
+    private(set) var runs: [DownloadTarget: Run] = [:]
     /// Changes whenever a run puts new weights on disk, or a delete removes them.
     private(set) var revision = UUID()
 
@@ -123,40 +151,74 @@ final class WeightDownloadStore {
     /// Starts fetching `model` at `quantize`, unless it's already downloading or
     /// has no published repo there (`custom`). Replaces a finished run's row.
     func start(model: FluxModelVariant, quantize: Int, settings: AppSettings) {
-        guard runs[model]?.phase != .running, let repo = model.publishedRepoID(quantize: quantize) else { return }
-        let run = Run(model: model, quantize: quantize, repo: repo)
-        runs[model] = run
+        guard let repo = model.publishedRepoID(quantize: quantize) else { return }
+        start(
+            .weights(model, quantize: quantize),
+            spec: HFDownloadSpec(repo: repo, revision: nil, include: []),
+            expectedGB: model.approximateSizeGB(quantize: quantize),
+            settings: settings
+        )
+    }
+
+    /// Starts fetching `spec` for `target`, unless that target is already
+    /// downloading. Replaces a finished run's row.
+    func start(_ target: DownloadTarget, spec: HFDownloadSpec, expectedGB: Double, settings: AppSettings) {
+        guard runs[target]?.phase != .running else { return }
+        let run = Run(target: target, spec: spec, expectedGB: expectedGB)
+        runs[target] = run
         Task { await execute(run, settings: settings) }
     }
 
-    /// Stops `model`'s download (the row's Cancel button). Its row goes once
+    /// Stops `target`'s download (the row's Cancel button). Its row goes once
     /// the process has exited.
-    func cancel(_ model: FluxModelVariant) {
-        guard let run = runs[model], run.phase == .running else { return }
+    func cancel(_ target: DownloadTarget) {
+        guard let run = runs[target], run.phase == .running else { return }
         run.cancelled = true
         run.process?.stopGracefully()
     }
 
-    /// Clears `model`'s finished row and log, as its page closes. A running
-    /// download carries on.
-    func dismiss(_ model: FluxModelVariant) {
-        if let run = runs[model], run.phase != .running {
-            runs[model] = nil
+    /// Clears `target`'s finished row and log. A running download carries on.
+    func dismiss(_ target: DownloadTarget) {
+        if let run = runs[target], run.phase != .running {
+            runs[target] = nil
         }
     }
 
+    /// Clears every finished run of `model`, as the Models window leaves it.
+    func dismissFinished(_ model: FluxModelVariant) {
+        for (target, _) in runs {
+            if case let .weights(variant, _) = target, variant == model {
+                dismiss(target)
+            }
+        }
+    }
+
+    /// Drops every run that isn't running.
+    func dismissFinished() {
+        runs = runs.filter { $0.value.phase == .running }
+    }
+
     /// Deletes `model`'s weights at `quantize`: any legacy mflux-save folder the
-    /// app's old save pass wrote, and its hub cache repo through `hf cache rm`
-    /// (see ``removeArgs(model:quantize:hubDir:)``).
-    /// If hf can't run, removes the repo folder by hand, as before; `hf cache
-    /// prune` reclaims what that leaves in the shared store.
+    /// app's old save pass wrote, and its hub cache repo through ``deleteRepo(_:settings:)``.
     func delete(model: FluxModelVariant, quantize: Int, settings: AppSettings) async {
         try? FileManager.default.removeItem(at: model.savedModelPath(quantize: quantize, in: settings.effectiveMfluxCacheDir))
         let hubDir = settings.hfHubDir
-        if let args = Self.removeArgs(model: model, quantize: quantize, hubDir: hubDir),
-           await !runHF(args, settings: settings),
-           let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir) {
-            try? FileManager.default.removeItem(at: folder)
+        if let folder = model.hubCacheFolder(quantize: quantize, hubDir: hubDir),
+           let repo = HFCacheVerdictStore.repoID(cacheFolder: folder.lastPathComponent) {
+            await deleteRepo(repo, settings: settings)
+        } else {
+            revision = UUID()
+        }
+    }
+
+    /// Deletes `repo` from the hub cache through `hf cache rm`, removing its
+    /// folder by hand if hf can't run (`hf cache prune` reclaims what that
+    /// leaves in the shared store). Bumps ``revision``.
+    func deleteRepo(_ repo: String, settings: AppSettings) async {
+        let hubDir = settings.hfHubDir
+        let args = Self.removeArgs(repo: repo, hubDir: hubDir)
+        if await !runHF(args, settings: settings) {
+            try? FileManager.default.removeItem(at: ModelDownloadStore.cacheFolder(repo: repo, hubDir: hubDir))
         }
         revision = UUID()
     }
@@ -187,13 +249,13 @@ final class WeightDownloadStore {
             ModelDownloadStore.removeAbandonedPartials(repo: repo, hubDir: hubDir)
         }.value
         // Cancelled before there was a process for Cancel to stop.
-        guard !run.cancelled, runs[run.model] === run else {
+        guard !run.cancelled, runs[run.target] === run else {
             remove(run)
             return
         }
         let process: Process
         do {
-            process = try makeProcess(run.repo, settings)
+            process = try makeProcess(run.spec, settings)
         } catch {
             run.phase = .failed(error.localizedDescription)
             return
@@ -241,8 +303,8 @@ final class WeightDownloadStore {
 
     /// Drops `run`'s row, unless a newer run has taken its place.
     private func remove(_ run: Run) {
-        if runs[run.model] === run {
-            runs[run.model] = nil
+        if runs[run.target] === run {
+            runs[run.target] = nil
         }
     }
 }
