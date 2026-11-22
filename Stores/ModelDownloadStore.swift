@@ -219,6 +219,12 @@ final class ModelDownloadStore {
         }
     }
 
+    /// Drops the "fetched this launch" mark for `repo`, so the next ``ensureAvailable(_:settings:)``
+    /// fetches again (after the Models window deletes it).
+    func forget(_ repo: String) {
+        ready = ready.filter { $0.repo != repo }
+    }
+
     private func start(_ key: Key, settings: AppSettings) {
         let (repo, hubDir) = (key.repo, key.hubDir)
         failures[key] = nil

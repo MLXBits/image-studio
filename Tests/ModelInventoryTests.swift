@@ -61,4 +61,39 @@ struct ModelInventoryTests {
         let missing = FakeRuntime.tempDirectory("ModelInventoryTests").appendingPathComponent("nope")
         #expect(ModelInventory.diskBytes(repoFolders: [missing]) == 0)
     }
+
+    @Test func aSpecIsCachedWhenEveryIncludeIsInItsRevision() throws {
+        let hub = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let spec = HFDownloadSpec(repo: "numz/SeedVR2_comfyUI", revision: "rev123", include: ["a.safetensors", "b.safetensors"])
+        let folder = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hub)
+        let fm = FileManager.default
+        let revision = folder.appendingPathComponent("snapshots/rev123", isDirectory: true)
+        try fm.createDirectory(at: revision, withIntermediateDirectories: true)
+        try Data("a".utf8).write(to: revision.appendingPathComponent("a.safetensors"))
+        #expect(!ModelInventory.isCached(spec, hubDir: hub))
+        try Data("b".utf8).write(to: revision.appendingPathComponent("b.safetensors"))
+        #expect(ModelInventory.isCached(spec, hubDir: hub))
+
+        let other = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let elsewhere = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: other)
+            .appendingPathComponent("snapshots/other", isDirectory: true)
+        try fm.createDirectory(at: elsewhere, withIntermediateDirectories: true)
+        for name in spec.include {
+            try Data("x".utf8).write(to: elsewhere.appendingPathComponent(name))
+        }
+        #expect(!ModelInventory.isCached(spec, hubDir: other))
+    }
+
+    @Test func listedRepoFoldersSkipMissingOnes() throws {
+        let hub = FakeRuntime.tempDirectory("ModelInventoryTests")
+        let fm = FileManager.default
+        let krea = try #require(FluxModelVariant.krea2.publishedRepoID(quantize: 4))
+        let kreaFolder = ModelDownloadStore.cacheFolder(repo: krea, hubDir: hub)
+        let gemmaFolder = ModelDownloadStore.cacheFolder(repo: "org/gemma", hubDir: hub)
+        try fm.createDirectory(at: kreaFolder, withIntermediateDirectories: true)
+        try fm.createDirectory(at: gemmaFolder, withIntermediateDirectories: true)
+        let listed = ModelInventory.listedRepoFolders(hubDir: hub, seedVR2Repo: "numz/SeedVR2_comfyUI", gemmaRepo: "org/gemma")
+        #expect(Set(listed) == [kreaFolder, gemmaFolder])
+        #expect(listed.count == 2)
+    }
 }

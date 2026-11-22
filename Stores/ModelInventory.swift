@@ -86,4 +86,27 @@ enum ModelInventory {
         }
         return total
     }
+
+    /// Whether every file `spec` includes is in its revision's snapshot (links followed, so an
+    /// include whose blob never landed doesn't count). A spec without a revision or includes isn't cached.
+    nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool {
+        guard let revision = spec.revision, !spec.include.isEmpty else { return false }
+        let snapshot = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hubDir)
+            .appendingPathComponent("snapshots/\(revision)", isDirectory: true)
+        return spec.include.allSatisfy {
+            FileManager.default.fileExists(atPath: snapshot.appendingPathComponent($0).path)
+        }
+    }
+
+    /// The cache folders the Models window accounts for: every model at every precision, plus the
+    /// SeedVR2 and Gemma repos, each only if it exists on disk.
+    static func listedRepoFolders(hubDir: URL, seedVR2Repo: String?, gemmaRepo: String?) -> [URL] {
+        let models = FluxModelVariant.allModels.flatMap { model in
+            quantOrder.compactMap { model.hubCacheFolder(quantize: $0, hubDir: hubDir) }
+        }
+        let tools = [seedVR2Repo, gemmaRepo].compactMap { $0 }
+            .map { ModelDownloadStore.cacheFolder(repo: $0, hubDir: hubDir) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        return models + tools
+    }
 }
