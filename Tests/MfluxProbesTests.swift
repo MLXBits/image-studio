@@ -12,6 +12,23 @@ struct MfluxProbesTests {
         return url.path
     }
 
+    @Test func downloadSpecsDecodeTheProbesAnswer() throws {
+        let json = #"{"seedvr2-7b": {"repo": "numz/SeedVR2_comfyUI", "revision": "rev123", "#
+            + #""include": ["seedvr2_ema_7b_fp16.safetensors", "ema_vae_fp16.safetensors"]}}"#
+        let script = FakeRuntime.tempDirectory("probe").appendingPathComponent("hf_cache_probe.py")
+        let specs = try MfluxProbes.downloadSpecs(
+            python: interpreter(printing: json), script: script, names: ["seedvr2-7b"]
+        )
+        #expect(specs?["seedvr2-7b"] == HFDownloadSpec(
+            repo: "numz/SeedVR2_comfyUI", revision: "rev123",
+            include: ["seedvr2_ema_7b_fp16.safetensors", "ema_vae_fp16.safetensors"]
+        ))
+        let failing = FakeRuntime.tempDirectory("probe").appendingPathComponent("python")
+        try FakeRuntime.writeExecutable("#!/bin/sh\nexit 1\n", to: failing)
+        #expect(MfluxProbes.downloadSpecs(python: failing.path, script: script, names: ["seedvr2-7b"]) == nil)
+        #expect(MfluxProbes.downloadSpecs(python: nil, script: script, names: ["seedvr2-7b"]) == nil)
+    }
+
     @Test func capabilityProbesAskTheGivenInterpreter() async throws {
         let yes = try interpreter(printing: "1")
         let no = try interpreter(printing: "0")

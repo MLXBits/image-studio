@@ -49,7 +49,7 @@ struct MLXBitsImageStudioApp: App {
     @State private var updateChecker = UpdateChecker()
     @State private var backendModels = BackendModelStore()
     @State private var modelDownloads = ModelDownloadStore()
-    /// Settings ▸ Models downloads, which outlive the Settings window (#27).
+    /// Models window downloads, which outlive the Settings window (#27).
     @State private var weightDownloads = WeightDownloadStore()
     @State private var router = ModelManagerRouter()
     @State private var support: SupportStore
@@ -141,7 +141,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(router)
                 .environment(coordinator)
         }
-        .defaultSize(width: 760, height: 520)
+        .defaultSize(width: 900, height: 560)
+        .windowResizability(.contentMinSize)
         .defaultPosition(.center)
 
         Window("Support MLXBits Image Studio", id: SupportView.windowID) {

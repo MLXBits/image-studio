@@ -45,6 +45,15 @@ enum ModelInventory {
         ModelSection(title: "Z-Image", models: [.zimageTurbo, .zimage]),
     ]
 
+    /// The detail pane's subtitle: section family, type, and default steps (Ideogram 4 is preset-driven).
+    static func headerLine(for model: FluxModelVariant) -> String {
+        let family = sections.first { $0.models.contains(model) }?.title ?? model.displayName
+        if model.isIdeogram4 {
+            return "\(family) · Preset-based"
+        }
+        return "\(family) · \(model.isStepDistilled ? "Distilled" : "Base") · \(model.defaultSteps) steps"
+    }
+
     static func row(
         for model: FluxModelVariant,
         isCached: (Int) -> Bool,
@@ -66,11 +75,6 @@ enum ModelInventory {
         return ModelRow(model: model, quants: quants, toolMissing: toolMissing)
     }
 
-    /// The largest cached quant that fits this Mac, else Q8.
-    static func preferredQuantize(_ row: ModelRow) -> Int {
-        row.quants.first { $0.cached && ($0.fit == .comfortable || $0.fit == .tight) }?.quantize ?? 8
-    }
-
     /// Bytes under the repos' `blobs/` folders, following links and counting each resolved file once.
     nonisolated static func diskBytes(repoFolders: [URL]) -> Int64 {
         var seen = Set<String>()
@@ -82,6 +86,63 @@ enum ModelInventory {
                 let resolved = entry.resolvingSymlinksInPath()
                 guard seen.insert(resolved.path).inserted else { continue }
                 total += Int64((try? resolved.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0)
+            }
+        }
+        return total
+    }
+
+    /// Whether every file `spec` includes is in its revision's snapshot (links followed, so an
+    /// include whose blob never landed doesn't count). A spec without includes isn't cached.
+    ///
+    /// hf files snapshots by commit. A pinned commit names its snapshot folder directly; a branch,
+    /// or no revision at all (the default branch, `main`), goes through `refs/<branch>` to its commit.
+    nonisolated static func isCached(_ spec: HFDownloadSpec, hubDir: URL) -> Bool {
+        guard !spec.include.isEmpty else { return false }
+        let folder = ModelDownloadStore.cacheFolder(repo: spec.repo, hubDir: hubDir)
+        let snapshots = folder.appendingPathComponent("snapshots", isDirectory: true)
+        let revision = spec.revision ?? "main"
+        var snapshot = snapshots.appendingPathComponent(revision, isDirectory: true)
+        if !FileManager.default.fileExists(atPath: snapshot.path) {
+            let ref = folder.appendingPathComponent("refs/\(revision)")
+            guard let commit = (try? String(contentsOf: ref, encoding: .utf8))?
+                .trimmingCharacters(in: .whitespacesAndNewlines), !commit.isEmpty else { return false }
+            snapshot = snapshots.appendingPathComponent(commit, isDirectory: true)
+        }
+        return spec.include.allSatisfy {
+            FileManager.default.fileExists(atPath: snapshot.appendingPathComponent($0).path)
+        }
+    }
+
+    /// The cache folders the Models window accounts for: every model at every precision, plus the
+    /// SeedVR2 and Gemma repos, each only if it exists on disk.
+    static func listedRepoFolders(hubDir: URL, seedVR2Repo: String?, gemmaRepo: String?) -> [URL] {
+        let models = FluxModelVariant.allModels.flatMap { model in
+            quantOrder.compactMap { model.hubCacheFolder(quantize: $0, hubDir: hubDir) }
+        }
+        let tools = [seedVR2Repo, gemmaRepo].compactMap { $0 }
+            .map { ModelDownloadStore.cacheFolder(repo: $0, hubDir: hubDir) }
+            .filter { FileManager.default.fileExists(atPath: $0.path) }
+        return models + tools
+    }
+
+    /// The old mflux-save copies the runner still loads instead of a hub repo
+    /// (``FluxModelVariant/legacySavedWeights(quantize:in:)``). Those models show as
+    /// cached, so the disk total counts these folders as well as the repos.
+    static func legacySavedFolders(cacheDir: URL) -> [URL] {
+        FluxModelVariant.allModels.flatMap { model in
+            quantOrder.compactMap { model.legacySavedWeights(quantize: $0, in: cacheDir) }
+        }
+    }
+
+    /// Bytes of every regular file under `folders`, which hold plain files (no hub links).
+    nonisolated static func folderBytes(_ folders: [URL]) -> Int64 {
+        let keys: [URLResourceKey] = [.isRegularFileKey, .fileSizeKey]
+        var total: Int64 = 0
+        for folder in folders {
+            let walk = FileManager.default.enumerator(at: folder, includingPropertiesForKeys: keys)
+            while let url = walk?.nextObject() as? URL {
+                guard let values = try? url.resourceValues(forKeys: Set(keys)), values.isRegularFile == true else { continue }
+                total += Int64(values.fileSize ?? 0)
             }
         }
         return total

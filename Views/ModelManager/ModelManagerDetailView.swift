@@ -6,12 +6,6 @@ struct ModelManagerDetailView: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(WeightDownloadStore.self) private var weightDownloads
-    @Environment(ModelManagerRouter.self) private var router
-    @Environment(GenerationCoordinator.self) private var coordinator
-    @Environment(\.openWindow) private var openWindow
-
-    /// The precision "Use this model" applies; nil follows ``ModelInventory/preferredQuantize(_:)``.
-    @State private var useQuantize: Int?
 
     private var guide: ModelGuide {
         model.guide
@@ -48,8 +42,9 @@ struct ModelManagerDetailView: View {
                         QuantRowView(model: model, status: status)
                     }
                 }
-                Divider()
-                useFooter(row)
+                if row.quants.contains(where: { weightDownloads.runs[.weights(model, quantize: $0.quantize)]?.phase == .running }) {
+                    BackgroundDownloadCaption()
+                }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(20)
@@ -59,7 +54,7 @@ struct ModelManagerDetailView: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(model.displayName).font(.title2.bold())
-            Text("\(model.family.rawValue) · \(model.isDistilled ? "Distilled" : "Base") · \(model.defaultSteps) steps")
+            Text(ModelInventory.headerLine(for: model))
                 .font(.caption).foregroundStyle(.secondary)
         }
     }
@@ -75,29 +70,6 @@ struct ModelManagerDetailView: View {
                         .background(.secondary.opacity(0.12), in: Capsule())
                 }
             }
-        }
-    }
-
-    private func useFooter(_ row: ModelRow) -> some View {
-        let busy = coordinator.activeFamily != nil
-        let quantize = Binding(
-            get: { useQuantize ?? ModelInventory.preferredQuantize(row) },
-            set: { useQuantize = $0 }
-        )
-        return HStack(spacing: 12) {
-            Picker("Precision", selection: quantize) {
-                ForEach(row.quants, id: \.quantize) { status in
-                    Text(status.label).tag(status.quantize)
-                }
-            }
-            .fixedSize()
-            Button("Use this model") {
-                router.pendingUse = .init(model: model, quantize: quantize.wrappedValue)
-                openWindow(id: MLXBitsImageStudioApp.mainWindowID)
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(busy)
-            .help(busy ? "Finish or stop the running job first" : "Pick this model and precision in the main window")
         }
     }
 }

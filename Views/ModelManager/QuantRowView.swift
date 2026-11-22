@@ -7,10 +7,17 @@ struct QuantRowView: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(WeightDownloadStore.self) private var weightDownloads
+    @Environment(ModelManagerRouter.self) private var router
+    @Environment(GenerationCoordinator.self) private var coordinator
+    @Environment(\.openWindow) private var openWindow
     @State private var confirmingRemove = false
 
     private var run: WeightDownloadStore.Run? {
         weightDownloads.runs[.weights(model, quantize: status.quantize)]
+    }
+
+    private var isRunning: Bool {
+        run?.phase == .running
     }
 
     var body: some View {
@@ -18,24 +25,39 @@ struct QuantRowView: View {
             HStack(spacing: 12) {
                 Text(status.label).fontWeight(.medium)
                     .frame(width: 56, alignment: .leading)
-                Text("≈\(Int(status.sizeGB.rounded())) GB download")
-                    .foregroundStyle(.secondary)
-                    .frame(width: 130, alignment: .leading)
-                HStack(spacing: 5) {
-                    Circle().fill(status.fit.color).frame(width: 8, height: 8)
-                    Text("≈\(Int(status.ramGB.rounded())) GB RAM").foregroundStyle(.secondary)
-                }
-                .help(status.fit.tooltip)
+                // Same pills as the model picker: disk turns green once cached, RAM takes the fit colour.
+                EstimatePill(
+                    text: "≈\(Int(status.sizeGB.rounded())) GB \(status.cached ? "cached" : "download")",
+                    systemImage: status.cached ? "internaldrive" : "arrow.down.circle",
+                    color: status.cached ? .green : .secondary
+                )
+                .frame(width: 140, alignment: .leading)
+                EstimatePill(text: "≈\(Int(status.ramGB.rounded())) GB RAM", systemImage: "memorychip", color: status.fit.color)
+                    .help(status.fit.tooltip)
                 Spacer(minLength: 8)
-                statusView
+                if !isRunning {
+                    DownloadStateView(
+                        phase: run?.phase, cached: status.cached, start: start,
+                        cancel: cancel, remove: { confirmingRemove = true }, progress: EmptyView()
+                    )
+                    useButton
+                }
+            }
+            if isRunning, let run {
+                HStack(spacing: 12) {
+                    DownloadRunningView(
+                        cancel: cancel, progress: DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
+                    )
+                }
             }
             if case let .failed(message)? = run?.phase, let run {
-                Text(message).font(.caption).foregroundStyle(.red)
-                DisclosureGroup("Log") { logView(run) }.font(.caption)
+                DownloadFailureView(message: message, log: run.log)
             }
         }
+        .cachedRowHighlight(status.cached && !isRunning)
         .alert("Delete cached weights?", isPresented: $confirmingRemove) {
             Button("Delete", role: .destructive) {
+                guard run?.phase != .running else { return }
                 Task { await weightDownloads.delete(model: model, quantize: status.quantize, settings: settings) }
             }
             Button("Cancel", role: .cancel) {}
@@ -47,47 +69,23 @@ struct QuantRowView: View {
         }
     }
 
-    @ViewBuilder private var statusView: some View {
-        switch run?.phase {
-        case .running:
-            if let run {
-                ProgressView().controlSize(.small)
-                DownloadElapsedText(run: run, hubDir: settings.hfHubDir)
-                Button("Cancel") { weightDownloads.cancel(run.target) }
-                    .buttonStyle(.bordered).controlSize(.regular)
-            }
-
-        case .failed:
-            Label("Failed", systemImage: "exclamationmark.triangle.fill")
-                .font(.caption).foregroundStyle(.red)
-            Button("Retry") { start() }
-                .buttonStyle(.bordered).controlSize(.regular)
-
-        case nil, .done:
-            if status.cached {
-                Text("Cached").font(.caption).foregroundStyle(.green)
-                Button("Remove", role: .destructive) { confirmingRemove = true }
-                    .buttonStyle(.bordered).controlSize(.regular)
-            } else {
-                Button("Download") { start() }
-                    .buttonStyle(.bordered).controlSize(.regular)
-            }
+    /// Picks this model at this precision in the main window, as the model picker would.
+    private var useButton: some View {
+        let busy = coordinator.activeFamily != nil
+        return Button("Use") {
+            router.pendingUse = .init(model: model, quantize: status.quantize)
+            openWindow(id: MLXBitsImageStudioApp.mainWindowID)
         }
+        .modelManagerButton()
+        .disabled(busy)
+        .help(busy ? "Finish or stop the running job first" : "Use \(model.displayName) at \(status.label) in the main window")
+    }
+
+    private func cancel() {
+        weightDownloads.cancel(.weights(model, quantize: status.quantize))
     }
 
     private func start() {
         weightDownloads.start(model: model, quantize: status.quantize, settings: settings)
-    }
-
-    private func logView(_ run: WeightDownloadStore.Run) -> some View {
-        ScrollView {
-            Text(run.log.isEmpty ? "No output." : run.log)
-                .font(.system(size: 10, design: .monospaced))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(6)
-                .textSelection(.enabled)
-        }
-        .frame(height: 120)
-        .background(.background.secondary, in: RoundedRectangle(cornerRadius: 6))
     }
 }

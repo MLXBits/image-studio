@@ -11,7 +11,7 @@ import Foundation
 /// `blobs/` and `snapshots/` are unchanged; after a download or a cleanup
 /// there, the quick check decides again until the next refresh.
 ///
-/// Refreshed at launch, and by Settings ▸ Models when it opens and after each
+/// Refreshed at launch, and by the Models window when it opens and after each
 /// download or deletion. Views read it through `isOnDisk`, so they redraw
 /// when the answers arrive.
 @Observable

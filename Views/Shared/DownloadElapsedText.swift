@@ -14,6 +14,7 @@ struct DownloadElapsedText: View {
             let ss = elapsed % 60
             let time = "\(mm > 0 ? "\(mm)m " : "")\(String(format: "%02d", ss))s"
             Text("Downloading… \(time)\(downloadedSuffix)")
+                .lineLimit(1)
                 .font(.caption).foregroundStyle(.secondary)
         }
     }

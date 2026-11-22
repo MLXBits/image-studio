@@ -51,7 +51,7 @@ struct Qwen21ParamsPanelView: View {
             title: "Prompt",
             info: params.isEditMode
                 ? "Describe the edit. Refer to the references as image 1, image 2, … in list order."
-                : "Describe the image. Qwen-Image 2.1 Turbo runs 8 steps without guidance.\n\n"
+                : "Describe the image. Qwen Image 2.1 Turbo runs 8 steps without guidance.\n\n"
                 + "Wildcards: {red|black|white} makes Generate run one job per option "
                 + "(up to 10), in order. Smaller groups cycle; a batch count overrides."
         ) {

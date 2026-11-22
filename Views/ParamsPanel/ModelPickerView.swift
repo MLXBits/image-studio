@@ -293,22 +293,8 @@ struct ModelPickerView: View {
 
     @ViewBuilder
     private func estimatePills(_ estimate: VRAMEstimate) -> some View {
-        Label(estimate.label, systemImage: "memorychip")
-            .font(.caption2)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(estimate.color)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(estimate.color.opacity(0.12), in: Capsule())
-        Label(estimate.diskLabel, systemImage: estimate.diskIcon)
-            .font(.caption2)
-            .lineLimit(1)
-            .fixedSize(horizontal: true, vertical: false)
-            .foregroundStyle(estimate.diskColor)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 3)
-            .background(estimate.diskColor.opacity(0.12), in: Capsule())
+        EstimatePill(text: estimate.label, systemImage: "memorychip", color: estimate.color)
+        EstimatePill(text: estimate.diskLabel, systemImage: estimate.diskIcon, color: estimate.diskColor)
         if estimate.onDisk, let diskURL = model.onDiskURL(quantize: quantize, hubDir: settings.hfHubDir) {
             InfoButton(
                 title: estimate.diskInfoTitle,

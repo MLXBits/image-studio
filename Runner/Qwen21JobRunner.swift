@@ -287,7 +287,7 @@ enum Qwen21ComfyGraphError: LocalizedError, Equatable {
     var errorDescription: String? {
         switch self {
         case .noEnhancerClip:
-            "Enhance prompt needs the prompt enhancer's CLIP file, set in Settings ▸ Models ▸ Qwen-Image 2.1 Turbo."
+            "Enhance prompt needs the prompt enhancer's CLIP file, set in Settings ▸ Models ▸ Qwen Image 2.1 Turbo."
         case .unreadableReference:
             "Couldn't read the last reference image's size, which sets the edit's size."
         }

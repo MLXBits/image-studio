@@ -29,6 +29,18 @@ struct ModelDownloadStoreTests {
         #expect(fetched == 1)
     }
 
+    @Test func forgetMakesTheNextEnsureFetchAgain() async throws {
+        var fetched = 0
+        let store = ModelDownloadStore { _, _ in fetched += 1 }
+        let s = settings()
+        try await store.ensureAvailable("org/gemma", settings: s)
+        try await store.ensureAvailable("org/gemma", settings: s)
+        #expect(fetched == 1)
+        store.forget("org/gemma")
+        try await store.ensureAvailable("org/gemma", settings: s)
+        #expect(fetched == 2)
+    }
+
     @Test func cancellingTheCallerLeavesTheDownloadRunning() async throws {
         let gate = AsyncGate()
         var fetched = 0

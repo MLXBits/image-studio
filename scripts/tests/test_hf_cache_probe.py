@@ -67,6 +67,33 @@ FAMILIES = {
     "z_image/weights/z_image_weight_definition.py": ("ZImageWeightDefinition", "", '["vae/*.safetensors"]'),
     "qwen21/weights/qwen_image21_weight_definition.py": ("QwenImage21WeightDefinition", "", '["vae/*.safetensors"]'),
 }
+
+MODEL_CONFIG = """
+import types
+AVAILABLE_MODELS = {
+    "seedvr2-3b": types.SimpleNamespace(model_name="numz/SeedVR2_comfyUI"),
+    "seedvr2-7b": types.SimpleNamespace(model_name="numz/SeedVR2_comfyUI"),
+}
+"""
+
+MODEL_REVISIONS = """
+class ModelRevisions:
+    @staticmethod
+    def get(repo_id):
+        return "rev123"
+"""
+
+SEEDVR2_DEFINITIONS = """
+class SeedVR2WeightDefinition3B:
+    @staticmethod
+    def get_download_patterns():
+        return ["seedvr2_ema_3b_fp16.safetensors", "ema_vae_fp16.safetensors"]
+
+class SeedVR2WeightDefinition7B:
+    @staticmethod
+    def get_download_patterns():
+        return ["seedvr2_ema_7b_fp16.safetensors", "ema_vae_fp16.safetensors"]
+"""
 WITHOUT_ZIMAGE = {path: family for path, family in FAMILIES.items() if not path.startswith("z_image/")}
 
 
@@ -82,13 +109,17 @@ class HFCacheProbeTests(unittest.TestCase):
     def tearDown(self):
         self._tmp.cleanup()
 
-    def write_mflux(self, private_name="_find_complete_cached_snapshot", families=FAMILIES):
+    def write_mflux(self, private_name="_find_complete_cached_snapshot", families=FAMILIES, seedvr2=True):
         shutil.rmtree(self.site, ignore_errors=True)
         models = self.site / "mflux/models"
         files = {
             "common/resolution/path_resolution.py": PATH_RESOLUTION.format(name=private_name),
             "common/weights/loading/weight_definition.py": WEIGHT_DEFINITION.format(),
         }
+        if seedvr2:
+            files["common/config/model_config.py"] = MODEL_CONFIG
+            files["common/resolution/model_revisions.py"] = MODEL_REVISIONS
+            files["seedvr2/weights/seedvr2_weight_definition.py"] = SEEDVR2_DEFINITIONS
         for path, (cls, param, patterns, *rest) in families.items():
             components = rest[0] if rest else '["transformer", "vae"]'
             classes = cls if isinstance(cls, list) else [cls]
@@ -175,6 +206,26 @@ class HFCacheProbeTests(unittest.TestCase):
         result = self.run_probe("--check")
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("_find_complete_cached_snapshot", result.stderr)
+
+    def test_download_spec_reports_repo_revision_and_patterns(self):
+        result = self.run_probe("--download-spec", "seedvr2-3b")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(json.loads(result.stdout), {"seedvr2-3b": {
+            "repo": "numz/SeedVR2_comfyUI",
+            "revision": "rev123",
+            "include": ["seedvr2_ema_3b_fp16.safetensors", "ema_vae_fp16.safetensors"],
+        }})
+
+    def test_download_spec_leaves_out_unknown_names(self):
+        result = self.run_probe("--download-spec", "seedvr2-7b", "nonsense")
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertEqual(list(json.loads(result.stdout)), ["seedvr2-7b"])
+
+    def test_check_fails_without_seedvr2_definitions(self):
+        self.write_mflux(seedvr2=False)
+        result = self.run_probe("--check")
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("seedvr2-3b", result.stderr)
 
 
 if __name__ == "__main__":
