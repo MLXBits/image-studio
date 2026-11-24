@@ -125,7 +125,10 @@ extension IdeogramCaptionStyle: Codable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         aesthetics = try c.decodeIfPresent(String.self, forKey: .aesthetics)
         lighting = try c.decodeIfPresent(String.self, forKey: .lighting)
-        photo = try c.decodeIfPresent(String.self, forKey: .photo)
+        // An empty `photo` is not photo mode: foreign JSON can pair one with an `art_style`,
+        // which photo mode would drop on encode. The editor's empty camera field is never
+        // encoded, so this only reads captions written elsewhere.
+        photo = try c.decodeIfPresent(String.self, forKey: .photo).flatMap { $0.isEmpty ? nil : $0 }
         medium = try c.decodeIfPresent(String.self, forKey: .medium)
         artStyle = try c.decodeIfPresent(String.self, forKey: .artStyle)
         colorPalette = try c.decodeIfPresent([String].self, forKey: .colorPalette)
