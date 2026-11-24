@@ -197,8 +197,8 @@ struct GemmaDetailView: View {
     }
 }
 
-/// Title, blurb and a body of rows: the frame both tool panes share.
-private struct ToolDetailLayout<Content: View>: View {
+/// Title, blurb and a body of rows: the frame the tool panes and the Custom pane share.
+struct ToolDetailLayout<Content: View>: View {
     let title: String
     let blurb: String
     @ViewBuilder let content: Content

@@ -148,7 +148,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: job.model.rawValue,
-            modelLabel: job.model.displayName
+            selectionKey: job.selection.key
         )
     }
 

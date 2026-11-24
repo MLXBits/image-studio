@@ -6,30 +6,52 @@ import SwiftUI
 final class ModelManagerRouter {
     enum Item: Hashable {
         case model(FluxModelVariant)
+        case custom
         case seedVR2
         case gemma
     }
 
-    /// A "Use this" request the main window applies to its model and precision pickers.
+    /// A custom checkpoint: its repo or path, and the model it loads as.
+    struct CustomCheckpoint: Equatable {
+        var repo: String
+        var loadsAs: FluxModelVariant
+    }
+
+    /// A "Use this" request the main window applies to its model and precision.
     struct UseRequest: Equatable {
         let model: FluxModelVariant
         let quantize: Int
+        /// Set when `model` is `.custom`.
+        var custom: CustomCheckpoint?
         let id = UUID()
+
+        init(model: FluxModelVariant, quantize: Int) {
+            self.model = model
+            self.quantize = quantize
+        }
+
+        init(custom: CustomCheckpoint) {
+            model = .custom
+            quantize = 0
+            self.custom = custom
+        }
     }
 
     /// What the main window does with a ``UseRequest``.
     enum UseOutcome: Equatable {
-        /// A job is running, so the pickers stay where they are.
+        /// A job is running, so the selection stays where it is.
         case ignore
         /// The model is already picked: only the precision changes.
         case setQuantize
-        /// Move the model picker, then set the precision after its reset to defaults.
+        /// A custom checkpoint is already picked: only its repo and target change.
+        case setCustom
+        /// Switch the model, then set the precision after its reset to defaults.
         case switchModel
     }
 
-    /// A custom checkpoint has no entry of its own, so it maps to the default model.
+    /// The Models window entry for `model`: a custom checkpoint has its own.
     static func item(for model: FluxModelVariant) -> Item {
-        .model(model == .custom ? .flux3Klein : model)
+        model == .custom ? .custom : .model(model)
     }
 
     /// The main window's answer to `request` while it shows `currentModel`.
@@ -37,11 +59,14 @@ final class ModelManagerRouter {
         if busy {
             return .ignore
         }
-        return request.model == currentModel ? .setQuantize : .switchModel
+        guard request.model == currentModel else { return .switchModel }
+        return request.custom == nil ? .setQuantize : .setCustom
     }
 
     var selection: Item? = .model(.flux3Klein)
     var pendingUse: UseRequest?
+    /// The main window's custom checkpoint, which the Custom entry starts its draft from.
+    var mainCustom = CustomCheckpoint(repo: "", loadsAs: .flux2Klein9B)
 
     func show(_ item: Item, open: OpenWindowAction) {
         selection = item

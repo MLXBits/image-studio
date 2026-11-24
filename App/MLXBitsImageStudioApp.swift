@@ -82,6 +82,8 @@ struct MLXBitsImageStudioApp: App {
                 .environment(updateChecker)
                 .environment(backendModels)
                 .environment(modelDownloads)
+                // The model button re-checks what is downloaded when a Models window download ends.
+                .environment(weightDownloads)
                 .environment(router)
                 .environment(support)
                 .frame(minWidth: 900, minHeight: 600)

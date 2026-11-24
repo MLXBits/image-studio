@@ -30,6 +30,14 @@ struct ModelManagerView: View {
                         }
                     }
                 }
+                Section("Custom") {
+                    toolRow(
+                        "Custom",
+                        chips: [],
+                        note: router.mainCustom.repo.isEmpty ? nil : ModelSelection.shortName(of: router.mainCustom.repo)
+                    )
+                    .tag(ModelManagerRouter.Item.custom)
+                }
                 Section("Tools") {
                     toolRow("SeedVR2", chips: seedVR2Chips).tag(ModelManagerRouter.Item.seedVR2)
                     toolRow("Gemma", chips: gemmaCached ? ["✓"] : []).tag(ModelManagerRouter.Item.gemma)
@@ -91,6 +99,7 @@ struct ModelManagerView: View {
     @ViewBuilder private var detail: some View {
         switch router.selection {
         case let .model(model): ModelManagerDetailView(model: model).id(model)
+        case .custom: CustomModelDetailView()
         case .seedVR2: SeedVR2DetailView(specs: seedVR2Specs, loading: seedVR2Probing)
         case .gemma: GemmaDetailView()
         case nil: EmptyView()
@@ -121,10 +130,10 @@ struct ModelManagerView: View {
             && ModelDownloadStore.hasCachedWeights(repo: settings.gemmaModel, hubDir: settings.hfHubDir)
     }
 
-    private func toolRow(_ title: String, chips: [String]) -> some View {
+    private func toolRow(_ title: String, chips: [String], note: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(title).lineLimit(1)
-            ModelManagerRowDetail(chips: chips)
+            ModelManagerRowDetail(chips: chips, note: note)
         }
     }
 

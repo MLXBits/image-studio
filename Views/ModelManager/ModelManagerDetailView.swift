@@ -12,10 +12,7 @@ struct ModelManagerDetailView: View {
     }
 
     private var hasSettingsOverride: Bool {
-        let repo = model.isIdeogram4
-            ? (settings.ideogram4ModelRepoOverride ?? "")
-            : (settings.defaults(for: model).modelRepoOverride ?? "")
-        return !repo.trimmingCharacters(in: .whitespaces).isEmpty
+        settings.modelSourceOverride(for: model) != nil
     }
 
     var body: some View {

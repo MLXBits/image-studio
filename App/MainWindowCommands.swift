@@ -29,6 +29,8 @@ struct MainWindowActions {
     var showingQueue: Bool
     var toggleQueue: () -> Void
     var showNotepad: () -> Void
+    /// Opens the Models window at the main window's model.
+    var showModels: () -> Void
     var image: ImageActions?
 }
 
@@ -55,6 +57,10 @@ struct MainWindowCommands: Commands {
             Button("Notepad") { window?.showNotepad() }
                 .keyboardShortcut(KeyboardShortcutCatalog.showNotepad)
                 .disabled(window == nil || window?.sheetIsUp == true)
+            // Another window, so a sheet in this one doesn't block it.
+            Button("Models…") { window?.showModels() }
+                .keyboardShortcut(KeyboardShortcutCatalog.showModels)
+                .disabled(window == nil)
             Divider()
         }
         CommandMenu("Generate") {
@@ -106,6 +112,7 @@ extension KeyboardShortcutCatalog {
     static let toggleQueue = Binding(key: "k", modifiers: .command)
     static let toggleParams = Binding(key: "s", modifiers: [.command, .control])
     static let showNotepad = Binding(key: "n", modifiers: [.command, .option])
+    static let showModels = Binding(key: "m", modifiers: [.command, .shift])
     static let revealInFinder = Binding(key: "r", modifiers: [.command, .shift])
     static let copyPrompt = Binding(key: "c", modifiers: [.command, .shift])
 
@@ -120,6 +127,7 @@ extension KeyboardShortcutCatalog {
         Entry("Show or hide the params panel", toggleParams),
         Entry("Show or hide the queue", toggleQueue),
         Entry("Open the notepad", showNotepad),
+        Entry("Open the Models window", showModels),
     ])
 
     static let imageMenu = Section("Selected Image", [

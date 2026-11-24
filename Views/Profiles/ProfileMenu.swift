@@ -26,7 +26,7 @@ struct ProfileMenu: View {
     var body: some View {
         let blockReason = profiles.switchBlockReason
         Menu {
-            // Inline Picker inside a Menu, as in ModelPickerView: native
+            // Inline Picker inside a Menu: native
             // checkmark on the active profile, one click to switch.
             Picker("Profile", selection: Binding(
                 get: { profiles.activeProfileID },

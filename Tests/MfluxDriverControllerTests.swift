@@ -11,12 +11,12 @@ struct MfluxDriverControllerTests {
         id: "run-1", family: "flux2", fingerprint: "flux2|test", model: "test/model",
         loraPaths: [], loraScales: [], prompt: "a cat", steps: 4, guidance: 1.0,
         outputs: [DriverOutput(seed: 1, path: "/dev/null")], stepwiseDir: "", tePolicy: "",
-        cacheLimitGb: 0, modelVariantRaw: "flux2-klein-9b", modelLabel: "Test"
+        cacheLimitGb: 0, modelVariantRaw: "flux2-klein-9b", selectionKey: "flux2-klein-9b|q8"
     )
 
     /// Stands in for Python running mflux_driver.py: ignores the script path,
     /// answers each `hello` with `ready`, runs `onGenerate` for a generate
-    /// request, and runs until stdin closes.
+    /// request, answers `unload` with `unloaded`, and runs until stdin closes.
     private func fakeInterpreter(onGenerate: String = ":") throws -> String {
         let url = FakeRuntime.tempDirectory("driver").appendingPathComponent("python")
         try FakeRuntime.writeExecutable("""
@@ -25,6 +25,7 @@ struct MfluxDriverControllerTests {
           case "$line" in
             *hello*) echo '{"event":"ready","mflux_version":"0","python":"3"}' ;;
             *generate*) \(onGenerate) ;;
+            *unload*) echo '{"event":"unloaded"}' ;;
           esac
         done
         """, to: url)
@@ -32,11 +33,13 @@ struct MfluxDriverControllerTests {
     }
 
     /// A running driver on a fake interpreter.
-    private func startedDriver(onGenerate: String) async throws -> MfluxDriverController {
+    private func startedDriver(
+        onGenerate: String, switchEvictionDelay: Duration = .seconds(3)
+    ) async throws -> MfluxDriverController {
         let settings = AppSettings()
         settings.suspendPersistence()
         settings.customPythonPath = try fakeInterpreter(onGenerate: onGenerate)
-        let driver = MfluxDriverController(settings: settings)
+        let driver = MfluxDriverController(settings: settings, switchEvictionDelay: switchEvictionDelay)
         try #require(await driver.ensureRunning())
         return driver
     }
@@ -116,5 +119,42 @@ struct MfluxDriverControllerTests {
         settings.customPythonPath = "/nonexistent/venv/bin/python"
         #expect(await driver.ensureRunning() == false)
         #expect(!driver.isRunning)
+    }
+
+    /// A cold run: the model loads, then generates. The model button pulses while it loads and
+    /// glows once it is resident; moving the selection off it evicts it after the debounce.
+    @Test func aSelectionChangeEvictsTheWarmModel() async throws {
+        let driver = try await startedDriver(
+            onGenerate: """
+            echo '{"event":"loading","component":"model"}'; \
+            echo '{"event":"loaded","fingerprint":"flux2|test"}'; echo '{"event":"done"}'
+            """,
+            switchEvictionDelay: .milliseconds(50)
+        )
+        let key = Self.request.selectionKey
+        var loadingWhileLoading: String?
+
+        _ = await driver.run(request: Self.request) { event in
+            if event.event == "loading" {
+                loadingWhileLoading = driver.loadingSelectionKey
+            }
+        }
+
+        #expect(loadingWhileLoading == key)
+        #expect(driver.loadingSelectionKey == nil)
+        #expect(driver.loadedSelectionKey == key)
+
+        // The same selection keeps the model.
+        driver.selectionChanged(to: key)
+        try await Task.sleep(for: .milliseconds(300))
+        #expect(driver.loadedSelectionKey == key)
+
+        // Another precision of the same model is a model change.
+        driver.selectionChanged(to: "flux2-klein-9b|q4")
+        let deadline = ContinuousClock.now + .seconds(3)
+        while driver.loadedSelectionKey != nil, ContinuousClock.now < deadline {
+            try await Task.sleep(for: .milliseconds(20))
+        }
+        #expect(driver.loadedSelectionKey == nil)
     }
 }

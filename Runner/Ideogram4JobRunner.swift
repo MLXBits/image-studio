@@ -138,9 +138,7 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // driver forces keep for ideogram4
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: FluxModelVariant.ideogram4.rawValue,
-            modelLabel: RunnerSupport.modelLabel(
-                custom: job.customModelRepo, fallback: FluxModelVariant.ideogram4.displayName
-            )
+            selectionKey: ModelSelection(variant: .ideogram4, quantize: job.quantize, customRepo: job.customModelRepo).key
         )
     }
 
