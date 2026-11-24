@@ -211,6 +211,7 @@
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
 		7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */; };
 		80480D0FFF9AFC8967EA1529 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585B7D9DFD8D0BF3352D6E1C /* TestHost.swift */; };
+		808F24DE3A8E52AA84A4C902 /* JobHistoryFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03905E77AAAEB13B171F104 /* JobHistoryFileTests.swift */; };
 		80E42D2368ED6BC8A953D88F /* PythonSettingsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = A90FE5B8C61F921D061CF2B1 /* PythonSettingsSection.swift */; };
 		82541311FDB24A63CA6E6DA6 /* GrantingPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 982729D2757379FD575EF161 /* GrantingPanel.swift */; };
 		82B2B12438C257ACCB85B12C /* BBoxTemplates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 502FC77E6C94D5C5CAA181B2 /* BBoxTemplates.swift */; };
@@ -693,6 +694,7 @@
 		CD95ADD5D2C2E7652E42DEA5 /* PythonToolTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PythonToolTests.swift; sourceTree = "<group>"; };
 		CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfySeedVR2WorkflowTests.swift; sourceTree = "<group>"; };
 		CFCE372F86D94D8323281395 /* JobQueueOrderTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobQueueOrderTests.swift; sourceTree = "<group>"; };
+		D03905E77AAAEB13B171F104 /* JobHistoryFileTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobHistoryFileTests.swift; sourceTree = "<group>"; };
 		D07C86B92053779C5988498B /* JobRunner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobRunner.swift; sourceTree = "<group>"; };
 		D2A3301917579F0C64EE2A07 /* Qwen21ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Qwen21ParamsPanelView.swift; sourceTree = "<group>"; };
 		D2FE7E8BBF8DFAF7D3CD6B54 /* GallerySelectionPruning.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GallerySelectionPruning.swift; sourceTree = "<group>"; };
@@ -994,6 +996,7 @@
 				2E61E787BC7111EA7A105BB1 /* ImageZoomStateTests.swift */,
 				27CD3F3AF985E21EA6FE1CD7 /* JobAccessPathsTests.swift */,
 				AA1D533A5756E598F492A769 /* JobCodableTests.swift */,
+				D03905E77AAAEB13B171F104 /* JobHistoryFileTests.swift */,
 				750C9612D36CEE661C35EDC4 /* JobProgressParserTests.swift */,
 				CFCE372F86D94D8323281395 /* JobQueueOrderTests.swift */,
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
@@ -1817,6 +1820,7 @@
 				504EE57B79A818894974C2C9 /* ImageZoomStateTests.swift in Sources */,
 				4ACF9E2BEFDDD9B271BE7DB4 /* JobAccessPathsTests.swift in Sources */,
 				7C8E12507285BB5EB27CF4EB /* JobCodableTests.swift in Sources */,
+				808F24DE3A8E52AA84A4C902 /* JobHistoryFileTests.swift in Sources */,
 				704C242597F296B8E42D0B22 /* JobProgressParserTests.swift in Sources */,
 				7DCD041B925426D69C5742F7 /* JobQueueOrderTests.swift in Sources */,
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,

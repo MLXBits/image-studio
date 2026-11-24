@@ -3,14 +3,19 @@ import Foundation
 /// One family's queue history on disk: `<directory>/<fileName>`, written as
 /// ISO-8601 JSON. The directory is the active profile's data folder and moves
 /// with it (see ``ProfileScopedJobStore/activate(profileDirectory:)``).
+/// Observable for ``saveError`` alone, which the main window shows.
 @MainActor
+@Observable
 final class JobHistoryFile {
     /// Jobs kept per family; older finished ones are pruned first.
     static let maxJobs = 100
 
     let fileName: String
-    private(set) var directory: URL?
-    private let debouncer = Debouncer()
+    @ObservationIgnored private(set) var directory: URL?
+    /// Why the last write didn't land, or nil once one has. The write is atomic, so a
+    /// failed one leaves the previous file and loses only the changes since it.
+    var saveError: String?
+    @ObservationIgnored private let debouncer = Debouncer()
 
     private var url: URL? {
         directory?.appendingPathComponent(fileName)
@@ -40,9 +45,15 @@ final class JobHistoryFile {
         guard let directory, let url else { return }
         let encoder = JSONEncoder()
         encoder.dateEncodingStrategy = .iso8601
-        if let data = try? encoder.encode(value) {
-            try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-            try? data.write(to: url, options: .atomic)
+        do {
+            let data = try encoder.encode(value)
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            try data.write(to: url, options: .atomic)
+            if saveError != nil {
+                saveError = nil
+            }
+        } catch {
+            saveError = "Could not save the queue to \(url.path): \(error.localizedDescription)"
         }
     }
 
