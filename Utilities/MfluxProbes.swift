@@ -277,8 +277,9 @@ nonisolated enum MfluxProbes {
     /// outlives `timeout`. Callers wait on it (a Flux job awaits the base-model
     /// probe before building its arguments), so a wedged interpreter must not
     /// hold them indefinitely. The 60 s default clears a cold `import mflux` (~25 s even on idle hardware). A
-    /// caller whose answer gates a flag should not cache a nil, or one slow import drops that flag
-    /// for the rest of the session (see ``supportsBaseModel(python:)``).
+    /// caller that caches the answer decides whether a nil is kept: ``supportsBaseModel(python:)`` doesn't
+    /// keep one, so one slow import can't drop `--base-model` for the session. ``supportsPidDecode(python:)``
+    /// does, because a view asks it synchronously and must not re-run a timed-out probe on every redraw.
     static func runProbe(python: String, code: String, timeout: TimeInterval = 60) -> String? {
         runProbe(python: python, arguments: ["-c", code], timeout: timeout)
     }
