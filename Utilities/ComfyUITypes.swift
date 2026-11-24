@@ -11,6 +11,8 @@ enum ComfyUIError: LocalizedError {
     /// Execution finished with an error (node exception, CUDA OOM, …) — the failure diagnostic from status.messages.
     case executionFailed(String)
     case decodeFailed(String)
+    /// The server holds no trace of the prompt: not queued, not running, no history. It restarted mid-run.
+    case promptLost
 
     var errorDescription: String? {
         switch self {
@@ -33,7 +35,28 @@ enum ComfyUIError: LocalizedError {
             return "ComfyUI execution failed:\n\(detail)"
         case let .decodeFailed(detail):
             return "Could not parse the ComfyUI response: \(detail)"
+        case .promptLost:
+            return "The ComfyUI server no longer has this prompt: it isn't queued, running or in its history. "
+                + "The server may have restarted. Generate again to resubmit it."
         }
+    }
+}
+
+/// A `/queue` answer: `{"queue_running":[[number, prompt_id, …]], "queue_pending":[…]}`.
+struct ComfyQueue {
+    let promptIDs: Set<String>
+
+    /// Nil when `data` isn't a queue.
+    init?(_ data: Data) {
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let running = json["queue_running"] as? [[Any]],
+              let pending = json["queue_pending"] as? [[Any]] else { return nil }
+        promptIDs = Set((running + pending).compactMap { $0.count > 1 ? $0[1] as? String : nil })
+    }
+
+    /// Whether the server is running `promptID` or holds it to run.
+    func holds(_ promptID: String) -> Bool {
+        promptIDs.contains(promptID)
     }
 }
 

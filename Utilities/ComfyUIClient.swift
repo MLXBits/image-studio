@@ -10,8 +10,10 @@ import Foundation
 // Endpoint contract (verified against server.py / main.py in a ComfyUI checkout):
 //   POST /prompt        {"prompt": <graph>, "client_id"} → 200 {"prompt_id","number","node_errors"}
 //                       invalid graph → 400 {"error":{type,message,...},"node_errors":{...}}
-//   GET  /history/{id}  {} while pending; once done the record has outputs: {nodeID:{images:[
+//   GET  /history/{id}  {} while queued or running, and for an id the server never saw (so after a
+//                       restart); once done the record has outputs: {nodeID:{images:[
 //                         {"filename","subfolder","type":"output"}]}}. `status` carries completion.
+//   GET  /queue         {"queue_running":[[number, prompt_id, …]], "queue_pending":[…]}.
 //   GET  /view          ?filename=&type=output[&subfolder=] → image bytes.
 //   GET  /system_stats  liveness + GPU/VRAM (the Settings "Test Connection" proof).
 //   POST /interrupt     cooperative cancel of the currently-executing prompt.
@@ -44,6 +46,8 @@ final class ComfyUIClient {
     }
 
     struct HistoryRecord {
+        /// Whether the server has a history record for the prompt. It writes one only once the prompt ends.
+        var found = false
         var statusMessage: String? // raw `status_str` label — reads "success" on completion, so not an error indicator by itself.
         /// Best available diagnostic from `status.messages` (the entry whose kind contains "error"/"exception"), else nil.
         var errorMessage: String?
@@ -51,9 +55,16 @@ final class ComfyUIClient {
         var outputs: [ComfyOutputFile] = []
     }
 
+    /// A `/history` poll that failed in a way the next poll may not: a dropped connection or a non-2xx answer.
+    private struct HistoryFetchFailure: Error {
+        let error: ComfyUIError
+    }
+
     /// Consecutive `/history` transport failures tolerated before giving up — about a minute of blip tolerance at the default 1 Hz poll,
     /// long enough to ride out a router hiccup while permanent loss still fails within roughly that same window.
     static let maxConsecutiveHistoryFailures = 60
+    /// Polls without a history record between checks that `/queue` still holds the prompt: about 10 s at the default rate.
+    static let pollsPerQueueCheck = 10
 
     private let config: Config
     /// Unique id for this client; sent as `client_id` so the server can attribute runs.
@@ -93,8 +104,6 @@ final class ComfyUIClient {
         workflow: Any,
         totalNodes: Int,
         totalSteps: Int,
-        // SwiftLint misses that progressTask/tickerTask capture onProgress, which does make it escape.
-        // swiftlint:disable:next unneeded_escaping
         onProgress: @escaping (ComfyUIProgress) -> Void,
         pollInterval: TimeInterval = 1.0,
         maxWaitSeconds: Int = 3600
@@ -161,51 +170,68 @@ final class ComfyUIClient {
                 tracker.stop()
             }
 
-            let deadline = Date().addingTimeInterval(TimeInterval(maxWaitSeconds))
-            // A transient LAN blip drops a /history fetch without failing the server-side run, so one bad poll must not kill an hour-long
-            // job. Tolerate up to `maxConsecutiveHistoryFailures` consecutive transport failures (reset by any successful fetch) before
-            // rethrowing; permanent loss still surfaces within about a minute at the default 1 Hz rate.
-            var consecutiveFetchFailures = 0
-            while Date() < deadline {
-                if Task.isCancelled {
-                    throw CancellationError()
-                }
-                do {
-                    let record = try await fetchHistory(promptID: promptID)
-                    consecutiveFetchFailures = 0
-
-                    switch record.completed {
-                    case true?:
-                        guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
-                        onProgress(ComfyUIProgress(currentStep: totalSteps, totalSteps: totalSteps, isDenoising: true))
-                        return record.outputs
-                    // A failed prompt surfaces here two ways, both of which must fail the job — polling that only looks for a
-                    // success never returns and Image Studio sits at "Generating…" until 1h or manual cancel:
-                    //   1. `completed == false` with an execution_error entry in status.messages (e.g. CUDA OOM) — this build's shape;
-                    //   2. no `completed` key but a terminal error message present — older ComfyUI writes only {"status": "error"}.
-                    case false?:
-                        let detail = (record.errorMessage ?? record.statusMessage).flatMap { $0.isEmpty ? nil : $0 }
-                        throw ComfyUIError.executionFailed(detail ?? "the server reported an execution failure with no details")
-                    case nil:
-                        if let message = record.errorMessage {
-                            throw ComfyUIError.executionFailed(message)
-                        }
-                        // still running → poll again
-                    }
-
-                    try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
-                } catch let e as ComfyUIError {
-                    throw e // genuine terminal failure — surface immediately, no blip tolerance
-                } catch {
-                    consecutiveFetchFailures += 1
-                    guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures else { throw error }
-                    // Keep the poll rhythm instead of hot-looping a dead endpoint.
-                    try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
-                }
-            }
+            return try await awaitOutputs(
+                promptID: promptID, totalSteps: totalSteps, pollInterval: pollInterval,
+                deadline: Date().addingTimeInterval(TimeInterval(maxWaitSeconds)), onProgress: onProgress
+            )
         } catch {
             tracker.stop()
             throw error
+        }
+    }
+
+    /// Polls `/history/{promptID}` until the prompt ends and returns its outputs. Throws when it fails on the server,
+    /// when the server has lost it, after too many failed polls in a row, or at `deadline`.
+    private func awaitOutputs(
+        promptID: String, totalSteps: Int, pollInterval: TimeInterval, deadline: Date,
+        onProgress: (ComfyUIProgress) -> Void
+    ) async throws -> [ComfyOutputFile] {
+        // A transient LAN blip drops a /history fetch without failing the server-side run, so one bad poll must not kill an hour-long
+        // job. Tolerate up to `maxConsecutiveHistoryFailures` consecutive transport failures (reset by any successful fetch) before
+        // rethrowing; permanent loss still surfaces within about a minute at the default 1 Hz rate.
+        var consecutiveFetchFailures = 0
+        var pollsWithoutRecord = 0
+        while Date() < deadline {
+            if Task.isCancelled {
+                throw CancellationError()
+            }
+            do {
+                let record = try await fetchHistory(promptID: promptID)
+                consecutiveFetchFailures = 0
+
+                switch record.completed {
+                case true?:
+                    guard !record.outputs.isEmpty else { throw ComfyUIError.noImageOutput }
+                    onProgress(ComfyUIProgress(currentStep: totalSteps, totalSteps: totalSteps, isDenoising: true))
+                    return record.outputs
+                // A failed prompt surfaces here two ways, both of which must fail the job — polling that only looks for a
+                // success never returns and Image Studio sits at "Generating…" until 1h or manual cancel:
+                //   1. `completed == false` with an execution_error entry in status.messages (e.g. CUDA OOM) — this build's shape;
+                //   2. no `completed` key but a terminal error message present — older ComfyUI writes only {"status": "error"}.
+                case false?:
+                    let detail = (record.errorMessage ?? record.statusMessage).flatMap { $0.isEmpty ? nil : $0 }
+                    throw ComfyUIError.executionFailed(detail ?? "the server reported an execution failure with no details")
+                case nil:
+                    if let message = record.errorMessage {
+                        throw ComfyUIError.executionFailed(message)
+                    }
+                    // Still queued or running, or lost: `/history` answers {} for all three, so ask `/queue` now and then.
+                    if !record.found {
+                        pollsWithoutRecord += 1
+                        if pollsWithoutRecord >= Self.pollsPerQueueCheck {
+                            pollsWithoutRecord = 0
+                            try await failIfLost(promptID: promptID)
+                        }
+                    }
+                }
+
+                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            } catch let failure as HistoryFetchFailure {
+                consecutiveFetchFailures += 1
+                guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures else { throw failure.error }
+                // Keep the poll rhythm instead of hot-looping a dead endpoint.
+                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+            }
         }
         throw ComfyUIError.unreachable("timed out waiting for prompt")
     }
@@ -234,7 +260,19 @@ final class ComfyUIClient {
         return pid
     }
 
-    /// Fetches and decodes `/history/{id}`. A 404 / empty object means "still pending" → all-empty record.
+    /// Throws ``ComfyUIError/promptLost`` when `/queue` neither runs nor holds `promptID` and history still has
+    /// no record of it. Returns quietly when `/queue` can't be read: the poll carries on and counts its own failures.
+    private func failIfLost(promptID: String) async throws {
+        guard let data = try? await get("/queue"), let queue = ComfyQueue(data), !queue.holds(promptID) else { return }
+        // It may have ended between the last poll and the /queue read; the server records history before dropping it.
+        if await (try? fetchHistory(promptID: promptID))?.found == true {
+            return
+        }
+        throw ComfyUIError.promptLost
+    }
+
+    /// Fetches and decodes `/history/{id}`. An empty object means "no record yet" (`found` false). A dropped
+    /// connection or a non-2xx answer throws ``HistoryFetchFailure``, which the poll tolerates up to its limit.
     private func fetchHistory(promptID: String) async throws -> HistoryRecord {
         guard let url = URL(string: base + "/history/\(promptID)") else { throw ComfyUIError.invalidURL(base) }
         var req = URLRequest(url: url, timeoutInterval: 30)
@@ -242,20 +280,21 @@ final class ComfyUIClient {
 
         let (data, response): (Data, URLResponse)
         do { (data, response) = try await session.data(for: req) } catch {
-            throw ComfyUIError.unreachable((error as? URLError)?.localizedDescription ?? error.localizedDescription)
+            let detail = (error as? URLError)?.localizedDescription ?? error.localizedDescription
+            throw HistoryFetchFailure(error: .unreachable(detail))
         }
 
-        guard let http = response as? HTTPURLResponse else { throw ComfyUIError.unreachable("no HTTP status") }
-        if !(200 ..< 300).contains(http.statusCode) {
-            return HistoryRecord()
-        } // pending → not found yet
+        guard let http = response as? HTTPURLResponse else { throw HistoryFetchFailure(error: .unreachable("no HTTP status")) }
+        guard (200 ..< 300).contains(http.statusCode) else {
+            throw HistoryFetchFailure(error: .httpStatus(http.statusCode, String(data: data, encoding: .utf8) ?? ""))
+        }
 
         guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
               let record = json[promptID] as? [String: Any] else {
-            return HistoryRecord() // still pending → empty object
+            return HistoryRecord() // queued, running or unknown → empty object
         }
 
-        var out = HistoryRecord()
+        var out = HistoryRecord(found: true)
         if let statusObj = record["status"] as? [String: Any] {
             out.completed = statusObj["completed"] as? Bool
             out.statusMessage = statusObj["status_str"] as? String
