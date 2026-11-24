@@ -53,7 +53,7 @@ final class JobHistoryFile {
                 saveError = nil
             }
         } catch {
-            saveError = "Could not save the queue to \(url.path): \(error.localizedDescription)"
+            saveError = "\(url.path): \(error.localizedDescription)"
         }
     }
 

@@ -65,6 +65,18 @@ struct MfluxProbesTests {
             == ["--base-model", FluxModelVariant.flux2Klein9B.mfluxModelID])
     }
 
+    /// A probe with no answer (it timed out, or wrote nothing) leaves `--base-model` off for
+    /// that job only. It isn't cached, so the next job asks again.
+    @Test func aBaseModelProbeWithNoAnswerIsAskedAgain() async throws {
+        let url = FakeRuntime.tempDirectory("probe").appendingPathComponent("python")
+        let answer = url.deletingLastPathComponent().appendingPathComponent("answer")
+        try FakeRuntime.writeExecutable("#!/bin/sh\n[ -f '\(answer.path)' ] && printf 1\n", to: url)
+        #expect(await !MfluxProbes.supportsBaseModel(python: url.path))
+        #expect(MfluxProbes.cachedSupportsBaseModel(python: url.path) == nil)
+        try Data().write(to: answer)
+        #expect(await MfluxProbes.supportsBaseModel(python: url.path))
+    }
+
     /// Changing the interpreter asks the new one: answers are keyed by its path.
     @Test func baseModelAnswerIsKeyedByInterpreter() async throws {
         let yes = try interpreter(printing: "1")
