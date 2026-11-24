@@ -77,6 +77,8 @@ struct ModelButtonCaption: Equatable {
 
     /// What the button knows about the selection. `downloadGB` is nil once the weights are cached.
     struct Input {
+        /// The family runs on ComfyUI: no local RAM, download or warm state to show.
+        var runsOnComfy = false
         var quantLabel: String
         var overrideRepo: String?
         var customLoadsAs: String?
@@ -87,6 +89,9 @@ struct ModelButtonCaption: Equatable {
     }
 
     static func segments(for input: Input) -> [Segment] {
+        if input.runsOnComfy {
+            return [Segment(text: "runs on ComfyUI")]
+        }
         if let repo = input.overrideRepo {
             return [Segment(text: "Override · \(repo)", systemImage: "gearshape")]
         }

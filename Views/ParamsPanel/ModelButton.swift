@@ -48,6 +48,7 @@ struct ModelButton: View {
         let ramGB = model.approximateRAMGB(quantize: quantize, settings: settings)
         let onDisk = model.isOnDisk(quantize: quantize, savedIn: settings.effectiveMfluxCacheDir, hubDir: settings.hfHubDir)
         return ModelButtonCaption.segments(for: .init(
+            runsOnComfy: routesToComfy,
             quantLabel: quantLabel,
             overrideRepo: settings.modelSourceOverride(for: model),
             customLoadsAs: isCustom ? customBase.displayName : nil,
@@ -165,7 +166,8 @@ struct ModelButton: View {
         case .cold: "not loaded"
         }
         let details = caption.map(\.text).joined(separator: ", ")
-        return "Model, \(name), \(details), \(state)"
+        // A ComfyUI run never loads locally, so the local state would only mislead.
+        return routesToComfy ? "Model, \(name), \(details)" : "Model, \(name), \(details), \(state)"
     }
 
     // MARK: - Chevron menu

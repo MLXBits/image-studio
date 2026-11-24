@@ -96,6 +96,12 @@ struct ModelSelectionTests {
         ])
     }
 
+    @Test func aComfyUIRunShowsOnlyWhereItRuns() {
+        var comfy = input(override: "org/repo", downloadGB: 22, warmGB: 21)
+        comfy.runsOnComfy = true
+        #expect(ModelButtonCaption.segments(for: comfy) == [.init(text: "runs on ComfyUI")])
+    }
+
     @Test func anUnknownRAMNeedIsLeftOut() {
         #expect(ModelButtonCaption.segments(for: input(ramGB: 0)) == [.init(text: "Q8")])
     }
