@@ -57,12 +57,15 @@ extension ComfyUIClient {
 
 /// How ``ComfyUIClient/generate`` paces its `/history` poll and when it gives up.
 struct ComfyPollTiming {
+    /// 1 Hz polls, an hour per run, and a minute of failed polls in a row.
+    static let standard = Self(interval: 1, maxWait: 3600, blipWindow: 60)
+
     /// Seconds between polls.
-    var interval: TimeInterval
-    /// When the run fails as timed out.
-    var deadline: Date
-    /// How long failed polls in a row are tolerated, counted from the first.
-    var blipWindow: TimeInterval
+    let interval: TimeInterval
+    /// Seconds a run may take before it fails as timed out.
+    let maxWait: TimeInterval
+    /// Seconds failed polls in a row are tolerated, counted from when the first was sent.
+    let blipWindow: TimeInterval
 
     var intervalNanoseconds: UInt64 {
         UInt64(interval * 1_000_000_000)

@@ -51,7 +51,7 @@ final class ComfyUIClient {
     }
 
     /// Consecutive failed `/history` polls tolerated before giving up: about a minute at the default 1 Hz poll when each
-    /// failure is quick. A poll that waits out its timeout is slow, so the `blipWindow` of ``generate`` caps the time too.
+    /// failure is quick. A poll that waits out its timeout is slow, so ``ComfyPollTiming/blipWindow`` caps the time too.
     static let maxConsecutiveHistoryFailures = 60
     /// Polls without a history record between checks that `/queue` still holds the prompt: about 10 s at the default rate.
     static let pollsPerQueueCheck = 10
@@ -95,9 +95,7 @@ final class ComfyUIClient {
         totalNodes: Int,
         totalSteps: Int,
         onProgress: @escaping (ComfyUIProgress) -> Void,
-        pollInterval: TimeInterval = 1.0,
-        maxWaitSeconds: Int = 3600,
-        blipWindow: TimeInterval = 60
+        timing: ComfyPollTiming = .standard
     ) async throws -> [ComfyOutputFile] {
         let bodyObj: [String: Any] = ["prompt": workflow, "client_id": clientID]
         guard let data = try? JSONSerialization.data(withJSONObject: bodyObj) else {
@@ -161,9 +159,6 @@ final class ComfyUIClient {
                 tracker.stop()
             }
 
-            let timing = ComfyPollTiming(
-                interval: pollInterval, deadline: Date().addingTimeInterval(TimeInterval(maxWaitSeconds)), blipWindow: blipWindow
-            )
             return try await awaitOutputs(promptID: promptID, totalSteps: totalSteps, timing: timing, onProgress: onProgress)
         } catch {
             tracker.stop()
@@ -182,10 +177,13 @@ final class ComfyUIClient {
         var consecutiveFetchFailures = 0
         var firstFailureAt: Date?
         var pollsWithoutRecord = 0
-        while Date() < timing.deadline {
+        let deadline = Date().addingTimeInterval(timing.maxWait)
+        while Date() < deadline {
             if Task.isCancelled {
                 throw CancellationError()
             }
+            // The window opens when the first failed poll was sent: a vanished host fails a poll only once its request times out.
+            let sentAt = Date()
             do {
                 let record = try await fetchHistory(promptID: promptID)
                 consecutiveFetchFailures = 0
@@ -220,7 +218,7 @@ final class ComfyUIClient {
                 try? await Task.sleep(nanoseconds: timing.intervalNanoseconds)
             } catch let failure as HistoryFetchFailure {
                 consecutiveFetchFailures += 1
-                let failingSince = firstFailureAt ?? Date()
+                let failingSince = firstFailureAt ?? sentAt
                 firstFailureAt = failingSince
                 guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures,
                       Date().timeIntervalSince(failingSince) < timing.blipWindow else { throw failure.error }

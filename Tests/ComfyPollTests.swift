@@ -12,6 +12,8 @@ nonisolated final class StubComfyServer: URLProtocol {
         case status(Int, String)
         /// The connection drops before any answer, as a LAN blip does.
         case dropped
+        /// The connection drops after `seconds`, as a request to a vanished host times out.
+        case droppedAfter(seconds: TimeInterval)
     }
 
     private struct State {
@@ -47,6 +49,10 @@ nonisolated final class StubComfyServer: URLProtocol {
         switch script(url.path, earlierHits) {
         case .dropped:
             client?.urlProtocol(self, didFailWithError: URLError(.networkConnectionLost))
+        case let .droppedAfter(seconds):
+            // Blocks only the loading thread, which belongs to this request.
+            Thread.sleep(forTimeInterval: seconds)
+            client?.urlProtocol(self, didFailWithError: URLError(.timedOut))
         case let .status(code, body):
             guard let response = HTTPURLResponse(
                 url: url, statusCode: code, httpVersion: "HTTP/1.1", headerFields: ["Content-Type": "application/json"]
@@ -78,13 +84,13 @@ struct ComfyPollTests {
     "outputs":{"9":{"images":[{"filename":"out.png","subfolder":"","type":"output"}]}}}}
     """)
 
-    private func generate(blipWindow: TimeInterval = 60) async throws -> [String] {
+    private func generate(blipWindow: TimeInterval = ComfyPollTiming.standard.blipWindow) async throws -> [String] {
         let cfg = URLSessionConfiguration.ephemeral
         cfg.protocolClasses = [StubComfyServer.self]
         let client = ComfyUIClient(config: .init(baseURL: "http://127.0.0.1:1"), session: URLSession(configuration: cfg))
         let outputs = try await client.generate(
             workflow: [String: Any](), totalNodes: 1, totalSteps: 1, onProgress: { _ in },
-            pollInterval: 0.01, maxWaitSeconds: 8, blipWindow: blipWindow
+            timing: ComfyPollTiming(interval: 0.01, maxWait: 8, blipWindow: blipWindow)
         )
         return outputs.map(\.filename)
     }
@@ -164,6 +170,16 @@ struct ComfyPollTests {
             return
         }
         #expect(StubComfyServer.hits("/history/p1") < ComfyUIClient.maxConsecutiveHistoryFailures)
+    }
+
+    /// The window opens when the first failed poll was sent, not when its timeout came back:
+    /// with 0.3 s timeouts and a 0.5 s window, the second failure ends the run.
+    @Test func theBlipWindowCountsFromWhenTheFirstFailedPollWasSent() async {
+        StubComfyServer.serve { path, _ in
+            path == "/prompt" ? Self.submitted : .droppedAfter(seconds: 0.3)
+        }
+        _ = await #expect(throws: ComfyUIError.self) { try await generate(blipWindow: 0.5) }
+        #expect(StubComfyServer.hits("/history/p1") == 2)
     }
 
     @Test func aServerThatKeepsFailingFailsTheJobAtTheLimit() async {
