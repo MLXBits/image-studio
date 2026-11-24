@@ -135,8 +135,8 @@ struct ModelSelectionTests {
         #expect(groups.isEmpty)
     }
 
-    @Test func aModelMissingFromMfluxIsDisabledUnlessItIsCurrent() {
-        let rows = [FluxModelVariant.krea2: row(.krea2, cached: [8], toolMissing: true)]
+    @Test func aModelMissingFromMfluxIsDisabledExceptTheCurrentPair() {
+        let rows = [FluxModelVariant.krea2: row(.krea2, cached: [8, 4], toolMissing: true)]
         let other = ModelSwitchMenu.groups(
             sections: sections, rows: rows, current: ModelSelection(variant: .zimage, quantize: 8), overridden: []
         )
@@ -144,7 +144,7 @@ struct ModelSelectionTests {
         let current = ModelSwitchMenu.groups(
             sections: sections, rows: rows, current: ModelSelection(variant: .krea2, quantize: 8), overridden: []
         )
-        #expect(current[0][0].unavailableNote == nil)
+        #expect(current[0].map(\.unavailableNote) == [nil, "not in this mflux install"])
     }
 
     @Test func anOverriddenModelIsOneRowWithoutAPrecision() {

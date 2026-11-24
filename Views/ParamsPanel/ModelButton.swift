@@ -193,12 +193,14 @@ struct ModelButton: View {
                 .disabled(busy || entry.unavailableNote != nil)
             }
         }
-        if !customRepo.trimmingCharacters(in: .whitespaces).isEmpty {
+        // A set repo, or the current selection: Custom without a repo, whose row opens its pane.
+        let repoName = ModelSelection.shortName(of: customRepo)
+        if isCustom || !repoName.isEmpty {
             Divider()
-            Toggle(isOn: Binding(get: { isCustom }, set: { _ in pickCustom() })) {
-                Text("Custom · \(ModelSelection.shortName(of: customRepo))")
+            Toggle(isOn: Binding(get: { isCustom }, set: { _ in repoName.isEmpty ? onOpen() : pickCustom() })) {
+                Text("Custom · \(repoName.isEmpty ? "no repo" : repoName)")
             }
-            .disabled(busy)
+            .disabled(busy && !repoName.isEmpty)
         }
         Divider()
         Button("Models…", action: onOpen)

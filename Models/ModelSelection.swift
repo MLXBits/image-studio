@@ -136,12 +136,13 @@ enum ModelSwitchMenu {
             section.models.flatMap { model -> [Entry] in
                 guard let row = rows[model] else { return [] }
                 let isCurrentModel = current?.variant == model
-                let note = row.toolMissing && !isCurrentModel ? "not in this mflux install" : nil
+                // Only the current pair stays enabled when mflux can't run the model.
+                let note = { (isCurrent: Bool) in row.toolMissing && !isCurrent ? "not in this mflux install" : nil }
                 if overridden.contains(model) {
                     return [
                         Entry(
                             model: model, quantize: nil, title: "\(model.displayName) · Override",
-                            isCurrent: isCurrentModel, unavailableNote: note
+                            isCurrent: isCurrentModel, unavailableNote: note(isCurrentModel)
                         ),
                     ]
                 }
@@ -150,7 +151,7 @@ enum ModelSwitchMenu {
                     guard status.cached || isCurrent else { return nil }
                     return Entry(
                         model: model, quantize: status.quantize, title: "\(model.displayName) · \(status.label)",
-                        isCurrent: isCurrent, unavailableNote: note
+                        isCurrent: isCurrent, unavailableNote: note(isCurrent)
                     )
                 }
             }
