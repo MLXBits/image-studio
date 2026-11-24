@@ -57,6 +57,12 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
     }
 
     private let state = OSAllocatedUnfairLock(initialState: State())
+    /// Whether an answer is cached. One it rejects still reaches its callers, and the next ask probes again.
+    private let keeps: @Sendable (Value) -> Bool
+
+    init(keeping keeps: @escaping @Sendable (Value) -> Bool = { _ in true }) {
+        self.keeps = keeps
+    }
 
     /// The cached answer for `key`, or nil when it hasn't been asked yet.
     func cached(_ key: String) -> Value? {
@@ -115,11 +121,14 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
         }
     }
 
-    /// Caches `value` unless ``remove(_:)`` ran since its probe began.
+    /// Caches `value` unless ``remove(_:)`` ran since its probe began or `keeps` rejects it.
     private func store(_ value: Value, for key: String, generation: Int) {
+        let keep = keeps(value)
         state.withLock {
             guard $0.generations[key, default: 0] == generation else { return }
-            $0.results[key] = value
+            if keep {
+                $0.results[key] = value
+            }
             $0.inFlight[key] = nil
         }
     }
@@ -133,7 +142,9 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
 nonisolated enum MfluxProbes {
     private static let pidDecodeCache = ProbeCache<Bool>()
     private static let versionCache = ProbeCache<String?>()
-    private static let baseModelCache = ProbeCache<Bool>()
+    /// Nil is a probe that couldn't answer (timed out or failed to start). It isn't kept, so a
+    /// cold `import mflux` that outlives the timeout doesn't drop `--base-model` for the session.
+    private static let baseModelCache = ProbeCache<Bool?> { $0 != nil }
 
     /// Drops every cached answer for `python`, so the next probes ask it again:
     /// mflux may have been installed or upgraded there since.
@@ -194,7 +205,8 @@ nonisolated enum MfluxProbes {
     /// Cached per interpreter like ``supportsPidDecode(python:)``: one process spawn per
     /// interpreter per launch. The probe imports mflux (seconds), so it runs on a background
     /// task; concurrent callers for one interpreter share that one run. A cancelled caller
-    /// stops waiting at once and gets false, which isn't cached.
+    /// stops waiting at once and gets false, which isn't cached. Neither is a probe that times
+    /// out: this job runs without the flag, and the next one asks again.
     static func supportsBaseModel(python: String?) async -> Bool {
         guard let python else { return false }
         let supported = await baseModelCache.value(for: python) {
@@ -208,16 +220,16 @@ nonisolated enum MfluxProbes {
             except BaseException:
                 pass
             sys.stdout.write("1" if ok else "0")
-            """) == "1"
+            """).map { $0 == "1" }
         }
-        return supported ?? false
+        return supported.flatMap(\.self) ?? false
     }
 
     /// ``supportsBaseModel(python:)``'s cached answer, or nil until that probe has
     /// answered for `python`. Never spawns a process, so the main actor can ask.
     static func cachedSupportsBaseModel(python: String?) -> Bool? {
         guard let python else { return false }
-        return baseModelCache.cached(python)
+        return baseModelCache.cached(python).flatMap(\.self)
     }
 
     /// Starts the probes that job argument building depends on for `python`, in
@@ -264,9 +276,9 @@ nonisolated enum MfluxProbes {
     /// trimmed stdout, or nil when the process cannot start, writes nothing, or
     /// outlives `timeout`. Callers wait on it (a Flux job awaits the base-model
     /// probe before building its arguments), so a wedged interpreter must not
-    /// hold them indefinitely. The 60 s default clears a cold `import mflux` (~25 s even on idle hardware): a probe
-    /// that times out is cached as "unsupported" for its interpreter, silently
-    /// dropping flags like `--base-model` from every later job in the session.
+    /// hold them indefinitely. The 60 s default clears a cold `import mflux` (~25 s even on idle hardware). A
+    /// caller whose answer gates a flag should not cache a nil, or one slow import drops that flag
+    /// for the rest of the session (see ``supportsBaseModel(python:)``).
     static func runProbe(python: String, code: String, timeout: TimeInterval = 60) -> String? {
         runProbe(python: python, arguments: ["-c", code], timeout: timeout)
     }

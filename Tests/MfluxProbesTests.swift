@@ -232,6 +232,16 @@ struct ProbeCacheTests {
         #expect(cache.cached("/b") == "b")
     }
 
+    /// An answer the cache is told not to keep (a probe that timed out) reaches its
+    /// caller but isn't cached, so the next ask probes again.
+    @Test func anAnswerItDoesNotKeepIsAskedAgain() async {
+        let cache = ProbeCache<Int?> { $0 != nil }
+        #expect(await cache.value(for: "/py") { nil } == .some(nil))
+        #expect(cache.cached("/py") == nil)
+        #expect(await cache.value(for: "/py") { 1 } == 1)
+        #expect(cache.cached("/py") == 1)
+    }
+
     /// Forgetting while a probe runs: that run still answers its callers, but its
     /// answer isn't cached, and the next ask starts a fresh probe.
     @Test func forgettingDuringAProbeAsksAgain() async throws {
