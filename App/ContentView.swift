@@ -218,7 +218,7 @@ struct ContentView: View {
             customRepo: params.customModelRepo,
             customBase: params.customBaseModel,
             quantize: unifiedQuantize.wrappedValue,
-            routesToComfy: settings.activeComfyURL != nil && settings.comfyBackendEnabled[params.modelFamily.id] == true,
+            routesToComfy: settings.runsOnComfy(currentSelection.variant),
             busy: coordinator.activeFamily != nil,
             onOpen: { showModels() },
             onUse: { applyUse($0) }
@@ -900,7 +900,7 @@ struct ContentView: View {
             HStack(spacing: 6) {
                 headerModelButton
                 Spacer(minLength: 0)
-                ResidencyPills(family: params.modelFamily)
+                ResidencyPills(runsOnComfy: settings.runsOnComfy(currentSelection.variant))
             }
         }
         .padding(.horizontal, 16)

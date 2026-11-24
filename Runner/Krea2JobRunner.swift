@@ -136,11 +136,7 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     /// remote, otherwise the job runs on local mflux.
     static func comfyGraph(job: Krea2Job, settings: AppSettings, client: ComfyUIClient) async throws -> ComfyGraph? {
         let id = family.id
-        guard
-            !(settings.comfyUNet[id] ?? "").isEmpty,
-            !(settings.comfyClip[id] ?? "").isEmpty,
-            !(settings.comfyVae[id] ?? "").isEmpty
-        else { return nil }
+        guard settings.comfyFiles(key: id) != nil else { return nil }
 
         let key = job.imagePath.isEmpty ? "krea2/t2i" : "krea2/i2i"
         let template = try ComfyTemplate.load(familyFlowKey: key)
