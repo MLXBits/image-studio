@@ -34,6 +34,11 @@ struct FamilyQueues {
             || zimage.isRunning || qwen21.isRunning || seedVR2.isRunning
     }
 
+    /// Every family's queue history file, in run order.
+    var histories: [JobHistoryFile] {
+        [flux.history, ideogram4.history, krea2.history, zimage.history, qwen21.history, seedVR2.history]
+    }
+
     /// Adds `jobs` to a family's queue and starts it if the gate is free.
     /// Returns whether every queue was idle before, so the preview can follow
     /// the first new job.

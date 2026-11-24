@@ -11,6 +11,8 @@ enum ComfyUIError: LocalizedError {
     /// Execution finished with an error (node exception, CUDA OOM, …) — the failure diagnostic from status.messages.
     case executionFailed(String)
     case decodeFailed(String)
+    /// The server holds no trace of the prompt: not queued, not running, no history. It restarted, or its history was cleared.
+    case promptLost
 
     var errorDescription: String? {
         switch self {
@@ -33,7 +35,58 @@ enum ComfyUIError: LocalizedError {
             return "ComfyUI execution failed:\n\(detail)"
         case let .decodeFailed(detail):
             return "Could not parse the ComfyUI response: \(detail)"
+        case .promptLost:
+            return "The ComfyUI server no longer has this prompt: it isn't queued, running or in its history. "
+                + "The server may have restarted, or its history was cleared. Generate again to resubmit it."
         }
+    }
+}
+
+extension ComfyUIClient {
+    /// One prompt's `/history` answer, as the poll reads it.
+    struct HistoryRecord {
+        /// Whether the server has a history record for the prompt. It writes one only once the prompt ends.
+        var found = false
+        var statusMessage: String? // raw `status_str` label — reads "success" on completion, so not an error indicator by itself.
+        /// Best available diagnostic from `status.messages` (the entry whose kind contains "error"/"exception"), else nil.
+        var errorMessage: String?
+        var completed: Bool? // from record["status"]["completed"]; nil = still running / not present yet
+        var outputs: [ComfyOutputFile] = []
+    }
+}
+
+/// How ``ComfyUIClient/generate`` paces its `/history` poll and when it gives up.
+struct ComfyPollTiming {
+    /// 1 Hz polls, an hour per run, and a minute of failed polls in a row.
+    static let standard = Self(interval: 1, maxWait: 3600, blipWindow: 60)
+
+    /// Seconds between polls.
+    let interval: TimeInterval
+    /// Seconds a run may take before it fails as timed out.
+    let maxWait: TimeInterval
+    /// Seconds failed polls in a row are tolerated, counted from when the first was sent.
+    let blipWindow: TimeInterval
+
+    var intervalNanoseconds: UInt64 {
+        UInt64(interval * 1_000_000_000)
+    }
+}
+
+/// A `/queue` answer: `{"queue_running":[[number, prompt_id, …]], "queue_pending":[…]}`.
+struct ComfyQueue {
+    let promptIDs: Set<String>
+
+    /// Nil when `data` isn't a queue.
+    init?(_ data: Data) {
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
+              let running = json["queue_running"] as? [[Any]],
+              let pending = json["queue_pending"] as? [[Any]] else { return nil }
+        promptIDs = Set((running + pending).compactMap { $0.count > 1 ? $0[1] as? String : nil })
+    }
+
+    /// Whether the server is running `promptID` or holds it to run.
+    func holds(_ promptID: String) -> Bool {
+        promptIDs.contains(promptID)
     }
 }
 

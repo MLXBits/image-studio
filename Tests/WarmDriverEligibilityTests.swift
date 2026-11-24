@@ -39,4 +39,25 @@ struct WarmDriverEligibilityTests {
     @Test func qwen21JobsAreOfferedToTheWarmDriver() {
         #expect(request(Qwen21RunnerSpec.self, job: Qwen21Job(prompt: "a panda")) != nil)
     }
+
+    /// The driver fuses LoRAs at load, so a strength change alone must change the
+    /// fingerprint, or the next job reuses weights fused at the old strength.
+    @Test(arguments: [ModelFamily.flux, .zimage, .ideogram4, .krea2, .qwen21])
+    func aLoraStrengthChangeAloneChangesTheFingerprint(family: ModelFamily) throws {
+        let soft = try #require(fingerprint(family, loraStrength: 0.6))
+        let strong = try #require(fingerprint(family, loraStrength: 0.9))
+        #expect(soft != strong)
+    }
+
+    private func fingerprint(_ family: ModelFamily, loraStrength: Double) -> String? {
+        let loras = [LoraEntry(path: "/loras/style.safetensors", strength: loraStrength, modelFamily: family)]
+        return switch family {
+        case .flux: request(FluxRunnerSpec.self, job: FluxJob(prompt: "a panda", loras: loras))?.fingerprint
+        case .zimage: request(ZImageRunnerSpec.self, job: ZImageJob(prompt: "a panda", loras: loras))?.fingerprint
+        case .ideogram4: request(Ideogram4RunnerSpec.self, job: Ideogram4Job(loras: loras))?.fingerprint
+        case .krea2: request(Krea2RunnerSpec.self, job: Krea2Job(prompt: "a panda", loras: loras))?.fingerprint
+        case .qwen21: request(Qwen21RunnerSpec.self, job: Qwen21Job(prompt: "a panda", loras: loras))?.fingerprint
+        case .seedvr2: nil
+        }
+    }
 }

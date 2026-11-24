@@ -90,6 +90,17 @@ struct IdeogramCaptionTests {
         #expect(parsed.compositionalDeconstruction.elements[0].desc == "a fox")
     }
 
+    /// Foreign JSON can carry an empty `photo` beside an `art_style`. That is an
+    /// art-style caption, so the art style survives a round trip.
+    @Test func anEmptyPhotoBesideAnArtStyleKeepsTheArtStyle() throws {
+        let foreign = #"{"aesthetics":"moody","photo":"","art_style":"ukiyo-e woodblock"}"#
+        let style = try JSONDecoder().decode(IdeogramCaptionStyle.self, from: Data(foreign.utf8))
+        let reencoded = try #require(try String(bytes: JSONEncoder().encode(style), encoding: .utf8))
+        #expect(reencoded.contains(#""art_style":"ukiyo-e woodblock""#))
+        // The editor's own empty camera field still means photo mode.
+        #expect(IdeogramCaptionStyle(photo: "").isPhotoMode)
+    }
+
     @Test func fromJSONRejectsGarbage() {
         #expect(IdeogramCaption.from(jsonString: "not json") == nil)
     }

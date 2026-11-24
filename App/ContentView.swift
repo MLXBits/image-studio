@@ -530,6 +530,14 @@ struct ContentView: View {
                 selectedGalleryItem = item
                 pendingSelectPath = nil
             }
+            .errorAlert("Could not save the queue", message: queueSaveError)
+    }
+
+    /// The first family whose queue history failed to save. Dismissing the alert
+    /// clears it; the next save that fails shows it again.
+    private var queueSaveError: Binding<String?> {
+        let failed = queues.histories.first { $0.saveError != nil }
+        return Binding(get: { failed?.saveError }, set: { failed?.saveError = $0 })
     }
 
     private var mainContent: some View {
