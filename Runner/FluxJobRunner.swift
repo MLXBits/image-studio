@@ -367,11 +367,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         // The model-file gate runs before the reference-count check: when remote routing is enabled but the
         // variant's files are incomplete, the job falls back to local mflux (the documented behavior) instead
         // of failing on an over-limit ref count.
-        guard
-            !(settings.comfyUNet[variantID] ?? "").isEmpty,
-            !(settings.comfyClip[variantID] ?? "").isEmpty,
-            !(settings.comfyVae[variantID] ?? "").isEmpty
-        else { return nil }
+        guard settings.comfyFiles(key: variantID) != nil else { return nil }
         // Shape check after the file gate: the i2e templates carry exactly `maxEditRefs` LoadImage slots.
         if refs.count > maxEditRefs {
             throw FluxComfyGraphError.tooManyReferences(got: refs.count, max: maxEditRefs)

@@ -7,11 +7,11 @@ import SwiftUI
 /// Both pills share one shape: an icon, a label (model name / size), and — only when
 /// something is resident — an eject button.
 struct ResidencyPills: View {
-    /// The family selected in the main window: the ComfyUI pill shows only while it routes there.
-    let family: ModelFamily
+    /// The main window's model runs on ComfyUI: the ComfyUI pill shows only then.
+    let runsOnComfy: Bool
 
     var body: some View {
-        ComfyResidencyPill(family: family)
+        ComfyResidencyPill(runsOnComfy: runsOnComfy)
         LMStudioResidencyPill()
     }
 }
@@ -21,19 +21,17 @@ struct ResidencyPills: View {
 /// ComfyUI residency: "Resident · ~X GB" when VRAM is meaningfully below the idle
 /// baseline, or just "ComfyUI" (no size) while the server is reachable but the
 /// baseline hasn't locked yet. Eject fires `POST /free` — ComfyUI's only eject is
-/// a global unload of everything resident. Shown only while the selected family
-/// routes to ComfyUI, so a local family's model button has the header to
-/// itself; the `activeComfyURL` check also hides a reachable report from a poll
-/// that was in flight when routing changed.
+/// a global unload of everything resident. Shown only while the selected model
+/// runs on ComfyUI (``AppSettings/runsOnComfy(_:)``), so a local model's button has
+/// the header to itself; the check also hides a reachable report from a poll that
+/// was in flight when routing changed.
 private struct ComfyResidencyPill: View {
-    @Environment(AppSettings.self) private var settings
     @Environment(BackendModelStore.self) private var backendModels
 
-    let family: ModelFamily
+    let runsOnComfy: Bool
 
     var body: some View {
-        if settings.activeComfyURL != nil, settings.comfyBackendEnabled[family.id] == true,
-           backendModels.comfy.reachable {
+        if runsOnComfy, backendModels.comfy.reachable {
             ResidencyPill(systemImage: "server.rack") {
                 VStack(alignment: .leading, spacing: 0) {
                     Text("ComfyUI")

@@ -178,16 +178,12 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
 
     /// The UNet, CLIP and VAE files from Settings, or nil when any is unset (the job then runs locally).
     static func comfyFiles(settings: AppSettings) -> [String]? {
-        let id = family.id
-        let files = [settings.comfyUNet[id], settings.comfyClip[id], settings.comfyVae[id]].map { $0 ?? "" }
-        return files.contains(where: \.isEmpty) ? nil : files
+        settings.comfyFiles(key: family.id)
     }
 
     /// A Qwen job runs on ComfyUI: the backend segment is set, there's a server URL, and all three files are set.
     static func routesToComfy(settings: AppSettings) -> Bool {
-        settings.comfyBackendEnabled[family.id] == true
-            && !settings.comfyURL.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && comfyFiles(settings: settings) != nil
+        settings.runsOnComfy(.qwen21Turbo)
     }
 
     /// An edit's output size. Following the references uses mflux's rule: the last reference's aspect ratio at
