@@ -113,6 +113,8 @@ final class GalleryStore {
     var selectedBoard: String = "All"
     private(set) var isScanning: Bool = false
     private var scanGeneration = 0
+    /// The pending ``scheduleScan(outputDir:delay:)``.
+    @ObservationIgnored private var scheduledScan: Task<Void, Never>?
     /// Set when a deletion fails; cleared by the next successful delete operation.
     /// Observed by ``GenerationGalleryView`` to display an alert.
     var deleteError: String?
@@ -150,6 +152,8 @@ final class GalleryStore {
     /// is unchanged, and ContentView only re-syncs the locks when it appears.
     func activate(thumbnailDirectory: URL, preservingLocks: Bool = false) {
         self.thumbnailDirectory = thumbnailDirectory
+        // A scheduled scan hasn't started, so the generation bump can't discard it.
+        scheduledScan?.cancel()
         scanGeneration += 1
         items = []
         boards = []
@@ -161,6 +165,18 @@ final class GalleryStore {
         deleteError = nil
         stripError = nil
         lockError = nil
+    }
+
+    /// Scans after `delay`, unless another call reschedules first: the scan then
+    /// waits for that call's delay instead. Images that land together cost one
+    /// scan. Other callers want the result now and call ``scan(outputDir:)``.
+    func scheduleScan(outputDir: String, delay: Duration = .milliseconds(250)) {
+        scheduledScan?.cancel()
+        scheduledScan = Task { [weak self] in
+            try? await Task.sleep(for: delay)
+            guard !Task.isCancelled else { return }
+            self?.scan(outputDir: outputDir)
+        }
     }
 
     func scan(outputDir: String) {

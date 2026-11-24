@@ -11,6 +11,11 @@ struct GenerateAction {
     let zimageParams: ZImageParamsPanelState
     let qwen21Params: Qwen21ParamsPanelState
     let queues: FamilyQueues
+    let fluxQueue: FamilyQueue<FluxRunnerSpec>
+    let ideogram4Queue: FamilyQueue<Ideogram4RunnerSpec>
+    let krea2Queue: FamilyQueue<Krea2RunnerSpec>
+    let zimageQueue: FamilyQueue<ZImageRunnerSpec>
+    let qwen21Queue: FamilyQueue<Qwen21RunnerSpec>
 
     /// The active family's prompt field, for ``PromptBatchSplitter``. Nil for
     /// Ideogram 4, whose caption is a structured document with no per-prompt path.
@@ -103,7 +108,7 @@ struct GenerateAction {
                 size: AspectDirective.size(ratio: $0.ratio, width: params.width, height: params.height, constraints: constraints)
             )
         }
-        return queue(jobs, in: queues.flux, on: queues.fluxRunner, preview: PreviewState.activeJob)
+        return queue(jobs, on: fluxQueue, preview: PreviewState.activeJob)
     }
 
     private func generateIdeogram4(count: Int) -> PreviewState? {
@@ -124,7 +129,7 @@ struct GenerateAction {
         ideogramParams.lowRam = settings.ideogram4LowRam
         ideogramParams.strictValidation = settings.ideogram4StrictValidation
         let job = ideogramParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)
-        return queue([job], in: queues.ideogram4, on: queues.ideogram4Runner, preview: PreviewState.activeIdeogram4Job)
+        return queue([job], on: ideogram4Queue, preview: PreviewState.activeIdeogram4Job)
     }
 
     private func generateKrea2(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
@@ -150,7 +155,7 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, in: queues.krea2, on: queues.krea2Runner, preview: PreviewState.activeKrea2Job)
+        return queue(jobs, on: krea2Queue, preview: PreviewState.activeKrea2Job)
     }
 
     private func generateZImage(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
@@ -174,7 +179,7 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, in: queues.zimage, on: queues.zimageRunner, preview: PreviewState.activeZImageJob)
+        return queue(jobs, on: zimageQueue, preview: PreviewState.activeZImageJob)
     }
 
     /// Qwen-Image 2.1 has no negative prompt; an edit's references and size
@@ -201,17 +206,15 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, in: queues.qwen21, on: queues.qwen21Runner, preview: PreviewState.activeQwen21Job)
+        return queue(jobs, on: qwen21Queue, preview: PreviewState.activeQwen21Job)
     }
 
-    private func queue<Spec: JobRunnerSpec>(
+    private func queue<Spec>(
         _ jobs: [Spec.Job],
-        in store: Spec.Store,
-        on runner: JobRunner<Spec>,
+        on queue: FamilyQueue<Spec>,
         preview: (Spec.Job) -> PreviewState
-    ) -> PreviewState? where Spec.Job: QueueListedJob, Spec.Store: ProfileScopedJobStore,
-        Spec.Store.PersistedJob == Spec.Job {
-        let wasIdle = queues.enqueue(jobs, in: store, on: runner)
+    ) -> PreviewState? {
+        let wasIdle = queues.enqueue(jobs, on: queue)
         return wasIdle ? jobs.first.map(preview) : nil
     }
 }

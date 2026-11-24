@@ -34,6 +34,10 @@ enum SeedVR2RunnerSpec: @MainActor JobRunnerSpec {
     static let outputPrefix = "seedvr2"
     static let encodingLabel = "Upscaling"
 
+    static func preview(_ job: SeedVR2Job) -> PreviewState {
+        .activeSeedVR2Job(job)
+    }
+
     static func tool(job _: SeedVR2Job) -> PythonTool {
         .seedVR2
     }

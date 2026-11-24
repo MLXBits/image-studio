@@ -31,6 +31,10 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     /// Turbo's 8-step sigma schedule, as the bundled ComfyUI templates carry it.
     static let turboSigmas = [1.0, 0.978453, 0.95418, 0.926626, 0.89508, 0.845148, 0.704534, 0.414568, 0]
 
+    static func preview(_ job: Qwen21Job) -> PreviewState {
+        .activeQwen21Job(job)
+    }
+
     static func tool(job _: Qwen21Job) -> PythonTool {
         .qwen21Edit
     }

@@ -95,20 +95,44 @@ struct ContentView: View {
     /// being clipped when the window (or a wide gallery) over-constrains the layout.
     @State private var contentWidth: CGFloat = 0
 
-    /// Every family's store and runner, for queueing, stopping and the hand-off.
+    private var fluxQueue: FamilyQueue<FluxRunnerSpec> {
+        FamilyQueue(store: store, runner: runner)
+    }
+
+    private var ideogram4Queue: FamilyQueue<Ideogram4RunnerSpec> {
+        FamilyQueue(store: ideogram4Store, runner: ideogram4Runner)
+    }
+
+    private var krea2Queue: FamilyQueue<Krea2RunnerSpec> {
+        FamilyQueue(store: krea2Store, runner: krea2Runner)
+    }
+
+    private var zimageQueue: FamilyQueue<ZImageRunnerSpec> {
+        FamilyQueue(store: zimageStore, runner: zimageRunner)
+    }
+
+    private var qwen21Queue: FamilyQueue<Qwen21RunnerSpec> {
+        FamilyQueue(store: qwen21Store, runner: qwen21Runner)
+    }
+
+    private var seedVR2Queue: FamilyQueue<SeedVR2RunnerSpec> {
+        FamilyQueue(store: seedVR2Store, runner: seedVR2Runner)
+    }
+
+    /// Every family's queue, for queueing, stopping and the hand-off.
     private var queues: FamilyQueues {
         FamilyQueues(
-            settings: settings, coordinator: coordinator, timing: timing, driverController: driverController,
-            flux: store, fluxRunner: runner, ideogram4: ideogram4Store, ideogram4Runner: ideogram4Runner,
-            krea2: krea2Store, krea2Runner: krea2Runner, zimage: zimageStore, zimageRunner: zimageRunner,
-            qwen21: qwen21Store, qwen21Runner: qwen21Runner, seedVR2: seedVR2Store, seedVR2Runner: seedVR2Runner
+            all: [fluxQueue, ideogram4Queue, krea2Queue, zimageQueue, qwen21Queue, seedVR2Queue],
+            settings: settings, coordinator: coordinator, timing: timing, driverController: driverController
         )
     }
 
     private var generateAction: GenerateAction {
         GenerateAction(
             settings: settings, params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
-            zimageParams: zimageParams, qwen21Params: qwen21Params, queues: queues
+            zimageParams: zimageParams, qwen21Params: qwen21Params, queues: queues,
+            fluxQueue: fluxQueue, ideogram4Queue: ideogram4Queue, krea2Queue: krea2Queue,
+            zimageQueue: zimageQueue, qwen21Queue: qwen21Queue
         )
     }
 
@@ -289,7 +313,7 @@ struct ContentView: View {
             onSetGalleryFlag: { flag in updatePreviewItem { gallery.setFlag(flag, for: $0) } },
             onSetGalleryRating: { rating in updatePreviewItem { gallery.setRating(rating, for: $0) } },
             onUpscale: { path in promptUpscale(paths: [path]) },
-            onRetry: { queues.restart(previewState) },
+            onRetry: { previewState.previewedJob.map { queues.restart($0) } },
             hasPrev: galleryNavInfo.hasPrev,
             hasNext: galleryNavInfo.hasNext,
             onNavigatePrev: { navigateGallery(-1) },
@@ -471,49 +495,16 @@ struct ContentView: View {
 
     var body: some View {
         bodyBase
-            .onChange(of: runner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: runner.batchImageLanded) { _, count in
-                guard count > 1 else { return } // first image handled by lastCompletedOutputPath
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: ideogram4Runner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: ideogram4Runner.batchImageLanded) { _, count in
-                guard count > 1 else { return }
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: krea2Runner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: krea2Runner.batchImageLanded) { _, count in
-                guard count > 1 else { return }
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: zimageRunner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: zimageRunner.batchImageLanded) { _, count in
-                guard count > 1 else { return }
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: qwen21Runner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: qwen21Runner.batchImageLanded) { _, count in
-                guard count > 1 else { return }
-                gallery.scan(outputDir: settings.outputDir)
-            }
-            .onChange(of: seedVR2Runner.lastCompletedOutputPath) { _, path in
-                pendingSelectPath = path
-                gallery.scan(outputDir: settings.outputDir)
+            // One handler for every family's landings: a new run selects its first
+            // image, and landings that arrive together cost one gallery scan.
+            .onChange(of: queues.landings) { old, new in
+                let outcome = LandingDiff.compare(old: old, new: new)
+                if let path = outcome.selectPath {
+                    pendingSelectPath = path
+                }
+                if outcome.landed {
+                    gallery.scheduleScan(outputDir: settings.outputDir)
+                }
             }
             // Cross-family queue hand-off: when whichever family was running finishes its
             // own queue, start the next family's pending jobs. Only one runs at a time
@@ -1322,21 +1313,7 @@ struct ContentView: View {
     }
 
     private func restoreActiveJobPreview() {
-        if let j = runner.activeJob {
-            previewState = .activeJob(j)
-        } else if let j = ideogram4Runner.activeJob {
-            previewState = .activeIdeogram4Job(j)
-        } else if let j = krea2Runner.activeJob {
-            previewState = .activeKrea2Job(j)
-        } else if let j = zimageRunner.activeJob {
-            previewState = .activeZImageJob(j)
-        } else if let j = qwen21Runner.activeJob {
-            previewState = .activeQwen21Job(j)
-        } else if let j = seedVR2Runner.activeJob {
-            previewState = .activeSeedVR2Job(j)
-        } else {
-            previewState = .idle
-        }
+        previewState = queues.activePreview
     }
 
     // MARK: - SeedVR2 upscale
@@ -1359,7 +1336,7 @@ struct ContentView: View {
             // (holding both risks OOM). When not idle, the hand-off ejects it.
             driverController.eject(reason: "model_switch")
         }
-        if queues.enqueue(jobs, in: seedVR2Store, on: seedVR2Runner), let first = jobs.first {
+        if queues.enqueue(jobs, on: seedVR2Queue), let first = jobs.first {
             selectedGalleryItem = nil
             previewState = .activeSeedVR2Job(first)
         }

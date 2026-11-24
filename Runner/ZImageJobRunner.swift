@@ -34,6 +34,10 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
         return trimmed.isEmpty ? nil : job.negativePrompt
     }
 
+    static func preview(_ job: ZImageJob) -> PreviewState {
+        .activeZImageJob(job)
+    }
+
     static func tool(job: ZImageJob) -> PythonTool {
         job.isTurbo ? .zImageTurbo : .zImage
     }

@@ -148,18 +148,22 @@ Adding Z-Image touched 24 files. In dependency order:
 3. `Models/FluxModelCatalog.swift` — model IDs, variants, defaults. Also the variant's
    `guide` (`Models/ModelGuide.swift`; the compiler enforces it) and its section in
    `ModelInventory.sections` (a test enforces it), which feed the Models window.
-4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, the typealias.
+4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, `preview(_:)`, the
+   typealias. `preview(_:)` returns the family's `PreviewState` case, so add that
+   case (step 9, `PreviewPaneView.swift`) first.
 5. `Stores/<Family>JobStore.swift` — conform to `ProfileScopedJobStore`, with
    `PersistedJob` as the family's job, and to `GenerationJobStore` (declared in
-   the runner file). `FamilyQueues.enqueue` needs both.
+   the runner file). `FamilyQueue<Spec>` (`Runner/FamilyQueue.swift`) needs both.
 6. `Stores/AppSettings.swift` — persisted per-family defaults.
 7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
    `ModelDefaultsView.swift`.
-9. Wire the surfaces that switch on family: `App/ContentView.swift`,
-   `App/FamilyQueues.swift` (the store and runner, pump, stop and retry),
-   `App/GenerateAction.swift` (the family's Generate; a prompt-field family
-   fans out through `PromptFanOut`), `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
+9. Wire the surfaces that switch on family: `App/ContentView.swift` (a
+   `FamilyQueue` property, added to `queues.all` in run order: the hand-off,
+   Stop, retry and the gallery's landing handler loop over that list, so
+   `App/FamilyQueues.swift` needs no edit), `App/GenerateAction.swift` (the
+   family's typed `FamilyQueue` and its Generate; a prompt-field family fans out
+   through `PromptFanOut`), `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
    (a `PreviewState` case and its `jobPreview` branch), `Views/Gallery/GenerationGalleryView.swift`,
    `Views/PreviewPane/GalleryItemDetailView.swift`.

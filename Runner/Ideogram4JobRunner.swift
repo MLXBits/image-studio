@@ -30,6 +30,10 @@ enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
     static let outputPrefix = "ideogram4"
     static let encodingLabel = "Encoding caption"
 
+    static func preview(_ job: Ideogram4Job) -> PreviewState {
+        .activeIdeogram4Job(job)
+    }
+
     static func tool(job _: Ideogram4Job) -> PythonTool {
         .ideogram4
     }
