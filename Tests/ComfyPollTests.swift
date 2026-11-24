@@ -78,13 +78,13 @@ struct ComfyPollTests {
     "outputs":{"9":{"images":[{"filename":"out.png","subfolder":"","type":"output"}]}}}}
     """)
 
-    private func generate() async throws -> [String] {
+    private func generate(blipWindow: TimeInterval = 60) async throws -> [String] {
         let cfg = URLSessionConfiguration.ephemeral
         cfg.protocolClasses = [StubComfyServer.self]
         let client = ComfyUIClient(config: .init(baseURL: "http://127.0.0.1:1"), session: URLSession(configuration: cfg))
         let outputs = try await client.generate(
             workflow: [String: Any](), totalNodes: 1, totalSteps: 1, onProgress: { _ in },
-            pollInterval: 0.01, maxWaitSeconds: 8
+            pollInterval: 0.01, maxWaitSeconds: 8, blipWindow: blipWindow
         )
         return outputs.map(\.filename)
     }
@@ -150,6 +150,20 @@ struct ComfyPollTests {
             }
         }
         #expect(try await generate() == ["out.png"])
+    }
+
+    /// A host that vanishes without refusing connections makes each poll wait out its
+    /// timeout, so 60 failed polls could take half an hour. Failures stop at the window.
+    @Test func failedPollsStopAtTheBlipWindowBeforeTheCountLimit() async {
+        StubComfyServer.serve { path, _ in
+            path == "/prompt" ? Self.submitted : .dropped
+        }
+        let error = await #expect(throws: ComfyUIError.self) { try await generate(blipWindow: 0.2) }
+        guard case .unreachable? = error else {
+            Issue.record("expected unreachable, got \(String(describing: error))")
+            return
+        }
+        #expect(StubComfyServer.hits("/history/p1") < ComfyUIClient.maxConsecutiveHistoryFailures)
     }
 
     @Test func aServerThatKeepsFailingFailsTheJobAtTheLimit() async {

@@ -42,6 +42,33 @@ enum ComfyUIError: LocalizedError {
     }
 }
 
+extension ComfyUIClient {
+    /// One prompt's `/history` answer, as the poll reads it.
+    struct HistoryRecord {
+        /// Whether the server has a history record for the prompt. It writes one only once the prompt ends.
+        var found = false
+        var statusMessage: String? // raw `status_str` label — reads "success" on completion, so not an error indicator by itself.
+        /// Best available diagnostic from `status.messages` (the entry whose kind contains "error"/"exception"), else nil.
+        var errorMessage: String?
+        var completed: Bool? // from record["status"]["completed"]; nil = still running / not present yet
+        var outputs: [ComfyOutputFile] = []
+    }
+}
+
+/// How ``ComfyUIClient/generate`` paces its `/history` poll and when it gives up.
+struct ComfyPollTiming {
+    /// Seconds between polls.
+    var interval: TimeInterval
+    /// When the run fails as timed out.
+    var deadline: Date
+    /// How long failed polls in a row are tolerated, counted from the first.
+    var blipWindow: TimeInterval
+
+    var intervalNanoseconds: UInt64 {
+        UInt64(interval * 1_000_000_000)
+    }
+}
+
 /// A `/queue` answer: `{"queue_running":[[number, prompt_id, …]], "queue_pending":[…]}`.
 struct ComfyQueue {
     let promptIDs: Set<String>

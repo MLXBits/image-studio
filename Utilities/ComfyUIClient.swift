@@ -45,23 +45,13 @@ final class ComfyUIClient {
         }
     }
 
-    struct HistoryRecord {
-        /// Whether the server has a history record for the prompt. It writes one only once the prompt ends.
-        var found = false
-        var statusMessage: String? // raw `status_str` label — reads "success" on completion, so not an error indicator by itself.
-        /// Best available diagnostic from `status.messages` (the entry whose kind contains "error"/"exception"), else nil.
-        var errorMessage: String?
-        var completed: Bool? // from record["status"]["completed"]; nil = still running / not present yet
-        var outputs: [ComfyOutputFile] = []
-    }
-
     /// A `/history` poll that failed in a way the next poll may not: a dropped connection or a non-2xx answer.
     private struct HistoryFetchFailure: Error {
         let error: ComfyUIError
     }
 
-    /// Consecutive `/history` transport failures tolerated before giving up — about a minute of blip tolerance at the default 1 Hz poll,
-    /// long enough to ride out a router hiccup while permanent loss still fails within roughly that same window.
+    /// Consecutive failed `/history` polls tolerated before giving up: about a minute at the default 1 Hz poll when each
+    /// failure is quick. A poll that waits out its timeout is slow, so the `blipWindow` of ``generate`` caps the time too.
     static let maxConsecutiveHistoryFailures = 60
     /// Polls without a history record between checks that `/queue` still holds the prompt: about 10 s at the default rate.
     static let pollsPerQueueCheck = 10
@@ -106,7 +96,8 @@ final class ComfyUIClient {
         totalSteps: Int,
         onProgress: @escaping (ComfyUIProgress) -> Void,
         pollInterval: TimeInterval = 1.0,
-        maxWaitSeconds: Int = 3600
+        maxWaitSeconds: Int = 3600,
+        blipWindow: TimeInterval = 60
     ) async throws -> [ComfyOutputFile] {
         let bodyObj: [String: Any] = ["prompt": workflow, "client_id": clientID]
         guard let data = try? JSONSerialization.data(withJSONObject: bodyObj) else {
@@ -170,10 +161,10 @@ final class ComfyUIClient {
                 tracker.stop()
             }
 
-            return try await awaitOutputs(
-                promptID: promptID, totalSteps: totalSteps, pollInterval: pollInterval,
-                deadline: Date().addingTimeInterval(TimeInterval(maxWaitSeconds)), onProgress: onProgress
+            let timing = ComfyPollTiming(
+                interval: pollInterval, deadline: Date().addingTimeInterval(TimeInterval(maxWaitSeconds)), blipWindow: blipWindow
             )
+            return try await awaitOutputs(promptID: promptID, totalSteps: totalSteps, timing: timing, onProgress: onProgress)
         } catch {
             tracker.stop()
             throw error
@@ -181,23 +172,24 @@ final class ComfyUIClient {
     }
 
     /// Polls `/history/{promptID}` until the prompt ends and returns its outputs. Throws when it fails on the server,
-    /// when the server has lost it, after too many failed polls in a row, or at `deadline`.
+    /// when the server has lost it, after too many failed polls in a row, or at the deadline.
     private func awaitOutputs(
-        promptID: String, totalSteps: Int, pollInterval: TimeInterval, deadline: Date,
-        onProgress: (ComfyUIProgress) -> Void
+        promptID: String, totalSteps: Int, timing: ComfyPollTiming, onProgress: (ComfyUIProgress) -> Void
     ) async throws -> [ComfyOutputFile] {
         // A transient LAN blip drops a /history fetch without failing the server-side run, so one bad poll must not kill an hour-long
-        // job. Tolerate up to `maxConsecutiveHistoryFailures` consecutive transport failures (reset by any successful fetch) before
-        // rethrowing; permanent loss still surfaces within about a minute at the default 1 Hz rate.
+        // job. Failed polls in a row are tolerated (any successful fetch resets them) until there are
+        // `maxConsecutiveHistoryFailures` of them or `timing.blipWindow` has passed since the first, whichever comes first.
         var consecutiveFetchFailures = 0
+        var firstFailureAt: Date?
         var pollsWithoutRecord = 0
-        while Date() < deadline {
+        while Date() < timing.deadline {
             if Task.isCancelled {
                 throw CancellationError()
             }
             do {
                 let record = try await fetchHistory(promptID: promptID)
                 consecutiveFetchFailures = 0
+                firstFailureAt = nil
 
                 switch record.completed {
                 case true?:
@@ -225,12 +217,15 @@ final class ComfyUIClient {
                     }
                 }
 
-                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: timing.intervalNanoseconds)
             } catch let failure as HistoryFetchFailure {
                 consecutiveFetchFailures += 1
-                guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures else { throw failure.error }
+                let failingSince = firstFailureAt ?? Date()
+                firstFailureAt = failingSince
+                guard consecutiveFetchFailures < Self.maxConsecutiveHistoryFailures,
+                      Date().timeIntervalSince(failingSince) < timing.blipWindow else { throw failure.error }
                 // Keep the poll rhythm instead of hot-looping a dead endpoint.
-                try? await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
+                try? await Task.sleep(nanoseconds: timing.intervalNanoseconds)
             }
         }
         throw ComfyUIError.unreachable("timed out waiting for prompt")
