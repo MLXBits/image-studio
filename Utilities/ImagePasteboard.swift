@@ -36,7 +36,7 @@ enum ImagePasteboard {
         guard let tiff = NSImage(pasteboard: pasteboard)?.tiffRepresentation,
               let png = NSBitmapImageRep(data: tiff)?.representation(using: .png, properties: [:]) else { return nil }
         let tmp = FileManager.default.temporaryDirectory
-            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970)).png")
+            .appendingPathComponent("\(tempPrefix)-\(Int(Date().timeIntervalSince1970))-\(UUID().uuidString.prefix(8)).png")
         try png.write(to: tmp)
         return tmp.path
     }

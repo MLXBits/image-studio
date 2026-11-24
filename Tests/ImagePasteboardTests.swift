@@ -80,6 +80,24 @@ struct ImagePasteboardTests {
         #expect(pasteboard.pasteboardItems?.map { $0.string(forType: .fileURL) } == [png.absoluteString])
     }
 
+    /// Pasting raw pixels twice in one second keeps both images: the second
+    /// paste must not overwrite the file the first one's path points at.
+    @Test func twoPastedImagesInOneSecondGetTheirOwnFiles() throws {
+        pasteboard.clearContents()
+        try pasteboard.setData(image(.png), forType: .png)
+        let prefix = "ImagePasteboardTests-\(UUID().uuidString)"
+        func paste() throws -> String {
+            try #require(try ImagePasteboard.pastedImagePath(tempPrefix: prefix, extensions: ["png"], from: pasteboard))
+        }
+        let first = try paste()
+        let second = try paste()
+        defer {
+            try? FileManager.default.removeItem(atPath: first)
+            try? FileManager.default.removeItem(atPath: second)
+        }
+        #expect(first != second)
+    }
+
     @Test func nothingReadableLeavesThePasteboardAlone() throws {
         let corrupt = try file("d.png", Data("not-an-image".utf8))
         pasteboard.clearContents()
