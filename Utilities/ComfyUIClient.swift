@@ -269,8 +269,9 @@ final class ComfyUIClient {
         throw ComfyUIError.promptLost
     }
 
-    /// Fetches and decodes `/history/{id}`. An empty object means "no record yet" (`found` false). A dropped
-    /// connection or a non-2xx answer throws ``HistoryFetchFailure``, which the poll tolerates up to its limit.
+    /// Fetches and decodes `/history/{id}`. An object without the prompt means "no record yet" (`found` false). A
+    /// dropped connection, a non-2xx answer or a body that isn't a JSON object throws ``HistoryFetchFailure``, which the
+    /// poll tolerates up to its limit.
     private func fetchHistory(promptID: String) async throws -> HistoryRecord {
         guard let url = URL(string: base + "/history/\(promptID)") else { throw ComfyUIError.invalidURL(base) }
         var req = URLRequest(url: url, timeoutInterval: 30)
@@ -287,8 +288,10 @@ final class ComfyUIClient {
             throw HistoryFetchFailure(error: .httpStatus(http.statusCode, String(data: data, encoding: .utf8) ?? ""))
         }
 
-        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any],
-              let record = json[promptID] as? [String: Any] else {
+        guard let json = (try? JSONSerialization.jsonObject(with: data)) as? [String: Any] else {
+            throw HistoryFetchFailure(error: .decodeFailed("/history answered with something other than a JSON object"))
+        }
+        guard let record = json[promptID] as? [String: Any] else {
             return HistoryRecord() // queued, running or unknown → empty object
         }
 

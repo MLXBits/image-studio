@@ -182,6 +182,20 @@ struct ComfyPollTests {
         #expect(StubComfyServer.hits("/history/p1") == 2)
     }
 
+    /// A recheck that comes back as something other than JSON (a proxy's error page) decides
+    /// nothing: the next poll finds the output.
+    @Test func anUnreadableRecheckAfterAnEmptyQueueIsNotALostPrompt() async throws {
+        let checkPoll = ComfyUIClient.pollsPerQueueCheck
+        StubComfyServer.serve { path, hits in
+            switch path {
+            case "/prompt": Self.submitted
+            case "/queue": Self.notQueued
+            default: hits < checkPoll ? Self.pending : hits == checkPoll ? .status(200, "<html>Bad Gateway</html>") : Self.finished
+            }
+        }
+        #expect(try await generate() == ["out.png"])
+    }
+
     @Test func aServerThatKeepsFailingFailsTheJobAtTheLimit() async {
         StubComfyServer.serve { path, _ in
             path == "/prompt" ? Self.submitted : .status(503, "busy")
