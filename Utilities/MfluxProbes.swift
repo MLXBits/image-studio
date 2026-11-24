@@ -64,7 +64,7 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
         self.keeps = keeps
     }
 
-    /// The cached answer for `key`, or nil when it hasn't been asked yet.
+    /// The cached answer for `key`, or nil when it hasn't been asked yet or its answer wasn't kept.
     func cached(_ key: String) -> Value? {
         state.withLock { $0.results[key] }
     }
@@ -87,7 +87,7 @@ nonisolated final class ProbeCache<Value: Sendable>: Sendable {
     /// Concurrent callers for one key share a single run, so one interpreter
     /// gets one probe process however many jobs and warm-ups ask at once.
     /// A cancelled caller stops waiting at once and gets nil; the probe runs on
-    /// for the other callers and still caches its answer.
+    /// for the other callers and still caches its answer, if `keeps` accepts it.
     func value(for key: String, compute: @escaping @Sendable () -> Value) async -> Value? {
         if let hit = cached(key) {
             return hit
