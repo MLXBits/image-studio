@@ -265,7 +265,12 @@ final class ComfyUIClient {
     private func failIfLost(promptID: String) async throws {
         guard let data = try? await get("/queue"), let queue = ComfyQueue(data), !queue.holds(promptID) else { return }
         // It may have ended between the last poll and the /queue read; the server records history before dropping it.
-        if await (try? fetchHistory(promptID: promptID))?.found == true {
+        // A failed re-read decides nothing: the next poll asks again.
+        do {
+            if try await fetchHistory(promptID: promptID).found {
+                return
+            }
+        } catch is HistoryFetchFailure {
             return
         }
         throw ComfyUIError.promptLost

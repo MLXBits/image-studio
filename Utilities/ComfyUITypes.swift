@@ -11,7 +11,7 @@ enum ComfyUIError: LocalizedError {
     /// Execution finished with an error (node exception, CUDA OOM, …) — the failure diagnostic from status.messages.
     case executionFailed(String)
     case decodeFailed(String)
-    /// The server holds no trace of the prompt: not queued, not running, no history. It restarted mid-run.
+    /// The server holds no trace of the prompt: not queued, not running, no history. It restarted, or its history was cleared.
     case promptLost
 
     var errorDescription: String? {
@@ -37,7 +37,7 @@ enum ComfyUIError: LocalizedError {
             return "Could not parse the ComfyUI response: \(detail)"
         case .promptLost:
             return "The ComfyUI server no longer has this prompt: it isn't queued, running or in its history. "
-                + "The server may have restarted. Generate again to resubmit it."
+                + "The server may have restarted, or its history was cleared. Generate again to resubmit it."
         }
     }
 }

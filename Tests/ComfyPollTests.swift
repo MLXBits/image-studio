@@ -71,6 +71,7 @@ struct ComfyPollTests {
     nonisolated private static let submitted = Reply.status(200, #"{"prompt_id":"p1","number":0,"node_errors":{}}"#)
     nonisolated private static let notQueued = Reply.status(200, #"{"queue_running":[],"queue_pending":[]}"#)
     nonisolated private static let queued = Reply.status(200, #"{"queue_running":[],"queue_pending":[[0,"p1",{},{},["9"]]]}"#)
+    nonisolated private static let running = Reply.status(200, #"{"queue_running":[[0,"p1",{},{},["9"]]],"queue_pending":[]}"#)
     nonisolated private static let pending = Reply.status(200, "{}")
     nonisolated private static let finished = Reply.status(200, """
     {"p1":{"status":{"completed":true,"status_str":"success","messages":[]},
@@ -106,16 +107,19 @@ struct ComfyPollTests {
         #expect(Date().timeIntervalSince(start) < 4)
     }
 
-    @Test func aPromptStillQueuedIsPolledUntilItFinishes() async throws {
-        StubComfyServer.serve { path, hits in
-            switch path {
-            case "/prompt": Self.submitted
-            case "/queue": Self.queued
-            default: hits < 40 ? Self.pending : Self.finished
+    /// Pending or running, the prompt is still the server's: the poll waits for its output.
+    @Test func aPromptStillQueuedOrRunningIsPolledUntilItFinishes() async throws {
+        for queue in [Self.queued, Self.running] {
+            StubComfyServer.serve { path, hits in
+                switch path {
+                case "/prompt": Self.submitted
+                case "/queue": queue
+                default: hits < 40 ? Self.pending : Self.finished
+                }
             }
+            #expect(try await generate() == ["out.png"])
+            #expect(StubComfyServer.hits("/queue") > 0)
         }
-        #expect(try await generate() == ["out.png"])
-        #expect(StubComfyServer.hits("/queue") > 0)
     }
 
     @Test func dropsAndServerErrorsBelowTheLimitRideThrough() async throws {
@@ -129,6 +133,20 @@ struct ComfyPollTests {
                 case 2, 3: .status(503, "busy")
                 default: Self.finished
                 }
+            }
+        }
+        #expect(try await generate() == ["out.png"])
+    }
+
+    /// The prompt ends between a poll and the `/queue` read, and the history check that
+    /// follows drops. That's a blip, not a lost prompt: the next poll finds the output.
+    @Test func aDroppedRecheckAfterAnEmptyQueueIsNotALostPrompt() async throws {
+        let checkPoll = ComfyUIClient.pollsPerQueueCheck
+        StubComfyServer.serve { path, hits in
+            switch path {
+            case "/prompt": Self.submitted
+            case "/queue": Self.notQueued
+            default: hits < checkPoll ? Self.pending : hits == checkPoll ? .dropped : Self.finished
             }
         }
         #expect(try await generate() == ["out.png"])
