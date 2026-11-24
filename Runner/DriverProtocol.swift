@@ -75,11 +75,11 @@ struct DriverGenerateRequest: Codable {
     var stepwiseDir: String
     var tePolicy: String
     var cacheLimitGb: Double
-    /// App-only: `FluxModelVariant.rawValue`, compared on model-picker
-    /// switches to trigger proactive eviction.
+    /// `FluxModelVariant.rawValue`. The driver reads it for Z-Image (Turbo vs base).
     var modelVariantRaw: String
-    /// App-only: human-readable name for the header warm-model chip.
-    var modelLabel: String
+    /// App-only: ``ModelSelection/key`` of the job's model, which the model button's
+    /// halo and switch eviction compare with the main window's selection.
+    var selectionKey: String
 }
 
 /// One decoded driver event. `event` discriminates; the optional fields are

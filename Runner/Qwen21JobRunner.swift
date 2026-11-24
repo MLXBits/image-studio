@@ -101,7 +101,7 @@ enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue,
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: variant.rawValue,
-            modelLabel: RunnerSupport.modelLabel(custom: job.customModelRepo, fallback: variant.displayName)
+            selectionKey: ModelSelection(variant: variant, quantize: job.quantize, customRepo: job.customModelRepo).key
         )
     }
 

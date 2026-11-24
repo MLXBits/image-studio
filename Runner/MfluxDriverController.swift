@@ -30,10 +30,10 @@ final class MfluxDriverController {
     private(set) var availability: Availability = .unknown
     /// Fingerprint of the resident model, or nil when nothing is loaded.
     private(set) var loadedFingerprint: String?
-    /// `FluxModelVariant.rawValue` of the resident model (for switch eviction).
-    private(set) var loadedModelVariantRaw: String?
-    /// Human-readable name of the resident model (for the header chip).
-    private(set) var loadedModelLabel: String?
+    /// ``ModelSelection/key`` of the resident model, for the model button's halo and switch eviction.
+    private(set) var loadedSelectionKey: String?
+    /// ``ModelSelection/key`` of the model being loaded, or nil when no load is in progress.
+    private(set) var loadingSelectionKey: String?
     private(set) var loadedMemoryGB: Double?
     private(set) var isGenerating = false
     /// True once a cooperative cancel has been asked for and the driver hasn't
@@ -71,7 +71,7 @@ final class MfluxDriverController {
     /// grace — a 4K Ideogram step dwarfs a 512px FLUX one.
     private var lastStepInterval: TimeInterval?
     private var idleTask: Task<Void, Never>?
-    private var switchEvictTask: Task<Void, Never>?
+    private let switchEviction: SwitchEviction
     /// Peak MLX memory (GB) reported by the last completed job; drives the
     /// `auto` text-encoder policy.
     private var lastPeakGB: Double?
@@ -89,8 +89,9 @@ final class MfluxDriverController {
         process?.isRunning == true
     }
 
-    init(settings: AppSettings) {
+    init(settings: AppSettings, switchEvictionDelay: Duration = .seconds(3)) {
         self.settings = settings
+        switchEviction = SwitchEviction(delay: switchEvictionDelay)
     }
 
     // MARK: - Lifecycle
@@ -238,8 +239,8 @@ final class MfluxDriverController {
         process = nil
         stdinHandle = nil
         loadedFingerprint = nil
-        loadedModelVariantRaw = nil
-        loadedModelLabel = nil
+        loadedSelectionKey = nil
+        loadingSelectionKey = nil
         loadedMemoryGB = nil
         idleTask?.cancel()
         resolveHandshake(false, reason: "Driver exited during startup")
@@ -274,14 +275,17 @@ final class MfluxDriverController {
         runID = request.id
         resetCancelState()
         idleTask?.cancel()
-        switchEvictTask?.cancel()
+        switchEviction.cancel()
         defer {
             isGenerating = false
+            loadingSelectionKey = nil
             jobEventHandler = nil
             finishRun = nil
             runID = nil
             resetCancelState()
             scheduleIdleEviction()
+            // The selection may have moved while this job ran: evict now, as a switch would have.
+            switchEviction.schedule(on: self)
         }
         return await withCheckedContinuation { (cont: CheckedContinuation<DriverRunResult, Never>) in
             var finished = false
@@ -294,10 +298,15 @@ final class MfluxDriverController {
             finishRun = finish
             jobEventHandler = { [weak self] event in
                 switch event.event {
+                case "loading":
+                    if event.component == "model" { // not the text encoder, which reloads on warm runs too
+                        self?.loadingSelectionKey = request.selectionKey
+                    }
+                    onEvent(event)
                 case "loaded":
                     self?.loadedFingerprint = event.fingerprint
-                    self?.loadedModelVariantRaw = request.modelVariantRaw
-                    self?.loadedModelLabel = request.modelLabel
+                    self?.loadedSelectionKey = request.selectionKey
+                    self?.loadingSelectionKey = nil
                     self?.loadedMemoryGB = event.memoryGb
                     onEvent(event)
                 case "done":
@@ -310,8 +319,7 @@ final class MfluxDriverController {
                     // A warm run emits no `loaded` event — the state fields
                     // still describe this request's model.
                     self?.loadedFingerprint = request.fingerprint
-                    self?.loadedModelVariantRaw = request.modelVariantRaw
-                    self?.loadedModelLabel = request.modelLabel
+                    self?.loadedSelectionKey = request.selectionKey
                     finish(event.cancelled == true ? .cancelled : .completed)
                 case "error":
                     finish(.failed(event.message ?? "Unknown driver error"))
@@ -374,18 +382,9 @@ final class MfluxDriverController {
         send(["cmd": "unload", "reason": reason])
     }
 
-    /// Pattern 5: switching models proactively evicts a warm model with a different variant
-    /// (debounced so flipping through the picker doesn't thrash). Never evicts mid-generation.
-    func modelPickerChanged(to variantRaw: String) {
-        switchEvictTask?.cancel()
-        guard let loadedRaw = loadedModelVariantRaw, loadedRaw != variantRaw, !isGenerating else { return }
-        switchEvictTask = Task { [weak self] in
-            try? await Task.sleep(for: .seconds(3))
-            guard !Task.isCancelled, let self, !isGenerating else { return }
-            if loadedModelVariantRaw != variantRaw {
-                eject(reason: "model_switch")
-            }
-        }
+    /// The main window's selection changed: see ``SwitchEviction``.
+    func selectionChanged(to key: String) {
+        switchEviction.select(key, on: self)
     }
 
     private func scheduleIdleEviction() {
@@ -445,8 +444,7 @@ final class MfluxDriverController {
             jobEventHandler?(event)
         case "unloaded":
             loadedFingerprint = nil
-            loadedModelVariantRaw = nil
-            loadedModelLabel = nil
+            loadedSelectionKey = nil
             loadedMemoryGB = nil
             idleTask?.cancel()
         // Mid-job refingerprint unloads are internal; the loading/loaded events that follow repopulate state.

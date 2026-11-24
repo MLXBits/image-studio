@@ -131,9 +131,7 @@ enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: job.modelVariant.rawValue,
-            modelLabel: RunnerSupport.modelLabel(
-                custom: job.customModelRepo, fallback: job.modelVariant.displayName
-            )
+            selectionKey: ModelSelection(variant: job.modelVariant, quantize: job.quantize, customRepo: job.customModelRepo).key
         )
     }
 

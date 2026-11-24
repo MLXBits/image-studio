@@ -126,9 +126,7 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
             tePolicy: WarmTextEncoderPolicy.keep.rawValue, // resolved per-run by the controller
             cacheLimitGb: settings.mlxCacheLimitGB,
             modelVariantRaw: FluxModelVariant.krea2.rawValue,
-            modelLabel: RunnerSupport.modelLabel(
-                custom: job.customModelRepo, fallback: FluxModelVariant.krea2.displayName
-            )
+            selectionKey: ModelSelection(variant: .krea2, quantize: job.quantize, customRepo: job.customModelRepo).key
         )
     }
 

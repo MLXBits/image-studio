@@ -4,8 +4,8 @@ import SwiftUI
 /// Live residency status of the two *external* inference hosts this app can reach: a remote
 /// ComfyUI server (the alternate image backend) and an LM Studio instance (the prompt-LLM
 /// backend). Both sit on the same machine as local mflux runs, so their memory footprint is
-/// exactly what the header needs to see — mirror of ``MfluxDriverController.loadedModelLabel``'s
-/// pill, but for models this app never loads itself.
+/// exactly what the header needs to see — the counterpart of the model button's warm halo,
+/// but for models this app never loads itself.
 ///
 /// The two signals are asymmetric by design:
 /// - **LM Studio** reports residency *directly* (`loaded_instances` per model). One instance per

@@ -128,6 +128,7 @@ struct ContentView: View {
             showingQueue: showingQueue,
             toggleQueue: { showingQueue.toggle() },
             showNotepad: { showingNotepad = true },
+            showModels: { showModels() },
             image: selectedGalleryItem.map { imageActions(for: $0) }
         )
     }
@@ -201,15 +202,39 @@ struct ContentView: View {
         )
     }
 
-    /// Model selector for the top header. Switching the model resets the
-    /// dependent Flux defaults (steps/guidance/dims) just as before.
-    private var headerModelPicker: some View {
-        ModelPickerView(
-            model: $params.model,
-            customModelRepo: $params.customModelRepo,
-            customBaseModel: $params.customBaseModel,
-            quantize: unifiedQuantize
+    /// What the next job generates with, as the model button shows it and the warm driver compares.
+    private var currentSelection: ModelSelection {
+        .picked(
+            params.model, quantize: unifiedQuantize.wrappedValue,
+            customRepo: params.customModelRepo, customBase: params.customBaseModel
         )
+    }
+
+    /// The model button in the top header. Switching the model resets the
+    /// dependent Flux defaults (steps/guidance/dims) just as before.
+    private var headerModelButton: some View {
+        ModelButton(
+            model: params.model,
+            customRepo: params.customModelRepo,
+            customBase: params.customBaseModel,
+            quantize: unifiedQuantize.wrappedValue,
+            routesToComfy: settings.activeComfyURL != nil && settings.comfyBackendEnabled[params.modelFamily.id] == true,
+            busy: coordinator.activeFamily != nil,
+            onOpen: { showModels() },
+            onUse: { applyUse($0) }
+        )
+        // Pattern 5: a committed change of model, precision or custom checkpoint proactively
+        // evicts a warm model that no longer matches (debounced in the controller).
+        .onChange(of: currentSelection.key, initial: true) { _, key in
+            driverController.selectionChanged(to: key)
+        }
+        // The Models window's Custom entry starts its draft from the main window's checkpoint.
+        .onChange(of: params.customModelRepo, initial: true) { _, repo in
+            router.mainCustom.repo = repo
+        }
+        .onChange(of: params.customBaseModel, initial: true) { _, target in
+            router.mainCustom.loadsAs = target
+        }
         .onChange(of: params.model) { _, m in
             // "Use this model" picks a precision with the model. Apply it on the way out, after
             // the reset below (or the family form's early return) has set that family's default.
@@ -219,13 +244,6 @@ struct ContentView: View {
                     pendingUseQuantize = nil
                 }
             }
-            // Pattern 5: a committed model switch proactively evicts a warm
-            // model of a different variant (debounced in the controller). A
-            // custom checkpoint reports the variant it loads as — the driver
-            // tracks the resident model by that, not by "custom".
-            driverController.modelPickerChanged(
-                to: m == .custom ? params.customBaseModel.rawValue : m.rawValue
-            )
             // The launch-time restore and gallery replays write the form right
             // after moving the picker. Skip the defaults reset for that change so it
             // doesn't overwrite the restored or replayed LoRAs and settings.
@@ -239,7 +257,6 @@ struct ContentView: View {
         // direct model switch does.
         .onChange(of: params.customBaseModel) { _, target in
             guard params.model == .custom else { return }
-            driverController.modelPickerChanged(to: target.rawValue)
             if suppressedModelObservers.remove(.customBase) != nil {
                 return
             }
@@ -881,7 +898,7 @@ struct ContentView: View {
             }
 
             HStack(spacing: 6) {
-                headerModelPicker
+                headerModelButton
                 Spacer(minLength: 0)
                 ResidencyPills(family: params.modelFamily)
             }
@@ -1138,10 +1155,37 @@ struct ContentView: View {
             break
         case .setQuantize:
             unifiedQuantize.wrappedValue = request.quantize
+        case .setCustom:
+            if let custom = request.custom {
+                params.customModelRepo = custom.repo
+                params.customBaseModel = custom.loadsAs
+            }
         case .switchModel:
-            pendingUseQuantize = request.quantize
-            params.model = request.model
+            if let custom = request.custom {
+                switchToCustom(custom)
+            } else {
+                pendingUseQuantize = request.quantize
+                params.model = request.model
+            }
         }
+    }
+
+    /// Picks a custom checkpoint. The `params.model` handler resets nothing for `.custom`, and
+    /// the `customBaseModel` handler runs only when the target changes, so the target's family
+    /// form is adopted here (adopting it again from the handler changes nothing).
+    private func switchToCustom(_ custom: ModelManagerRouter.CustomCheckpoint) {
+        params.customModelRepo = custom.repo
+        params.customBaseModel = custom.loadsAs
+        params.model = .custom
+        _ = adoptFamilyForm(custom.loadsAs)
+        if custom.loadsAs.isFlux3 {
+            params.imagePath = ""
+        }
+    }
+
+    /// Opens the Models window at the main window's model.
+    private func showModels() {
+        router.show(ModelManagerRouter.item(for: params.model), open: openWindow)
     }
 
     /// Applies a "Use this model" request on top of the launch restore, when the request
@@ -1154,7 +1198,13 @@ struct ContentView: View {
             return
         case .setQuantize:
             break
-        case .switchModel:
+        case .setCustom, .switchModel:
+            if let custom = request.custom {
+                // The handlers fire on the next update; this applies the switch itself.
+                suppressedModelObservers = launchModel != .custom ? [.model] : []
+                switchToCustom(custom)
+                return
+            }
             suppressedModelObservers = launchModel != request.model ? [.model] : []
             params.model = request.model
             resetForm(for: request.model)

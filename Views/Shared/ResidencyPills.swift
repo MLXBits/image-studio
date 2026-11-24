@@ -1,53 +1,28 @@
 import SwiftUI
 
-/// The header's trailing cluster: what each inference host holds in memory.
-/// ComfyUI and LM Studio are the *external* hosts this app can reach; each pill
-/// is hidden until its server is configured and reachable, so an unconfigured
-/// box costs nothing visually. The warm-model chip is the local mflux driver.
-/// All three share one shape: an icon, a label (model name / size), and — only
-/// when something is resident — an eject button.
+/// The header's trailing cluster: what each *external* inference host holds in memory.
+/// ComfyUI and LM Studio are the hosts this app can reach; each pill is hidden until its
+/// server is configured and reachable, so an unconfigured box costs nothing visually. The
+/// local mflux driver's warm model is the model button's halo and eject button instead.
+/// Both pills share one shape: an icon, a label (model name / size), and — only when
+/// something is resident — an eject button.
 struct ResidencyPills: View {
-    /// The family selected in the picker: the ComfyUI pill shows only while it routes there.
+    /// The family selected in the main window: the ComfyUI pill shows only while it routes there.
     let family: ModelFamily
 
     var body: some View {
         ComfyResidencyPill(family: family)
         LMStudioResidencyPill()
-        WarmModelChip()
     }
 }
 
 // MARK: - Pills
 
-/// The warm driver's resident model: name, measured memory, and an eject button
-/// (LM Studio-style). Hidden when nothing is warm.
-private struct WarmModelChip: View {
-    @Environment(MfluxDriverController.self) private var driverController
-
-    var body: some View {
-        if let label = driverController.loadedModelLabel {
-            ResidencyPill(systemImage: "memorychip") {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(label)
-                        .font(.caption2)
-                        .fontWeight(.medium)
-                    if let gb = driverController.loadedMemoryGB {
-                        PillDetail(String(format: "%.1f GB warm", gb))
-                    }
-                }
-                EjectButton { driverController.eject() }
-                    .disabled(driverController.isGenerating)
-                    .help(driverController.isGenerating ? "Generating — cannot eject" : "Eject warm model")
-            }
-        }
-    }
-}
-
 /// ComfyUI residency: "Resident · ~X GB" when VRAM is meaningfully below the idle
 /// baseline, or just "ComfyUI" (no size) while the server is reachable but the
 /// baseline hasn't locked yet. Eject fires `POST /free` — ComfyUI's only eject is
 /// a global unload of everything resident. Shown only while the selected family
-/// routes to ComfyUI, so a local family's warm-driver pill has the header to
+/// routes to ComfyUI, so a local family's model button has the header to
 /// itself; the `activeComfyURL` check also hides a reachable report from a poll
 /// that was in flight when routing changed.
 private struct ComfyResidencyPill: View {
