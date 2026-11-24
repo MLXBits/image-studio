@@ -221,8 +221,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
     private(set) var activeJob: Job?
     private(set) var lastCompletedOutputPath: String?
     private(set) var batchImageLanded: Int = 0 // set per-seed; ContentView scans gallery on change
-    private(set) var sessionCompleted: Int = 0
-    private(set) var inSession: Bool = false
     /// Warm-model driver for this family, or nil to always use the CLI
     /// subprocess. Set at app startup (Flux only for now).
     var driver: MfluxDriverController?
@@ -258,17 +256,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
         // would thrash the warm model, re-fusing LoRAs at each batch boundary) —
         // and dragging a row in the queue drawer changes when it runs.
         guard let job = store.pendingJobs.last else {
-            inSession = false
             coordinator.release(Spec.family)
             return
         }
         // Another family is mid-run: leave the job pending. ContentView pumps it once the
         // active family drains (so only one mflux process runs at a time — OOM guard).
         guard coordinator.tryAcquire(Spec.family) else { return }
-        if !inSession {
-            inSession = true
-            sessionCompleted = 0
-        }
         store.isRunning = true
         runTask = Task { [weak self] in
             guard let self else { return }
@@ -834,7 +827,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
         job.isDenoising = false
         if case .running = status {} else {
             activeJob = nil
-            sessionCompleted += 1
         }
     }
 
