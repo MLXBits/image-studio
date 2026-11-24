@@ -24,6 +24,10 @@ enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     static let outputPrefix = "krea2"
     static let encodingLabel = "Generating"
 
+    static func preview(_ job: Krea2Job) -> PreviewState {
+        .activeKrea2Job(job)
+    }
+
     static func tool(job _: Krea2Job) -> PythonTool {
         .krea2
     }

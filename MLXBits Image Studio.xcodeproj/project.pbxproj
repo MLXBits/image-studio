@@ -21,6 +21,7 @@
 		0703F36886C67EE775626A49 /* SeedVR2JobStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C5BC6415AB342C85594335A1 /* SeedVR2JobStore.swift */; };
 		096271A30E2FB543FB276AD7 /* SeedVR2Job.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F563EF965605798AA7F58B6 /* SeedVR2Job.swift */; };
 		0966E1C3A3BB9397B45B7D88 /* AsyncGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3FFCBAEC556970B3C1F7CA6D /* AsyncGate.swift */; };
+		09D10DFF98F5EC3413A02385 /* LandingDiffTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17C6C541C0616732AFB0D86E /* LandingDiffTests.swift */; };
 		0A0BB69B6C7981EC9CA95DE4 /* GallerySelectionPruning.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2FE7E8BBF8DFAF7D3CD6B54 /* GallerySelectionPruning.swift */; };
 		0A632BF4F39783EFA3A94643 /* ScenarioPanelController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 129C19172964D2AC17222DD9 /* ScenarioPanelController.swift */; };
 		0ABA15D05FEEF1445639618D /* MfluxDriverControllerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E56E1A86C43DEDEAB1A1FC41 /* MfluxDriverControllerTests.swift */; };
@@ -40,6 +41,7 @@
 		1492B971154B10054F350898 /* ComfyPhaseLabelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 380C7514480291DBF50A4F23 /* ComfyPhaseLabelTests.swift */; };
 		14B9F6B2CD8933F99D6FA52D /* HFCacheVerdictStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */; };
 		15C9FB8C83845AA4C5806F9A /* PromptLLMSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7EE707F9648CFE301222C21A /* PromptLLMSettingsView.swift */; };
+		15E67B4034C1782015E9B85F /* Landing.swift in Sources */ = {isa = PBXBuildFile; fileRef = B1813AF0E9881FE7F397A627 /* Landing.swift */; };
 		161605BEBB2DF51CB77A7496 /* GalleryFileOperationsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8F955B00B5F72F3F7D6E260F /* GalleryFileOperationsTests.swift */; };
 		1650803712A3824AA0802E4C /* IdeogramCaptionEditorView+Actions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1C8704700A92EDD979FE683 /* IdeogramCaptionEditorView+Actions.swift */; };
 		1692B1A4B63301919B9B815C /* LoraRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FBAAC54DACB0105EFA05D6BC /* LoraRowView.swift */; };
@@ -156,6 +158,7 @@
 		5CD813073AB0DE2C15D45018 /* GalleryCull.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15D7822AB2F0B41775871F63 /* GalleryCull.swift */; };
 		5D1F115D51D6DA55F3B1EF10 /* OpenAIChatClientTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C90C6D1E633010C5A77C0DBE /* OpenAIChatClientTests.swift */; };
 		5D854408C48299743FCA23EB /* BatchExpansionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD4E37FDDA480AAEC0CEE623 /* BatchExpansionTests.swift */; };
+		5F71D22AB7F37A8607F32C0C /* FamilyQueuesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 48D73A6950DF8A18BAC27F52 /* FamilyQueuesTests.swift */; };
 		61A032484904D260E5FD2534 /* ProfileRulesTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B56DF845B71EA5618C06B80D /* ProfileRulesTests.swift */; };
 		61E4944EF2E7D266D8080B48 /* ZImageJob.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F8DBAFEF3E0B6403D90EE29 /* ZImageJob.swift */; };
 		62C2027429B9D3CD98665509 /* FullSizeImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B646F0AF9AC8FBF9494F772D /* FullSizeImageView.swift */; };
@@ -181,6 +184,7 @@
 		6B4A7C4FEE6A46B30749A080 /* OutputDirectoryPromptView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 141CB0282F7313611083C575 /* OutputDirectoryPromptView.swift */; };
 		6BC9348546C9D8D5C0E2A35C /* SandboxFileAccess.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB81238D56D5225614F52CB2 /* SandboxFileAccess.swift */; };
 		6D4A9B7B0C1E714BF6E7E65B /* ModelsFolderStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F7DFA84D78472C9A1FD765C0 /* ModelsFolderStepView.swift */; };
+		6DB5A61DA19ACF851DD64788 /* GalleryScheduledScanTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE90281CCF63B2097D9F64FF /* GalleryScheduledScanTests.swift */; };
 		6DF2369B67B863ABA6077324 /* ModelChangeObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A9E9EFBB359CD527076035F /* ModelChangeObserverTests.swift */; };
 		6EA849A3F3916E8506FAF825 /* FluxModelCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = EB8EA10AEC906888FA045BF3 /* FluxModelCatalog.swift */; };
 		700CBBFF1F64BAE0D26206D4 /* FamilyQueues.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44521699A82618EAFDFD2F7D /* FamilyQueues.swift */; };
@@ -209,6 +213,7 @@
 		7E75EBA71420B021618588B4 /* GalleryStore+FileOperations.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5AF021E15D725FFD96E972 /* GalleryStore+FileOperations.swift */; };
 		7EB5E9D7C623BC1A7216B0FA /* GenerateAction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C7A19BA761C044603CECA3E /* GenerateAction.swift */; };
 		7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7457CC88AC1C7C076FFAA9BE /* Krea2ParamsPanelState.swift */; };
+		7EF0D9D7BE9F51A69E25054D /* FamilyQueue.swift in Sources */ = {isa = PBXBuildFile; fileRef = 924EAC1035AD475F04E041AF /* FamilyQueue.swift */; };
 		7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */; };
 		80480D0FFF9AFC8967EA1529 /* TestHost.swift in Sources */ = {isa = PBXBuildFile; fileRef = 585B7D9DFD8D0BF3352D6E1C /* TestHost.swift */; };
 		808F24DE3A8E52AA84A4C902 /* JobHistoryFileTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D03905E77AAAEB13B171F104 /* JobHistoryFileTests.swift */; };
@@ -433,6 +438,7 @@
 		1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScenarioBatchQueueTests.swift; sourceTree = "<group>"; };
 		174F374D4B5F7A05666D31B3 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		17949F8190AF15B8FF337DC5 /* WeightDownloadStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeightDownloadStore.swift; sourceTree = "<group>"; };
+		17C6C541C0616732AFB0D86E /* LandingDiffTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LandingDiffTests.swift; sourceTree = "<group>"; };
 		17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppSettingsToolchainTests.swift; sourceTree = "<group>"; };
 		184D74615C4C4AD52CD2F287 /* RuntimeSelfTestTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuntimeSelfTestTests.swift; sourceTree = "<group>"; };
 		18580CE78EC74154C464C418 /* Qwen21RouteTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Qwen21RouteTests.swift; sourceTree = "<group>"; };
@@ -504,6 +510,7 @@
 		46B7CBD4EEFB60781826D6E3 /* LoraLibraryEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraLibraryEditorView.swift; sourceTree = "<group>"; };
 		46D7BAF347C2E496244BE37F /* FluxComfyGraphTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxComfyGraphTests.swift; sourceTree = "<group>"; };
 		484551FA66235AAE06EABC0C /* JobPreviewViews.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobPreviewViews.swift; sourceTree = "<group>"; };
+		48D73A6950DF8A18BAC27F52 /* FamilyQueuesTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyQueuesTests.swift; sourceTree = "<group>"; };
 		49C3919786032AB418561420 /* AspectDirectiveTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AspectDirectiveTests.swift; sourceTree = "<group>"; };
 		4A99968429C87E4B28CF3541 /* SupportLinksTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SupportLinksTests.swift; sourceTree = "<group>"; };
 		4AC22DC8CEFD9979A14A45B7 /* BBoxGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BBoxGeometry.swift; sourceTree = "<group>"; };
@@ -616,6 +623,7 @@
 		90A2C4A7D1C766F5DCEC91F3 /* JobQueueOrder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = JobQueueOrder.swift; sourceTree = "<group>"; };
 		915F5EABE3BC064418630BC8 /* Ideogram4Preset.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4Preset.swift; sourceTree = "<group>"; };
 		91C5CA95EAA14C772647C853 /* FluxJob.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FluxJob.swift; sourceTree = "<group>"; };
+		924EAC1035AD475F04E041AF /* FamilyQueue.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyQueue.swift; sourceTree = "<group>"; };
 		92EE9C285AD48DF8F7110B0D /* MLXBits Image StudioTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = "MLXBits Image StudioTests.xctest"; sourceTree = BUILT_PRODUCTS_DIR; };
 		93FDF598D2EFF5DA1D382120 /* Ideogram4ParamsPanelView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Ideogram4ParamsPanelView.swift; sourceTree = "<group>"; };
 		955DE39B14D3028201FB4C82 /* ImageZoomState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageZoomState.swift; sourceTree = "<group>"; };
@@ -654,9 +662,11 @@
 		AAF31F61799658BA5ECA26FB /* MLXBitsImageStudioApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MLXBitsImageStudioApp.swift; sourceTree = "<group>"; };
 		ACD13236B5EAE62E8F45C42D /* Krea2Job.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Krea2Job.swift; sourceTree = "<group>"; };
 		AD4E37FDDA480AAEC0CEE623 /* BatchExpansionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchExpansionTests.swift; sourceTree = "<group>"; };
+		AE90281CCF63B2097D9F64FF /* GalleryScheduledScanTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryScheduledScanTests.swift; sourceTree = "<group>"; };
 		AFE90F70D40FB5B29102A2B3 /* LoraRelocateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraRelocateTests.swift; sourceTree = "<group>"; };
 		B086672C5D7F5949A7B7E676 /* IdeogramCaptionGenerator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = IdeogramCaptionGenerator.swift; sourceTree = "<group>"; };
 		B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FakeTipStorefront.swift; sourceTree = "<group>"; };
+		B1813AF0E9881FE7F397A627 /* Landing.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Landing.swift; sourceTree = "<group>"; };
 		B29DBB0224B6FFEBB151E5A7 /* DimensionPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DimensionPickerView.swift; sourceTree = "<group>"; };
 		B2D1921B86C433025600FEB8 /* ComfyProgressDecodeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ComfyProgressDecodeTests.swift; sourceTree = "<group>"; };
 		B2E81D7DE425AAF8EF038DEC /* LoraEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraEntry.swift; sourceTree = "<group>"; };
@@ -976,6 +986,7 @@
 				E7580270CB7EC83880600A3C /* DriverOutputStreamTests.swift */,
 				78205811D764018C1AB46A7F /* EditImageListAppendTests.swift */,
 				5301BE9ED763A494AEF4DC79 /* FailureSummaryTests.swift */,
+				48D73A6950DF8A18BAC27F52 /* FamilyQueuesTests.swift */,
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
 				FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */,
 				8BCD27BFDBC4EE19D1F4C130 /* Flux3ModelRouteTests.swift */,
@@ -985,6 +996,7 @@
 				227EE7213E5136D3C610D09D /* GalleryCullTests.swift */,
 				2629F041DED8A0FEB878A3B6 /* GalleryDragPayloadTests.swift */,
 				8F955B00B5F72F3F7D6E260F /* GalleryFileOperationsTests.swift */,
+				AE90281CCF63B2097D9F64FF /* GalleryScheduledScanTests.swift */,
 				DE67045478D86EF0CCC1F08B /* GallerySearchTests.swift */,
 				6DEA6F6C0B8422BD9F34EAAA /* GallerySelectionPruningTests.swift */,
 				7A12C16E5D5ABDDBC853F1A5 /* GalleryTrashTests.swift */,
@@ -1004,6 +1016,7 @@
 				CFCE372F86D94D8323281395 /* JobQueueOrderTests.swift */,
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
+				17C6C541C0616732AFB0D86E /* LandingDiffTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
 				B37EACF553C8C7E29AAE62E1 /* LineBufferTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
@@ -1130,11 +1143,13 @@
 			children = (
 				28053E21204B0AE33C77E21B /* ComfyRoute.swift */,
 				CD8007637B14F14AA8B9FD8A /* DriverProtocol.swift */,
+				924EAC1035AD475F04E041AF /* FamilyQueue.swift */,
 				3F82D2B38FB37FC37847BB07 /* FluxJobRunner.swift */,
 				08AB027E94CF04F9B3C834F3 /* GenerationCoordinator.swift */,
 				E083E8B6FB269CF2517A093C /* Ideogram4JobRunner.swift */,
 				D07C86B92053779C5988498B /* JobRunner.swift */,
 				5A2396A0BCCE61568682C1DA /* Krea2JobRunner.swift */,
+				B1813AF0E9881FE7F397A627 /* Landing.swift */,
 				0B8A946E00348D9BD857672E /* MfluxDriverController.swift */,
 				77A242CF17E04C41313CCE8C /* Qwen21JobRunner.swift */,
 				655AC8400B9B30688813DF1A /* RunnerSupport.swift */,
@@ -1571,6 +1586,7 @@
 				EA7AE2C94F42C9E08FB7EE6F /* EventMonitors.swift in Sources */,
 				E7D673CE90D00B85EBFECD06 /* FailedJobView.swift in Sources */,
 				231DA829EF370C2771D7E043 /* FailureSummary.swift in Sources */,
+				7EF0D9D7BE9F51A69E25054D /* FamilyQueue.swift in Sources */,
 				700CBBFF1F64BAE0D26206D4 /* FamilyQueues.swift in Sources */,
 				E4FEBA849C59CE3F30938431 /* FileAccess.swift in Sources */,
 				CF596B2952ECED2CB446B1FE /* FileAccessPath.swift in Sources */,
@@ -1635,6 +1651,7 @@
 				99D652606CC5D99F504A7F79 /* Krea2JobStore.swift in Sources */,
 				7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */,
 				1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */,
+				15E67B4034C1782015E9B85F /* Landing.swift in Sources */,
 				C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */,
 				BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */,
 				0B0B5E6F7524A1F37E034E7C /* LineBuffer.swift in Sources */,
@@ -1801,6 +1818,7 @@
 				9AB20EB3D5591227E0DD0750 /* FailureSummaryTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
 				C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */,
+				5F71D22AB7F37A8607F32C0C /* FamilyQueuesTests.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
 				7F7844363BD95FF2B2A79C7C /* FirstRunPathsTests.swift in Sources */,
 				B9C94289EF4E8188EB1DEAC7 /* Flux3ModelRouteTests.swift in Sources */,
@@ -1810,6 +1828,7 @@
 				FAC99B1AC789A1B22208EA2E /* GalleryCullingXattrTests.swift in Sources */,
 				9E64C591C441A54C52B04BA8 /* GalleryDragPayloadTests.swift in Sources */,
 				161605BEBB2DF51CB77A7496 /* GalleryFileOperationsTests.swift in Sources */,
+				6DB5A61DA19ACF851DD64788 /* GalleryScheduledScanTests.swift in Sources */,
 				01785D60457D49E4A87E2026 /* GallerySearchTests.swift in Sources */,
 				114777D4246D5E46FBD9B848 /* GallerySelectionPruningTests.swift in Sources */,
 				A9FF4658D5A4D9491DBE3007 /* GalleryTrashTests.swift in Sources */,
@@ -1829,6 +1848,7 @@
 				7DCD041B925426D69C5742F7 /* JobQueueOrderTests.swift in Sources */,
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
+				09D10DFF98F5EC3413A02385 /* LandingDiffTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				AF0FAE9470BD4F6A32C14BDB /* LineBufferTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,

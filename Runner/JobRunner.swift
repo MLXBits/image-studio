@@ -65,6 +65,8 @@ protocol JobRunnerSpec {
     /// Stage-marker text inserted into the log when the first denoise step appears.
     static var encodingLabel: String { get }
 
+    /// The preview pane's state while it shows `job`.
+    static func preview(_ job: Job) -> PreviewState
     /// The tool that generates `job`, run through ``Toolchain``.
     static func tool(job: Job) -> PythonTool
     /// Local files and folders the job reads (LoRAs, a local model folder,
@@ -219,8 +221,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
     }
 
     private(set) var activeJob: Job?
-    private(set) var lastCompletedOutputPath: String?
-    private(set) var batchImageLanded: Int = 0 // set per-seed; ContentView scans gallery on change
+    /// The latest image a run saved. ContentView rescans the gallery when it
+    /// changes, and selects the run's first image.
+    private(set) var landing: Landing?
     /// Warm-model driver for this family, or nil to always use the CLI
     /// subprocess. Set at app startup (Flux only for now).
     var driver: MfluxDriverController?
@@ -246,6 +249,11 @@ final class JobRunner<Spec: JobRunnerSpec> {
     private var comfyClient: ComfyUIClient?
     private let stepwiseWatcher = StepwiseWatcher()
     private var batchPollingTask: Task<Void, Never>?
+    /// Counts runs, for ``Landing/run``.
+    @ObservationIgnored private var runCount = 0
+    /// The images the current run has landed, so the end-of-run reconcile
+    /// doesn't land an image the poller or the driver already reported.
+    @ObservationIgnored private var landedThisRun: Set<String> = []
 
     // MARK: - Public
 
@@ -313,6 +321,8 @@ final class JobRunner<Spec: JobRunnerSpec> {
     // swiftlint:disable:next cyclomatic_complexity function_body_length
     private func run(_ job: Job, settings: AppSettings, timing: TimingStore) async {
         activeJob = job
+        runCount += 1
+        landedThisRun = []
         stoppedProcess = nil
         job.status = .running
         job.startedAt = Date()
@@ -556,13 +566,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 job.outputPath = paths.first
                 job.thumbnailData = job.outputThumbnails.first
                 job.completedSeedsInBatch = verified.count
-                batchImageLanded = verified.count
-
-                if verified.count == 1 {
-                    lastCompletedOutputPath = paths.first
-                }
-                if verified.count == batchPaths.count {
-                    lastCompletedOutputPath = paths.last
+                // The poller landed most of these already; only the ones it missed land here.
+                for path in paths {
+                    land(path)
                 }
 
                 job.log += "▸ Saved \(verified.count) images  (\(timingLabel)total \(RunnerSupport.formatDuration(totalSecs)))\n"
@@ -580,7 +586,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                     job: job, seed: job.resolvedSeed ?? job.seed,
                     startedAt: job.startedAt, generatedAt: Date(), path: outputTemplate
                 )
-                lastCompletedOutputPath = outputTemplate
+                land(outputTemplate)
             }
             finishJob(job, status: .completed, stepDir: stepDir)
         } else if process.terminationReason == .uncaughtSignal, stoppedProcess === process {
@@ -684,10 +690,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
             progress.lastImageAt = generatedAt
             guard progress.land(seed: seed, path: path) else { return }
             job.completedSeedsInBatch = progress.landed.count
-            if progress.landed.count == 1 {
-                lastCompletedOutputPath = path
-            }
-            batchImageLanded += 1
+            land(path)
         default:
             break
         }
@@ -729,7 +732,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
         if job.seeds.isEmpty {
             job.outputPath = paths[0]
             job.thumbnailData = RunnerSupport.loadThumbnail(at: paths[0])
-            lastCompletedOutputPath = paths[0]
+            land(paths[0])
             job.log += "▸ Saved to: \(paths[0])  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
         } else {
             job.seeds = progress.landed.map(\.seed)
@@ -738,8 +741,9 @@ final class JobRunner<Spec: JobRunnerSpec> {
             job.outputPath = paths.first
             job.thumbnailData = job.outputThumbnails.first
             job.completedSeedsInBatch = paths.count
-            batchImageLanded = paths.count
-            lastCompletedOutputPath = paths.count == 1 ? paths.first : paths.last
+            for path in paths {
+                land(path)
+            }
             job.log += "▸ Saved \(paths.count) images  (total \(RunnerSupport.formatDuration(totalSecs)))\n"
         }
         finishJob(job, status: .completed, stepDir: stepDir)
@@ -765,10 +769,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
                     )
                     perImageStartTime = imageGeneratedAt
                     job.completedSeedsInBatch = found.count
-                    if found.count == 1 {
-                        lastCompletedOutputPath = item.path
-                    }
-                    batchImageLanded += 1
+                    land(item.path)
                 }
                 if found.count < paths.count {
                     try? await Task.sleep(nanoseconds: 500_000_000)
@@ -802,6 +803,14 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 return fm.fileExists(atPath: path) || fm.fileExists(atPath: MetadataSidecar.sidecarURL(for: path).path)
             }
         }
+    }
+
+    /// Publishes one image of the current run reaching disk. The first image a
+    /// run lands stays its ``Landing/firstPath``.
+    private func land(_ path: String) {
+        guard landedThisRun.insert(path).inserted else { return }
+        let firstPath = landing.flatMap { $0.run == runCount ? $0.firstPath : nil } ?? path
+        landing = Landing(seq: (landing?.seq ?? 0) + 1, run: runCount, firstPath: firstPath)
     }
 
     private func finishJob(_ job: Job, status: JobStatus, stepDir: URL) {
@@ -922,15 +931,12 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 landedPaths.append(local)
                 landedSeeds.append(seed)
 
-                // Stream each image into the UI as it lands, mirroring startBatchPoller's incremental updates so ContentView's gallery.scan
-                // fires per-image. First image goes via lastCompletedOutputPath (also selects it); each subsequent one bumps
-                // batchImageLanded to trigger a fresh scan that picks up the new file on disk. Thumbnails are loaded by the gallery from
-                // disk during its own scan, not attached here per-seed.
+                // Stream each image into the UI as it lands, mirroring startBatchPoller, so the gallery rescans per image and
+                // selects the first. Thumbnails are loaded by the gallery from disk during its own scan, not attached here per-seed.
                 if landedPaths.count == 1 {
                     job.resolvedSeed = seed
-                    lastCompletedOutputPath = local
                 }
-                batchImageLanded += 1
+                land(local)
                 job.completedSeedsInBatch = landedPaths.count
             }
 
@@ -945,7 +951,6 @@ final class JobRunner<Spec: JobRunnerSpec> {
                 job.seeds = landedSeeds
                 job.outputPaths = landedPaths
                 job.outputPath = landedPaths.first
-                lastCompletedOutputPath = landedPaths.last
             }
             finishJob(job, status: .completed, stepDir: stepDir)
         } catch is CancellationError {

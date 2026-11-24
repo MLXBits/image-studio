@@ -55,6 +55,10 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
     /// The max reference images the bundled i2e templates accept (their LoadImage slots).
     static let maxEditRefs = 6
 
+    static func preview(_ job: FluxJob) -> PreviewState {
+        .activeJob(job)
+    }
+
     static func tool(job: FluxJob) -> PythonTool {
         // A custom checkpoint runs through whatever family it loads as, so its target's
         // variant decides — a flux3 fine-tune needs the flux3 CLI.
