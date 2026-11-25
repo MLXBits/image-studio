@@ -1,9 +1,9 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-24):** PR 1 (#128) and PR 2 (#129) are merged. PR 3 is in review.
-> The design decisions for PR 2 and PR 3 were settled on 2026-11-24 against `943b532`.
-> Part 3 stays parked until PR 3 lands. Before you start a PR, check its file and symbol references
-> against the current `main`.
+> **Status (2026-11-25):** PR 1 (#128), PR 2 (#129) and PR 3 (#130) are merged. PR 3's
+> in-app check (step 4) is still open. A second architecture review ran against `43dad04`;
+> Part 4 assesses it and orders the next PRs (4–6). Its decisions were settled on 2026-11-25.
+> Before you start a PR, check its file and symbol references against the current `main`.
 >
 > The file name still says "family-lanes" because #128 links to it. The design uses
 > **queue**, not "lane": see `GLOSSARY.md`.
@@ -205,17 +205,22 @@ before it applies the family's form. So it lives in the App layer, not on a queu
   same thing. See `GLOSSARY.md`.
 
 **D8. Skip the `ParamsState` protocol (C6).** It would mostly be forced conformances.
-For example, Ideogram has a caption document and Qwen has edit refs.
+For example, Ideogram has a caption document and Qwen has edit refs. D9 (Part 4)
+amends this with a narrow protocol.
 
 **Payoff:** The real win is App-layer sanity. The 11 completion `onChange` blocks and
 the switches in `FamilyQueues`, `restoreActiveJobPreview`, `GenerateAction`, the queue
 drawer and replay go away, and `FamilyQueues` gets tests. A model add still touches
-roughly 18–20 files, because `PreviewPaneView` keeps its per-family case. Recount
-after PR 3.
+roughly 18–20 files, because `PreviewPaneView` keeps its per-family case.
+
+**Recount after PR 3:** the number did not drop. PR 3 added `App/ReplayAction.swift`
+and removed `GenerationGalleryView`. `GalleryCollectionView` was always a touchpoint,
+but the recipe did not list it. Each edit is now smaller: replay and preview are one
+`case` per family.
 
 ---
 
-## Part 3: Descriptor registry (parked; decide after PR 3)
+## Part 3: Descriptor registry (parked; Part 4 orders the steps before it)
 
 **Why:** Parts 1 and 2 bring the cost of a model add to roughly 18–20 files. Swift
 does not set that number. Most of the remaining edits are exhaustive `switch`es over
@@ -294,6 +299,57 @@ switches.**
 
 ---
 
+## Part 4: Architecture review, run 2 (2026-11-25), assessed
+
+**Input:** an outside architecture review (Qwen Flash Next / Hermes) of `main` at
+`43dad04`. It names 10 candidates, C1–C10. The review's own verifier pass was still
+pending, so each claim below was checked against the code. The review agrees that the
+queue, landing and replay seams from PRs 2 and 3 are done.
+
+### Verdicts
+
+| # | Candidate | Claims | Verdict |
+|---|---|---|---|
+| C1 | One registry at the injection edge | **True.** 41 `.environment(...)` calls in `MLXBitsImageStudioApp`, 25 `@Environment` in `ContentView`, a six-term `[any JobOutcomeReporting]`, 5 typed queues in `GenerateAction` and 5 params states in `ReplayAction`. | **Adopt.** It is Part 3's injection piece plus deferred minor 2. See "Shape" below. |
+| C2 | A params protocol | **True, but the payoff is overstated.** `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and `useInImg2Img` each switch over the five params states, about 40 lines in all. The "~120 lines" figure was not reproduced. | **Adopt in a narrow form (D9).** |
+| C3 | One `activeJob(any GeneratedJob)` case | **True, but it does not answer D4.** The wrap and unwrap are real: six `Spec.preview` functions, and one `as? Spec.Job` in `ContentView.previewSelection`. But job types carry no family (D3), so getting from `any GeneratedJob` to its spec needs an `as?` chain or a new job-to-spec link. Either way, a new family no longer fails to compile in the pane. | **Reject. D4 stands.** Reconsider only if `GeneratedJob` gains an `associatedtype Spec`. |
+| C4 | Remove duplication in params states, persistence and settings forms | **True.** `adoptImg2ImgSource` and `adoptResolvedPromptForImg2Img` are copied in Flux, Krea 2 and Z-Image; only the metadata type and a `?? ""` differ. `Krea2FormState` and `ZImageFormState` share 13 fields. 4 of the settings forms carry the ComfyUI file pickers. Ideogram keeps bespoke `lastIdeogram*` scalars. | **Split:** (a) the adopt helpers and the batch-seed tail: adopt, small. (b) the shared form core and (c) the `[String: ModelDefaults]` move: these are Phase 3b, and (c) is a `profile.json` migration, a one-way door. (d) hoisting the generate ceremony: only after C2. |
+| C5 | Gallery menus: one rule on the sidecar | **True.** This is deferred minor 1, plus "Copy Image" written twice (the detail view writes `NSPasteboard` itself). The detail footer still offers img2img on an upscale where the menus do not. | **Adopt, first.** It is small, independent and fixes a behaviour disagreement users can see. |
+| C6 | `FamilyDescriptor` for the scattered family facts | **True.** This is Phase 3a. The six `is*` flags on `FluxModelVariant` are real. `queueStatusLabel` is a hand-written six-branch `if` chain, and adding `activeJob` and `pendingCount` to `AnyFamilyQueue` would make it a loop. | **Keep as Phase 3a.** Do the `queueStatusLabel` loop in the C1 PR. |
+| C7 | Name the ComfyUI policy seam | **Partly false.** No ComfyUI API key setting exists. All four `ComfyUIClient(config:)` sites pass nil, so nothing is "silently dropped". The runner and the status poller also trim the URL the same way. The hot spot is real: 5 of the 10 commits before the plan work were poll-path fixes. `ComfyRoute.runsOnComfy` does copy the runner's gate, but on purpose, `ComfyRouteTests` covers it, and commit `2444cc2` added it as the fix. | **Defer.** Name the poll policy as its own tested type if the poll path churns again. |
+| C8 | `AppSettings`: synthesized `Codable` and a migration type | Not checked in depth. The interface is deep, and the cost is the hand-written field lists. | **Defer, with Phase 3b.** It shares the migration risk of C4(c). |
+| C9 | Family facts as data on `ModelFamily` | Speculative. | **Drop.** C6 absorbs the actionable half. |
+| C10 | A test seam for the ComfyUI progress socket | **Partly false.** Frame decoding is tested (`ComfyProgressDecodeTests`, 6 tests). The socket loop is not, and the tracker builds its own `URLSession`. | **Defer, with C7.** |
+
+### Shape of C1
+
+`FamilyQueues` is rebuilt on every body evaluation (D1). That stays. The registry is
+a separate object, built once in `App.init`:
+
+- It holds the six typed `FamilyQueue<Spec>` values. A typed lookup from a mixed list
+  would need a cast, so typed fields stay, and they live in one place.
+- It holds the five params states, which settles deferred minor 2.
+- `GenerateAction`, `ReplayAction`, the queue drawers and the `JobOutcomeReporting`
+  list read from the registry instead of from separate environment entries.
+- `FamilyQueues` is still built from `registry.all`, so `FamilyQueuesTests` keeps its
+  fake queues (D2 holds).
+
+### Decisions (settled 2026-11-25)
+
+**D9. A narrow params protocol (amends D8).** D8 rejected a full `ParamsState`
+protocol, because `makeJob`, Ideogram's caption document and Qwen's edit references
+would be forced conformances. That still holds. The narrow protocol covers only what
+all five states already have: `seed`, `board`, `quantize`, `loras`, readiness and
+`applyDefaults`. `makeJob`, img2img and the prompt field stay on the concrete types.
+Readiness is not uniform yet: Flux's check is inline in `ContentView`, and the others
+have both `canGenerate` and `isReadyToGenerate(settings:)`. So PR 6 first gives it one
+name. It comes after C1 and goes through a `form(for:)` accessor on the registry.
+
+**D4 stands against review C3.** For the reason, see the table. It is recorded here so
+that the second rejection is deliberate.
+
+---
+
 ## Sequenced PRs
 
 ### PR 1: Audit fixes (merged, #128)
@@ -346,7 +402,7 @@ switches.**
       between the two merges.
 - [x] In-app verification, steps 1–3 under Verification (2026-11-24).
 
-### PR 3: Preview and replay
+### PR 3: Preview and replay (merged, #130)
 
 - [x] Add `App/ReplayAction.swift`, which switches once on `AnySidecar`, with
       `ReplayMode = .remix | .applySettings` (D7).
@@ -366,29 +422,65 @@ switches.**
 - [x] `Tests/ReplayActionTests.swift` and `Tests/ReplayTargetTests.swift`.
 - [ ] In-app verification, step 4 under Verification.
 
-Deferred from the PR 3 review, for PR 4 or later:
-- The family-to-source-image item ("Use as Img2Img Input" or "Use as Edit
-  Reference") is written twice, in `GalleryItemDetailView` and `GalleryCollectionView`.
-  The detail footer has a third form (`acceptsSourceImage`), which offers img2img
-  on an upscale where the menus do not. One accessor on `AnySidecar` would settle it.
-- The five params states are listed in `GenerateAction`, `ReplayAction` and both
-  their initializers in `ContentView`. One struct holding them would make a new
-  family's edit one line.
-- The completed-job preview of an upscale offers no replay, while its gallery item
-  replays the source.
+Deferred from the PR 3 review. Each is now placed in a PR below:
+1. The family-to-source-image item ("Use as Img2Img Input" or "Use as Edit
+   Reference") is written twice, in `GalleryItemDetailView` and `GalleryCollectionView`.
+   The detail footer has a third form (`acceptsSourceImage`), which offers img2img
+   on an upscale where the menus do not. One accessor on `AnySidecar` would settle it.
+   → PR 4.
+2. The five params states are listed in `GenerateAction`, `ReplayAction` and both
+   their initializers in `ContentView`. One struct holding them would make a new
+   family's edit one line. → PR 5.
+3. The completed-job preview of an upscale offers no replay, while its gallery item
+   replays the source. → PR 4, as it is the same menu-and-footer rule.
 
-### PR 4+ (optional): Descriptor registry
+### PR 4: Gallery menu rules (review C5, C4a)
 
-- [ ] Decide after PR 3, with a fresh file count for a model add.
-- [ ] Phase 3a: `FamilyDescriptor` and `FamilyRegistry`, the generic `FamilyJobStore<Job>`,
-      and the gallery, metadata, constraint and sidecar switches moved onto the
-      descriptor. See Part 3.
+- [ ] One source-image rule on `AnySidecar` (a title, or nil), read by both menu
+      builders and the detail footer. Decide whether an upscale accepts img2img, and
+      apply that in all three places.
+- [ ] One "Copy Image" path, shared by both menus.
+- [ ] Replay from an upscale's completed preview, if the rule above says the footer
+      offers it (deferred minor 3).
+- [ ] One `adoptResolvedPrompt` helper for the three img2img forms, and one batch-seed
+      tail.
+- [ ] Tests: the source-image rule for every sidecar case, including an upscale.
+
+### PR 5: Family registry at the injection edge (review C1, C6 part)
+
+- [ ] A registry built once in `App.init`. It holds the six typed queues and the
+      five params states, and it is injected as one environment entry.
+- [ ] `GenerateAction`, `ReplayAction`, the queue drawers and the outcome-reporter
+      list read from it. `FamilyQueues` is built from `registry.all`.
+- [ ] `AnyFamilyQueue` gains `activeJob` and `pendingCount`, and `queueStatusLabel`
+      becomes a loop.
+- [ ] AGENTS.md recipe: step 9's `ContentView`, `GenerateAction`, `ReplayAction` and
+      `MLXBitsImageStudioApp` lines.
+
+### PR 6: Narrow params protocol (review C2, D9)
+
+- [ ] A protocol with `seed`, `board`, `quantize`, `loras`, one readiness member and
+      `applyDefaults`. All five params states conform.
+- [ ] `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and the fixed-seed
+      clear go through `registry.form(for:)`.
+- [ ] Then, optionally, hoist `GenerateAction`'s shared generate ceremony (C4d).
+
+### Later (optional): Descriptor registry
+
+- [ ] Phase 3a: `FamilyDescriptor`, the generic `FamilyJobStore<Job>`, and the
+      gallery, metadata, constraint and sidecar switches moved onto the descriptor.
+      It builds on PR 5's registry. See Part 3.
 - [ ] Phase 3b, only if several more families are planned: erase the params panels
-      and settings forms, and migrate the `lastX` settings.
+      and settings forms, the shared form core (C4b), and migrate the `lastX`
+      settings into the `ModelDefaults` dictionary (C4c, C8). This is a `profile.json`
+      migration, so it is a one-way door.
+- [ ] ComfyUI policy seam and progress-socket tests (C7, C10), if the poll path churns
+      again.
 
-**Out of scope:** collapsing `PreviewState` into one job case (D4), the `ParamsState`
-protocol (C6), an incremental `gallery.insert(paths:)` (D6), and F2, F15, F16, F18 and
-F20.
+**Out of scope:** collapsing `PreviewState` into one job case (D4, and review C3),
+the full `ParamsState` protocol (D8; the narrow one is D9), family facts
+as data on `ModelFamily` (review C9), an incremental `gallery.insert(paths:)` (D6),
+and F2, F15, F16, F18 and F20.
 
 ## Verification
 
