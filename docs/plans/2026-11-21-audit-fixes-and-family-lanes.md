@@ -314,7 +314,7 @@ queue, landing and replay seams from PRs 2 and 3 are done.
 | C2 | A params protocol | **True, but the payoff is overstated.** `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and `useInImg2Img` each switch over the five params states, about 40 lines in all. The "~120 lines" figure was not reproduced. | **Adopt in a narrow form (D9).** |
 | C3 | One `activeJob(any GeneratedJob)` case | **True, but it does not answer D4.** The wrap and unwrap are real: six `Spec.preview` functions, and one `as? Spec.Job` in `ContentView.previewSelection`. But job types carry no family (D3), so getting from `any GeneratedJob` to its spec needs an `as?` chain or a new job-to-spec link. Either way, a new family no longer fails to compile in the pane. | **Reject. D4 stands.** Reconsider only if `GeneratedJob` gains an `associatedtype Spec`. |
 | C4 | Remove duplication in params states, persistence and settings forms | **True.** `adoptImg2ImgSource` and `adoptResolvedPromptForImg2Img` are copied in Flux, Krea 2 and Z-Image; only the metadata type and a `?? ""` differ. `Krea2FormState` and `ZImageFormState` share 13 fields. 4 of the settings forms carry the ComfyUI file pickers. Ideogram keeps bespoke `lastIdeogram*` scalars. | **Split:** (a) the adopt helpers and the batch-seed tail: adopt, small. (b) the shared form core and (c) the `[String: ModelDefaults]` move: these are Phase 3b, and (c) is a `profile.json` migration, a one-way door. (d) hoisting the generate ceremony: only after C2. |
-| C5 | Gallery menus: one rule on the sidecar | **True.** This is deferred minor 1, plus "Copy Image" written twice (the detail view writes `NSPasteboard` itself). The detail footer still offers img2img on an upscale where the menus do not. | **Adopt, first.** It is small, independent and fixes a behaviour disagreement users can see. |
+| C5 | Gallery menus: one rule on the sidecar | **True.** This is deferred minor 1, plus "Copy Image" written twice (the detail view writes `NSPasteboard` itself). The detail footer still offers img2img on an upscale where the menus do not. | **Adopt, first.** It is small, independent and fixes a behaviour disagreement users can see. The rule ended up on the active model, not the sidecar (D10). |
 | C6 | `FamilyDescriptor` for the scattered family facts | **True.** This is Phase 3a. The six `is*` flags on `FluxModelVariant` are real. `queueStatusLabel` is a hand-written six-branch `if` chain, and adding `activeJob` and `pendingCount` to `AnyFamilyQueue` would make it a loop. | **Keep as Phase 3a.** Do the `queueStatusLabel` loop in the C1 PR. |
 | C7 | Name the ComfyUI policy seam | **Partly false.** No ComfyUI API key setting exists. All four `ComfyUIClient(config:)` sites pass nil, so nothing is "silently dropped". The runner and the status poller also trim the URL the same way. The hot spot is real: 5 of the 10 commits before the plan work were poll-path fixes. `ComfyRoute.runsOnComfy` does copy the runner's gate, but on purpose, `ComfyRouteTests` covers it, and commit `2444cc2` added it as the fix. | **Defer.** Name the poll policy as its own tested type if the poll path churns again. |
 | C8 | `AppSettings`: synthesized `Codable` and a migration type | Not checked in depth. The interface is deep, and the cost is the hand-written field lists. | **Defer, with Phase 3b.** It shares the migration risk of C4(c). |
@@ -436,15 +436,45 @@ Deferred from the PR 3 review. Each is now placed in a PR below:
 
 ### PR 4: Gallery menu rules (review C5, C4a)
 
-- [ ] One source-image rule on `AnySidecar` (a title, or nil), read by both menu
-      builders and the detail footer. Decide whether an upscale accepts img2img, and
-      apply that in all three places.
-- [ ] One "Copy Image" path, shared by both menus.
-- [ ] Replay from an upscale's completed preview, if the rule above says the footer
-      offers it (deferred minor 3).
-- [ ] One `adoptResolvedPrompt` helper for the three img2img forms, and one batch-seed
-      tail.
-- [ ] Tests: the source-image rule for every sidecar case, including an upscale.
+**D10. The active model decides the source-image item (settled 2026-11-25).** The
+item always fed the active picker family (`ContentView.useInImg2Img`), but five
+places chose whether to show it and what to call it, mostly from the image's family.
+So with Qwen active, a Flux image said "Img2Img" but became an edit reference.
+Now one rule, `SourceImageInput.forActive(variant, fluxEditMode:)`, sets both from
+the active model. Any image can be a source: an upscale, an Ideogram image, or an
+image with no sidecar. FLUX 3 offers the item only in Edit mode, as it has no img2img.
+The rule lives with the active model, not on `AnySidecar`.
+
+- [x] `Models/SourceImageInput.swift`: the rule, plus `SourceImageAction` (the input
+      and what choosing it does). It replaces `ModelFamily.acceptsSourceImage`.
+      Both gallery menus, the detail footer, and the completed preview's menu and
+      footer read it. "Adjust Boxes…" still follows the image's own Ideogram sidecar.
+- [x] One "Copy Image" path: the detail menu, the completed preview and the metadata
+      panel use `ImagePasteboard.copyImages`, as the grid already did. That puts the
+      file URL on the pasteboard as well as the pixels.
+- [x] Replay from an upscale's completed preview (deferred minor 3), through
+      `SeedVR2Metadata.replaySidecar`. The source is filed under the upscale's board,
+      as its gallery item does, and "Default" means no board on both paths.
+- [x] One batch-seed tail: `GeneratedJob.applyBatchSeeds(count:typed:)` replaces four
+      copies. `GeneratedJob.seed` is now `{ get set }`.
+- [x] Ruling: the shared `adoptResolvedPrompt` helper is dropped. The three copies
+      differ only in which family's sidecar they read, so merging them saves little,
+      and it would force a decision about cross-family prompt adoption that nobody
+      has made.
+- [x] Tests: `SourceImageInputTests` (every model, Flux edit mode, FLUX 3),
+      `BatchSeedsTests`, and the upscale replay cases (its board, and "Default") in `ReplayTargetTests`. A mutant
+      confirmed each one.
+- Deferred from the PR 4 review:
+  - An upscale's completed preview reads its sidecar file each time it needs it,
+    four times per body evaluation. The view is rare, but if the upscale moves to
+    another board, replay quietly disappears. Read it once into `@State`.
+  - No test pins that `ContentView` passes `currentSelection.variant` (a custom
+    checkpoint's loads-as variant) and not `params.model`. A `ModelSelection`
+    overload of `forActive` would put that under test.
+- [ ] In-app: with Krea 2 and then Qwen active, right-click a Flux image, an upscale
+      and an Ideogram image in the grid and in the detail view. Check the item's
+      title, and that the image lands in the active form. With FLUX 3 active and not
+      in Edit mode, the item is absent. An upscale's completed preview offers Remix.
 
 ### PR 5: Family registry at the injection edge (review C1, C6 part)
 

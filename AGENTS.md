@@ -169,9 +169,9 @@ Adding Z-Image touched 24 files. In dependency order:
    `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
    (a `PreviewState` case and its `jobPreview` branch, which replays the job's
-   sidecar through `onReplay`), and the source-image menu item's `case` in
-   `Views/PreviewPane/GalleryItemDetailView.swift` and
-   `Views/Gallery/GalleryCollectionView.swift`.
+   sidecar through `onReplay`), and its `case` in `Models/SourceImageInput.swift`
+   and `ContentView.useInImg2Img` (nil, or nothing, if it takes no source image):
+   every menu and button offering an image as a source reads that one rule.
 10. Metadata and constraints: `Utilities/MetadataSidecar.swift` (the sidecar
     type, with an optional `family` field, and a `source…` field on
     `SeedVR2Metadata`), `Utilities/AnySidecar.swift` (a `SidecarFamily` case,

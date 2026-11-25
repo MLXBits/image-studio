@@ -18,7 +18,8 @@ struct ImageMetadataPanel: View {
     let info: ImageMetadataInfo
     let onApplySettings: (() -> Void)?
     let onRemix: (() -> Void)?
-    let onUseInImg2Img: (() -> Void)?
+    /// The active family's source-image button, for the image at `info.filePath`.
+    let sourceImage: SourceImageAction?
     var onEditBoxes: (() -> Void)?
     let onRevealInFinder: (() -> Void)?
     let onShowLog: (() -> Void)?
@@ -201,11 +202,11 @@ struct ImageMetadataPanel: View {
                     .help("Re-generate this image with a new, random seed.")
             }
 
-            if let fn = onUseInImg2Img {
-                Button { fn() } label: { Image(systemName: "photo.on.rectangle.angled") }
+            if let sourceImage, let path = info.filePath {
+                Button { sourceImage.use(path) } label: { Image(systemName: "photo.on.rectangle.angled") }
                     .buttonStyle(.bordered)
-                    .help("Use as img2img input")
-                    .accessibilityLabel("Use as img2img input")
+                    .help(sourceImage.input.help)
+                    .accessibilityLabel(sourceImage.input.help)
             }
             if let fn = onEditBoxes {
                 Button { fn() } label: { Image(systemName: "square.dashed") }
@@ -215,11 +216,7 @@ struct ImageMetadataPanel: View {
                     .accessibilityLabel("Edit bounding boxes")
             }
             if let path = info.filePath {
-                Button {
-                    guard let img = NSImage(contentsOfFile: path) else { return }
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.writeObjects([img])
-                } label: { Image(systemName: "doc.on.doc") }
+                Button { ImagePasteboard.copyImages(atPaths: [path]) } label: { Image(systemName: "doc.on.doc") }
                     .buttonStyle(.bordered)
                     .help("Copy image to clipboard")
                     .accessibilityLabel("Copy image")

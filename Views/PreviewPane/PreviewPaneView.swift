@@ -33,7 +33,8 @@ struct PreviewPaneView: View {
     let state: PreviewState
     /// Remix or Apply Settings, for an image of any family.
     let onReplay: (AnySidecar, ReplayMode) -> Void
-    let onUseInImg2Img: (String) -> Void
+    /// The active family's source-image item, or nil when it has no source input.
+    let sourceImage: SourceImageAction?
     let onCancel: () -> Void
     let onClear: () -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
@@ -84,12 +85,10 @@ struct PreviewPaneView: View {
 
                 case let .activeIdeogram4Job(job):
                     jobPreview(job) {
-                        // Ideogram 4 has no img2img.
                         completedPreview(
                             job,
                             sidecarOf: { .ideogram4(Ideogram4Metadata.from(job: $0)) },
-                            infoOf: { ImageMetadataInfo(ideogram4Job: $0) },
-                            takesImg2Img: false
+                            infoOf: { ImageMetadataInfo(ideogram4Job: $0) }
                         )
                     } failed: { message in
                         FailedJobView(
@@ -142,12 +141,17 @@ struct PreviewPaneView: View {
 
                 case let .activeSeedVR2Job(job):
                     jobPreview(job, placeholder: "Upscaling…") {
-                        // No Remix or Apply Settings here, unlike the upscale's gallery item:
-                        // the preview moves to that item when the job completes.
+                        // Replays the source from the upscale's written sidecar, like its gallery item.
                         JobCompletedPreviewView(
                             job: job,
-                            sidecarOf: { _ in nil },
+                            sidecarOf: { job in
+                                job.outputPath
+                                    .flatMap { MetadataSidecar.read(SeedVR2Metadata.self, for: $0) }?
+                                    .replaySidecar
+                            },
                             infoOf: { ImageMetadataInfo(seedVR2Job: $0) },
+                            onReplay: onReplay,
+                            sourceImage: sourceImage,
                             onShowFullSize: onShowFullSize,
                             onUpscale: onUpscale,
                             logTitle: "Upscale Log"
@@ -160,7 +164,7 @@ struct PreviewPaneView: View {
                     GalleryItemDetailView(
                         item: item,
                         onReplay: onReplay,
-                        onUseInImg2Img: onUseInImg2Img,
+                        sourceImage: sourceImage,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
                         onSetFlag: onSetGalleryFlag,
@@ -358,20 +362,19 @@ struct PreviewPaneView: View {
         }
     }
 
-    /// A generated image's completed preview, with the pane's full-size,
-    /// upscale and (unless the family has none) img2img actions.
+    /// A generated image's completed preview, with the pane's full-size, upscale
+    /// and (when the active family has one) source-image actions.
     private func completedPreview<Job: GeneratedJob>(
         _ job: Job,
         sidecarOf: @escaping (Job) -> AnySidecar?,
-        infoOf: @escaping (Job) -> ImageMetadataInfo,
-        takesImg2Img: Bool = true
+        infoOf: @escaping (Job) -> ImageMetadataInfo
     ) -> some View {
         JobCompletedPreviewView(
             job: job,
             sidecarOf: sidecarOf,
             infoOf: infoOf,
             onReplay: onReplay,
-            onUseInImg2Img: takesImg2Img ? onUseInImg2Img : nil,
+            sourceImage: sourceImage,
             onShowFullSize: onShowFullSize,
             onUpscale: onUpscale
         )

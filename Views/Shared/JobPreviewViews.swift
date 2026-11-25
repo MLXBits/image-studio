@@ -130,7 +130,7 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
     let sidecarOf: (Job) -> AnySidecar?
     let infoOf: (Job) -> ImageMetadataInfo
     var onReplay: ((AnySidecar, ReplayMode) -> Void)?
-    var onUseInImg2Img: ((String) -> Void)?
+    var sourceImage: SourceImageAction?
     var onShowFullSize: ((NSImage) -> Void)?
     var onUpscale: ((String) -> Void)?
     var logTitle = "Generation Log"
@@ -162,7 +162,7 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
                 info: infoOf(job),
                 onApplySettings: replay(.applySettings),
                 onRemix: replay(.remix),
-                onUseInImg2Img: withOutput(onUseInImg2Img),
+                sourceImage: sourceImage,
                 onRevealInFinder: withOutput { path in
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
                 },
@@ -177,11 +177,7 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
 
     @ViewBuilder private var contextMenu: some View {
         if let path = job.outputPath {
-            Button("Copy Image") {
-                guard let img = NSImage(contentsOfFile: path) else { return }
-                NSPasteboard.general.clearContents()
-                NSPasteboard.general.writeObjects([img])
-            }
+            Button("Copy Image") { ImagePasteboard.copyImages(atPaths: [path]) }
             Divider()
         }
         if let apply = replay(.applySettings) {
@@ -191,8 +187,8 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
             Button("Remix (new seed)", action: remix)
         }
         if let path = job.outputPath {
-            if let onUseInImg2Img {
-                Button("Use as Img2Img Input") { onUseInImg2Img(path) }
+            if let sourceImage {
+                Button(sourceImage.input.title) { sourceImage.use(path) }
             }
             if let onUpscale {
                 Button("Upscale…") { onUpscale(path) }

@@ -14,7 +14,7 @@ protocol GeneratedJob: AnyObject, Identifiable {
     var log: String { get set }
     var currentStep: Int { get set }
     var totalSteps: Int { get set }
-    var seed: Int { get }
+    var seed: Int { get set }
     /// Batch seeds. The runner trims it to the seeds that landed, so `expandBatchJob` zips each with its own path.
     var seeds: [Int] { get set }
     var resolvedSeed: Int? { get set }
