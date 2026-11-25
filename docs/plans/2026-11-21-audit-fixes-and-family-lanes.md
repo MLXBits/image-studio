@@ -1,8 +1,8 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-24):** PR 1 is merged (#128). PR 2 and PR 3 are scheduled, and the
-> design decisions for them were settled on 2026-11-24 against `943b532`. Part 3 stays
-> parked until PR 3 lands. Before you start a PR, check its file and symbol references
+> **Status (2026-11-24):** PR 1 (#128) and PR 2 (#129) are merged. PR 3 is in review.
+> The design decisions for PR 2 and PR 3 were settled on 2026-11-24 against `943b532`.
+> Part 3 stays parked until PR 3 lands. Before you start a PR, check its file and symbol references
 > against the current `main`.
 >
 > The file name still says "family-lanes" because #128 links to it. The design uses
@@ -348,17 +348,34 @@ switches.**
 
 ### PR 3: Preview and replay
 
-- [ ] Add `App/ReplayAction.swift`, which switches once on `AnySidecar`, with
+- [x] Add `App/ReplayAction.swift`, which switches once on `AnySidecar`, with
       `ReplayMode = .remix | .applySettings` (D7).
-- [ ] Add a `GalleryItem.sidecar: AnySidecar?` accessor.
-- [ ] One `onReplay` closure through `PreviewPaneView`, `JobCompletedPreviewView`,
+- [x] Add a `GalleryItem.sidecar: AnySidecar?` accessor, plus `replaySidecar`: an
+      upscale replays its source (`AnySidecar.replayTarget`), and every gallery replay
+      is filed under the board the image is in now (`filed(under:)`).
+- [x] One `onReplay` closure through `PreviewPaneView`, `JobCompletedPreviewView`,
       `GalleryItemDetailView`, `ContentView.applySettingsAction(for:)` and `FailedJobView`.
-- [ ] Rename `FailedJobView`'s "Load Settings" button to "Apply Settings".
-- [ ] `ContentView.queueSheet`'s `previewSelection(...)` calls and `GenerateAction`'s
+      Also through `GenerationGalleryView` and `GalleryCollectionView`, whose context
+      menu had its own copy of the replay chain.
+- [x] Rename `FailedJobView`'s "Load Settings" button to "Apply Settings".
+- [x] `ContentView.queueSheet`'s `previewSelection(...)` calls and `GenerateAction`'s
       `preview:` arguments use `Spec.preview` (D4).
-- [ ] Update the replay and preview parts of the AGENTS.md "add a model family" recipe
+- [x] Update the replay and preview parts of the AGENTS.md "add a model family" recipe
       (step 9's `PreviewPaneView`, `GalleryItemDetailView` and replay touchpoints, and
       `App/ReplayAction.swift`). PR 2 already updated its own lines.
+- [x] `Tests/ReplayActionTests.swift` and `Tests/ReplayTargetTests.swift`.
+- [ ] In-app verification, step 4 under Verification.
+
+Deferred from the PR 3 review, for PR 4 or later:
+- The family-to-source-image item ("Use as Img2Img Input" or "Use as Edit
+  Reference") is written twice, in `GalleryItemDetailView` and `GalleryCollectionView`.
+  The detail footer has a third form (`acceptsSourceImage`), which offers img2img
+  on an upscale where the menus do not. One accessor on `AnySidecar` would settle it.
+- The five params states are listed in `GenerateAction`, `ReplayAction` and both
+  their initializers in `ContentView`. One struct holding them would make a new
+  family's edit one line.
+- The completed-job preview of an upscale offers no replay, while its gallery item
+  replays the source.
 
 ### PR 4+ (optional): Descriptor registry
 

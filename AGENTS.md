@@ -161,18 +161,26 @@ Adding Z-Image touched 24 files. In dependency order:
 9. Wire the surfaces that switch on family: `App/ContentView.swift` (a
    `FamilyQueue` property, added to `queues.all` in run order: the hand-off,
    Stop, retry and the gallery's landing handler loop over that list, so
-   `App/FamilyQueues.swift` needs no edit), `App/GenerateAction.swift` (the
+   `App/FamilyQueues.swift` needs no edit; a `case` in `queueSheet`; the
+   params state passed to `replayAction`), `App/GenerateAction.swift` (the
    family's typed `FamilyQueue` and its Generate; a prompt-field family fans out
-   through `PromptFanOut`), `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
+   through `PromptFanOut`), `App/ReplayAction.swift` (the family's params state
+   and its `case`: Remix and Apply Settings from every surface go through it),
+   `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
-   (a `PreviewState` case and its `jobPreview` branch), `Views/Gallery/GenerationGalleryView.swift`,
-   `Views/PreviewPane/GalleryItemDetailView.swift`.
+   (a `PreviewState` case and its `jobPreview` branch, which replays the job's
+   sidecar through `onReplay`), and the source-image menu item's `case` in
+   `Views/PreviewPane/GalleryItemDetailView.swift` and
+   `Views/Gallery/GalleryCollectionView.swift`.
 10. Metadata and constraints: `Utilities/MetadataSidecar.swift` (the sidecar
-    type, with an optional `family` field), `Utilities/AnySidecar.swift` (a
-    `SidecarFamily` case, the `SidecarMetadata` conformance, and a `decode` case;
+    type, with an optional `family` field, and a `source…` field on
+    `SeedVR2Metadata`), `Utilities/AnySidecar.swift` (a `SidecarFamily` case,
+    the `SidecarMetadata` conformance, a `decode` case, a `filed(under:)` case,
+    and the upscale source in `replayTarget`, which the compiler does not check;
     never a `legacyFamily` rule, since new sidecars are always tagged),
     `Views/Shared/ImageMetadataInfo.swift`, `Views/Shared/DimensionConstraints.swift`,
-    `Stores/GalleryStore.swift`, `Utilities/PythonTool.swift` (a case for the
+    `Stores/GalleryStore.swift` (the item's metadata field and its line in
+    `GalleryItem.sidecar`), `Utilities/PythonTool.swift` (a case for the
     new CLI) plus `Runtime/tools.txt` (same name), and the catalog's `generateTool`.
 11. If the family needs a new *directory*, add it to `sources:` in `project.yml`
     and re-run `xcodegen generate`. New files inside an existing directory are

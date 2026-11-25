@@ -31,16 +31,8 @@ struct PreviewPaneView: View {
     @Environment(\.openSettings) private var openSettings
 
     let state: PreviewState
-    let onRemix: (GenerationMetadata) -> Void
-    let onApplySettings: (GenerationMetadata) -> Void
-    let onRemixIdeogram: (Ideogram4Metadata) -> Void
-    let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
-    var onRemixKrea2: ((Krea2Metadata) -> Void)?
-    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
-    var onRemixZImage: ((ZImageMetadata) -> Void)?
-    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
-    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
-    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
+    /// Remix or Apply Settings, for an image of any family.
+    let onReplay: (AnySidecar, ReplayMode) -> Void
     let onUseInImg2Img: (String) -> Void
     let onCancel: () -> Void
     let onClear: () -> Void
@@ -79,10 +71,12 @@ struct PreviewPaneView: View {
                     jobPreview(job) {
                         completedPreview(
                             job,
-                            metadataOf: { $0.outputPath.flatMap { MetadataSidecar.read(GenerationMetadata.self, for: $0) } },
-                            infoOf: { ImageMetadataInfo(job: $0) },
-                            onRemix: onRemix,
-                            onApplySettings: onApplySettings
+                            sidecarOf: { job in
+                                job.outputPath
+                                    .flatMap { MetadataSidecar.read(GenerationMetadata.self, for: $0) }
+                                    .map(AnySidecar.flux)
+                            },
+                            infoOf: { ImageMetadataInfo(job: $0) }
                         )
                     } failed: { message in
                         failedView(message: message, job: job)
@@ -93,10 +87,8 @@ struct PreviewPaneView: View {
                         // Ideogram 4 has no img2img.
                         completedPreview(
                             job,
-                            metadataOf: { Ideogram4Metadata.from(job: $0) },
+                            sidecarOf: { .ideogram4(Ideogram4Metadata.from(job: $0)) },
                             infoOf: { ImageMetadataInfo(ideogram4Job: $0) },
-                            onRemix: onRemixIdeogram,
-                            onApplySettings: onApplyIdeogramSettings,
                             takesImg2Img: false
                         )
                     } failed: { message in
@@ -104,65 +96,57 @@ struct PreviewPaneView: View {
                             message: message, log: job.log,
                             repoURL: FluxModelVariant.ideogram4.hfRepoURL(quantize: job.quantize),
                             onRetry: onRetry
-                        ) { onApplyIdeogramSettings(Ideogram4Metadata.from(job: job)) }
+                        ) { onReplay(.ideogram4(Ideogram4Metadata.from(job: job)), .applySettings) }
                     }
 
                 case let .activeKrea2Job(job):
                     jobPreview(job) {
                         completedPreview(
                             job,
-                            metadataOf: { Krea2Metadata.from(job: $0) },
-                            infoOf: { ImageMetadataInfo(krea2Job: $0) },
-                            onRemix: onRemixKrea2,
-                            onApplySettings: onApplyKrea2Settings
+                            sidecarOf: { .krea2(Krea2Metadata.from(job: $0)) },
+                            infoOf: { ImageMetadataInfo(krea2Job: $0) }
                         )
                     } failed: { message in
-                        FailedJobView(
-                            message: message, log: job.log, onRetry: onRetry,
-                            onLoadSettings: onApplyKrea2Settings.map { fn in { fn(Krea2Metadata.from(job: job)) } }
-                        )
+                        FailedJobView(message: message, log: job.log, onRetry: onRetry) {
+                            onReplay(.krea2(Krea2Metadata.from(job: job)), .applySettings)
+                        }
                     }
 
                 case let .activeQwen21Job(job):
                     jobPreview(job) {
                         completedPreview(
                             job,
-                            metadataOf: { Qwen21Metadata.from(job: $0) },
-                            infoOf: { ImageMetadataInfo(qwen21Job: $0) },
-                            onRemix: onRemixQwen21,
-                            onApplySettings: onApplyQwen21Settings
+                            sidecarOf: { .qwen21(Qwen21Metadata.from(job: $0)) },
+                            infoOf: { ImageMetadataInfo(qwen21Job: $0) }
                         )
                     } failed: { message in
-                        FailedJobView(
-                            message: message, log: job.log, onRetry: onRetry,
-                            onLoadSettings: onApplyQwen21Settings.map { fn in { fn(Qwen21Metadata.from(job: job)) } }
-                        )
+                        FailedJobView(message: message, log: job.log, onRetry: onRetry) {
+                            onReplay(.qwen21(Qwen21Metadata.from(job: job)), .applySettings)
+                        }
                     }
 
                 case let .activeZImageJob(job):
                     jobPreview(job) {
                         completedPreview(
                             job,
-                            metadataOf: { ZImageMetadata.from(job: $0) },
-                            infoOf: { ImageMetadataInfo(zimageJob: $0) },
-                            onRemix: onRemixZImage,
-                            onApplySettings: onApplyZImageSettings
+                            sidecarOf: { .zimage(ZImageMetadata.from(job: $0)) },
+                            infoOf: { ImageMetadataInfo(zimageJob: $0) }
                         )
                     } failed: { message in
                         FailedJobView(
                             message: message, log: job.log,
                             repoURL: job.modelVariant.hfRepoURL(quantize: job.quantize),
-                            onRetry: onRetry,
-                            onLoadSettings: onApplyZImageSettings.map { fn in { fn(ZImageMetadata.from(job: job)) } }
-                        )
+                            onRetry: onRetry
+                        ) { onReplay(.zimage(ZImageMetadata.from(job: job)), .applySettings) }
                     }
 
                 case let .activeSeedVR2Job(job):
                     jobPreview(job, placeholder: "Upscaling…") {
-                        // An upscale has no settings to replay, so no Remix or Apply Settings.
+                        // No Remix or Apply Settings here, unlike the upscale's gallery item:
+                        // the preview moves to that item when the job completes.
                         JobCompletedPreviewView(
                             job: job,
-                            metadataOf: { _ -> Never? in nil },
+                            sidecarOf: { _ in nil },
                             infoOf: { ImageMetadataInfo(seedVR2Job: $0) },
                             onShowFullSize: onShowFullSize,
                             onUpscale: onUpscale,
@@ -175,16 +159,7 @@ struct PreviewPaneView: View {
                 case let .galleryItem(item):
                     GalleryItemDetailView(
                         item: item,
-                        onRemix: onRemix,
-                        onApplySettings: onApplySettings,
-                        onRemixIdeogram: onRemixIdeogram,
-                        onApplyIdeogramSettings: onApplyIdeogramSettings,
-                        onRemixKrea2: onRemixKrea2,
-                        onApplyKrea2Settings: onApplyKrea2Settings,
-                        onRemixZImage: onRemixZImage,
-                        onApplyZImageSettings: onApplyZImageSettings,
-                        onRemixQwen21: onRemixQwen21,
-                        onApplyQwen21Settings: onApplyQwen21Settings,
+                        onReplay: onReplay,
                         onUseInImg2Img: onUseInImg2Img,
                         onEditBoxesOverImage: onEditBoxesOverImage,
                         onShowFullSize: onShowFullSize,
@@ -347,7 +322,7 @@ struct PreviewPaneView: View {
             .padding())
         }
         return AnyView(FailedJobView(message: message, log: job.log, onRetry: onRetry) {
-            onApplySettings(GenerationMetadata.from(job: job))
+            onReplay(.flux(GenerationMetadata.from(job: job)), .applySettings)
         })
     }
 
@@ -385,20 +360,17 @@ struct PreviewPaneView: View {
 
     /// A generated image's completed preview, with the pane's full-size,
     /// upscale and (unless the family has none) img2img actions.
-    private func completedPreview<Job: GeneratedJob, Meta>(
+    private func completedPreview<Job: GeneratedJob>(
         _ job: Job,
-        metadataOf: @escaping (Job) -> Meta?,
+        sidecarOf: @escaping (Job) -> AnySidecar?,
         infoOf: @escaping (Job) -> ImageMetadataInfo,
-        onRemix: ((Meta) -> Void)?,
-        onApplySettings: ((Meta) -> Void)?,
         takesImg2Img: Bool = true
     ) -> some View {
         JobCompletedPreviewView(
             job: job,
-            metadataOf: metadataOf,
+            sidecarOf: sidecarOf,
             infoOf: infoOf,
-            onRemix: onRemix,
-            onApplySettings: onApplySettings,
+            onReplay: onReplay,
             onUseInImg2Img: takesImg2Img ? onUseInImg2Img : nil,
             onShowFullSize: onShowFullSize,
             onUpscale: onUpscale

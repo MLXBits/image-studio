@@ -3,16 +3,8 @@ import SwiftUI
 
 struct GalleryItemDetailView: View {
     let item: GalleryItem
-    let onRemix: (GenerationMetadata) -> Void
-    let onApplySettings: (GenerationMetadata) -> Void
-    let onRemixIdeogram: (Ideogram4Metadata) -> Void
-    let onApplyIdeogramSettings: (Ideogram4Metadata) -> Void
-    var onRemixKrea2: ((Krea2Metadata) -> Void)?
-    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
-    var onRemixZImage: ((ZImageMetadata) -> Void)?
-    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
-    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
-    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
+    /// Remix or Apply Settings, for an image of any family.
+    let onReplay: (AnySidecar, ReplayMode) -> Void
     let onUseInImg2Img: (String) -> Void
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
@@ -50,37 +42,22 @@ struct GalleryItemDetailView: View {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.writeObjects([img])
                 }
-                if let meta = item.metadata {
+                if let sidecar = item.replaySidecar {
                     Divider()
-                    Button("Apply Settings") {
-                        var corrected = meta
-                        corrected.board = item.board == "Default" ? nil : item.board
-                        onApplySettings(corrected)
-                    }
-                    Button("Remix (new seed)") { onRemix(meta) }
+                    Button("Apply Settings") { onReplay(sidecar, .applySettings) }
+                    Button("Remix (new seed)") { onReplay(sidecar, .remix) }
+                }
+                switch item.sidecar {
+                case .flux, .krea2, .zimage:
                     Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
-                } else if let meta = item.ideogram4Metadata {
-                    Divider()
-                    Button("Apply Settings") { onApplyIdeogramSettings(correctedIdeogram(meta)) }
-                    Button("Remix (new seed)") { onRemixIdeogram(meta) }
+                case .qwen21:
+                    Button("Use as Edit Reference") { onUseInImg2Img(item.path) }
+                case let .ideogram4(meta):
                     if let img = image {
                         Button("Adjust Boxes…") { onEditBoxesOverImage?(meta, img) }
                     }
-                } else if let meta = item.krea2Metadata {
-                    Divider()
-                    Button("Apply Settings") { onApplyKrea2Settings?(correctedKrea2(meta)) }
-                    Button("Remix (new seed)") { onRemixKrea2?(meta) }
-                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
-                } else if let meta = item.zimageMetadata {
-                    Divider()
-                    Button("Apply Settings") { onApplyZImageSettings?(correctedZImage(meta)) }
-                    Button("Remix (new seed)") { onRemixZImage?(meta) }
-                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
-                } else if let meta = item.qwen21Metadata {
-                    Divider()
-                    Button("Apply Settings") { onApplyQwen21Settings?(correctedQwen21(meta)) }
-                    Button("Remix (new seed)") { onRemixQwen21?(meta) }
-                    Button("Use as Edit Reference") { onUseInImg2Img(item.path) }
+                case .seedVR2, nil:
+                    EmptyView()
                 }
                 if let onUpscale {
                     Divider()
@@ -104,8 +81,8 @@ struct GalleryItemDetailView: View {
 
             ImageMetadataPanel(
                 info: info,
-                onApplySettings: applySettingsAction,
-                onRemix: remixAction,
+                onApplySettings: replay(.applySettings),
+                onRemix: replay(.remix),
                 onUseInImg2Img: item.modelFamily.acceptsSourceImage && item.qwen21Metadata == nil
                     ? { onUseInImg2Img(item.path) } : nil,
                 onEditBoxes: editBoxesAction,
@@ -160,90 +137,6 @@ struct GalleryItemDetailView: View {
         .padding(.horizontal, 12).padding(.vertical, 2)
     }
 
-    /// Apply-Settings closure for the metadata panel footer, selecting the Flux or
-    /// Ideogram replay path based on which sidecar the item carries.
-    private var applySettingsAction: (() -> Void)? {
-        if let meta = item.metadata {
-            return {
-                var corrected = meta
-                corrected.board = item.board == "Default" ? nil : item.board
-                onApplySettings(corrected)
-            }
-        }
-        if let meta = item.ideogram4Metadata {
-            return { onApplyIdeogramSettings(correctedIdeogram(meta)) }
-        }
-        if let meta = item.krea2Metadata, let fn = onApplyKrea2Settings {
-            return { fn(correctedKrea2(meta)) }
-        }
-        if let meta = item.zimageMetadata, let fn = onApplyZImageSettings {
-            return { fn(correctedZImage(meta)) }
-        }
-        if let meta = item.qwen21Metadata, let fn = onApplyQwen21Settings {
-            return { fn(correctedQwen21(meta)) }
-        }
-        // SeedVR2 upscale: replay from the source generation metadata folded into the
-        // upscale's sidecar, so an upscale is as re-applicable as its original.
-        if let src = item.seedVR2Metadata {
-            if let meta = src.sourceFlux {
-                return {
-                    var corrected = meta
-                    corrected.board = item.board == "Default" ? nil : item.board
-                    onApplySettings(corrected)
-                }
-            }
-            if let meta = src.sourceIdeogram4 {
-                return { onApplyIdeogramSettings(correctedIdeogram(meta)) }
-            }
-            if let meta = src.sourceKrea2, let fn = onApplyKrea2Settings {
-                return { fn(correctedKrea2(meta)) }
-            }
-            if let meta = src.sourceZImage, let fn = onApplyZImageSettings {
-                return { fn(correctedZImage(meta)) }
-            }
-            if let meta = src.sourceQwen21, let fn = onApplyQwen21Settings {
-                return { fn(correctedQwen21(meta)) }
-            }
-        }
-        return nil
-    }
-
-    private var remixAction: (() -> Void)? {
-        if let meta = item.metadata {
-            return { onRemix(meta) }
-        }
-        if let meta = item.ideogram4Metadata {
-            return { onRemixIdeogram(meta) }
-        }
-        if let meta = item.krea2Metadata, let fn = onRemixKrea2 {
-            return { fn(meta) }
-        }
-        if let meta = item.zimageMetadata, let fn = onRemixZImage {
-            return { fn(meta) }
-        }
-        if let meta = item.qwen21Metadata, let fn = onRemixQwen21 {
-            return { fn(meta) }
-        }
-        if let src = item.seedVR2Metadata {
-            if let meta = src.sourceFlux {
-                return { onRemix(meta) }
-            }
-            if let meta = src.sourceIdeogram4 {
-                return { onRemixIdeogram(meta) }
-            }
-            if let meta = src.sourceKrea2, let fn = onRemixKrea2 {
-                return { fn(meta) }
-            }
-            if let meta = src.sourceZImage, let fn = onRemixZImage {
-                return { fn(meta) }
-            }
-            if let meta = src.sourceQwen21, let fn = onRemixQwen21 {
-                return { fn(meta) }
-            }
-        }
-        return nil
-    }
-
     /// "Adjust Boxes" closure — available only for Ideogram images once the image
     /// has loaded, so the boxes can be overlaid on it.
     private var editBoxesAction: (() -> Void)? {
@@ -251,30 +144,10 @@ struct GalleryItemDetailView: View {
         return { onEditBoxesOverImage?(meta, img) }
     }
 
-    /// Restores the board from the item's gallery folder (the sidecar may predate
-    /// foldering or carry a stale value), matching the Flux Apply-Settings behavior.
-    private func correctedIdeogram(_ meta: Ideogram4Metadata) -> Ideogram4Metadata {
-        var corrected = meta
-        corrected.board = item.board == "Default" ? nil : item.board
-        return corrected
-    }
-
-    private func correctedKrea2(_ meta: Krea2Metadata) -> Krea2Metadata {
-        var corrected = meta
-        corrected.board = item.board == "Default" ? nil : item.board
-        return corrected
-    }
-
-    private func correctedQwen21(_ meta: Qwen21Metadata) -> Qwen21Metadata {
-        var corrected = meta
-        corrected.board = item.board == "Default" ? nil : item.board
-        return corrected
-    }
-
-    private func correctedZImage(_ meta: ZImageMetadata) -> ZImageMetadata {
-        var corrected = meta
-        corrected.board = item.board == "Default" ? nil : item.board
-        return corrected
+    /// A `mode` replay of this image's settings, when it has some to replay.
+    private func replay(_ mode: ReplayMode) -> (() -> Void)? {
+        guard let sidecar = item.replaySidecar else { return nil }
+        return { onReplay(sidecar, mode) }
     }
 
     private func logSheet(log: String) -> some View {

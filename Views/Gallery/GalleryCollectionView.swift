@@ -824,54 +824,19 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(ratingItem)
         }
 
-        /// Apply Settings / Remix (and, where the family has a source-image input, the
-        /// img2img item) for the family whose sidecar the item carries.
+        /// Apply Settings / Remix, when the item has settings to replay, and the
+        /// family's source-image item, when it has a source-image input.
         private func addFamilyMenuItems(to menu: NSMenu, for item: GalleryItem) {
-            let boardOverride: String? = item.board == "Default" ? nil : item.board
-            if let meta = item.metadata {
-                addSettingsItems(to: menu, apply: { [weak self] in
-                    var corrected = meta
-                    corrected.board = boardOverride
-                    self?.parent.onApplySettings(item, corrected)
-                }, remix: { [weak self] in self?.parent.onRemix(meta) })
-                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
-            } else if let meta = item.ideogram4Metadata {
-                addSettingsItems(to: menu, apply: { [weak self] in
-                    var corrected = meta
-                    corrected.board = boardOverride
-                    self?.parent.onApplyIdeogramSettings(item, corrected)
-                }, remix: { [weak self] in self?.parent.onRemixIdeogram(meta) })
-            } else if let meta = item.krea2Metadata {
-                addSettingsItems(to: menu, apply: { [weak self] in
-                    var corrected = meta
-                    corrected.board = boardOverride
-                    self?.parent.onApplyKrea2Settings?(corrected)
-                }, remix: { [weak self] in self?.parent.onRemixKrea2?(meta) })
-                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
-            } else if let meta = item.zimageMetadata {
-                addSettingsItems(to: menu, apply: { [weak self] in
-                    var corrected = meta
-                    corrected.board = boardOverride
-                    self?.parent.onApplyZImageSettings?(corrected)
-                }, remix: { [weak self] in self?.parent.onRemixZImage?(meta) })
-                addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
-            } else if let meta = item.qwen21Metadata {
-                addSettingsItems(to: menu, apply: { [weak self] in
-                    var corrected = meta
-                    corrected.board = boardOverride
-                    self?.parent.onApplyQwen21Settings?(corrected)
-                }, remix: { [weak self] in self?.parent.onRemixQwen21?(meta) })
-                addUseAsSourceItem(to: menu, for: item, title: "Use as Edit Reference")
-            } else {
-                return
+            guard let sidecar = item.replaySidecar else { return }
+            menu.addItem(.separator())
+            menu.addItem(menuItem("Apply Settings") { [weak self] in self?.parent.onReplay(sidecar, .applySettings) })
+            menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onReplay(sidecar, .remix) })
+            switch item.sidecar {
+            case .flux, .krea2, .zimage: addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
+            case .qwen21: addUseAsSourceItem(to: menu, for: item, title: "Use as Edit Reference")
+            case .ideogram4, .seedVR2, nil: break
             }
             menu.addItem(.separator())
-        }
-
-        private func addSettingsItems(to menu: NSMenu, apply: @escaping () -> Void, remix: @escaping () -> Void) {
-            menu.addItem(.separator())
-            menu.addItem(menuItem("Apply Settings", action: apply))
-            menu.addItem(menuItem("Remix (new seed)", action: remix))
         }
 
         private func addUseAsSourceItem(to menu: NSMenu, for item: GalleryItem, title: String) {
@@ -959,16 +924,7 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onCompareItem: (GalleryItem) -> Void
     var onSetFlagItem: (GalleryItem, PickFlag?) -> Void
     var onSetRatingItem: (GalleryItem, Int) -> Void
-    var onRemix: (GenerationMetadata) -> Void
-    var onApplySettings: (GalleryItem, GenerationMetadata) -> Void
-    var onRemixIdeogram: (Ideogram4Metadata) -> Void
-    var onApplyIdeogramSettings: (GalleryItem, Ideogram4Metadata) -> Void
-    var onRemixKrea2: ((Krea2Metadata) -> Void)?
-    var onApplyKrea2Settings: ((Krea2Metadata) -> Void)?
-    var onRemixZImage: ((ZImageMetadata) -> Void)?
-    var onApplyZImageSettings: ((ZImageMetadata) -> Void)?
-    var onRemixQwen21: ((Qwen21Metadata) -> Void)?
-    var onApplyQwen21Settings: ((Qwen21Metadata) -> Void)?
+    var onReplay: (AnySidecar, ReplayMode) -> Void
     var onUseInImg2Img: (String) -> Void
     var onUpscale: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
