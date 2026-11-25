@@ -97,6 +97,35 @@ struct GalleryItem: Identifiable, Equatable {
     }
 }
 
+extension GalleryItem {
+    /// The image's own sidecar, of whichever family wrote it.
+    var sidecar: AnySidecar? {
+        if let metadata {
+            return .flux(metadata)
+        }
+        if let ideogram4Metadata {
+            return .ideogram4(ideogram4Metadata)
+        }
+        if let krea2Metadata {
+            return .krea2(krea2Metadata)
+        }
+        if let zimageMetadata {
+            return .zimage(zimageMetadata)
+        }
+        if let qwen21Metadata {
+            return .qwen21(qwen21Metadata)
+        }
+        return seedVR2Metadata.map(AnySidecar.seedVR2)
+    }
+
+    /// What Remix and Apply Settings load for this image, filed under the board
+    /// the image is in now: the sidecar may predate boards, or name one the image
+    /// was moved out of. "Default" is the output folder's root, which is no board.
+    var replaySidecar: AnySidecar? {
+        sidecar?.replayTarget?.filed(under: board == "Default" ? nil : board)
+    }
+}
+
 /// Manages the image gallery by scanning the output directory for image files.
 ///
 /// The gallery is filesystem-driven: ``scan(outputDir:)`` enumerates the output directory and

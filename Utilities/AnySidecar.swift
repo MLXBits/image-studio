@@ -12,6 +12,8 @@ nonisolated protocol SidecarMetadata: Codable {
     static var sidecarFamily: SidecarFamily { get }
     /// The tag as stored: a string, so a tag this build does not know still decodes.
     var family: String? { get set }
+    /// The board the image was saved to. Nil for the output folder's root.
+    var board: String? { get set }
 }
 
 nonisolated extension GenerationMetadata: SidecarMetadata {
@@ -106,6 +108,49 @@ nonisolated enum AnySidecar {
             return .zimage
         }
         return .krea2
+    }
+}
+
+nonisolated extension AnySidecar {
+    /// The settings a replay of this image loads: its own, or for an upscale, those
+    /// of the image it was made from. Nil for an upscale whose sidecar predates
+    /// carrying its source.
+    var replayTarget: AnySidecar? {
+        guard case let .seedVR2(upscale) = self else { return self }
+        if let meta = upscale.sourceFlux {
+            return .flux(meta)
+        }
+        if let meta = upscale.sourceIdeogram4 {
+            return .ideogram4(meta)
+        }
+        if let meta = upscale.sourceKrea2 {
+            return .krea2(meta)
+        }
+        if let meta = upscale.sourceZImage {
+            return .zimage(meta)
+        }
+        return upscale.sourceQwen21.map(Self.qwen21)
+    }
+
+    /// This sidecar with its board set to `board`, which nil clears.
+    func filed(under board: String?) -> AnySidecar {
+        switch self {
+        case let .flux(meta): .flux(meta.filed(under: board))
+        case let .ideogram4(meta): .ideogram4(meta.filed(under: board))
+        case let .krea2(meta): .krea2(meta.filed(under: board))
+        case let .zimage(meta): .zimage(meta.filed(under: board))
+        case let .qwen21(meta): .qwen21(meta.filed(under: board))
+        case let .seedVR2(meta): .seedVR2(meta.filed(under: board))
+        }
+    }
+}
+
+nonisolated extension SidecarMetadata {
+    /// This sidecar with its board set to `board`, which nil clears.
+    func filed(under board: String?) -> Self {
+        var filed = self
+        filed.board = board
+        return filed
     }
 }
 

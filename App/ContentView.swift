@@ -136,6 +136,14 @@ struct ContentView: View {
         )
     }
 
+    private var replayAction: ReplayAction {
+        ReplayAction(
+            params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
+            zimageParams: zimageParams, qwen21Params: qwen21Params,
+            suppressedModelObservers: $suppressedModelObservers
+        )
+    }
+
     /// What the menu bar acts on while this window is in front.
     private var mainWindowActions: MainWindowActions {
         MainWindowActions(
@@ -295,16 +303,7 @@ struct ContentView: View {
     private var previewPaneView: some View {
         PreviewPaneView(
             state: previewState,
-            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
-            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
-            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
-            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
-            onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
-            onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
-            onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
-            onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
-            onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
-            onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
+            onReplay: { sidecar, mode in replay(sidecar, mode) },
             onUseInImg2Img: useInImg2Img,
             onCancel: { queues.stopAll() },
             onClear: clearPreview,
@@ -338,16 +337,7 @@ struct ContentView: View {
         GenerationGalleryView(
             selectedItem: $selectedGalleryItem,
             modelFilter: params.modelFamily,
-            onRemix: { meta in applyFlux(meta, newSeed: true); generate() },
-            onApplySettings: { meta in applyFlux(meta, newSeed: false) },
-            onRemixIdeogram: { meta in applyIdeogram(meta, newSeed: true); generate() },
-            onApplyIdeogramSettings: { meta in applyIdeogram(meta, newSeed: false) },
-            onRemixKrea2: { meta in applyKrea2(meta, newSeed: true); generate() },
-            onApplyKrea2Settings: { meta in applyKrea2(meta, newSeed: false) },
-            onRemixZImage: { meta in applyZImage(meta, newSeed: true); generate() },
-            onApplyZImageSettings: { meta in applyZImage(meta, newSeed: false) },
-            onRemixQwen21: { meta in applyQwen21(meta, newSeed: true); generate() },
-            onApplyQwen21Settings: { meta in applyQwen21(meta, newSeed: false) },
+            onReplay: { sidecar, mode in replay(sidecar, mode) },
             onUseInImg2Img: useInImg2Img,
             onUpscale: { paths in promptUpscale(paths: paths) },
             onSelectBoard: setActiveBoard,
@@ -772,7 +762,7 @@ struct ContentView: View {
                     // upscale / previewed upscale instead of `params.modelFamily`;
                     // otherwise upscale jobs never appear in the queue drawer.
                     FamilyQueueDrawerView<SeedVR2RunnerSpec>(
-                        selectedJobWithoutDuplicate: previewSelection(PreviewState.activeSeedVR2Job)
+                        selectedJobWithoutDuplicate: previewSelection(SeedVR2RunnerSpec.self)
                     )
                     .environment(seedVR2Store)
                     .environment(seedVR2Runner)
@@ -780,25 +770,25 @@ struct ContentView: View {
                     switch params.modelFamily {
                     case .ideogram4:
                         FamilyQueueDrawerView<Ideogram4RunnerSpec>(
-                            selectedJob: previewSelection(PreviewState.activeIdeogram4Job)
+                            selectedJob: previewSelection(Ideogram4RunnerSpec.self)
                         )
                         .environment(ideogram4Store)
                         .environment(ideogram4Runner)
                     case .krea2:
-                        FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: previewSelection(PreviewState.activeKrea2Job))
+                        FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: previewSelection(Krea2RunnerSpec.self))
                             .environment(krea2Store)
                             .environment(krea2Runner)
                     case .qwen21:
-                        FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: previewSelection(PreviewState.activeQwen21Job))
+                        FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: previewSelection(Qwen21RunnerSpec.self))
                             .environment(qwen21Store)
                             .environment(qwen21Runner)
                     case .zimage:
-                        FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: previewSelection(PreviewState.activeZImageJob))
+                        FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: previewSelection(ZImageRunnerSpec.self))
                             .environment(zimageStore)
                             .environment(zimageRunner)
                     case .flux, .seedvr2:
                         // SeedVR2 is never the picker family; it is handled above.
-                        FamilyQueueDrawerView<FluxRunnerSpec>(selectedJob: previewSelection(PreviewState.activeJob))
+                        FamilyQueueDrawerView<FluxRunnerSpec>(selectedJob: previewSelection(FluxRunnerSpec.self))
                             .environment(store)
                             .environment(runner)
                     }
@@ -1031,12 +1021,12 @@ struct ContentView: View {
     /// through `settings.adoptSourceImage(_:)` like the panels' own drop handlers.
     /// A queue drawer's selection: the previewed job when it belongs to that
     /// drawer's family. Choosing a row previews it.
-    private func previewSelection<Job: GeneratedJob>(_ preview: @escaping (Job) -> PreviewState) -> Binding<Job?> {
+    private func previewSelection<Spec: JobRunnerSpec>(_: Spec.Type) -> Binding<Spec.Job?> {
         Binding(
-            get: { previewState.previewedJob as? Job },
+            get: { previewState.previewedJob as? Spec.Job },
             set: { job in
                 if let job {
-                    previewState = preview(job)
+                    previewState = Spec.preview(job)
                 }
             }
         )
@@ -1080,8 +1070,6 @@ struct ContentView: View {
         }
     }
 
-    /// Switches the params panel to the Ideogram 4 family and replays a completed
-    /// generation's settings. Mirrors the Flux `params.apply(metadata:newSeed:)` path.
     /// Aligns the non-Flux params form to `m` — Ideogram/Krea 2/Z-Image LoRAs and,
     /// for Z-Image, the Turbo-vs-base variant. Returns true when `m` belongs to one
     /// of those families and the caller should stop; false for Flux and `custom`.
@@ -1211,64 +1199,6 @@ struct ContentView: View {
         unifiedQuantize.wrappedValue = request.quantize
     }
 
-    private func applyIdeogram(_ meta: Ideogram4Metadata, newSeed: Bool) {
-        selectFamily(.ideogram4, customRepo: meta.customModelRepo)
-        ideogramParams.apply(metadata: meta, newSeed: newSeed)
-    }
-
-    /// Points the picker at `target`, or at `Custom…` loading as `target` when the
-    /// image came from a custom checkpoint — so replaying a custom run restores the
-    /// checkpoint, not the stock model of the same family.
-    private func selectFamily(_ target: FluxModelVariant, customRepo: String?) {
-        let isCustom = customRepo.map { !$0.isEmpty } ?? false
-        armReplayGuard(
-            model: isCustom ? .custom : target,
-            customBase: isCustom ? target : params.customBaseModel
-        )
-        if let repo = customRepo, !repo.isEmpty {
-            params.customModelRepo = repo
-            params.customBaseModel = target
-            params.model = .custom
-        } else {
-            params.model = target
-        }
-    }
-
-    /// Arms the model-picker handlers that moving to `model`/`customBase` will
-    /// fire, so a replay's settings survive their reset to defaults.
-    private func armReplayGuard(model: FluxModelVariant, customBase: FluxModelVariant) {
-        suppressedModelObservers = ModelChangeObserver.firing(
-            from: (params.model, params.customBaseModel),
-            to: (model, customBase)
-        )
-    }
-
-    /// Replays a completed Flux generation's settings, which also moves the
-    /// picker to the model (or custom checkpoint) the image was made with.
-    private func applyFlux(_ meta: GenerationMetadata, newSeed: Bool) {
-        armReplayGuard(model: meta.model, customBase: meta.customBaseModel)
-        params.apply(metadata: meta, newSeed: newSeed)
-    }
-
-    /// Switches the params panel to the Krea 2 family and replays a completed
-    /// generation's settings. Mirrors the Flux/Ideogram replay paths.
-    private func applyKrea2(_ meta: Krea2Metadata, newSeed: Bool) {
-        selectFamily(.krea2, customRepo: meta.customModelRepo)
-        krea2Params.apply(metadata: meta, newSeed: newSeed)
-    }
-
-    /// Switches the params panel to the Z-Image family and replays a completed
-    /// generation's settings, including the variant (Turbo vs base) it used.
-    private func applyZImage(_ meta: ZImageMetadata, newSeed: Bool) {
-        selectFamily(meta.resolvedVariant, customRepo: meta.customModelRepo)
-        zimageParams.apply(metadata: meta, newSeed: newSeed)
-    }
-
-    private func applyQwen21(_ meta: Qwen21Metadata, newSeed: Bool) {
-        selectFamily(.qwen21Turbo, customRepo: meta.customModelRepo)
-        qwen21Params.apply(metadata: meta, newSeed: newSeed)
-    }
-
     /// Loads the image's bounding boxes (and dimensions) into the live Ideogram
     /// form and opens the box-overlay editor over the image. Prompt fields, seed,
     /// and preset are left untouched so the user can adjust boxes in isolation.
@@ -1338,7 +1268,7 @@ struct ContentView: View {
         }
         if queues.enqueue(jobs, on: seedVR2Queue), let first = jobs.first {
             selectedGalleryItem = nil
-            previewState = .activeSeedVR2Job(first)
+            previewState = SeedVR2RunnerSpec.preview(first)
         }
     }
 
@@ -1422,6 +1352,13 @@ struct ContentView: View {
 
     // MARK: - Generate
 
+    /// Remix or Apply Settings. Remix also presses Generate, with the new seed.
+    private func replay(_ sidecar: AnySidecar, _ mode: ReplayMode) {
+        if replayAction(sidecar, mode: mode), mode == .remix {
+            generate()
+        }
+    }
+
     /// One Generate press. The preview follows the first new job when nothing else was running.
     private func generate(count: Int = 1, scenarioPrompts: [String]? = nil) {
         NSApp.keyWindow?.makeFirstResponder(nil)
@@ -1444,30 +1381,8 @@ struct ContentView: View {
         )
     }
 
-    /// Apply Settings for the family whose sidecar the image carries, filed under
-    /// the board the image is in now, as the gallery's context menu does.
+    /// Apply Settings for the image, as the gallery's context menu does.
     private func applySettingsAction(for item: GalleryItem) -> (() -> Void)? {
-        let board: String? = item.board == "Default" ? nil : item.board
-        if var meta = item.metadata {
-            meta.board = board
-            return { applyFlux(meta, newSeed: false) }
-        }
-        if var meta = item.ideogram4Metadata {
-            meta.board = board
-            return { applyIdeogram(meta, newSeed: false) }
-        }
-        if var meta = item.krea2Metadata {
-            meta.board = board
-            return { applyKrea2(meta, newSeed: false) }
-        }
-        if var meta = item.zimageMetadata {
-            meta.board = board
-            return { applyZImage(meta, newSeed: false) }
-        }
-        if var meta = item.qwen21Metadata {
-            meta.board = board
-            return { applyQwen21(meta, newSeed: false) }
-        }
-        return nil
+        item.replaySidecar.map { sidecar in { replay(sidecar, .applySettings) } }
     }
 }

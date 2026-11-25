@@ -1,7 +1,7 @@
 import AppKit
 import SwiftUI
 
-/// A failed run: a one-line summary of the cause, Retry / Load Settings / Copy Log,
+/// A failed run: a one-line summary of the cause, Retry / Apply Settings / Copy Log,
 /// then the full log (or the error, when there is no log) scrolled to the end.
 /// With `repoURL`, a gated-repo failure also links to the model page, where the
 /// user accepts its license.
@@ -11,7 +11,7 @@ struct FailedJobView: View {
     let log: String
     var repoURL: URL?
     var onRetry: (() -> Void)?
-    var onLoadSettings: (() -> Void)?
+    var onApplySettings: (() -> Void)?
 
     private var logText: String {
         log.isEmpty ? message : log
@@ -41,9 +41,9 @@ struct FailedJobView: View {
                     if let onRetry {
                         Button("Retry", systemImage: "arrow.clockwise", action: onRetry)
                     }
-                    if let onLoadSettings {
-                        Button("Load Settings", systemImage: "slider.horizontal.3", action: onLoadSettings)
-                            .help("Load this job's settings into the form")
+                    if let onApplySettings {
+                        Button("Apply Settings", systemImage: "slider.horizontal.3", action: onApplySettings)
+                            .help("Apply this job's settings to the form")
                     }
                     Button("Copy Log", systemImage: "doc.on.doc") {
                         NSPasteboard.general.clearContents()

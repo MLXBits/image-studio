@@ -123,14 +123,13 @@ struct JobStepwisePreviewView<Job: GeneratedJob>: View {
 /// Completed-image preview for a job of any family: the image, its metadata
 /// panel, and whichever actions the family supports. (In practice the preview
 /// flips to the gallery item on completion; this is the queue-reselect path.)
-struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
+struct JobCompletedPreviewView<Job: GeneratedJob>: View {
     let job: Job
-    /// The job's metadata for replay (nil when it has none), and its
+    /// The job's settings for replay (nil when it has none), and its
     /// metadata-panel contents.
-    let metadataOf: (Job) -> Meta?
+    let sidecarOf: (Job) -> AnySidecar?
     let infoOf: (Job) -> ImageMetadataInfo
-    var onRemix: ((Meta) -> Void)?
-    var onApplySettings: ((Meta) -> Void)?
+    var onReplay: ((AnySidecar, ReplayMode) -> Void)?
     var onUseInImg2Img: ((String) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
     var onUpscale: ((String) -> Void)?
@@ -161,8 +160,8 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
 
             ImageMetadataPanel(
                 info: infoOf(job),
-                onApplySettings: replay(onApplySettings),
-                onRemix: replay(onRemix),
+                onApplySettings: replay(.applySettings),
+                onRemix: replay(.remix),
                 onUseInImg2Img: withOutput(onUseInImg2Img),
                 onRevealInFinder: withOutput { path in
                     NSWorkspace.shared.selectFile(path, inFileViewerRootedAtPath: "")
@@ -185,10 +184,10 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
             }
             Divider()
         }
-        if let apply = replay(onApplySettings) {
+        if let apply = replay(.applySettings) {
             Button("Apply Settings", action: apply)
         }
-        if let remix = replay(onRemix) {
+        if let remix = replay(.remix) {
             Button("Remix (new seed)", action: remix)
         }
         if let path = job.outputPath {
@@ -223,10 +222,10 @@ struct JobCompletedPreviewView<Job: GeneratedJob, Meta>: View {
         .frame(width: 640, height: 480)
     }
 
-    /// `action` bound to this job's metadata, when it has both.
-    private func replay(_ action: ((Meta) -> Void)?) -> (() -> Void)? {
-        guard let action, let meta = metadataOf(job) else { return nil }
-        return { action(meta) }
+    /// A `mode` replay of this job's settings, when it has some to replay.
+    private func replay(_ mode: ReplayMode) -> (() -> Void)? {
+        guard let onReplay, let sidecar = sidecarOf(job) else { return nil }
+        return { onReplay(sidecar, mode) }
     }
 
     /// `action` bound to this job's output image, when it has both.

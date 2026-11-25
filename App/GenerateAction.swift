@@ -108,7 +108,7 @@ struct GenerateAction {
                 size: AspectDirective.size(ratio: $0.ratio, width: params.width, height: params.height, constraints: constraints)
             )
         }
-        return queue(jobs, on: fluxQueue, preview: PreviewState.activeJob)
+        return queue(jobs, on: fluxQueue)
     }
 
     private func generateIdeogram4(count: Int) -> PreviewState? {
@@ -129,7 +129,7 @@ struct GenerateAction {
         ideogramParams.lowRam = settings.ideogram4LowRam
         ideogramParams.strictValidation = settings.ideogram4StrictValidation
         let job = ideogramParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)
-        return queue([job], on: ideogram4Queue, preview: PreviewState.activeIdeogram4Job)
+        return queue([job], on: ideogram4Queue)
     }
 
     private func generateKrea2(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
@@ -155,7 +155,7 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, on: krea2Queue, preview: PreviewState.activeKrea2Job)
+        return queue(jobs, on: krea2Queue)
     }
 
     private func generateZImage(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
@@ -179,7 +179,7 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, on: zimageQueue, preview: PreviewState.activeZImageJob)
+        return queue(jobs, on: zimageQueue)
     }
 
     /// Qwen-Image 2.1 has no negative prompt; an edit's references and size
@@ -206,15 +206,11 @@ struct GenerateAction {
                 )
             )
         }
-        return queue(jobs, on: qwen21Queue, preview: PreviewState.activeQwen21Job)
+        return queue(jobs, on: qwen21Queue)
     }
 
-    private func queue<Spec>(
-        _ jobs: [Spec.Job],
-        on queue: FamilyQueue<Spec>,
-        preview: (Spec.Job) -> PreviewState
-    ) -> PreviewState? {
+    private func queue<Spec>(_ jobs: [Spec.Job], on queue: FamilyQueue<Spec>) -> PreviewState? {
         let wasIdle = queues.enqueue(jobs, on: queue)
-        return wasIdle ? jobs.first.map(preview) : nil
+        return wasIdle ? jobs.first.map { Spec.preview($0) } : nil
     }
 }
