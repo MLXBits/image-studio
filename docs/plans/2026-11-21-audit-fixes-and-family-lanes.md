@@ -527,7 +527,7 @@ The rule lives with the active model, not on `AnySidecar`.
       clear go through `forms.form(for:)`.
 - [ ] ~~Then, optionally, hoist `GenerateAction`'s shared generate ceremony (C4d).~~
       Skipped: see the rulings.
-- [ ] In-app: on each family, a fixed seed shows the Fixed Seed pill and hides the
+- [x] In-app (2026-11-27): on each family, a fixed seed shows the Fixed Seed pill and hides the
       batch button, and the pill's ✕ clears it. New Group puts its name on that
       family's board. Generate is off with an empty prompt, and for Flux and Qwen
       in Edit mode with no reference. The header's precision follows the picker.
