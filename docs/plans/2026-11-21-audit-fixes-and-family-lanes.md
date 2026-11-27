@@ -521,11 +521,35 @@ The rule lives with the active model, not on `AnySidecar`.
 
 ### PR 6: Narrow params protocol (review C2, D9)
 
-- [ ] A protocol with `seed`, `board`, `quantize`, `loras`, one readiness member and
+- [x] A protocol with `seed`, `board`, `quantize`, `loras`, one readiness member and
       `applyDefaults`. All five params states conform.
-- [ ] `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and the fixed-seed
+- [x] `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and the fixed-seed
       clear go through `forms.form(for:)`.
-- [ ] Then, optionally, hoist `GenerateAction`'s shared generate ceremony (C4d).
+- [ ] ~~Then, optionally, hoist `GenerateAction`'s shared generate ceremony (C4d).~~
+      Skipped: see the rulings.
+- [ ] In-app: on each family, a fixed seed shows the Fixed Seed pill and hides the
+      batch button, and the pill's ✕ clears it. New Group puts its name on that
+      family's board. Generate is off with an empty prompt, and for Flux and Qwen
+      in Edit mode with no reference. The header's precision follows the picker.
+
+Rulings:
+
+- The protocol is `FamilyParamsForm`, in `App/FamilyForms.swift`. Readiness is
+  `canGenerate`: four states had it, and `isReadyToGenerate(settings:)` ignored its
+  argument, so it is gone. Flux gains `canGenerate`, and its `applyDefaults(from:)`
+  label becomes `settings:`.
+- `FamilyForms` has `all`, `active` (the picker's family) and `clearFixedSeeds()`
+  beside `form(for:)`. The onAppear defaults and the pill's ✕ loop over `all`.
+- `unifiedQuantize` goes through `active` too. For a custom checkpoint it now reads
+  its target family's form, not Flux's. Nothing shows it: a custom key ignores
+  precision, the model button shows "loads as" instead, and no path writes it
+  while a custom checkpoint is picked. One reachable effect: picking a model from
+  the chevron while on a custom checkpoint carries its family's precision. If a
+  precision picker is ever added for a custom checkpoint, note that one loading as
+  Ideogram 4 would then also save `lastIdeogramQuantize`.
+- C4d is skipped. After `PromptFanOut`, the five generates share one line (the
+  `lastModel` rule), and GenerateAction has no tests: testing it queues on real
+  runners.
 
 ### Later (optional): Descriptor registry
 
