@@ -1,9 +1,9 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-27):** PRs 1–4 (#128–#131) are merged. PR 4a (FLUX 3 always
-> offers an edit reference) is open, and PR 4's in-app check waits on it. A second
-> architecture review ran against `43dad04`; Part 4 assesses it and orders the next
-> PRs (4–6). Its decisions were settled on 2026-11-25.
+> **Status (2026-11-27):** PRs 1–4 (#128–#131) and PR 4a (#132) are merged, and their
+> in-app checks pass. PR 5 is next. A second architecture review ran against
+> `43dad04`; Part 4 assesses it and orders the next PRs (4–6). Its decisions were
+> settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
 >
 > The file name still says "family-lanes" because #128 links to it. The design uses
@@ -477,7 +477,7 @@ The rule lives with the active model, not on `AnySidecar`.
   - No test pins that `ContentView` passes `currentSelection.variant` (a custom
     checkpoint's loads-as variant) and not `params.model`. Done in PR 4a: `forActive`
     takes the `ModelSelection`, and a test covers custom checkpoints.
-- [ ] In-app. The grid shows only the active family's images (an upscale shows with
+- [x] In-app (2026-11-27). The grid shows only the active family's images (an upscale shows with
       its source's family), so check each family in turn. Right-click an image and an
       upscale, in the grid and in the detail view:
       1. Krea 2 active: "Use as Img2Img Input" puts the image into Krea 2's img2img input.
