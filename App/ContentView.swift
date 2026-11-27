@@ -244,10 +244,10 @@ struct ContentView: View {
 
     /// The active model's source-image item for the gallery and preview menus, or
     /// nil when it has no source input. The active model decides, since
-    /// ``useInImg2Img(_:)`` feeds its form whatever family the image came from.
+    /// ``useInImg2Img(_:as:)`` feeds its form whatever family the image came from.
     private var sourceImageAction: SourceImageAction? {
-        SourceImageInput.forActive(currentSelection.variant, fluxEditMode: params.isEditMode)
-            .map { input in SourceImageAction(input: input) { path in useInImg2Img(path) } }
+        SourceImageInput.forActive(currentSelection, fluxEditMode: params.isEditMode)
+            .map { input in SourceImageAction(input: input) { path in useInImg2Img(path, as: input) } }
     }
 
     /// The model button in the top header. Switching the model resets the
@@ -1038,13 +1038,15 @@ struct ContentView: View {
 
     /// Routes an image to the active family's source-image input: the img2img
     /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Flux edit mode,
-    /// Qwen-Image 2.1). Only ``sourceImageAction`` offers it, so a model with no
-    /// such input never gets here. Paths go through `settings.adoptSourceImage(_:)`
-    /// like the panels' own drop handlers.
-    private func useInImg2Img(_ path: String) {
+    /// FLUX 3, Qwen-Image 2.1). `input` is what ``sourceImageAction`` chose, so a
+    /// model with no such input never gets here. A reference turns Edit mode on, as
+    /// it does for Qwen. Paths go through `settings.adoptSourceImage(_:)` like the
+    /// panels' own drop handlers.
+    private func useInImg2Img(_ path: String, as input: SourceImageInput) {
         switch params.modelFamily {
         case .flux:
-            if params.isEditMode {
+            if input == .editReference {
+                params.isEditMode = true
                 EditImageListView.appendAdopted(
                     [path], to: &params.editImagePaths, maxCount: nil, adopt: settings.adoptSourceImage
                 )
