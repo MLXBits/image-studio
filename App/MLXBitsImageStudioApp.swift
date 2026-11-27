@@ -27,22 +27,11 @@ struct MLXBitsImageStudioApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var settings: AppSettings
     @State private var profiles: ProfileStore
-    @State private var store: JobStore
     @State private var gallery: GalleryStore
-    @State private var runner: FluxJobRunner
     @State private var driverController: MfluxDriverController
-    @State private var ideogram4Store: Ideogram4JobStore
-    @State private var ideogram4Runner: Ideogram4JobRunner
-    @State private var krea2Store: Krea2JobStore
-    @State private var krea2Runner: Krea2JobRunner
-    @State private var zimageStore: ZImageJobStore
-    @State private var zimageRunner: ZImageJobRunner
-    @State private var qwen21Store: Qwen21JobStore
-    @State private var qwen21Runner: Qwen21JobRunner
-    @State private var seedVR2Store: SeedVR2JobStore
+    @State private var families: FamilyRegistry
     /// Nil in a test run, which leaves the dock alone.
     @State private var dockBadge: DockBadge?
-    @State private var seedVR2Runner: SeedVR2JobRunner
     @State private var coordinator: GenerationCoordinator
     @State private var timing = TimingStore()
     @State private var loraLibrary = LoraLibraryStore()
@@ -62,19 +51,8 @@ struct MLXBitsImageStudioApp: App {
             profileContent
                 .environment(profiles)
                 .environment(settings)
-                .environment(store)
                 .environment(gallery)
-                .environment(runner)
-                .environment(ideogram4Store)
-                .environment(ideogram4Runner)
-                .environment(krea2Store)
-                .environment(krea2Runner)
-                .environment(zimageStore)
-                .environment(zimageRunner)
-                .environment(qwen21Store)
-                .environment(qwen21Runner)
-                .environment(seedVR2Store)
-                .environment(seedVR2Runner)
+                .environment(families)
                 .environment(coordinator)
                 .environment(timing)
                 .environment(driverController)
@@ -182,75 +160,36 @@ struct MLXBitsImageStudioApp: App {
         // The models folder and other folder settings stay reachable all
         // session (spec §4). didSet doesn't run for init's own assignments.
         settings.refreshSessionAccess()
-        let store = JobStore()
         let gallery = GalleryStore()
-        let ideogram4Store = Ideogram4JobStore()
-        let krea2Store = Krea2JobStore()
-        let zimageStore = ZImageJobStore()
-        let qwen21Store = Qwen21JobStore()
-        let seedVR2Store = SeedVR2JobStore()
         let coordinator = GenerationCoordinator()
+        // The registry builds every family's store and runner, and is handed to
+        // State here: a runner given as a property default and then mutated in
+        // init is not the instance SwiftUI installs, so it ran without the driver.
+        let driver = MfluxDriverController(settings: settings)
+        let families = FamilyRegistry(driver: driver)
         // Before anything else writes settings: the first launch after the
         // profiles update migrates settings.json as the old build left it.
         let profiles = ProfileStore(
             settings: settings,
-            jobStores: [store, ideogram4Store, krea2Store, zimageStore, qwen21Store, seedVR2Store],
+            jobStores: families.jobStores,
             gallery: gallery,
             coordinator: coordinator,
             paths: testHost ? .throwaway() : .live,
             defaults: testHost ? UserDefaults(suiteName: "MLXBitsImageStudio.TestHost") ?? .standard : .standard
         )
-        let driver = MfluxDriverController(settings: settings)
-        // One shared driver across families — it keeps a single warm model,
-        // so cross-family switches evict before loading (see coordinator gate).
-        // Each runner is built here and handed to State, like the stores: a
-        // runner given as a property default and then mutated in init is not
-        // the instance SwiftUI installs, so it ran without the driver.
-        let runner = FluxJobRunner()
-        let ideogram4Runner = Ideogram4JobRunner()
-        let krea2Runner = Krea2JobRunner()
-        let zimageRunner = ZImageJobRunner()
-        let qwen21Runner = Qwen21JobRunner()
-        let seedVR2Runner = SeedVR2JobRunner()
-        runner.driver = driver
-        ideogram4Runner.driver = driver
-        krea2Runner.driver = driver
-        zimageRunner.driver = driver
-        qwen21Runner.driver = driver
         _settings = State(initialValue: settings)
         _profiles = State(initialValue: profiles)
-        _store = State(initialValue: store)
         _gallery = State(initialValue: gallery)
-        _ideogram4Store = State(initialValue: ideogram4Store)
-        _krea2Store = State(initialValue: krea2Store)
-        _zimageStore = State(initialValue: zimageStore)
-        _qwen21Store = State(initialValue: qwen21Store)
-        _seedVR2Store = State(initialValue: seedVR2Store)
         _coordinator = State(initialValue: coordinator)
         _driverController = State(initialValue: driver)
-        _runner = State(initialValue: runner)
-        _ideogram4Runner = State(initialValue: ideogram4Runner)
-        _krea2Runner = State(initialValue: krea2Runner)
-        _zimageRunner = State(initialValue: zimageRunner)
-        _qwen21Runner = State(initialValue: qwen21Runner)
-        _seedVR2Runner = State(initialValue: seedVR2Runner)
-        let allRunners: [any JobOutcomeReporting] = [
-            runner, ideogram4Runner, krea2Runner, zimageRunner, qwen21Runner, seedVR2Runner,
-        ]
-        let support = Self.makeSupport(testHost: testHost, runners: allRunners)
+        _families = State(initialValue: families)
+        let support = Self.makeSupport(testHost: testHost, runners: families.reporters)
         // A test run finishes jobs in the background; it must not post notifications.
         if !testHost {
-            for reporter in allRunners {
+            for reporter in families.reporters {
                 reporter.onJobFinished = { BackgroundSignals.jobFinished($0) }
             }
-            _dockBadge = State(initialValue: DockBadge {
-                BackgroundSignals.imagesLeft(pending: store.pendingJobs, running: runner.activeJob)
-                    + BackgroundSignals.imagesLeft(pending: ideogram4Store.pendingJobs, running: ideogram4Runner.activeJob)
-                    + BackgroundSignals.imagesLeft(pending: krea2Store.pendingJobs, running: krea2Runner.activeJob)
-                    + BackgroundSignals.imagesLeft(pending: zimageStore.pendingJobs, running: zimageRunner.activeJob)
-                    + BackgroundSignals.imagesLeft(pending: qwen21Store.pendingJobs, running: qwen21Runner.activeJob)
-                    + BackgroundSignals.imagesLeft(pending: seedVR2Store.pendingJobs, running: seedVR2Runner.activeJob)
-            })
+            _dockBadge = State(initialValue: DockBadge { families.imagesLeft })
         }
         _support = State(initialValue: support)
         _tipJar = State(initialValue: Self.makeTipJar(support: support, testHost: testHost))

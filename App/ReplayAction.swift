@@ -13,11 +13,7 @@ enum ReplayMode {
 /// Generate press is the caller's, and only when this returns true. Holds
 /// references only: ``ContentView`` builds one from its state as needed.
 struct ReplayAction {
-    let params: ParamsPanelState
-    let ideogramParams: Ideogram4ParamsPanelState
-    let krea2Params: Krea2ParamsPanelState
-    let zimageParams: ZImageParamsPanelState
-    let qwen21Params: Qwen21ParamsPanelState
+    let forms: FamilyForms
     /// ``ContentView``'s guard on its two picker handlers (``ModelChangeObserver``).
     let suppressedModelObservers: Binding<Set<ModelChangeObserver>>
 
@@ -31,19 +27,19 @@ struct ReplayAction {
         case let .flux(meta):
             // Flux's form holds the picker fields, so its replay moves the picker itself.
             armGuard(model: meta.model, customBase: meta.customBaseModel)
-            params.apply(metadata: meta, newSeed: newSeed)
+            forms.flux.apply(metadata: meta, newSeed: newSeed)
         case let .ideogram4(meta):
             selectFamily(.ideogram4, customRepo: meta.customModelRepo)
-            ideogramParams.apply(metadata: meta, newSeed: newSeed)
+            forms.ideogram4.apply(metadata: meta, newSeed: newSeed)
         case let .krea2(meta):
             selectFamily(.krea2, customRepo: meta.customModelRepo)
-            krea2Params.apply(metadata: meta, newSeed: newSeed)
+            forms.krea2.apply(metadata: meta, newSeed: newSeed)
         case let .zimage(meta):
             selectFamily(meta.resolvedVariant, customRepo: meta.customModelRepo)
-            zimageParams.apply(metadata: meta, newSeed: newSeed)
+            forms.zimage.apply(metadata: meta, newSeed: newSeed)
         case let .qwen21(meta):
             selectFamily(.qwen21Turbo, customRepo: meta.customModelRepo)
-            qwen21Params.apply(metadata: meta, newSeed: newSeed)
+            forms.qwen21.apply(metadata: meta, newSeed: newSeed)
         case .seedVR2:
             return false // `replayTarget` is never an upscale.
         }
@@ -57,21 +53,21 @@ struct ReplayAction {
         let repo = customRepo ?? ""
         armGuard(
             model: repo.isEmpty ? target : .custom,
-            customBase: repo.isEmpty ? params.customBaseModel : target
+            customBase: repo.isEmpty ? forms.flux.customBaseModel : target
         )
         if repo.isEmpty {
-            params.model = target
+            forms.flux.model = target
         } else {
-            params.customModelRepo = repo
-            params.customBaseModel = target
-            params.model = .custom
+            forms.flux.customModelRepo = repo
+            forms.flux.customBaseModel = target
+            forms.flux.model = .custom
         }
     }
 
     /// Arms the picker handlers that moving to `model`/`customBase` will fire.
     private func armGuard(model: FluxModelVariant, customBase: FluxModelVariant) {
         suppressedModelObservers.wrappedValue = ModelChangeObserver.firing(
-            from: (params.model, params.customBaseModel),
+            from: (forms.flux.model, forms.flux.customBaseModel),
             to: (model, customBase)
         )
     }

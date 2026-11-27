@@ -8,6 +8,10 @@ protocol AnyFamilyQueue {
     var isRunning: Bool { get }
     var hasWaitingJobs: Bool { get }
     var activeJobID: UUID? { get }
+    /// The running job, or nil when none runs.
+    var activeJob: (any GeneratedJob)? { get }
+    /// The jobs waiting behind the running one.
+    var pendingCount: Int { get }
     /// The preview of the running job, or nil when none runs.
     var activePreview: PreviewState? { get }
     var history: JobHistoryFile { get }
@@ -42,6 +46,14 @@ struct FamilyQueue<Spec: JobRunnerSpec>: AnyFamilyQueue
 
     var activeJobID: UUID? {
         runner.activeJob?.id
+    }
+
+    var activeJob: (any GeneratedJob)? {
+        runner.activeJob
+    }
+
+    var pendingCount: Int {
+        store.pendingJobs.count
     }
 
     var activePreview: PreviewState? {

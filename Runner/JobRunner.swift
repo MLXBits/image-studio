@@ -225,7 +225,7 @@ final class JobRunner<Spec: JobRunnerSpec> {
     /// changes, and selects the run's first image.
     private(set) var landing: Landing?
     /// Warm-model driver for this family, or nil to always use the CLI
-    /// subprocess. Set at app startup (Flux only for now).
+    /// subprocess. ``FamilyRegistry`` sets it at startup for every generative family.
     var driver: MfluxDriverController?
     /// Called with the images each completed job saved.
     var onImagesLanded: ((Int) -> Void)?

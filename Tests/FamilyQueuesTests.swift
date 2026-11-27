@@ -10,6 +10,8 @@ private final class FakeQueue: AnyFamilyQueue {
     var hasWaitingJobs = false
     var activeJobID: UUID?
     var activePreview: PreviewState?
+    var activeJob: (any GeneratedJob)?
+    var pendingCount = 0
     var landing: Landing?
     let history = JobHistoryFile(fileName: "fake-jobs.json", directory: nil)
     /// The jobs ``restart(_:)`` claims as this queue's own.
@@ -150,6 +152,19 @@ struct FamilyQueuesTests {
         ideogram4.activeJobID = id
 
         #expect(queues([flux, ideogram4]).activeJobID == id)
+    }
+
+    /// The toolbar's queue label shows the one queue that runs.
+    @Test func theRunningQueueIsTheOneThatRuns() {
+        let flux = FakeQueue(.flux)
+        let zimage = FakeQueue(.zimage)
+        #expect(queues([flux, zimage]).runningQueue == nil)
+
+        zimage.isRunning = true
+        zimage.pendingCount = 3
+
+        #expect(queues([flux, zimage]).runningQueue?.family == .zimage)
+        #expect(queues([flux, zimage]).runningQueue?.pendingCount == 3)
     }
 
     @Test func landingsFollowQueueOrder() {

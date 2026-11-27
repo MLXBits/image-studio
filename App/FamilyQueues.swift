@@ -1,7 +1,7 @@
 import Foundation
 
 /// Every family's queue, and the gate between them. Holds references only:
-/// ``ContentView`` builds one from its environment as needed.
+/// ``ContentView`` builds one from ``FamilyRegistry/all`` as needed.
 struct FamilyQueues {
     /// One queue per family, in ``GenerationCoordinator/runOrder``.
     let all: [any AnyFamilyQueue]
@@ -22,6 +22,11 @@ struct FamilyQueues {
 
     var isAnyRunning: Bool {
         all.contains { $0.isRunning }
+    }
+
+    /// The queue that runs now, or nil when none does. The gate lets only one run.
+    var runningQueue: (any AnyFamilyQueue)? {
+        all.first { $0.isRunning }
     }
 
     /// Every family's queue history file, in run order.

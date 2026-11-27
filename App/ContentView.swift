@@ -28,19 +28,8 @@ struct ContentView: View {
 
     @Environment(AppSettings.self) private var settings
     @Environment(ProfileStore.self) private var profiles
-    @Environment(JobStore.self) private var store
-    @Environment(FluxJobRunner.self) private var runner
+    @Environment(FamilyRegistry.self) private var families
     @Environment(GalleryStore.self) private var gallery
-    @Environment(Ideogram4JobStore.self) private var ideogram4Store
-    @Environment(Ideogram4JobRunner.self) private var ideogram4Runner
-    @Environment(Krea2JobStore.self) private var krea2Store
-    @Environment(Krea2JobRunner.self) private var krea2Runner
-    @Environment(ZImageJobStore.self) private var zimageStore
-    @Environment(ZImageJobRunner.self) private var zimageRunner
-    @Environment(Qwen21JobStore.self) private var qwen21Store
-    @Environment(Qwen21JobRunner.self) private var qwen21Runner
-    @Environment(SeedVR2JobStore.self) private var seedVR2Store
-    @Environment(SeedVR2JobRunner.self) private var seedVR2Runner
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
     @Environment(MfluxDriverController.self) private var driverController
@@ -64,11 +53,7 @@ struct ContentView: View {
     @AppStorage("firstRun.modelManagerShown") private var modelManagerShown = false
     /// Set when the user picks "Upscale…" on an image — presents the SeedVR2 sheet.
     @State private var upscaleTarget: UpscaleTarget?
-    @State private var params = ParamsPanelState()
-    @State private var ideogramParams = Ideogram4ParamsPanelState()
-    @State private var krea2Params = Krea2ParamsPanelState()
-    @State private var zimageParams = ZImageParamsPanelState()
-    @State private var qwen21Params = Qwen21ParamsPanelState()
+    @State private var forms = FamilyForms()
     /// Model-picker handlers whose next reset to defaults must be skipped,
     /// because a programmatic change has just written the form itself. That
     /// change is either the launch-time restore of the last-used model or a
@@ -95,53 +80,40 @@ struct ContentView: View {
     /// being clipped when the window (or a wide gallery) over-constrains the layout.
     @State private var contentWidth: CGFloat = 0
 
-    private var fluxQueue: FamilyQueue<FluxRunnerSpec> {
-        FamilyQueue(store: store, runner: runner)
+    private var params: ParamsPanelState {
+        forms.flux
     }
 
-    private var ideogram4Queue: FamilyQueue<Ideogram4RunnerSpec> {
-        FamilyQueue(store: ideogram4Store, runner: ideogram4Runner)
+    private var ideogramParams: Ideogram4ParamsPanelState {
+        forms.ideogram4
     }
 
-    private var krea2Queue: FamilyQueue<Krea2RunnerSpec> {
-        FamilyQueue(store: krea2Store, runner: krea2Runner)
+    private var krea2Params: Krea2ParamsPanelState {
+        forms.krea2
     }
 
-    private var zimageQueue: FamilyQueue<ZImageRunnerSpec> {
-        FamilyQueue(store: zimageStore, runner: zimageRunner)
+    private var zimageParams: ZImageParamsPanelState {
+        forms.zimage
     }
 
-    private var qwen21Queue: FamilyQueue<Qwen21RunnerSpec> {
-        FamilyQueue(store: qwen21Store, runner: qwen21Runner)
-    }
-
-    private var seedVR2Queue: FamilyQueue<SeedVR2RunnerSpec> {
-        FamilyQueue(store: seedVR2Store, runner: seedVR2Runner)
+    private var qwen21Params: Qwen21ParamsPanelState {
+        forms.qwen21
     }
 
     /// Every family's queue, for queueing, stopping and the hand-off.
     private var queues: FamilyQueues {
         FamilyQueues(
-            all: [fluxQueue, ideogram4Queue, krea2Queue, zimageQueue, qwen21Queue, seedVR2Queue],
+            all: families.all,
             settings: settings, coordinator: coordinator, timing: timing, driverController: driverController
         )
     }
 
     private var generateAction: GenerateAction {
-        GenerateAction(
-            settings: settings, params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
-            zimageParams: zimageParams, qwen21Params: qwen21Params, queues: queues,
-            fluxQueue: fluxQueue, ideogram4Queue: ideogram4Queue, krea2Queue: krea2Queue,
-            zimageQueue: zimageQueue, qwen21Queue: qwen21Queue
-        )
+        GenerateAction(settings: settings, forms: forms, queues: queues, families: families)
     }
 
     private var replayAction: ReplayAction {
-        ReplayAction(
-            params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
-            zimageParams: zimageParams, qwen21Params: qwen21Params,
-            suppressedModelObservers: $suppressedModelObservers
-        )
+        ReplayAction(forms: forms, suppressedModelObservers: $suppressedModelObservers)
     }
 
     /// What the menu bar acts on while this window is in front.
@@ -750,7 +722,7 @@ struct ContentView: View {
     /// is never the picker-selected `modelFamily`, this is the only way its jobs
     /// surface in the drawer.
     private var showSeedVR2Queue: Bool {
-        if seedVR2Store.isRunning {
+        if families.seedVR2.isRunning {
             return true
         }
         if case .activeSeedVR2Job = previewState {
@@ -769,36 +741,22 @@ struct ContentView: View {
                     // SeedVR2 isn't a picker-selected family, so key off the running
                     // upscale / previewed upscale instead of `params.modelFamily`;
                     // otherwise upscale jobs never appear in the queue drawer.
-                    FamilyQueueDrawerView<SeedVR2RunnerSpec>(
-                        selectedJobWithoutDuplicate: previewSelection(SeedVR2RunnerSpec.self)
+                    FamilyQueueDrawerView(
+                        families.seedVR2, selectedJobWithoutDuplicate: previewSelection(SeedVR2RunnerSpec.self)
                     )
-                    .environment(seedVR2Store)
-                    .environment(seedVR2Runner)
                 } else {
                     switch params.modelFamily {
                     case .ideogram4:
-                        FamilyQueueDrawerView<Ideogram4RunnerSpec>(
-                            selectedJob: previewSelection(Ideogram4RunnerSpec.self)
-                        )
-                        .environment(ideogram4Store)
-                        .environment(ideogram4Runner)
+                        FamilyQueueDrawerView(families.ideogram4, selectedJob: previewSelection(Ideogram4RunnerSpec.self))
                     case .krea2:
-                        FamilyQueueDrawerView<Krea2RunnerSpec>(selectedJob: previewSelection(Krea2RunnerSpec.self))
-                            .environment(krea2Store)
-                            .environment(krea2Runner)
+                        FamilyQueueDrawerView(families.krea2, selectedJob: previewSelection(Krea2RunnerSpec.self))
                     case .qwen21:
-                        FamilyQueueDrawerView<Qwen21RunnerSpec>(selectedJob: previewSelection(Qwen21RunnerSpec.self))
-                            .environment(qwen21Store)
-                            .environment(qwen21Runner)
+                        FamilyQueueDrawerView(families.qwen21, selectedJob: previewSelection(Qwen21RunnerSpec.self))
                     case .zimage:
-                        FamilyQueueDrawerView<ZImageRunnerSpec>(selectedJob: previewSelection(ZImageRunnerSpec.self))
-                            .environment(zimageStore)
-                            .environment(zimageRunner)
+                        FamilyQueueDrawerView(families.zimage, selectedJob: previewSelection(ZImageRunnerSpec.self))
                     case .flux, .seedvr2:
                         // SeedVR2 is never the picker family; it is handled above.
-                        FamilyQueueDrawerView<FluxRunnerSpec>(selectedJob: previewSelection(FluxRunnerSpec.self))
-                            .environment(store)
-                            .environment(runner)
+                        FamilyQueueDrawerView(families.flux, selectedJob: previewSelection(FluxRunnerSpec.self))
                     }
                 }
             }
@@ -960,20 +918,10 @@ struct ContentView: View {
             }
             .hidden()
 
-            if store.isRunning {
-                queueProgress(runner.activeJob, pending: store.pendingJobs.count)
-            } else if ideogram4Store.isRunning {
-                queueProgress(ideogram4Runner.activeJob, pending: ideogram4Store.pendingJobs.count)
-            } else if krea2Store.isRunning {
-                queueProgress(krea2Runner.activeJob, pending: krea2Store.pendingJobs.count)
-            } else if zimageStore.isRunning {
-                queueProgress(zimageRunner.activeJob, pending: zimageStore.pendingJobs.count)
-            } else if qwen21Store.isRunning {
-                queueProgress(qwen21Runner.activeJob, pending: qwen21Store.pendingJobs.count)
-            } else if seedVR2Store.isRunning {
-                // SeedVR2 is single-output (no batch), so just show the count of
-                // upscales still queued behind the running one.
-                queueProgress(nil as SeedVR2Job?, pending: seedVR2Store.pendingJobs.count)
+            // An upscale is single-output (no batch), so it shows the count of
+            // upscales still queued behind the running one.
+            if let running = queues.runningQueue {
+                queueProgress(running.activeJob, pending: running.pendingCount)
             } else {
                 Label("Queue", systemImage: "list.bullet")
             }
@@ -1008,7 +956,7 @@ struct ContentView: View {
     }
 
     /// "3/10 images" while a batch job runs, else how many jobs are left including the running one.
-    private func queueProgress(_ job: (some GeneratedJob)?, pending: Int) -> some View {
+    private func queueProgress(_ job: (any GeneratedJob)?, pending: Int) -> some View {
         HStack(spacing: 6) {
             ProgressView().controlSize(.small)
             Group {
@@ -1236,12 +1184,12 @@ struct ContentView: View {
             .overlay(alignment: .bottom) { Divider() }
 
             BBoxEditorView(
-                elements: $ideogramParams.caption.compositionalDeconstruction.elements,
+                elements: Bindable(ideogramParams).caption.compositionalDeconstruction.elements,
                 outputWidth: ctx.width,
                 outputHeight: ctx.height,
                 isExpanded: true,
                 backgroundImage: ctx.image,
-                cameraStyle: $ideogramParams.caption.styleDescription
+                cameraStyle: Bindable(ideogramParams).caption.styleDescription
             )
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -1277,7 +1225,7 @@ struct ContentView: View {
             // (holding both risks OOM). When not idle, the hand-off ejects it.
             driverController.eject(reason: "model_switch")
         }
-        if queues.enqueue(jobs, on: seedVR2Queue), let first = jobs.first {
+        if queues.enqueue(jobs, on: families.seedVR2), let first = jobs.first {
             selectedGalleryItem = nil
             previewState = SeedVR2RunnerSpec.preview(first)
         }

@@ -1,7 +1,7 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-27):** PRs 1–4 (#128–#131) are merged. PR 4a (FLUX 3 always
-> offers an edit reference) is open, and PR 4's in-app check waits on it. A second
+> **Status (2026-11-27):** PRs 1–4 (#128–#131) and PR 4a (#132) are merged, and their
+> in-app checks pass. PR 5 (the family registry) is in review. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -329,7 +329,8 @@ a separate object, built once in `App.init`:
 
 - It holds the six typed `FamilyQueue<Spec>` values. A typed lookup from a mixed list
   would need a cast, so typed fields stay, and they live in one place.
-- It holds the five params states, which settles deferred minor 2.
+- It holds the five params states, which settles deferred minor 2. (Amended in
+  PR 5: the forms went into a separate `FamilyForms`. See the ruling there.)
 - `GenerateAction`, `ReplayAction`, the queue drawers and the `JobOutcomeReporting`
   list read from the registry instead of from separate environment entries.
 - `FamilyQueues` is still built from `registry.all`, so `FamilyQueuesTests` keeps its
@@ -344,7 +345,7 @@ all five states already have: `seed`, `board`, `quantize`, `loras`, readiness an
 `applyDefaults`. `makeJob`, img2img and the prompt field stay on the concrete types.
 Readiness is not uniform yet: Flux's check is inline in `ContentView`, and the others
 have both `canGenerate` and `isReadyToGenerate(settings:)`. So PR 6 first gives it one
-name. It comes after C1 and goes through a `form(for:)` accessor on the registry.
+name. It comes after C1 and goes through a `form(for:)` accessor on `FamilyForms`.
 
 **D4 stands against review C3.** For the reason, see the table. It is recorded here so
 that the second rejection is deliberate.
@@ -477,7 +478,7 @@ The rule lives with the active model, not on `AnySidecar`.
   - No test pins that `ContentView` passes `currentSelection.variant` (a custom
     checkpoint's loads-as variant) and not `params.model`. Done in PR 4a: `forActive`
     takes the `ModelSelection`, and a test covers custom checkpoints.
-- [ ] In-app. The grid shows only the active family's images (an upscale shows with
+- [x] In-app (2026-11-27). The grid shows only the active family's images (an upscale shows with
       its source's family), so check each family in turn. Right-click an image and an
       upscale, in the grid and in the detail view:
       1. Krea 2 active: "Use as Img2Img Input" puts the image into Krea 2's img2img input.
@@ -493,21 +494,37 @@ The rule lives with the active model, not on `AnySidecar`.
 
 ### PR 5: Family registry at the injection edge (review C1, C6 part)
 
-- [ ] A registry built once in `App.init`. It holds the six typed queues and the
-      five params states, and it is injected as one environment entry.
-- [ ] `GenerateAction`, `ReplayAction`, the queue drawers and the outcome-reporter
-      list read from it. `FamilyQueues` is built from `registry.all`.
-- [ ] `AnyFamilyQueue` gains `activeJob` and `pendingCount`, and `queueStatusLabel`
-      becomes a loop.
-- [ ] AGENTS.md recipe: step 9's `ContentView`, `GenerateAction`, `ReplayAction` and
-      `MLXBitsImageStudioApp` lines.
+- [x] `App/FamilyRegistry.swift`: built once in `App.init` and injected as one
+      environment entry, in place of 12 store and runner entries. It holds the six
+      typed queues. Its `members` list feeds `all`, the profile store's job stores,
+      the outcome reporters, the dock badge and the warm driver's attachment.
+- [x] Ruling: the five params states are not in the registry. They are one
+      `FamilyForms` struct in ContentView's `@State`. ContentView is keyed by the
+      profile, so a switch rebuilds the forms from the new profile, while the queues
+      outlive it. App-level forms would carry one profile's form into the next. This
+      still settles deferred minor 2: `GenerateAction` and `ReplayAction` each take
+      `forms`, not five states.
+- [x] `GenerateAction`, `ReplayAction` and the queue drawers read the registry. The
+      drawer takes its `FamilyQueue` as a parameter, not from the environment.
+      `FamilyQueues` is built from `families.all`.
+- [x] `AnyFamilyQueue` gains `activeJob` and `pendingCount`, and `queueStatusLabel`
+      becomes one `FamilyQueues.runningQueue` lookup.
+- [x] `PreviewPaneView`'s unused `FluxJobRunner` environment read is gone.
+- [x] Tests: `FamilyRegistryTests` (run order, the shared driver, job stores,
+      reporters, images left) and `runningQueue` in `FamilyQueuesTests`. A mutant
+      confirmed each one.
+- [x] AGENTS.md recipe step 9: the registry, `FamilyForms`, and no edit to
+      `MLXBitsImageStudioApp`.
+- [ ] In-app: generate in two families and check the queue drawer, the toolbar's
+      queue label, the dock badge, Stop and a retry. Switch profile while idle and
+      confirm each family's form and queue come from the new profile.
 
 ### PR 6: Narrow params protocol (review C2, D9)
 
 - [ ] A protocol with `seed`, `board`, `quantize`, `loras`, one readiness member and
       `applyDefaults`. All five params states conform.
 - [ ] `canGenerate`, `seedIsRandom`, `seedIsFixed`, `setActiveBoard` and the fixed-seed
-      clear go through `registry.form(for:)`.
+      clear go through `forms.form(for:)`.
 - [ ] Then, optionally, hoist `GenerateAction`'s shared generate ceremony (C4d).
 
 ### Later (optional): Descriptor registry
