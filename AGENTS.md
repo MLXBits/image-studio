@@ -158,15 +158,19 @@ Adding Z-Image touched 24 files. In dependency order:
 7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
    `ModelDefaultsView.swift`.
-9. Wire the surfaces that switch on family: `App/ContentView.swift` (a
-   `FamilyQueue` property, added to `queues.all` in run order: the hand-off,
-   Stop, retry and the gallery's landing handler loop over that list, so
-   `App/FamilyQueues.swift` needs no edit; a `case` in `queueSheet`; the
-   params state passed to `replayAction`), `App/GenerateAction.swift` (the
-   family's typed `FamilyQueue` and its Generate; a prompt-field family fans out
-   through `PromptFanOut`), `App/ReplayAction.swift` (the family's params state
-   and its `case`: Remix and Apply Settings from every surface go through it),
-   `App/MLXBitsImageStudioApp.swift`, `Views/ParamsPanel/ModelPickerView.swift`,
+9. Wire the surfaces that switch on family: `App/FamilyRegistry.swift` (a
+   `FamilyQueue` field, built in `init(driver:)`, and its entry in `members` in
+   run order: the hand-off, Stop, retry, the gallery's landing handler, profile
+   switches, the dock badge and job-finish reporting all loop over that list, so
+   `App/FamilyQueues.swift` and `App/MLXBitsImageStudioApp.swift` need no edit),
+   `App/FamilyForms.swift` (the family's params state), `App/ContentView.swift`
+   (a `case` in `queueSheet`, plus hand-written lines the compiler does not
+   check: its accessor over `forms`, `img2imgLockedPaths`, the `ParamsPanelView`
+   init in `paramsPane`, `unifiedQuantize`, the `applyDefaults` calls in
+   `onAppear` and the LoRA-library `onChange`), `App/GenerateAction.swift` (its Generate, queued
+   on `families.<family>`; a prompt-field family fans out through
+   `PromptFanOut`), `App/ReplayAction.swift` (its `case`: Remix and Apply
+   Settings from every surface go through it), `Views/ParamsPanel/ModelPickerView.swift`,
    `Views/ParamsPanel/ParamsPanelView.swift`, `Views/PreviewPane/PreviewPaneView.swift`
    (a `PreviewState` case and its `jobPreview` branch, which replays the job's
    sidecar through `onReplay`), and its `case` in `Models/SourceImageInput.swift`

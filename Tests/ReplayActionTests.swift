@@ -12,18 +12,33 @@ struct ReplayActionTests {
         var observers: Set<ModelChangeObserver> = []
     }
 
-    private let params = ParamsPanelState()
-    private let ideogramParams = Ideogram4ParamsPanelState()
-    private let krea2Params = Krea2ParamsPanelState()
-    private let zimageParams = ZImageParamsPanelState()
-    private let qwen21Params = Qwen21ParamsPanelState()
+    private let forms = FamilyForms()
     private let armed = Armed()
+
+    private var params: ParamsPanelState {
+        forms.flux
+    }
+
+    private var ideogramParams: Ideogram4ParamsPanelState {
+        forms.ideogram4
+    }
+
+    private var krea2Params: Krea2ParamsPanelState {
+        forms.krea2
+    }
+
+    private var zimageParams: ZImageParamsPanelState {
+        forms.zimage
+    }
+
+    private var qwen21Params: Qwen21ParamsPanelState {
+        forms.qwen21
+    }
 
     private var replay: ReplayAction {
         let armed = armed
         return ReplayAction(
-            params: params, ideogramParams: ideogramParams, krea2Params: krea2Params,
-            zimageParams: zimageParams, qwen21Params: qwen21Params,
+            forms: forms,
             suppressedModelObservers: Binding(get: { armed.observers }, set: { armed.observers = $0 })
         )
     }

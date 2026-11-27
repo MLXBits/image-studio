@@ -27,7 +27,6 @@ enum PreviewState {
 }
 
 struct PreviewPaneView: View {
-    @Environment(FluxJobRunner.self) private var runner
     @Environment(\.openSettings) private var openSettings
 
     let state: PreviewState

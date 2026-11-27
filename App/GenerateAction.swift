@@ -5,26 +5,18 @@ import Foundation
 /// ``ContentView`` builds one from its state as needed.
 struct GenerateAction {
     let settings: AppSettings
-    let params: ParamsPanelState
-    let ideogramParams: Ideogram4ParamsPanelState
-    let krea2Params: Krea2ParamsPanelState
-    let zimageParams: ZImageParamsPanelState
-    let qwen21Params: Qwen21ParamsPanelState
+    let forms: FamilyForms
     let queues: FamilyQueues
-    let fluxQueue: FamilyQueue<FluxRunnerSpec>
-    let ideogram4Queue: FamilyQueue<Ideogram4RunnerSpec>
-    let krea2Queue: FamilyQueue<Krea2RunnerSpec>
-    let zimageQueue: FamilyQueue<ZImageRunnerSpec>
-    let qwen21Queue: FamilyQueue<Qwen21RunnerSpec>
+    let families: FamilyRegistry
 
     /// The active family's prompt field, for ``PromptBatchSplitter``. Nil for
     /// Ideogram 4, whose caption is a structured document with no per-prompt path.
     private var batchablePromptField: String? {
-        switch params.modelFamily {
-        case .flux: params.prompt
-        case .krea2: krea2Params.prompt
-        case .zimage: zimageParams.prompt
-        case .qwen21: qwen21Params.prompt
+        switch forms.flux.modelFamily {
+        case .flux: forms.flux.prompt
+        case .krea2: forms.krea2.prompt
+        case .zimage: forms.zimage.prompt
+        case .qwen21: forms.qwen21.prompt
         case .ideogram4, .seedvr2: nil
         }
     }
@@ -32,11 +24,11 @@ struct GenerateAction {
     /// Keeps the prompts typed but not yet generated with the current profile.
     /// Generating saves these too; this covers leaving the profile first.
     func saveContentDrafts() {
-        settings.lastPrompt = params.prompt
-        settings.lastLoras = params.loras
-        settings.lastKrea2 = krea2Params.snapshot()
-        settings.lastZImage = zimageParams.snapshot()
-        settings.lastQwen21 = qwen21Params.snapshot()
+        settings.lastPrompt = forms.flux.prompt
+        settings.lastLoras = forms.flux.loras
+        settings.lastKrea2 = forms.krea2.snapshot()
+        settings.lastZImage = forms.zimage.snapshot()
+        settings.lastQwen21 = forms.qwen21.snapshot()
     }
 
     /// Queues the press's jobs. `scenarioPrompts`, when supplied, is a batch of
@@ -52,7 +44,7 @@ struct GenerateAction {
         if scenarioPrompts == nil, let field = batchablePromptField {
             let prompts = PromptBatchSplitter.split(field)
             if prompts.count > 1 {
-                if params.modelFamily == .flux {
+                if forms.flux.modelFamily == .flux {
                     settings.lastPrompt = field
                 }
                 settings.recordPromptUse(field)
@@ -63,12 +55,12 @@ struct GenerateAction {
         // Remember the custom checkpoint and the family it loads as, so the
         // selection is intact on relaunch. Each family below sets `lastModel`;
         // these two are what make `.custom` mean something again.
-        if params.model == .custom {
-            settings.lastCustomModelRepo = params.customModelRepo
-            settings.lastCustomBaseModel = params.customBaseModel
+        if forms.flux.model == .custom {
+            settings.lastCustomModelRepo = forms.flux.customModelRepo
+            settings.lastCustomBaseModel = forms.flux.customBaseModel
         }
 
-        switch params.modelFamily {
+        switch forms.flux.modelFamily {
         case .flux: return generateFlux(count: count, scenarioPrompts: scenarioPrompts)
         case .ideogram4: return generateIdeogram4(count: count)
         case .krea2: return generateKrea2(count: count, scenarioPrompts: scenarioPrompts)
@@ -82,131 +74,131 @@ struct GenerateAction {
 
     private func generateFlux(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
         // A scenario batch brings its own prompts, so an empty prompt field is fine.
-        guard scenarioPrompts?.isEmpty == false || !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-              !params.isEditMode || !params.editImagePaths.isEmpty else { return nil }
+        guard scenarioPrompts?.isEmpty == false || !forms.flux.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
+              !forms.flux.isEditMode || !forms.flux.editImagePaths.isEmpty else { return nil }
         if scenarioPrompts == nil {
             // Skip for scenario batches: N rolled prompts would swamp the history,
             // and each image's sidecar already records the prompt it used.
-            settings.lastPrompt = params.prompt
-            settings.recordPromptUse(params.prompt)
+            settings.lastPrompt = forms.flux.prompt
+            settings.recordPromptUse(forms.flux.prompt)
         }
-        settings.lastWidth = params.width
-        settings.lastHeight = params.height
-        settings.lastLoras = params.loras
-        settings.lastModel = params.model
-        settings.lastQuantize = params.quantize
+        settings.lastWidth = forms.flux.width
+        settings.lastHeight = forms.flux.height
+        settings.lastLoras = forms.flux.loras
+        settings.lastModel = forms.flux.model
+        settings.lastQuantize = forms.flux.quantize
         // Low RAM lives in Settings -> Models; read it now so a toggle applies to
         // this run instead of only after a relaunch.
-        params.applyMemoryDefaults(from: settings)
-        let constraints: DimensionConstraints = params.model.isFlux ? .flux2 : .legacy
-        let jobs = PromptFanOut.jobs(prompt: params.prompt, scenarioPrompts: scenarioPrompts, count: count) {
-            params.templatedPrompts(templates: settings.activeTemplates, overriding: $0)
+        forms.flux.applyMemoryDefaults(from: settings)
+        let constraints: DimensionConstraints = forms.flux.model.isFlux ? .flux2 : .legacy
+        let jobs = PromptFanOut.jobs(prompt: forms.flux.prompt, scenarioPrompts: scenarioPrompts, count: count) {
+            forms.flux.templatedPrompts(templates: settings.activeTemplates, overriding: $0)
         }.map {
-            params.makeJob(
+            forms.flux.makeJob(
                 count: $0.count,
                 resolvedPrompt: ($0.positive, $0.negative),
-                size: AspectDirective.size(ratio: $0.ratio, width: params.width, height: params.height, constraints: constraints)
+                size: AspectDirective.size(ratio: $0.ratio, width: forms.flux.width, height: forms.flux.height, constraints: constraints)
             )
         }
-        return queue(jobs, on: fluxQueue)
+        return queue(jobs, on: families.flux)
     }
 
     private func generateIdeogram4(count: Int) -> PreviewState? {
-        guard ideogramParams.isReadyToGenerate(settings: settings) else { return nil }
+        guard forms.ideogram4.isReadyToGenerate(settings: settings) else { return nil }
         // Remember the picker selection across sessions — `custom` must survive
         // as itself, not be flattened to the family it happens to load as.
-        settings.lastModel = params.model == .custom ? .custom : .ideogram4
-        settings.lastIdeogramPreset = ideogramParams.preset
-        settings.lastIdeogramWidth = ideogramParams.width
-        settings.lastIdeogramHeight = ideogramParams.height
-        settings.lastIdeogramQuantize = ideogramParams.quantize
-        settings.lastIdeogramCaption = ideogramParams.caption
-        settings.lastIdeogramPlainPrompt = ideogramParams.plainPrompt
-        settings.lastIdeogramUsePlainPrompt = ideogramParams.usePlainPrompt
-        settings.lastIdeogramSeed = ideogramParams.seed
+        settings.lastModel = forms.flux.model == .custom ? .custom : .ideogram4
+        settings.lastIdeogramPreset = forms.ideogram4.preset
+        settings.lastIdeogramWidth = forms.ideogram4.width
+        settings.lastIdeogramHeight = forms.ideogram4.height
+        settings.lastIdeogramQuantize = forms.ideogram4.quantize
+        settings.lastIdeogramCaption = forms.ideogram4.caption
+        settings.lastIdeogramPlainPrompt = forms.ideogram4.plainPrompt
+        settings.lastIdeogramUsePlainPrompt = forms.ideogram4.usePlainPrompt
+        settings.lastIdeogramSeed = forms.ideogram4.seed
         // Low-RAM and strict-validation live in Settings → Models → Ideogram;
         // pull the current values so live edits apply to this run.
-        ideogramParams.lowRam = settings.ideogram4LowRam
-        ideogramParams.strictValidation = settings.ideogram4StrictValidation
-        let job = ideogramParams.makeJob(count: count, customModelRepo: params.effectiveCustomRepo)
-        return queue([job], on: ideogram4Queue)
+        forms.ideogram4.lowRam = settings.ideogram4LowRam
+        forms.ideogram4.strictValidation = settings.ideogram4StrictValidation
+        let job = forms.ideogram4.makeJob(count: count, customModelRepo: forms.flux.effectiveCustomRepo)
+        return queue([job], on: families.ideogram4)
     }
 
     private func generateKrea2(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
-        guard krea2Params.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
+        guard forms.krea2.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the family it happens to load as.
-        settings.lastModel = params.model == .custom ? .custom : .krea2
-        settings.lastKrea2 = krea2Params.snapshot() // remember the form across launches
+        settings.lastModel = forms.flux.model == .custom ? .custom : .krea2
+        settings.lastKrea2 = forms.krea2.snapshot() // remember the form across launches
         // Low-RAM lives in Settings → Models → Krea 2; pull it so live edits apply to this run.
-        krea2Params.lowRam = settings.resolvedDefaults(for: .krea2).lowRam
+        forms.krea2.lowRam = settings.resolvedDefaults(for: .krea2).lowRam
         if scenarioPrompts == nil {
-            settings.recordPromptUse(krea2Params.prompt)
+            settings.recordPromptUse(forms.krea2.prompt)
         }
-        let jobs = PromptFanOut.jobs(prompt: krea2Params.prompt, scenarioPrompts: scenarioPrompts, count: count) {
-            ($0, krea2Params.negativePrompt)
+        let jobs = PromptFanOut.jobs(prompt: forms.krea2.prompt, scenarioPrompts: scenarioPrompts, count: count) {
+            ($0, forms.krea2.negativePrompt)
         }.map {
-            krea2Params.makeJob(
+            forms.krea2.makeJob(
                 count: $0.count,
-                customModelRepo: params.effectiveCustomRepo,
+                customModelRepo: forms.flux.effectiveCustomRepo,
                 resolvedPrompt: ($0.positive, $0.negative),
                 size: AspectDirective.size(
-                    ratio: $0.ratio, width: krea2Params.width, height: krea2Params.height, constraints: .krea2
+                    ratio: $0.ratio, width: forms.krea2.width, height: forms.krea2.height, constraints: .krea2
                 )
             )
         }
-        return queue(jobs, on: krea2Queue)
+        return queue(jobs, on: families.krea2)
     }
 
     private func generateZImage(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
-        guard zimageParams.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
+        guard forms.zimage.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the variant it happens to load as.
-        settings.lastModel = params.model == .custom ? .custom : zimageParams.variant
-        settings.lastZImage = zimageParams.snapshot() // remember the form across launches
+        settings.lastModel = forms.flux.model == .custom ? .custom : forms.zimage.variant
+        settings.lastZImage = forms.zimage.snapshot() // remember the form across launches
         if scenarioPrompts == nil {
-            settings.recordPromptUse(zimageParams.prompt)
+            settings.recordPromptUse(forms.zimage.prompt)
         }
-        let jobs = PromptFanOut.jobs(prompt: zimageParams.prompt, scenarioPrompts: scenarioPrompts, count: count) {
-            ($0, zimageParams.negativePrompt)
+        let jobs = PromptFanOut.jobs(prompt: forms.zimage.prompt, scenarioPrompts: scenarioPrompts, count: count) {
+            ($0, forms.zimage.negativePrompt)
         }.map {
-            zimageParams.makeJob(
+            forms.zimage.makeJob(
                 count: $0.count,
-                customModelRepo: params.effectiveCustomRepo,
+                customModelRepo: forms.flux.effectiveCustomRepo,
                 resolvedPrompt: ($0.positive, $0.negative),
                 size: AspectDirective.size(
-                    ratio: $0.ratio, width: zimageParams.width, height: zimageParams.height, constraints: .zimage
+                    ratio: $0.ratio, width: forms.zimage.width, height: forms.zimage.height, constraints: .zimage
                 )
             )
         }
-        return queue(jobs, on: zimageQueue)
+        return queue(jobs, on: families.zimage)
     }
 
     /// Qwen-Image 2.1 has no negative prompt; an edit's references and size
     /// choice ride along on every job unchanged.
     private func generateQwen21(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
-        let hasReferences = !qwen21Params.isEditMode || !qwen21Params.editImagePaths.isEmpty
-        guard qwen21Params.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return nil }
-        settings.lastModel = params.model == .custom ? .custom : .qwen21Turbo
-        settings.lastQwen21 = qwen21Params.snapshot()
-        qwen21Params.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
-        qwen21Params.routesToComfy = Qwen21RunnerSpec.routesToComfy(settings: settings)
+        let hasReferences = !forms.qwen21.isEditMode || !forms.qwen21.editImagePaths.isEmpty
+        guard forms.qwen21.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return nil }
+        settings.lastModel = forms.flux.model == .custom ? .custom : .qwen21Turbo
+        settings.lastQwen21 = forms.qwen21.snapshot()
+        forms.qwen21.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
+        forms.qwen21.routesToComfy = Qwen21RunnerSpec.routesToComfy(settings: settings)
         if scenarioPrompts == nil {
-            settings.recordPromptUse(qwen21Params.prompt)
+            settings.recordPromptUse(forms.qwen21.prompt)
         }
-        let jobs = PromptFanOut.jobs(prompt: qwen21Params.prompt, scenarioPrompts: scenarioPrompts, count: count) {
+        let jobs = PromptFanOut.jobs(prompt: forms.qwen21.prompt, scenarioPrompts: scenarioPrompts, count: count) {
             ($0, "")
         }.map {
-            qwen21Params.makeJob(
+            forms.qwen21.makeJob(
                 count: $0.count,
-                customModelRepo: params.effectiveCustomRepo,
+                customModelRepo: forms.flux.effectiveCustomRepo,
                 resolvedPrompt: $0.positive,
                 size: AspectDirective.size(
-                    ratio: $0.ratio, width: qwen21Params.width, height: qwen21Params.height, constraints: .qwen21
+                    ratio: $0.ratio, width: forms.qwen21.width, height: forms.qwen21.height, constraints: .qwen21
                 )
             )
         }
-        return queue(jobs, on: qwen21Queue)
+        return queue(jobs, on: families.qwen21)
     }
 
     private func queue<Spec>(_ jobs: [Spec.Job], on queue: FamilyQueue<Spec>) -> PreviewState? {

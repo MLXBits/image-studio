@@ -2,19 +2,26 @@ import SwiftUI
 
 // MARK: - FamilyQueueDrawerView
 
-/// The queue drawer for any family, driven by that family's runner spec.
+/// The queue drawer for any family, driven by that family's queue.
 struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
     where Spec.Job: QueueListedJob, Spec.Store: ProfileScopedJobStore & Observable,
     Spec.Store.PersistedJob == Spec.Job {
-    @Environment(Spec.Store.self) private var store
-    @Environment(JobRunner<Spec>.self) private var runner
     @Environment(AppSettings.self) private var settings
     @Environment(GenerationCoordinator.self) private var coordinator
     @Environment(TimingStore.self) private var timing
 
+    let queue: FamilyQueue<Spec>
     @Binding var selectedJob: Spec.Job?
     /// The row menu's Duplicate. Nil for SeedVR2, whose upscales cannot be copied.
     private let duplicate: (@MainActor (Spec.Store, Spec.Job) -> Void)?
+
+    private var store: Spec.Store {
+        queue.store
+    }
+
+    private var runner: JobRunner<Spec> {
+        queue.runner
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -93,7 +100,8 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
     }
 
     /// The drawer for a generating family: its rows can be duplicated.
-    init(selectedJob: Binding<Spec.Job?>) where Spec.Job: SeedSplittableJob {
+    init(_ queue: FamilyQueue<Spec>, selectedJob: Binding<Spec.Job?>) where Spec.Job: SeedSplittableJob {
+        self.queue = queue
         _selectedJob = selectedJob
         duplicate = { store, job in store.duplicate(job) }
     }
@@ -101,7 +109,8 @@ struct FamilyQueueDrawerView<Spec: JobRunnerSpec>: View
     /// The drawer for SeedVR2, whose rows have no Duplicate. A separate label,
     /// not an overload: a family that lost its `SeedSplittableJob` conformance
     /// would otherwise build here and lose Duplicate silently.
-    init(selectedJobWithoutDuplicate selectedJob: Binding<Spec.Job?>) {
+    init(_ queue: FamilyQueue<Spec>, selectedJobWithoutDuplicate selectedJob: Binding<Spec.Job?>) {
+        self.queue = queue
         _selectedJob = selectedJob
         duplicate = nil
     }
