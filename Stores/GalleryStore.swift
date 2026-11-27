@@ -120,9 +120,9 @@ extension GalleryItem {
 
     /// What Remix and Apply Settings load for this image, filed under the board
     /// the image is in now: the sidecar may predate boards, or name one the image
-    /// was moved out of. "Default" is the output folder's root, which is no board.
+    /// was moved out of.
     var replaySidecar: AnySidecar? {
-        sidecar?.replayTarget?.filed(under: board == "Default" ? nil : board)
+        sidecar?.replay(onBoard: board)
     }
 }
 

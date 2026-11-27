@@ -375,3 +375,24 @@ protocol JobOutcomeReporting: AnyObject {
     var onImagesLanded: ((Int) -> Void)? { get set }
     var onJobFinished: ((JobFinish) -> Void)? { get set }
 }
+
+extension GeneratedJob {
+    /// Gives the job a Generate press's seeds. A batch count of 2 or more rolls
+    /// that many random seeds into one warm job (one process, model loaded once).
+    /// Otherwise the typed-in seeds are used without repeats, and a single one is
+    /// a plain single-seed run, since mflux adds `_seed_N` only for 2 or more.
+    /// With neither, the job keeps its own seed. For a freshly built job: setting a
+    /// single seed leaves `seeds` as it was.
+    func applyBatchSeeds(count: Int, typed: [Int]) {
+        if count > 1 {
+            seeds = RunnerSupport.randomSeeds(count: count)
+        } else if !typed.isEmpty {
+            let distinct = RunnerSupport.distinctSeeds(typed)
+            if distinct.count == 1 {
+                seed = distinct[0]
+            } else {
+                seeds = distinct
+            }
+        }
+    }
+}

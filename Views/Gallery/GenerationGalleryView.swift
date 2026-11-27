@@ -12,7 +12,8 @@ struct GenerationGalleryView: View {
     var modelFilter: ModelFamily = .flux
     /// Remix or Apply Settings, for an image of any family.
     let onReplay: (AnySidecar, ReplayMode) -> Void
-    let onUseInImg2Img: (String) -> Void
+    /// The active family's source-image item, or nil when it has no source input.
+    let sourceImage: SourceImageAction?
     var onUpscale: (([String]) -> Void)?
     var onSelectBoard: ((String) -> Void)?
     var onClearPreview: (() -> Void)?
@@ -167,7 +168,7 @@ struct GenerationGalleryView: View {
                     onSetFlagItem: { item, flag in setMenuFlag(flag, on: item) },
                     onSetRatingItem: { item, rating in setMenuRating(rating, on: item) },
                     onReplay: onReplay,
-                    onUseInImg2Img: onUseInImg2Img,
+                    sourceImage: sourceImage,
                     onUpscale: { path in
                         // Upscale the whole selection when the right-clicked item is
                         // part of it; otherwise just the clicked image. Mirrors the

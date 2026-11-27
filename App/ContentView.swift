@@ -242,6 +242,14 @@ struct ContentView: View {
         )
     }
 
+    /// The active model's source-image item for the gallery and preview menus, or
+    /// nil when it has no source input. The active model decides, since
+    /// ``useInImg2Img(_:)`` feeds its form whatever family the image came from.
+    private var sourceImageAction: SourceImageAction? {
+        SourceImageInput.forActive(currentSelection.variant, fluxEditMode: params.isEditMode)
+            .map { input in SourceImageAction(input: input) { path in useInImg2Img(path) } }
+    }
+
     /// The model button in the top header. Switching the model resets the
     /// dependent Flux defaults (steps/guidance/dims) just as before.
     private var headerModelButton: some View {
@@ -304,7 +312,7 @@ struct ContentView: View {
         PreviewPaneView(
             state: previewState,
             onReplay: { sidecar, mode in replay(sidecar, mode) },
-            onUseInImg2Img: useInImg2Img,
+            sourceImage: sourceImageAction,
             onCancel: { queues.stopAll() },
             onClear: clearPreview,
             onEditBoxesOverImage: editBoxesOverImage,
@@ -338,7 +346,7 @@ struct ContentView: View {
             selectedItem: $selectedGalleryItem,
             modelFilter: params.modelFamily,
             onReplay: { sidecar, mode in replay(sidecar, mode) },
-            onUseInImg2Img: useInImg2Img,
+            sourceImage: sourceImageAction,
             onUpscale: { paths in promptUpscale(paths: paths) },
             onSelectBoard: setActiveBoard,
             onClearPreview: clearPreview,
@@ -1015,10 +1023,6 @@ struct ContentView: View {
         }
     }
 
-    /// Routes a gallery image to the active family's source-image input: the img2img
-    /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Qwen-Image 2.1).
-    /// Families without one (`ModelFamily.acceptsSourceImage`) ignore it. Paths go
-    /// through `settings.adoptSourceImage(_:)` like the panels' own drop handlers.
     /// A queue drawer's selection: the previewed job when it belongs to that
     /// drawer's family. Choosing a row previews it.
     private func previewSelection<Spec: JobRunnerSpec>(_: Spec.Type) -> Binding<Spec.Job?> {
@@ -1032,6 +1036,11 @@ struct ContentView: View {
         )
     }
 
+    /// Routes an image to the active family's source-image input: the img2img
+    /// image (FLUX.2, Krea 2, Z-Image) or the edit-reference list (Flux edit mode,
+    /// Qwen-Image 2.1). Only ``sourceImageAction`` offers it, so a model with no
+    /// such input never gets here. Paths go through `settings.adoptSourceImage(_:)`
+    /// like the panels' own drop handlers.
     private func useInImg2Img(_ path: String) {
         switch params.modelFamily {
         case .flux:

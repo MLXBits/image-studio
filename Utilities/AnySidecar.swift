@@ -154,6 +154,24 @@ nonisolated extension SidecarMetadata {
     }
 }
 
+nonisolated extension AnySidecar {
+    /// What Remix and Apply Settings load for this image when it sits on `board`:
+    /// ``replayTarget``, filed under that board. "Default" is the output folder's
+    /// root, which a job records as no board.
+    func replay(onBoard board: String?) -> AnySidecar? {
+        replayTarget?.filed(under: board == "Default" ? nil : board)
+    }
+}
+
+nonisolated extension SeedVR2Metadata {
+    /// What Remix and Apply Settings load for an upscale's completed preview: its
+    /// source's settings, filed under the upscale's board, as its gallery item
+    /// does. Nil for an upscale whose sidecar predates carrying its source.
+    var replaySidecar: AnySidecar? {
+        AnySidecar.seedVR2(self).replay(onBoard: board)
+    }
+}
+
 /// The key names of a JSON object, and its `family` tag if it has a string one.
 /// No other value is decoded.
 nonisolated private struct TopLevelKeys: Decodable {

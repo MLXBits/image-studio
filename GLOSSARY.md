@@ -48,3 +48,7 @@ Replay with a new seed, to get a variation of the image.
 **Apply Settings**:
 Replay that keeps the recorded seed, to reproduce or adjust the image.
 _Avoid_: Load Settings
+
+**Source image**:
+An image the user hands to the active model as input: its img2img image, or one of its edit references. The active model decides which input it fills, whatever family made the image.
+_Avoid_: img2img input (only one of the two inputs)

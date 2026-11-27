@@ -19,16 +19,6 @@ enum ModelFamily: String, CaseIterable, Codable {
 
     /// Families the user can pick and generate with (excludes the upscaler).
     static let generative: [Self] = [.flux, .ideogram4, .krea2, .zimage, .qwen21]
-    /// Whether the family has a source-image input the gallery's "Use as img2img"
-    /// can feed: an img2img image (FLUX.2, Krea 2, Z-Image) or, for Qwen-Image 2.1,
-    /// the edit-reference list. Ideogram 4 and the SeedVR2 action have none.
-    var acceptsSourceImage: Bool {
-        switch self {
-        case .flux, .krea2, .zimage, .qwen21: true
-        case .ideogram4, .seedvr2: false
-        }
-    }
-
     /// Stable, machine-safe identifier for use as a persisted-dictionary key (the
     /// `rawValue`s above are human display strings and contain spaces). The ComfyUI
     /// checkpoint store is keyed by this so the settings UI and the runner agree.

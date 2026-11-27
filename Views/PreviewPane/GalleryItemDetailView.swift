@@ -5,7 +5,8 @@ struct GalleryItemDetailView: View {
     let item: GalleryItem
     /// Remix or Apply Settings, for an image of any family.
     let onReplay: (AnySidecar, ReplayMode) -> Void
-    let onUseInImg2Img: (String) -> Void
+    /// The active family's source-image item, or nil when it has no source input.
+    let sourceImage: SourceImageAction?
     var onEditBoxesOverImage: ((Ideogram4Metadata, NSImage) -> Void)?
     var onShowFullSize: ((NSImage) -> Void)?
     var onSetFlag: ((PickFlag?) -> Void)?
@@ -14,6 +15,15 @@ struct GalleryItemDetailView: View {
 
     @State private var image: NSImage?
     @State private var showingLog: Bool = false
+
+    /// Whether the context menu has a replay, source-image or box item, so its
+    /// divider never sits next to the Upscale group's own.
+    private var hasImageActions: Bool {
+        if case .ideogram4 = item.sidecar, image != nil {
+            return true
+        }
+        return item.replaySidecar != nil || sourceImage != nil
+    }
 
     var body: some View {
         let info = ImageMetadataInfo(galleryItem: item)
@@ -37,27 +47,19 @@ struct GalleryItemDetailView: View {
                 }
             }
             .contextMenu {
-                Button("Copy Image") {
-                    guard let img = NSImage(contentsOfFile: item.path) else { return }
-                    NSPasteboard.general.clearContents()
-                    NSPasteboard.general.writeObjects([img])
+                Button("Copy Image") { ImagePasteboard.copyImages(atPaths: [item.path]) }
+                if hasImageActions {
+                    Divider()
                 }
                 if let sidecar = item.replaySidecar {
-                    Divider()
                     Button("Apply Settings") { onReplay(sidecar, .applySettings) }
                     Button("Remix (new seed)") { onReplay(sidecar, .remix) }
                 }
-                switch item.sidecar {
-                case .flux, .krea2, .zimage:
-                    Button("Use as Img2Img Input") { onUseInImg2Img(item.path) }
-                case .qwen21:
-                    Button("Use as Edit Reference") { onUseInImg2Img(item.path) }
-                case let .ideogram4(meta):
-                    if let img = image {
-                        Button("Adjust Boxes…") { onEditBoxesOverImage?(meta, img) }
-                    }
-                case .seedVR2, nil:
-                    EmptyView()
+                if let sourceImage {
+                    Button(sourceImage.input.title) { sourceImage.use(item.path) }
+                }
+                if case let .ideogram4(meta) = item.sidecar, let img = image {
+                    Button("Adjust Boxes…") { onEditBoxesOverImage?(meta, img) }
                 }
                 if let onUpscale {
                     Divider()
@@ -83,8 +85,7 @@ struct GalleryItemDetailView: View {
                 info: info,
                 onApplySettings: replay(.applySettings),
                 onRemix: replay(.remix),
-                onUseInImg2Img: item.modelFamily.acceptsSourceImage && item.qwen21Metadata == nil
-                    ? { onUseInImg2Img(item.path) } : nil,
+                sourceImage: sourceImage,
                 onEditBoxes: editBoxesAction,
                 onRevealInFinder: {
                     NSWorkspace.shared.selectFile(item.path, inFileViewerRootedAtPath: "")

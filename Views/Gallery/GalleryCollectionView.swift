@@ -825,22 +825,20 @@ struct GalleryCollectionView: NSViewRepresentable {
         }
 
         /// Apply Settings / Remix, when the item has settings to replay, and the
-        /// family's source-image item, when it has a source-image input.
-        private func addFamilyMenuItems(to menu: NSMenu, for item: GalleryItem) {
-            guard let sidecar = item.replaySidecar else { return }
+        /// active family's source-image item, when that family has a source input.
+        private func addReplayAndSourceItems(to menu: NSMenu, for item: GalleryItem) {
+            let sidecar = item.replaySidecar
+            let sourceImage = parent.sourceImage
+            guard sidecar != nil || sourceImage != nil else { return }
             menu.addItem(.separator())
-            menu.addItem(menuItem("Apply Settings") { [weak self] in self?.parent.onReplay(sidecar, .applySettings) })
-            menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onReplay(sidecar, .remix) })
-            switch item.sidecar {
-            case .flux, .krea2, .zimage: addUseAsSourceItem(to: menu, for: item, title: "Use as Img2Img Input")
-            case .qwen21: addUseAsSourceItem(to: menu, for: item, title: "Use as Edit Reference")
-            case .ideogram4, .seedVR2, nil: break
+            if let sidecar {
+                menu.addItem(menuItem("Apply Settings") { [weak self] in self?.parent.onReplay(sidecar, .applySettings) })
+                menu.addItem(menuItem("Remix (new seed)") { [weak self] in self?.parent.onReplay(sidecar, .remix) })
+            }
+            if let sourceImage {
+                menu.addItem(menuItem(sourceImage.input.title) { sourceImage.use(item.path) })
             }
             menu.addItem(.separator())
-        }
-
-        private func addUseAsSourceItem(to menu: NSMenu, for item: GalleryItem, title: String) {
-            menu.addItem(menuItem(title) { [weak self] in self?.parent.onUseInImg2Img(item.path) })
         }
 
         private func buildMenu(for item: GalleryItem) -> NSMenu {
@@ -866,7 +864,7 @@ struct GalleryCollectionView: NSViewRepresentable {
             menu.addItem(menuItem("Compare") { [weak self] in self?.parent.onCompareItem(item) })
             menu.addItem(menuItem("Upscale…") { [weak self] in self?.parent.onUpscale(item.path) })
 
-            addFamilyMenuItems(to: menu, for: item)
+            addReplayAndSourceItems(to: menu, for: item)
 
             let allBoards = sections.map(\.board)
             let boardsMenu = NSMenu(title: "Move to…")
@@ -925,7 +923,8 @@ struct GalleryCollectionView: NSViewRepresentable {
     var onSetFlagItem: (GalleryItem, PickFlag?) -> Void
     var onSetRatingItem: (GalleryItem, Int) -> Void
     var onReplay: (AnySidecar, ReplayMode) -> Void
-    var onUseInImg2Img: (String) -> Void
+    /// The active family's source-image item, or nil when it has no source input.
+    var sourceImage: SourceImageAction?
     var onUpscale: (String) -> Void
     var onMoveToBoard: (GalleryItem, String) -> Void
     var onNewGroup: (GalleryItem) -> Void

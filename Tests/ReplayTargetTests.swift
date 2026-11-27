@@ -106,6 +106,30 @@ struct ReplayTargetTests {
         #expect(meta.board == "Upscaled")
     }
 
+    /// An upscale's completed preview replays its source like its gallery item does.
+    @Test func anUpscaleSidecarReplaysItsSourceUnderTheUpscalesBoard() {
+        var source = ZImageMetadata.from(job: ZImageJob(prompt: "a lantern"))
+        source.board = "Old"
+        var meta = upscale(sourceZImage: source)
+        meta.board = "Upscaled"
+        guard case let .zimage(replayed) = meta.replaySidecar else {
+            Issue.record("expected Z-Image, got \(String(describing: meta.replaySidecar))")
+            return
+        }
+        #expect(replayed.prompt == "a lantern")
+        #expect(replayed.board == "Upscaled")
+        #expect(upscale().replaySidecar == nil)
+    }
+
+    /// The upscale sheet records a root image's board as "Default", which a job
+    /// records as no board, as the gallery item's replay does.
+    @Test func anUpscaleOnTheDefaultBoardReplaysWithNoBoard() {
+        var meta = upscale(sourceZImage: ZImageMetadata.from(job: ZImageJob()))
+        meta.board = "Default"
+        #expect(meta.replaySidecar != nil)
+        #expect(board(of: meta.replaySidecar) == nil)
+    }
+
     @Test func anImageWithNoSidecarHasNothingToReplay() {
         #expect(item(board: "Default").replaySidecar == nil)
     }
