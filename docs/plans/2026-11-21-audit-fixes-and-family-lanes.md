@@ -1,8 +1,9 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-25):** PR 1 (#128), PR 2 (#129) and PR 3 (#130) are merged. PR 3's
-> in-app check (step 4) is still open. A second architecture review ran against `43dad04`;
-> Part 4 assesses it and orders the next PRs (4–6). Its decisions were settled on 2026-11-25.
+> **Status (2026-11-27):** PRs 1–4 (#128–#131) are merged. PR 4a (FLUX 3 always
+> offers an edit reference) is open, and PR 4's in-app check waits on it. A second
+> architecture review ran against `43dad04`; Part 4 assesses it and orders the next
+> PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
 >
 > The file name still says "family-lanes" because #128 links to it. The design uses
@@ -420,7 +421,7 @@ that the second rejection is deliberate.
       (step 9's `PreviewPaneView`, `GalleryItemDetailView` and replay touchpoints, and
       `App/ReplayAction.swift`). PR 2 already updated its own lines.
 - [x] `Tests/ReplayActionTests.swift` and `Tests/ReplayTargetTests.swift`.
-- [ ] In-app verification, step 4 under Verification.
+- [x] In-app verification, step 4 under Verification (2026-11-27).
 
 Deferred from the PR 3 review. Each is now placed in a PR below:
 1. The family-to-source-image item ("Use as Img2Img Input" or "Use as Edit
@@ -439,10 +440,15 @@ Deferred from the PR 3 review. Each is now placed in a PR below:
 **D10. The active model decides the source-image item (settled 2026-11-25).** The
 item always fed the active picker family (`ContentView.useInImg2Img`), but five
 places chose whether to show it and what to call it, mostly from the image's family.
-So with Qwen active, a Flux image said "Img2Img" but became an edit reference.
+So with Qwen active, a Flux image said "Img2Img" but became an edit reference. That
+was reachable only in a view left over from a family switch: the grid shows only the
+active family's images.
 Now one rule, `SourceImageInput.forActive(variant, fluxEditMode:)`, sets both from
 the active model. Any image can be a source: an upscale, an Ideogram image, or an
-image with no sidecar. FLUX 3 offers the item only in Edit mode, as it has no img2img.
+image with no sidecar. FLUX 3 has no img2img, so it always offers "Use as Edit
+Reference", and using it turns Edit mode on, as Qwen does (amended 2026-11-27, PR 4a;
+PR 4 hid the item outside Edit mode). A custom checkpoint is the exception: its Flux
+form has no Generate/Edit switch, so outside Edit mode a custom FLUX 3 offers nothing.
 The rule lives with the active model, not on `AnySidecar`.
 
 - [x] `Models/SourceImageInput.swift`: the rule, plus `SourceImageAction` (the input
@@ -469,12 +475,21 @@ The rule lives with the active model, not on `AnySidecar`.
     four times per body evaluation. The view is rare, but if the upscale moves to
     another board, replay quietly disappears. Read it once into `@State`.
   - No test pins that `ContentView` passes `currentSelection.variant` (a custom
-    checkpoint's loads-as variant) and not `params.model`. A `ModelSelection`
-    overload of `forActive` would put that under test.
-- [ ] In-app: with Krea 2 and then Qwen active, right-click a Flux image, an upscale
-      and an Ideogram image in the grid and in the detail view. Check the item's
-      title, and that the image lands in the active form. With FLUX 3 active and not
-      in Edit mode, the item is absent. An upscale's completed preview offers Remix.
+    checkpoint's loads-as variant) and not `params.model`. Done in PR 4a: `forActive`
+    takes the `ModelSelection`, and a test covers custom checkpoints.
+- [ ] In-app. The grid shows only the active family's images (an upscale shows with
+      its source's family), so check each family in turn. Right-click an image and an
+      upscale, in the grid and in the detail view:
+      1. Krea 2 active: "Use as Img2Img Input" puts the image into Krea 2's img2img input.
+      2. Qwen active: "Use as Edit Reference" adds the image to Qwen's edit references.
+      3. FLUX 3 active, in Generate mode: "Use as Edit Reference" turns Edit mode on
+         and adds the image. In Edit mode it adds the image too.
+      4. Ideogram active: the item is absent.
+      5. An upscale's completed preview offers Remix and Apply Settings.
+
+      Only a view left over from before a family switch can hold another family's
+      image: the detail view or a completed preview. If either still shows after you
+      switch, its item follows the new family's rule.
 
 ### PR 5: Family registry at the injection edge (review C1, C6 part)
 

@@ -7,17 +7,23 @@ import Foundation
 enum SourceImageInput: Equatable {
     case img2img, editReference
 
-    /// The source-image input of `variant`, the model the picker generates with
-    /// (a custom checkpoint passes the variant it loads as). Flux has both, and
-    /// its edit mode takes references; FLUX 3 has no img2img mode, so only its
-    /// edit mode takes one. Ideogram 4 has none.
-    static func forActive(_ variant: FluxModelVariant, fluxEditMode: Bool) -> Self? {
-        switch variant.family {
+    /// The source-image input of `selection`, the model the picker generates with
+    /// (a custom checkpoint follows the variant it loads as). FLUX.2 has both, and
+    /// its edit mode takes references. FLUX 3 and Qwen-Image 2.1 have no img2img,
+    /// so they always take a reference, and using one turns their Edit mode on.
+    /// A custom Flux checkpoint's form has no Generate/Edit switch, so the item
+    /// must not turn its Edit mode on: outside it, a custom FLUX 3 takes nothing.
+    /// Ideogram 4 has none.
+    static func forActive(_ selection: ModelSelection, fluxEditMode: Bool) -> Self? {
+        let variant = selection.variant
+        return switch variant.family {
         case .flux:
             if fluxEditMode {
                 .editReference
+            } else if variant.isFlux3 {
+                selection.isCustom ? nil : .editReference
             } else {
-                variant.isFlux3 ? nil : .img2img
+                .img2img
             }
         case .krea2, .zimage: .img2img
         case .qwen21: .editReference
