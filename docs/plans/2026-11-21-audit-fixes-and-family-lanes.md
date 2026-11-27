@@ -1,7 +1,7 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-27):** PRs 1–4 (#128–#131) and PR 4a (#132) are merged, and their
-> in-app checks pass. PR 5 (the family registry) is in review. A second
+> **Status (2026-11-27):** PRs 1–5 (#128–#131, #133) and PR 4a (#132) are merged,
+> and their in-app checks pass. PR 6 (the narrow params protocol) is next. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -515,7 +515,7 @@ The rule lives with the active model, not on `AnySidecar`.
       confirmed each one.
 - [x] AGENTS.md recipe step 9: the registry, `FamilyForms`, and no edit to
       `MLXBitsImageStudioApp`.
-- [ ] In-app: generate in two families and check the queue drawer, the toolbar's
+- [x] In-app (2026-11-27): generate in two families and check the queue drawer, the toolbar's
       queue label, the dock badge, Stop and a retry. Switch profile while idle and
       confirm each family's form and queue come from the new profile.
 
