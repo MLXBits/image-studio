@@ -11,16 +11,7 @@ final class GallerySearchTests {
         path: String, board: String, metadata: GenerationMetadata? = nil,
         flag: PickFlag? = nil, rating: Int = 0
     ) -> GalleryItem {
-        GalleryItem(
-            id: UUID(), path: path, board: board, modifiedAt: Self.t0,
-            thumbnailData: nil, thumbnailImage: nil, metadata: metadata,
-            ideogram4Metadata: nil, krea2Metadata: nil, zimageMetadata: nil,
-            seedVR2Metadata: nil, flag: flag, rating: rating,
-            searchHaystack: GallerySearch.haystack(
-                filename: (path as NSString).lastPathComponent,
-                flux: metadata, ideogram4: nil, krea2: nil, zimage: nil
-            )
-        )
+        galleryItem(path: path, board: board, sidecar: metadata.map(AnySidecar.flux), flag: flag, rating: rating)
     }
 
     private func item(
@@ -28,17 +19,18 @@ final class GallerySearchTests {
         krea2Metadata: Krea2Metadata? = nil, zimageMetadata: ZImageMetadata? = nil,
         seedVR2Metadata: SeedVR2Metadata? = nil, flag: PickFlag? = nil, rating: Int = 0
     ) -> GalleryItem {
+        let sidecar = ideogram4Metadata.map(AnySidecar.ideogram4) ?? krea2Metadata.map(AnySidecar.krea2)
+            ?? zimageMetadata.map(AnySidecar.zimage) ?? seedVR2Metadata.map(AnySidecar.seedVR2)
+        return galleryItem(path: path, board: board, sidecar: sidecar, flag: flag, rating: rating)
+    }
+
+    private func galleryItem(
+        path: String, board: String, sidecar: AnySidecar?, flag: PickFlag?, rating: Int
+    ) -> GalleryItem {
         GalleryItem(
             id: UUID(), path: path, board: board, modifiedAt: Self.t0,
-            thumbnailData: nil, thumbnailImage: nil, metadata: nil,
-            ideogram4Metadata: ideogram4Metadata, krea2Metadata: krea2Metadata,
-            zimageMetadata: zimageMetadata, seedVR2Metadata: seedVR2Metadata,
-            flag: flag, rating: rating,
-            searchHaystack: GallerySearch.haystack(
-                filename: (path as NSString).lastPathComponent,
-                flux: nil, ideogram4: ideogram4Metadata,
-                krea2: krea2Metadata, zimage: zimageMetadata
-            )
+            sidecar: sidecar, flag: flag, rating: rating,
+            searchHaystack: GallerySearch.haystack(filename: (path as NSString).lastPathComponent, sidecar: sidecar)
         )
     }
 
@@ -244,10 +236,7 @@ final class GallerySearchTests {
         // stored field, never rebuild from metadata.
         let item = GalleryItem(
             id: UUID(), path: "/out/alpha.png", board: "Default", modifiedAt: Self.t0,
-            thumbnailData: nil, thumbnailImage: nil,
-            metadata: fluxMetadata(prompt: "an alpha prompt"),
-            ideogram4Metadata: nil, krea2Metadata: nil, zimageMetadata: nil,
-            seedVR2Metadata: nil, flag: nil, rating: 0,
+            sidecar: .flux(fluxMetadata(prompt: "an alpha prompt")),
             searchHaystack: "beta something"
         )
         #expect(GallerySearch.filter([item], family: .flux, query: "alpha", flag: .all, minRating: 0).isEmpty)

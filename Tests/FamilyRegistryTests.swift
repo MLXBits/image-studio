@@ -40,6 +40,17 @@ struct FamilyRegistryTests {
         #expect(families.jobStores.map { ObjectIdentifier($0) } == expected.map { ObjectIdentifier($0) })
     }
 
+    /// A profile's history files are on disk: renaming one loses that family's queue.
+    @Test func eachStoreKeepsItsHistoryFile() {
+        let families = registry()
+        #expect(families.flux.store.history.fileName == "jobs.json")
+        #expect(families.ideogram4.store.history.fileName == "ideogram4-jobs.json")
+        #expect(families.krea2.store.history.fileName == "krea2-jobs.json")
+        #expect(families.zimage.store.history.fileName == "zimage-jobs.json")
+        #expect(families.qwen21.store.history.fileName == "qwen21-jobs.json")
+        #expect(families.seedVR2.store.history.fileName == "seedvr2-jobs.json")
+    }
+
     /// The support nudge and the finish notifications hear from every runner.
     @Test func reportersAreTheQueuesOwnRunnersInRunOrder() {
         let families = registry()

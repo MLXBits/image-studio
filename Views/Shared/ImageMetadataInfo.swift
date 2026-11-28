@@ -50,14 +50,12 @@ struct ImageMetadataInfo {
         filePath = job.outputPath
         applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
-        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
-            let secs = Int(ended.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
+        if job.seeds.isEmpty {
+            generationTime = Self.elapsed(from: job.startedAt, to: job.completedAt)
         }
     }
 
-    init?(item: GalleryItem) {
-        guard let meta = item.metadata else { return nil }
+    init(flux meta: GenerationMetadata, path: String) {
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt
         modelName = meta.model == .custom ? "Custom" : meta.model.displayName
@@ -67,13 +65,10 @@ struct ImageMetadataInfo {
         steps = meta.steps
         guidance = meta.guidance
         loras = meta.loras
-        filePath = item.path
+        filePath = path
         applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
-        if let started = meta.startedAt {
-            let secs = Int(meta.generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
     init(ideogram4Job job: Ideogram4Job) {
@@ -89,36 +84,23 @@ struct ImageMetadataInfo {
         filePath = job.outputPath
         applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
-        if let started = job.startedAt, let ended = job.completedAt {
-            let secs = Int(ended.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: job.startedAt, to: job.completedAt)
     }
 
-    init(ideogram4Item: GalleryItem) {
-        let meta = ideogram4Item.ideogram4Metadata
-        if meta?.usePlainPrompt == true {
-            prompt = meta?.plainPrompt ?? ""
-        } else {
-            prompt = meta?.caption.highLevelDescription ?? ""
-        }
+    init(ideogram4 meta: Ideogram4Metadata, path: String) {
+        prompt = meta.usePlainPrompt ? meta.plainPrompt : meta.caption.highLevelDescription
         negativePrompt = ""
         modelName = "Ideogram 4"
-        seed = meta?.seed
-        width = meta?.width ?? 0
-        height = meta?.height ?? 0
-        steps = meta?.preset.stepCount ?? 0
+        seed = meta.seed
+        width = meta.width
+        height = meta.height
+        steps = meta.preset.stepCount
         guidance = 1.0
-        loras = meta?.loras ?? []
-        filePath = ideogram4Item.path
-        applyPidUpscale(meta?.pidDecode ?? false, degradeSigma: meta?.pidDegradeSigma)
-        log = meta?.log
-        if let started = meta?.startedAt, let generatedAt = meta?.generatedAt {
-            let secs = Int(generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        } else {
-            generationTime = nil
-        }
+        loras = meta.loras ?? []
+        filePath = path
+        applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
+        log = meta.log
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
     init(krea2Job job: Krea2Job) {
@@ -134,14 +116,12 @@ struct ImageMetadataInfo {
         filePath = job.outputPath
         applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
-        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
-            let secs = Int(ended.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
+        if job.seeds.isEmpty {
+            generationTime = Self.elapsed(from: job.startedAt, to: job.completedAt)
         }
     }
 
-    init?(krea2Item: GalleryItem) {
-        guard let meta = krea2Item.krea2Metadata else { return nil }
+    init(krea2 meta: Krea2Metadata, path: String) {
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt ?? ""
         modelName = "Krea 2 Turbo"
@@ -151,13 +131,10 @@ struct ImageMetadataInfo {
         steps = meta.steps
         guidance = meta.guidance
         loras = meta.loras ?? []
-        filePath = krea2Item.path
+        filePath = path
         applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
-        if let started = meta.startedAt {
-            let secs = Int(meta.generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
     init(zimageJob job: ZImageJob) {
@@ -173,14 +150,12 @@ struct ImageMetadataInfo {
         filePath = job.outputPath
         applyPidUpscale(job.pidDecode, degradeSigma: job.pidDegradeSigma)
         log = job.log.isEmpty ? nil : job.log
-        if job.seeds.isEmpty, let started = job.startedAt, let ended = job.completedAt {
-            let secs = Int(ended.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
+        if job.seeds.isEmpty {
+            generationTime = Self.elapsed(from: job.startedAt, to: job.completedAt)
         }
     }
 
-    init?(zimageItem: GalleryItem) {
-        guard let meta = zimageItem.zimageMetadata else { return nil }
+    init(zimage meta: ZImageMetadata, path: String) {
         prompt = meta.prompt
         negativePrompt = meta.negativePrompt ?? ""
         modelName = meta.resolvedVariant.displayName
@@ -190,30 +165,22 @@ struct ImageMetadataInfo {
         steps = meta.steps
         guidance = meta.guidance
         loras = meta.loras ?? []
-        filePath = zimageItem.path
+        filePath = path
         applyPidUpscale(meta.pidDecode ?? false, degradeSigma: meta.pidDegradeSigma)
         log = meta.log
-        if let started = meta.startedAt {
-            let secs = Int(meta.generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
-    init?(seedVR2Item: GalleryItem) {
-        guard let meta = seedVR2Item.seedVR2Metadata else { return nil }
+    init(seedVR2 meta: SeedVR2Metadata, path: String) {
         let modelLabel = meta.model == "seedvr2-7b" ? "SeedVR2 7B" : "SeedVR2 3B"
         let upscaleLabel = "\(modelLabel) · \(meta.scale)×"
         width = meta.width
         height = meta.height
-        filePath = seedVR2Item.path
+        filePath = path
         log = meta.log
         // Source-forward: surface the original prompt/loras/recipe (it's the same
         // image, just larger) with the upscale noted in the model line.
-        let source = SeedVR2Source(
-            flux: meta.sourceFlux, ideogram4: meta.sourceIdeogram4, krea2: meta.sourceKrea2,
-            zimage: meta.sourceZImage, qwen21: meta.sourceQwen21
-        )
-        if let src = SeedVR2DisplayFields(source: source) {
+        if let src = SeedVR2DisplayFields(source: SeedVR2Source(.seedVR2(meta))) {
             prompt = src.prompt
             negativePrompt = src.negativePrompt
             modelName = "\(upscaleLabel) ← \(src.sourceModel)"
@@ -233,12 +200,7 @@ struct ImageMetadataInfo {
             guidance = 1.0
             loras = []
         }
-        if let started = meta.startedAt {
-            let secs = Int(meta.generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        } else {
-            generationTime = nil
-        }
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
     init(seedVR2Job job: SeedVR2Job) {
@@ -266,10 +228,7 @@ struct ImageMetadataInfo {
             guidance = 1.0
             loras = []
         }
-        if let started = job.startedAt, let ended = job.completedAt {
-            let secs = Int(ended.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: job.startedAt, to: job.completedAt)
     }
 
     @MainActor init(qwen21Job job: Qwen21Job) {
@@ -281,12 +240,7 @@ struct ImageMetadataInfo {
         }
     }
 
-    init?(qwen21Item: GalleryItem) {
-        guard let meta = qwen21Item.qwen21Metadata else { return nil }
-        self.init(qwen21: meta, path: qwen21Item.path)
-    }
-
-    private init(qwen21 meta: Qwen21Metadata, path: String?) {
+    init(qwen21 meta: Qwen21Metadata, path: String?) {
         prompt = meta.prompt
         negativePrompt = ""
         let refs = meta.editImagePaths?.count ?? 0
@@ -303,10 +257,7 @@ struct ImageMetadataInfo {
         if meta.matchReferenceSize == true, let path, let size = imagePixelSize(at: path) {
             (width, height) = size
         }
-        if let started = meta.startedAt {
-            let secs = Int(meta.generatedAt.timeIntervalSince(started))
-            generationTime = "\(secs / 60)m \(secs % 60)s"
-        }
+        generationTime = Self.elapsed(from: meta.startedAt, to: meta.generatedAt)
     }
 
     init(path: String) {
@@ -347,18 +298,24 @@ extension ImageMetadataInfo {
     /// The info for a gallery image, from whichever family's sidecar it has; an
     /// image without one shows only what the file itself says.
     init(galleryItem item: GalleryItem) {
-        self = if item.ideogram4Metadata != nil {
-            ImageMetadataInfo(ideogram4Item: item)
-        } else if item.krea2Metadata != nil {
-            ImageMetadataInfo(krea2Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.zimageMetadata != nil {
-            ImageMetadataInfo(zimageItem: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.qwen21Metadata != nil {
-            ImageMetadataInfo(qwen21Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else if item.seedVR2Metadata != nil {
-            ImageMetadataInfo(seedVR2Item: item) ?? ImageMetadataInfo(path: item.path)
-        } else {
-            ImageMetadataInfo(item: item) ?? ImageMetadataInfo(path: item.path)
+        self = switch item.sidecar {
+        case let .flux(meta): ImageMetadataInfo(flux: meta, path: item.path)
+        case let .ideogram4(meta): ImageMetadataInfo(ideogram4: meta, path: item.path)
+        case let .krea2(meta): ImageMetadataInfo(krea2: meta, path: item.path)
+        case let .zimage(meta): ImageMetadataInfo(zimage: meta, path: item.path)
+        case let .qwen21(meta): ImageMetadataInfo(qwen21: meta, path: item.path)
+        case let .seedVR2(meta): ImageMetadataInfo(seedVR2: meta, path: item.path)
+        case nil: ImageMetadataInfo(path: item.path)
         }
+    }
+}
+
+extension ImageMetadataInfo {
+    /// The Time row: whole minutes and seconds from `started` to `ended`, or nil
+    /// when either is unknown (sidecars from before start times were recorded).
+    static func elapsed(from started: Date?, to ended: Date?) -> String? {
+        guard let started, let ended else { return nil }
+        let secs = Int(ended.timeIntervalSince(started))
+        return "\(secs / 60)m \(secs % 60)s"
     }
 }

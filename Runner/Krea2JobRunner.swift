@@ -13,8 +13,6 @@ extension Krea2Job: @MainActor QueueListedJob {
     }
 }
 
-extension Krea2JobStore: @MainActor GenerationJobStore {}
-
 enum Krea2RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Krea2Job
     typealias Store = Krea2JobStore

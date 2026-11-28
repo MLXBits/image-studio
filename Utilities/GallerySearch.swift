@@ -3,57 +3,35 @@ import Foundation
 /// Pure search and grouping logic for the generation gallery, extracted from
 /// `GenerationGalleryView` so it can be unit-tested off the view.
 nonisolated enum GallerySearch {
-    /// The parts a haystack is built from, given by family. Kept separate from
-    /// the item so a scan can build the blob once at construction time.
-    static func haystack(
-        filename: String,
-        flux: GenerationMetadata?,
-        ideogram4: Ideogram4Metadata?,
-        krea2: Krea2Metadata?,
-        zimage: ZImageMetadata?,
-        qwen21: Qwen21Metadata? = nil
-    ) -> String {
+    /// The lowercased blob the search box matches: the file name, then the
+    /// sidecar's prompt text, seed, model and LoRA names. Kept separate from the
+    /// item so a scan builds it once, at construction.
+    static func haystack(filename: String, sidecar: AnySidecar?) -> String {
         var parts: [String] = [filename]
-        if let meta = flux {
-            parts.append(meta.prompt)
-            parts.append(meta.negativePrompt)
-            parts.append(String(meta.seed))
-            parts.append("\(meta.model)")
-            parts.append(contentsOf: meta.loras.map(\.displayName))
-        }
-        if let meta = ideogram4 {
-            parts.append(meta.plainPrompt)
-            parts.append(String(meta.seed))
-            parts.append(contentsOf: (meta.loras ?? []).map(\.displayName))
-        }
         func appendBasics(_ prompt: String, _ seed: Int, _ loras: [LoraEntry]?) {
             parts.append(prompt)
             parts.append(String(seed))
             parts.append(contentsOf: (loras ?? []).map(\.displayName))
         }
-        if let meta = krea2 {
-            appendBasics(meta.prompt, meta.seed, meta.loras)
-        }
-        if let meta = zimage {
-            appendBasics(meta.prompt, meta.seed, meta.loras)
-        }
-        if let meta = qwen21 {
-            appendBasics(meta.prompt, meta.seed, meta.loras)
+        switch sidecar {
+        case let .flux(meta):
+            parts.append(meta.prompt)
+            parts.append(meta.negativePrompt)
+            parts.append(String(meta.seed))
+            parts.append("\(meta.model)")
+            parts.append(contentsOf: meta.loras.map(\.displayName))
+        case let .ideogram4(meta): appendBasics(meta.plainPrompt, meta.seed, meta.loras)
+        case let .krea2(meta): appendBasics(meta.prompt, meta.seed, meta.loras)
+        case let .zimage(meta): appendBasics(meta.prompt, meta.seed, meta.loras)
+        case let .qwen21(meta): appendBasics(meta.prompt, meta.seed, meta.loras)
+        case .seedVR2, nil: break
         }
         return parts.joined(separator: " ").lowercased()
     }
 
-    /// Lower-cased blob of the sidecar fields the search box matches against:
-    /// prompt text, seed, model, and LoRA names.
+    /// ``haystack(filename:sidecar:)`` for `item`.
     static func haystack(for item: GalleryItem) -> String {
-        haystack(
-            filename: item.filename,
-            flux: item.metadata,
-            ideogram4: item.ideogram4Metadata,
-            krea2: item.krea2Metadata,
-            zimage: item.zimageMetadata,
-            qwen21: item.qwen21Metadata
-        )
+        haystack(filename: item.filename, sidecar: item.sidecar)
     }
 
     /// Store items limited to the selected model family — the source of truth

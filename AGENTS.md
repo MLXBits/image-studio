@@ -75,7 +75,7 @@ Six model families, defined in `Models/ModelFamily.swift`: `flux`, `ideogram4`,
 |---|---|
 | Job model | `Models/<Family>Job.swift` |
 | Runner spec | `Runner/<Family>JobRunner.swift` — `enum <Family>RunnerSpec: JobRunnerSpec` plus `typealias <Family>JobRunner = JobRunner<<Family>RunnerSpec>` |
-| Job store | `Stores/<Family>JobStore.swift` |
+| Job store | none: `typealias <Family>JobStore = FamilyJobStore<<Family>Job>` in `Stores/FamilyJobStore.swift` |
 | Params UI | `Views/<Family>/<Family>ParamsPanelView.swift` + `…ParamsPanelState.swift` |
 | Preview UI | none: shared views, wired in `Views/PreviewPane/PreviewPaneView.swift` (see below) |
 | Settings form | `Views/Settings/ModelDefaultsView+<Family>Form.swift` |
@@ -84,7 +84,7 @@ Glob for these rather than grepping file contents.
 
 **Three irregularities to know before you search:**
 
-1. **Flux is the unprefixed default.** Its store is `Stores/JobStore.swift` (not
+1. **Flux is the unprefixed default.** Its store is `JobStore` (not
    `FluxJobStore`), its panel state is `Stores/ParamsPanelState.swift`, and its
    views live in `Views/ParamsPanel/`, not `Views/Flux/`. There is no
    `Views/Flux/` directory.
@@ -151,9 +151,10 @@ Adding Z-Image touched 24 files. In dependency order:
 4. `Runner/<Family>JobRunner.swift` — the spec enum, `buildArgs`, `preview(_:)`, the
    typealias. `preview(_:)` returns the family's `PreviewState` case, so add that
    case (step 9, `PreviewPaneView.swift`) first.
-5. `Stores/<Family>JobStore.swift` — conform to `ProfileScopedJobStore`, with
-   `PersistedJob` as the family's job, and to `GenerationJobStore` (declared in
-   the runner file). `FamilyQueue<Spec>` (`Runner/FamilyQueue.swift`) needs both.
+5. `Stores/FamilyJobStore.swift` — the store's typealias, and the job's
+   `FamilyStoredJob` conformance with its `historyFileName` (a test pins every
+   name: it is on disk). The generic store brings `ProfileScopedJobStore` and
+   `GenerationJobStore`, which `FamilyQueue<Spec>` (`Runner/FamilyQueue.swift`) needs.
 6. `Stores/AppSettings.swift` — persisted per-family defaults.
 7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
@@ -179,16 +180,20 @@ Adding Z-Image touched 24 files. In dependency order:
    sidecar through `onReplay`), and its `case` in `Models/SourceImageInput.swift`
    and `ContentView.useInImg2Img` (nil, or nothing, if it takes no source image):
    every menu and button offering an image as a source reads that one rule.
-10. Metadata and constraints: `Utilities/MetadataSidecar.swift` (the sidecar
-    type, with an optional `family` field, and a `source…` field on
-    `SeedVR2Metadata`), `Utilities/AnySidecar.swift` (a `SidecarFamily` case,
-    the `SidecarMetadata` conformance, a `decode` case, a `filed(under:)` case,
-    and the upscale source in `replayTarget`, which the compiler does not check;
-    never a `legacyFamily` rule, since new sidecars are always tagged),
-    `Views/Shared/ImageMetadataInfo.swift`, `Views/Shared/DimensionConstraints.swift`,
-    `Stores/GalleryStore.swift` (the item's metadata field and its line in
-    `GalleryItem.sidecar`), `Utilities/PythonTool.swift` (a case for the
-    new CLI) plus `Runtime/tools.txt` (same name), and the catalog's `generateTool`.
+10. Metadata and constraints:
+    - `Utilities/MetadataSidecar.swift`: the sidecar type, with an optional
+      `family` field, and a `source…` field on `SeedVR2Metadata`.
+    - `Utilities/AnySidecar.swift`: a `SidecarFamily` case, the `SidecarMetadata`
+      conformance, and the `decode`, `filed(under:)`, `family` and `SeedVR2Source`
+      cases. Also the upscale source in `replayTarget`, which the compiler does not
+      check. Never a `legacyFamily` rule: new sidecars are always tagged.
+    - `Utilities/GallerySearch.swift` (its `haystack` case) and
+      `Views/Shared/ImageMetadataInfo.swift` (its `init(galleryItem:)` case).
+    - `Models/ModelFamily.swift`: its `galleryFilePrefix`, which files its images
+      in the gallery, and its `SidecarFamily.modelFamily` case.
+    - `Views/Shared/DimensionConstraints.swift`, `Utilities/PythonTool.swift` (a
+      case for the new CLI) plus `Runtime/tools.txt` (same name), and the
+      catalog's `generateTool`.
 11. If the family needs a new *directory*, add it to `sources:` in `project.yml`
     and re-run `xcodegen generate`. New files inside an existing directory are
     picked up automatically — no manifest change needed.
@@ -283,7 +288,7 @@ nonisolated is not. So:
 - A conformance to a protocol whose associated type or parent protocol
   (`Codable`, `Identifiable`, `Hashable`) is satisfied main-actor needs
   `@MainActor` on the conformance:
-  `final class Krea2JobStore: @MainActor ProfileScopedJobStore`.
+  `final class FamilyJobStore<Job: FamilyStoredJob>: @MainActor ProfileScopedJobStore`.
 - `deinit` is nonisolated. To touch main-actor properties in it, write
   `isolated deinit`.
 - A `Task { }` started from main-actor code runs on the main actor. Two such

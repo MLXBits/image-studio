@@ -112,6 +112,18 @@ nonisolated enum AnySidecar {
 }
 
 nonisolated extension AnySidecar {
+    /// The family that wrote this sidecar.
+    var family: SidecarFamily {
+        switch self {
+        case .flux: .flux
+        case .ideogram4: .ideogram4
+        case .krea2: .krea2
+        case .zimage: .zimage
+        case .qwen21: .qwen21
+        case .seedVR2: .seedvr2
+        }
+    }
+
     /// The settings a replay of this image loads: its own, or for an upscale, those
     /// of the image it was made from. Nil for an upscale whose sidecar predates
     /// carrying its source.
@@ -200,36 +212,22 @@ nonisolated private struct TopLevelKeys: Decodable {
     }
 }
 
-nonisolated extension GallerySidecars {
-    init(_ sidecar: AnySidecar?) {
-        self.init()
-        switch sidecar {
-        case let .flux(meta): flux = meta
-        case let .ideogram4(meta): ideogram4 = meta
-        case let .krea2(meta): krea2 = meta
-        case let .zimage(meta): zimage = meta
-        case let .qwen21(meta): qwen21 = meta
-        case let .seedVR2(meta): seedVR2 = meta
-        case nil: break
-        }
-    }
-}
-
 nonisolated extension SeedVR2Source {
     /// The generation an upscale's source came from. An upscale of an upscale
     /// carries that one's own source forward, one hop, so the recipe survives.
     init(_ sidecar: AnySidecar?) {
-        if case let .seedVR2(prior) = sidecar {
+        switch sidecar {
+        case let .flux(meta): self.init(flux: meta)
+        case let .ideogram4(meta): self.init(ideogram4: meta)
+        case let .krea2(meta): self.init(krea2: meta)
+        case let .zimage(meta): self.init(zimage: meta)
+        case let .qwen21(meta): self.init(qwen21: meta)
+        case let .seedVR2(prior):
             self.init(
                 flux: prior.sourceFlux, ideogram4: prior.sourceIdeogram4, krea2: prior.sourceKrea2,
                 zimage: prior.sourceZImage, qwen21: prior.sourceQwen21
             )
-        } else {
-            let found = GallerySidecars(sidecar)
-            self.init(
-                flux: found.flux, ideogram4: found.ideogram4, krea2: found.krea2,
-                zimage: found.zimage, qwen21: found.qwen21
-            )
+        case nil: self.init()
         }
     }
 }

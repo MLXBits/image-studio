@@ -7,9 +7,7 @@ struct GalleryCullTests {
     private static func item(_ name: String, board: String = "Default") -> GalleryItem {
         GalleryItem(
             id: UUID(), path: "/out/\(board)/\(name).png", board: board, modifiedAt: Date(timeIntervalSince1970: 0),
-            thumbnailData: nil, thumbnailImage: nil, metadata: nil,
-            ideogram4Metadata: nil, krea2Metadata: nil, zimageMetadata: nil,
-            seedVR2Metadata: nil, flag: nil, rating: 0, searchHaystack: name
+            searchHaystack: name
         )
     }
 

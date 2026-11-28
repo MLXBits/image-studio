@@ -3,7 +3,7 @@ import Foundation
 import Testing
 
 /// Which family a sidecar belongs to, as ``AnySidecar/classify(data:fileName:)``
-/// works it out for both the gallery (``GallerySidecars``) and a SeedVR2 upscale
+/// works it out for both the gallery (``AnySidecar/read(forImageAt:)``) and a SeedVR2 upscale
 /// (``SeedVR2Metadata/resolveSource(for:)``).
 ///
 /// The fixtures are the oldest sidecars each family wrote: the required fields
@@ -75,19 +75,16 @@ struct SidecarClassificationTests {
         "{\"family\": \"\(tag)\", " + json.dropFirst()
     }
 
-    private static func families(_ found: GallerySidecars) -> [Family] {
-        let present: [(Family, Bool)] = [
-            (.flux, found.flux != nil), (.ideogram4, found.ideogram4 != nil), (.krea2, found.krea2 != nil),
-            (.zimage, found.zimage != nil), (.qwen21, found.qwen21 != nil), (.seedVR2, found.seedVR2 != nil),
-        ]
-        return present.filter(\.1).map(\.0)
+    private static func families(_ found: AnySidecar?) -> [Family] {
+        found.flatMap { Family(rawValue: $0.family.rawValue) }.map { [$0] } ?? []
     }
 
     private static func families(_ source: SeedVR2Source) -> [Family] {
-        families(GallerySidecars(
-            flux: source.flux, ideogram4: source.ideogram4, krea2: source.krea2,
-            zimage: source.zimage, qwen21: source.qwen21
-        ))
+        let present: [(Family, Bool)] = [
+            (.flux, source.flux != nil), (.ideogram4, source.ideogram4 != nil), (.krea2, source.krea2 != nil),
+            (.zimage, source.zimage != nil), (.qwen21, source.qwen21 != nil),
+        ]
+        return present.filter(\.1).map(\.0)
     }
 
     /// Writes `json` as the sidecar of an image called `fileName`, in a fresh
@@ -106,7 +103,7 @@ struct SidecarClassificationTests {
     private func classify(_ fileName: String, _ json: String?) throws -> [Family] {
         let path = try image(fileName, sidecar: json)
         defer { try? FileManager.default.removeItem(atPath: (path as NSString).deletingLastPathComponent) }
-        return Self.families(GallerySidecars.read(forImageAt: path))
+        return Self.families(AnySidecar.read(forImageAt: path))
     }
 
     private func resolve(_ fileName: String, _ json: String?) throws -> [Family] {
@@ -253,7 +250,7 @@ struct SidecarClassificationTests {
         defer { try? FileManager.default.removeItem(atPath: (path as NSString).deletingLastPathComponent) }
         MetadataSidecar.write(meta, for: path)
         #expect(MetadataSidecar.read(Krea2Metadata.self, for: path)?.family == "krea2")
-        #expect(Self.families(GallerySidecars.read(forImageAt: path)) == [.krea2])
+        #expect(Self.families(AnySidecar.read(forImageAt: path)) == [.krea2])
     }
 
     // MARK: - Current sidecars
@@ -278,13 +275,17 @@ struct SidecarClassificationTests {
         MetadataSidecar.write(ZImageMetadata.from(job: ZImageJob(modelVariant: .zimage, prompt: "z")), for: path("zimage_1.png"))
         MetadataSidecar.write(Qwen21Metadata.from(job: Qwen21Job(prompt: "q")), for: path("qwen21_1.png"))
 
-        #expect(Self.families(GallerySidecars.read(forImageAt: path("image_1.png"))) == [.flux])
-        #expect(Self.families(GallerySidecars.read(forImageAt: path("ideogram4_1.png"))) == [.ideogram4])
-        #expect(Self.families(GallerySidecars.read(forImageAt: path("krea2_1.png"))) == [.krea2])
-        let zimage = GallerySidecars.read(forImageAt: path("zimage_1.png"))
+        #expect(Self.families(AnySidecar.read(forImageAt: path("image_1.png"))) == [.flux])
+        #expect(Self.families(AnySidecar.read(forImageAt: path("ideogram4_1.png"))) == [.ideogram4])
+        #expect(Self.families(AnySidecar.read(forImageAt: path("krea2_1.png"))) == [.krea2])
+        #expect(Self.families(AnySidecar.read(forImageAt: path("qwen21_1.png"))) == [.qwen21])
+        let zimage = AnySidecar.read(forImageAt: path("zimage_1.png"))
         #expect(Self.families(zimage) == [.zimage])
-        #expect(zimage.zimage?.resolvedVariant == .zimage)
-        #expect(Self.families(GallerySidecars.read(forImageAt: path("qwen21_1.png"))) == [.qwen21])
+        guard case let .zimage(meta) = zimage else {
+            Issue.record("the Z-Image sidecar did not read as Z-Image")
+            return
+        }
+        #expect(meta.resolvedVariant == .zimage)
     }
 
     // MARK: - No usable sidecar

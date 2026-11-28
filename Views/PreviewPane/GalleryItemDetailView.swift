@@ -141,7 +141,7 @@ struct GalleryItemDetailView: View {
     /// "Adjust Boxes" closure — available only for Ideogram images once the image
     /// has loaded, so the boxes can be overlaid on it.
     private var editBoxesAction: (() -> Void)? {
-        guard let meta = item.ideogram4Metadata, let img = image else { return nil }
+        guard case let .ideogram4(meta) = item.sidecar, let img = image else { return nil }
         return { onEditBoxesOverImage?(meta, img) }
     }
 

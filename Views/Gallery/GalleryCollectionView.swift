@@ -53,7 +53,7 @@ private struct ThumbnailCellView: View, Equatable {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-            if item.metadata != nil {
+            if case .flux = item.sidecar {
                 LinearGradient(colors: [.clear, .black.opacity(0.4)], startPoint: .center, endPoint: .bottom)
                     .frame(height: 36)
             }
