@@ -1,7 +1,7 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
-> **Status (2026-11-27):** PRs 1–5 (#128–#131, #133) and PR 4a (#132) are merged,
-> and their in-app checks pass. PR 6 (the narrow params protocol) is next. A second
+> **Status (2026-11-27):** PRs 1–6 (#128–#131, #133, #134) and PR 4a (#132) are
+> merged, and their in-app checks pass. Only the optional "Later" items remain. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -519,7 +519,7 @@ The rule lives with the active model, not on `AnySidecar`.
       queue label, the dock badge, Stop and a retry. Switch profile while idle and
       confirm each family's form and queue come from the new profile.
 
-### PR 6: Narrow params protocol (review C2, D9)
+### PR 6: Narrow params protocol (review C2, D9) (merged, #134)
 
 - [x] A protocol with `seed`, `board`, `quantize`, `loras`, one readiness member and
       `applyDefaults`. All five params states conform.
