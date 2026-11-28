@@ -1,7 +1,8 @@
 # Audit Fixes and Family Queues: Improvement Plan
 
 > **Status (2026-11-27):** PRs 1–6 (#128–#131, #133, #134) and PR 4a (#132) are
-> merged, and their in-app checks pass. Only the optional "Later" items remain. A second
+> merged, and their in-app checks pass. The final sweep (PRs 7–10, settled
+> 2026-11-27) takes the "Later" items and the deferred minors. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -364,7 +365,7 @@ that the second rejection is deliberate.
 - [x] F17: `Models/IdeogramCaption.swift`.
 - [x] F3: the fingerprint strength assertions.
 
-### PR 2: Family queues
+### PR 2: Family queues (merged, #129)
 
 - [x] New file `Runner/FamilyQueue.swift`: `protocol AnyFamilyQueue` and
       `struct FamilyQueue<Spec>`, holding `family`, `store` and `runner` (D1). It
@@ -474,7 +475,9 @@ The rule lives with the active model, not on `AnySidecar`.
 - Deferred from the PR 4 review:
   - An upscale's completed preview reads its sidecar file each time it needs it,
     four times per body evaluation. The view is rare, but if the upscale moves to
-    another board, replay quietly disappears. Read it once into `@State`.
+    another board, replay quietly disappears. Read it once into `@State`. PR 7 reads
+    it once per output. A board move still leaves the job's `outputPath` behind, so
+    a moved upscale's queue row still has no replay (or image).
   - No test pins that `ContentView` passes `currentSelection.variant` (a custom
     checkpoint's loads-as variant) and not `params.model`. Done in PR 4a: `forActive`
     takes the `ModelSelection`, and a test covers custom checkpoints.
@@ -551,17 +554,71 @@ Rulings:
   `lastModel` rule), and GenerateAction has no tests: testing it queues on real
   runners.
 
-### Later (optional): Descriptor registry
+### Final sweep (settled 2026-11-27)
 
-- [ ] Phase 3a: `FamilyDescriptor`, the generic `FamilyJobStore<Job>`, and the
-      gallery, metadata, constraint and sidecar switches moved onto the descriptor.
-      It builds on PR 5's registry. See Part 3.
-- [ ] Phase 3b, only if several more families are planned: erase the params panels
-      and settings forms, the shared form core (C4b), and migrate the `lastX`
-      settings into the `ModelDefaults` dictionary (C4c, C8). This is a `profile.json`
-      migration, so it is a one-way door.
-- [ ] ComfyUI policy seam and progress-socket tests (C7, C10), if the poll path churns
-      again.
+The "Later" items were optional. On 2026-11-27 all of them were taken on, in four
+PRs, each with the usual checks:
+- Phase 3b runs in full, including the settings migration (a one-way door, accepted).
+- The ComfyUI items run even though the poll path has not changed since the review.
+
+### PR 7: Leftovers
+
+- [x] `ParamsPanelState.loadsAs`: a custom checkpoint's target, else the picked
+      model. The Flux panel decides FLUX 3's rules by it, as the runner does, so a
+      custom FLUX 3 in Generate mode no longer shows an img2img drop zone whose
+      image the runner drops. It shows "No img2img for FLUX 3", without the
+      "Switch to Edit" hint, because its form has no switch.
+- [x] `ParamsPanelState.dropUnusableImg2ImgSource()` clears the img2img image when
+      the form runs as FLUX 3. It replaces three copies, and also covers picking
+      Custom with a saved FLUX 3 target, which kept a hidden image the gallery
+      locked (review finding).
+- [x] The panel's negative prompt and Guidance follow the runner for a custom FLUX 3,
+      which sends neither: `FluxModelVariant.sendsNegativePrompt(loadsAs:)` is the
+      runner's rule, shared, and `takesGuidance` checks the target's
+      `supportsGuidance`. Templates use the same negative-prompt rule.
+- [x] `FamilyForms.lockedSourcePaths` replaces ContentView's `img2imgLockedPaths`
+      (whose comment named only Flux and Krea 2), and `followLibraryDefaults` replaces
+      the LoRA-library `onChange`'s per-family lines. Protocol `loras` now has a reader.
+- [x] `ParamsPanelView(forms:)` takes the forms, not five params states.
+- [x] `JobCompletedPreviewView` reads its sidecar once per output, not on every
+      body evaluation (PR 4's deferred minor). Every runner path writes the sidecar
+      before the job completes, and the completed view appears only then, so one
+      read sees it.
+- [x] Flux's Generate check uses `canGenerate`, as Qwen's does.
+      `applyMemoryDefaults(from:)` becomes `settings:`.
+- [x] Tests in `FamilyFormsTests`: `loadsAs`, the FLUX 3 image drop, the negative
+      prompt and guidance gates, the locked paths, Qwen's Edit-mode locks, the
+      library follow, and the active form for a custom checkpoint that
+      loads as Flux and for Z-Image base. A mutant confirmed each one.
+- [x] AGENTS.md step 9: the ContentView part is now a `queueSheet` case and an
+      optional accessor.
+- [ ] In-app: a custom checkpoint that loads as FLUX 3 shows "No img2img for FLUX 3"
+      under Image Input, and no PiD toggle, negative prompt or Guidance. On FLUX.2,
+      drop an img2img image, then pick that custom checkpoint: the image is cleared. A gallery image dropped into Krea 2's
+      img2img can't be deleted until it's cleared. Edit a default LoRA in the
+      library and confirm Krea 2's form follows. Open a completed upscale from the
+      queue and confirm Remix still works.
+
+### PR 8: Descriptor registry, Phase 3a (C6)
+
+- [ ] `FamilyDescriptor`, and the gallery, metadata, constraint and sidecar switches
+      moved onto it. It builds on PR 5's registry. See Part 3.
+- [ ] The generic `FamilyJobStore<Job>` for the five identical stores. SeedVR2
+      keeps its own.
+
+### PR 9: Phase 3b (C4b, C4c, C8)
+
+- [ ] The shared form core for Krea 2 and Z-Image, and the settings forms' ComfyUI
+      pickers.
+- [ ] Params panels and settings forms built through the descriptor.
+- [ ] The `lastX` settings move into one dictionary keyed by family, with a
+      one-time decode shim for the old `profile.json` keys. Test it against a real
+      profile from before the migration. This is the one-way door.
+
+### PR 10: ComfyUI seams (C7, C10)
+
+- [ ] The poll and blip policy as its own tested type.
+- [ ] A test seam for the progress socket loop.
 
 **Out of scope:** collapsing `PreviewState` into one job case (D4, and review C3),
 the full `ParamsState` protocol (D8; the narrow one is D9), family facts

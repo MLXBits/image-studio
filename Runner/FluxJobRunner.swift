@@ -269,8 +269,7 @@ enum FluxRunnerSpec: @MainActor JobRunnerSpec {
         // guidance support on the variant that actually runs. FLUX 3 rejects
         // `--negative-prompt` outright (a hard CLI error), unlike every other target.
         let effective = job.model == .custom ? job.customBaseModel : job.model
-        let supportsNeg = job.model.supportsNegativePrompt && !(job.model == .custom && effective.isFlux3)
-        if supportsNeg, !job.negativePrompt.isEmpty {
+        if job.model.sendsNegativePrompt(loadsAs: effective), !job.negativePrompt.isEmpty {
             args += ["--negative-prompt", job.negativePrompt]
         }
 

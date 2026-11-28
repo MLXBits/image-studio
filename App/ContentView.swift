@@ -137,32 +137,8 @@ struct ContentView: View {
         )
     }
 
-    /// Every image currently attached to an img2img / edit drop area, across the
-    /// Flux and Krea 2 panels. Fed to ``GalleryStore/lockedPaths`` so the gallery
-    /// refuses to delete a source out from under a queued or future generation.
-    private var img2imgLockedPaths: Set<String> {
-        var paths: Set<String> = []
-        if !params.imagePath.isEmpty {
-            paths.insert(params.imagePath)
-        }
-        paths.formUnion(params.editImagePaths)
-        if !krea2Params.imagePath.isEmpty {
-            paths.insert(krea2Params.imagePath)
-        }
-        if !zimageParams.imagePath.isEmpty {
-            paths.insert(zimageParams.imagePath)
-        }
-        if qwen21Params.isEditMode {
-            paths.formUnion(qwen21Params.editImagePaths)
-        }
-        return paths
-    }
-
     private var paramsPane: some View {
-        ParamsPanelView(
-            params: params, ideogramParams: ideogramParams,
-            krea2Params: krea2Params, zimageParams: zimageParams, qwen21Params: qwen21Params
-        ) { prompts in
+        ParamsPanelView(forms: forms) { prompts in
             // A scenario batch: one image job per rolled prompt, in the live family.
             generate(count: prompts.count, scenarioPrompts: prompts)
         }
@@ -252,10 +228,7 @@ struct ContentView: View {
                 return
             }
             _ = adoptFamilyForm(target)
-            // Same as a direct switch: FLUX 3 targets can't take an init image.
-            if target.isFlux3 {
-                params.imagePath = ""
-            }
+            params.dropUnusableImg2ImgSource()
         }
     }
 
@@ -353,7 +326,7 @@ struct ContentView: View {
                 restoreActiveJobPreview()
             }
             // References change after launch too; keep them undeletable in the gallery.
-            .onChange(of: img2imgLockedPaths) { _, paths in
+            .onChange(of: forms.lockedSourcePaths) { _, paths in
                 gallery.lockedPaths = paths
             }
             // The Models window's "Use this model", while this window is open.
@@ -414,7 +387,7 @@ struct ContentView: View {
                 if !settings.outputDir.isEmpty {
                     gallery.scan(outputDir: settings.outputDir)
                 }
-                gallery.lockedPaths = img2imgLockedPaths
+                gallery.lockedPaths = forms.lockedSourcePaths
                 Task { @MainActor in
                     NSApp.keyWindow?.makeFirstResponder(nil)
                 }
@@ -426,14 +399,7 @@ struct ContentView: View {
             .onChange(of: settings.llmBackend) { _, _ in backendModels.restart() }
             .task(id: queues.isAnyRunning) { backendModels.localRunInFlight = queues.isAnyRunning }
             .onChange(of: loraLibrary.allDefaultLoras) { old, updated in
-                let flux = LoraLibraryStore.followingDefaults(params.loras, from: old, to: updated)
-                if flux != params.loras {
-                    params.loras = flux
-                }
-                ideogramParams.loras = updated.filter { $0.modelFamily == .ideogram4 }
-                krea2Params.loras = updated.filter { $0.modelFamily == .krea2 }
-                zimageParams.loras = updated.filter { $0.modelFamily == .zimage }
-                qwen21Params.loras = updated.filter { $0.modelFamily == .qwen21 }
+                forms.followLibraryDefaults(from: old, to: updated)
             }
             // A profile switch tears this view down while the outgoing profile
             // is still active, so the unsaved form drafts are kept with it.
@@ -1010,7 +976,11 @@ struct ContentView: View {
         if adoptFamilyForm(m) {
             return
         }
-        guard m != .custom else { return }
+        guard m != .custom else {
+            // A custom checkpoint keeps the form, but not an image its target can't use.
+            params.dropUnusableImg2ImgSource()
+            return
+        }
         let d = settings.resolvedDefaults(for: m)
         params.steps = d.steps
         params.guidance = d.guidance
@@ -1022,10 +992,7 @@ struct ContentView: View {
         params.loras = loraLibrary.defaultLoras(for: .flux)
         params.isEditMode = false
         params.editImagePaths = []
-        // FLUX 3 has no img2img mode — don't carry a reference image across into it.
-        if m.isFlux3 {
-            params.imagePath = ""
-        }
+        params.dropUnusableImg2ImgSource()
     }
 
     /// Applies "Use this model" as a pick from the picker menu. A model switch sets the
@@ -1061,9 +1028,7 @@ struct ContentView: View {
         params.customBaseModel = custom.loadsAs
         params.model = .custom
         _ = adoptFamilyForm(custom.loadsAs)
-        if custom.loadsAs.isFlux3 {
-            params.imagePath = ""
-        }
+        params.dropUnusableImg2ImgSource()
     }
 
     /// Opens the Models window at the main window's model.

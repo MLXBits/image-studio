@@ -17,15 +17,14 @@ private struct OverlayScrollerApplicator: NSViewRepresentable {
 struct ParamsPanelView: View {
     private static let imageExtensions: Set<String> = ["png", "jpg", "jpeg", "webp"]
 
-    @Bindable var params: ParamsPanelState
-    @Bindable var ideogramParams: Ideogram4ParamsPanelState
-    @Bindable var krea2Params: Krea2ParamsPanelState
-    @Bindable var zimageParams: ZImageParamsPanelState
-    @Bindable var qwen21Params: Qwen21ParamsPanelState
+    /// Every family's form. Flux's is drawn here; each other family's goes to its own panel.
+    let forms: FamilyForms
     /// Turns a batch of scenario-generated prompts into one image job apiece.
     /// Owned by ContentView (which holds the stores and runners) and forwarded to
     /// whichever family's panel is showing.
-    var onQueueScenarioBatch: ([String]) -> Void = { _ in }
+    var onQueueScenarioBatch: ([String]) -> Void
+    /// Flux's form, bound for the controls drawn here.
+    @Bindable private var params: ParamsPanelState
     @Environment(AppSettings.self) private var settings
     @Environment(GalleryStore.self) private var gallery
     @Environment(TimingStore.self) private var timing
@@ -36,10 +35,6 @@ struct ParamsPanelView: View {
     @State private var showingTemplatePicker: Bool = false
     @StateObject private var clipboardMonitor =
         ClipboardImageMonitor(imageExtensions: ["png", "jpg", "jpeg", "webp"])
-
-    private var isDistilled: Bool {
-        params.model.isDistilled
-    }
 
     /// Learned-time estimate for the current Flux configuration. Keyed by
     /// model/quantize/low-RAM; the per-step term is fitted against megapixels.
@@ -61,13 +56,13 @@ struct ParamsPanelView: View {
                 case .flux:
                     fluxContent
                 case .ideogram4:
-                    Ideogram4ParamsPanelView(params: ideogramParams)
+                    Ideogram4ParamsPanelView(params: forms.ideogram4)
                 case .krea2:
-                    Krea2ParamsPanelView(params: krea2Params, onQueueScenarioBatch: onQueueScenarioBatch)
+                    Krea2ParamsPanelView(params: forms.krea2, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .zimage:
-                    ZImageParamsPanelView(params: zimageParams, onQueueScenarioBatch: onQueueScenarioBatch)
+                    ZImageParamsPanelView(params: forms.zimage, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .qwen21:
-                    Qwen21ParamsPanelView(params: qwen21Params, onQueueScenarioBatch: onQueueScenarioBatch)
+                    Qwen21ParamsPanelView(params: forms.qwen21, onQueueScenarioBatch: onQueueScenarioBatch)
                 case .seedvr2:
                     EmptyView() // upscaler has no params panel — driven by the Upscale sheet
                 }
@@ -114,7 +109,7 @@ struct ParamsPanelView: View {
                 "(up to 10), in order. Smaller groups cycle; a batch count overrides."
         ) {
             promptEditor
-            if params.model.supportsNegativePrompt {
+            if params.sendsNegativePrompt {
                 negativePromptEditor
             }
         } accessory: {
@@ -139,12 +134,15 @@ struct ParamsPanelView: View {
             ) {
                 EditImageListView(paths: $params.editImagePaths, clipboardHasImage: clipboardMonitor.hasImage)
             }
-        } else if params.model.isFlux3 {
+        } else if params.loadsAs.isFlux3 {
             SectionContainerView(
                 title: "Image Input",
                 info: "FLUX 3 Image Klein has no image-to-image mode — reference images are only used in Edit mode."
             ) {
-                Text("No img2img for FLUX 3. Switch to Edit above to use reference images.")
+                // A custom checkpoint's form has no Generate/Edit switch.
+                Text(params.model == .custom
+                    ? "No img2img for FLUX 3."
+                    : "No img2img for FLUX 3. Switch to Edit above to use reference images.")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -181,7 +179,7 @@ struct ParamsPanelView: View {
                     estimate: fluxEstimate
                 )
                 // Neither FLUX 3 CLI implements PiD decode.
-                if !params.model.isFlux3 {
+                if !params.loadsAs.isFlux3 {
                     PidDecodeToggleView(
                         pidDecode: $params.pidDecode, pidDegradeSigma: $params.pidDegradeSigma,
                         width: params.width, height: params.height, family: .flux
@@ -196,7 +194,7 @@ struct ParamsPanelView: View {
             stepsAndSeedRow
         }
 
-        if !isDistilled {
+        if params.takesGuidance {
             Divider()
             SectionContainerView(
                 title: "Guidance",
@@ -323,7 +321,7 @@ struct ParamsPanelView: View {
     }
 
     private var resolvedNegativeGhost: String {
-        guard !settings.activeTemplates.isEmpty, params.model.supportsNegativePrompt else { return "" }
+        guard !settings.activeTemplates.isEmpty, params.sendsNegativePrompt else { return "" }
         var resolved = params.negativePrompt
         for template in settings.activeTemplates {
             resolved = template.apply(to: "", negativePrompt: resolved, supportsNegativePrompt: true).negative
@@ -541,6 +539,12 @@ struct ParamsPanelView: View {
                 }
             }
         }
+    }
+
+    init(forms: FamilyForms, onQueueScenarioBatch: @escaping ([String]) -> Void = { _ in }) {
+        self.forms = forms
+        self.onQueueScenarioBatch = onQueueScenarioBatch
+        params = forms.flux
     }
 
     private func styleChip(name: String, templateID: UUID?) -> some View {

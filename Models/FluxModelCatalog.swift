@@ -294,6 +294,13 @@ enum FluxModelVariant: String, CaseIterable, Codable, Hashable {
         !isIdeogram4 && !isFlux3 && !isQwen21 && self != .custom
     }
 
+    /// Whether a job picked as this model sends its negative prompt, when it runs as
+    /// `loadsAs` (itself, or a custom checkpoint's target). FLUX 3 rejects
+    /// `--negative-prompt` outright, so a custom FLUX 3 drops it.
+    func sendsNegativePrompt(loadsAs: Self) -> Bool {
+        supportsNegativePrompt && !(self == .custom && loadsAs.isFlux3)
+    }
+
     /// Where the app's old mflux-save pass wrote this model + quantize level:
     /// {MFLUX_CACHE_DIR}/saved/{rawValue}-q{quantize}/. Nothing writes here now; see
     /// ``legacySavedWeights(quantize:in:)``.
