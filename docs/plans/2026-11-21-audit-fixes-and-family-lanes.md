@@ -571,7 +571,8 @@ PRs, each with the usual checks:
 - [x] `ParamsPanelState.dropUnusableImg2ImgSource()` clears the img2img image when
       the form runs as FLUX 3. It replaces three copies, and also covers picking
       Custom with a saved FLUX 3 target, which kept a hidden image the gallery
-      locked (review finding).
+      locked (review finding), and a replay of a sidecar that recorded one
+      (CodeRabbit, #135).
 - [x] The panel's negative prompt and Guidance follow the runner for a custom FLUX 3,
       which sends neither: `FluxModelVariant.sendsNegativePrompt(loadsAs:)` is the
       runner's rule, shared, and `takesGuidance` checks the target's
@@ -586,7 +587,7 @@ PRs, each with the usual checks:
       read sees it.
 - [x] Flux's Generate check uses `canGenerate`, as Qwen's does.
       `applyMemoryDefaults(from:)` becomes `settings:`.
-- [x] Tests in `FamilyFormsTests`: `loadsAs`, the FLUX 3 image drop, the negative
+- [x] Tests in `FamilyFormsTests`: `loadsAs`, the FLUX 3 image drop (also on replay), the negative
       prompt and guidance gates, the locked paths, Qwen's Edit-mode locks, the
       library follow, and the active form for a custom checkpoint that
       loads as Flux and for Z-Image base. A mutant confirmed each one.

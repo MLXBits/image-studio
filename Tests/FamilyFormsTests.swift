@@ -64,6 +64,17 @@ struct FamilyFormsTests {
         #expect(forms.flux.imagePath.isEmpty)
     }
 
+    /// A replay restores the recorded image, which a custom FLUX 3 can't use.
+    /// Sidecars from before the panel hid it can carry one.
+    @Test func replayingACustomFlux3DropsItsImg2ImgImage() {
+        let job = FluxJob(model: .custom, customBaseModel: .flux3Klein, prompt: "a fox", imagePath: "/out/a.png")
+        forms.flux.apply(metadata: GenerationMetadata.from(job: job), newSeed: false)
+        #expect(forms.flux.imagePath.isEmpty)
+        let flux2 = FluxJob(model: .flux2Klein9B, prompt: "a fox", imagePath: "/out/a.png")
+        forms.flux.apply(metadata: GenerationMetadata.from(job: flux2), newSeed: false)
+        #expect(forms.flux.imagePath == "/out/a.png")
+    }
+
     /// The panel offers a negative prompt and guidance only where the runner sends them.
     @Test func aCustomFlux3TakesNoNegativePromptOrGuidance() {
         forms.flux.model = .custom

@@ -158,6 +158,8 @@ final class ParamsPanelState {
         pidDecode = meta.pidDecode ?? false
         pidDegradeSigma = meta.pidDegradeSigma ?? 0.0
         seed = newSeed ? -1 : meta.seed
+        // A sidecar from before the panel hid it can record an image FLUX 3 can't use.
+        dropUnusableImg2ImgSource()
     }
 
     /// Prompt + negative with the active templates chained on, before
