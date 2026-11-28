@@ -2,8 +2,8 @@
 
 > **Status (2026-11-27):** PRs 1–6 (#128–#131, #133, #134) and PR 4a (#132) are
 > merged, and their in-app checks pass. The final sweep (PRs 7–10, settled
-> 2026-11-27) takes the "Later" items and the deferred minors: PR 7 (#135) is
-> merged, and PR 8 is next. A second
+> 2026-11-27) takes the "Later" items and the deferred minors: PRs 7 and 8 (#135,
+> #136) are merged, and PR 9a is next. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -601,7 +601,7 @@ PRs, each with the usual checks:
       library and confirm Krea 2's form follows. Open a completed upscale from the
       queue and confirm Remix still works.
 
-### PR 8: Descriptor registry, Phase 3a (C6)
+### PR 8: Descriptor registry, Phase 3a (C6) (merged, #136)
 
 - [x] The generic `FamilyJobStore<Job: FamilyStoredJob>` replaces the five
       identical store classes. Each family's store name is a typealias, and each job
@@ -643,17 +643,74 @@ Rulings:
   must still match files from before "ideogram4_", and Flux's "image" prefix is
   not what makes an image Flux's: any name no family claims is.
 
-### PR 9: Phase 3b (C4b, C4c, C8)
+### PR 9a: One last-used form per family, per profile (C4c, C8; the one-way door)
+
+Decisions (settled 2026-11-27):
+- Each family's last-used form goes into the profile, as one `lastForms` object
+  keyed by family. Flux's and Ideogram's size and precision become per profile, as
+  Krea 2's already are. The picked model and the custom checkpoint stay global, so
+  switching profile doesn't change the model.
+- Ideogram splits like Krea 2. Settings → Models → Ideogram edits global defaults in
+  the model-defaults dictionary. The last-used preset, size and precision go in the
+  profile's form and fall back to those defaults.
+- The old keys are read once and not written again. A build from before PR 9a opens
+  a migrated profile with Flux's and Ideogram's size and precision from the frozen
+  globals and every other field of the forms from defaults. Its first save writes
+  the old keys again, without `lastForms`, so going back to PR 9a migrates from
+  those, and the forms saved under PR 9a are lost.
+- The old global keys (`lastWidth`, `lastHeight`, `lastQuantize`, `lastIdeogram*`)
+  stay in `settings.json`, frozen at their last values, so a profile not opened
+  since the upgrade still migrates with them. Only a profile that has old keys
+  takes them: one created after the upgrade starts from the Settings → Models
+  defaults (review finding).
+- The migration test uses a fixture with the keys and shapes of a real profile from
+  before it, with its text and paths replaced.
+
+- [x] `Stores/LastForms.swift`: `LastForms` (flux, ideogram4, krea2, zimage,
+      qwen21), plus `FluxFormState`, `Ideogram4FormState` and `LegacyGlobalForms`.
+      A malformed family entry costs only that family.
+- [x] `ProfileStored.resolvedLastForms(globals:)` builds `lastForms` from the old
+      keys and the frozen globals when the profile has none. It writes only
+      `lastForms`. `AppSettings` keeps the frozen globals and writes them back
+      unchanged.
+- [x] Ideogram's Settings → Models defaults: the preset is `ideogram4Preset`, and
+      size and precision are `modelDefaults["ideogram4"]`. Both are seeded from the
+      old global keys the first time.
+- [x] Every params state restores from `settings.lastForms` and has `snapshot()`.
+      `FamilyForms.snapshot()` saves all five on a profile switch, so Flux's and
+      Ideogram's size and precision persist as Krea 2's did. Ideogram's caption,
+      seed and precision still save as they change.
+- [x] Tests: `LastFormsMigrationTests`. Its fixture has the keys and value types of
+      a real profile from before PR 9a, with the text and paths replaced. It checks
+      every family's form, that a saved profile writes only `lastForms`, that
+      `lastForms` wins over the old keys, that a malformed family costs only that
+      family, the Ideogram defaults seed, and the forms snapshot. A mutant
+      confirmed each one.
+- [x] Wiring tests through `AppSettings(stored:)` (review finding): the frozen keys
+      survive a settings save (`storedSnapshot()`), Ideogram's defaults seed and
+      are then kept, two old profiles opened in turn both migrate with the globals,
+      a new profile ignores them, and each form falls back to its defaults.
+- [x] Flux's width and height, when unsaved, come from Settings → Models (`d.width`)
+      rather than 1024, as `resetForm` and Krea 2 already do. The split-prompt
+      branch saves only the prompt, as before.
+- [x] AGENTS.md recipe step 6.
+- [ ] In-app, on a copy of your profiles. A build with PR 9a migrates the profiles
+      it opens, and a build without it then starts their forms from defaults.
+      Open each profile and confirm each family's form comes back as it was,
+      including Flux's and Ideogram's size and precision. Settings → Models →
+      Ideogram shows the same preset, size and precision as before. Switch
+      profile and back: each keeps its own Flux size.
+
+### PR 9b: Descriptor and shared form code (C4b, Phase 3b)
 
 - [ ] `FamilyDescriptor`, the per-family factory PR 8 deferred to here (see its
       rulings): the params panel, the settings form and the settings snapshot.
       Move the `DimensionConstraints` family switch onto it if it fits.
 - [ ] The shared form core for Krea 2 and Z-Image, and the settings forms' ComfyUI
       pickers.
-- [ ] Params panels and settings forms built through the descriptor.
-- [ ] The `lastX` settings move into one dictionary keyed by family, with a
-      one-time decode shim for the old `profile.json` keys. Test it against a real
-      profile from before the migration. This is the one-way door.
+
+Ruling: PR 9 is split. 9a holds the one-way migration alone, so it can be reviewed
+and checked on its own. 9b is a two-way refactor on top of it.
 
 ### PR 10: ComfyUI seams (C7, C10)
 

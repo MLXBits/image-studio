@@ -189,7 +189,7 @@ struct ModelDefaultsView: View {
         let quantize: Int
         let typeLabel: String
         if selectedModel.isIdeogram4 {
-            quantize = settings.lastIdeogramQuantize ?? 8
+            quantize = settings.defaults(for: .ideogram4).quantize ?? 8
             typeLabel = "Preset-based"
         } else {
             quantize = settings.defaults(for: selectedModel).quantize ?? selectedModel.recommendedQuantize

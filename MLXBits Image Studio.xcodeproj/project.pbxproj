@@ -128,6 +128,7 @@
 		4443633F213D42A0DC7D12EA /* ModelManagerToolDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0F4CC7E1F5A13D252FFD3918 /* ModelManagerToolDetailView.swift */; };
 		44BC2CCA37BE42B430A2EC42 /* FamilyRegistryTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD4A62E3BB9F77972A93DDB8 /* FamilyRegistryTests.swift */; };
 		44C3F1474A3198940C10819A /* ProfileEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CCCF9C84722B5E96AF25F4 /* ProfileEditorSheet.swift */; };
+		4564167C67A612A5F0DC017D /* LastFormsMigrationTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FE39C80041694B2028405812 /* LastFormsMigrationTests.swift */; };
 		45A5BAA44F5602C038720620 /* ScenarioBatchQueueTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1748E64B34608DBEDF0A6DAA /* ScenarioBatchQueueTests.swift */; };
 		45F11F22D5F66758BF6CCA63 /* ModelDefaultsView+Qwen21Form.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5D2FD8DEBBBCA654DADD17E /* ModelDefaultsView+Qwen21Form.swift */; };
 		4745BC108284171AF578F466 /* ModelDownloadStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E77A32B68E5EB388143653 /* ModelDownloadStore.swift */; };
@@ -314,6 +315,7 @@
 		C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */ = {isa = PBXBuildFile; fileRef = B15505CDC7A94FEC92A6CE1F /* FakeTipStorefront.swift */; };
 		C7C9FF0C9CC78623814493A9 /* AppSettingsToolchainTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17EF9055C72E420DB9FB6FF4 /* AppSettingsToolchainTests.swift */; };
 		C81A37AEF4BCF91EC3B77ACD /* PromptTokenEstimatorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1214D5AA57C649C55EEDF350 /* PromptTokenEstimatorTests.swift */; };
+		C9184909AB723EBFA0DB4A7C /* LastForms.swift in Sources */ = {isa = PBXBuildFile; fileRef = BD44B13C3853D107253E7A0A /* LastForms.swift */; };
 		C9BB5D5DC950F0CF9D565CB5 /* BBoxEditorView+Gestures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6E9CF53C1CEFCECFF3FE2374 /* BBoxEditorView+Gestures.swift */; };
 		CB8794511C9920CDDFDFA806 /* ComfyTemplateTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F8DF83AF5F24CD597C0AE21 /* ComfyTemplateTests.swift */; };
 		CC5BB2544F37500F928E8399 /* AppSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3C1F3A0AA78460E83FD525 /* AppSettings.swift */; };
@@ -697,6 +699,7 @@
 		B8FD595FF908251904AF94B9 /* GenerationGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerationGalleryView.swift; sourceTree = "<group>"; };
 		B9474B6243420062519AB6BA /* ParamsPanelState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ParamsPanelState.swift; sourceTree = "<group>"; };
 		BACAD8AEF0C40407E8B5D4AE /* AppDelegateTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegateTests.swift; sourceTree = "<group>"; };
+		BD44B13C3853D107253E7A0A /* LastForms.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastForms.swift; sourceTree = "<group>"; };
 		BEBC098467186F40B0AA4214 /* ProfileBootstrapTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileBootstrapTests.swift; sourceTree = "<group>"; };
 		BEC2D794A469B7E39DD3A709 /* BackendModelStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackendModelStore.swift; sourceTree = "<group>"; };
 		BFCD547F87990EC6D95E8676 /* LoraServerPresenceTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoraServerPresenceTests.swift; sourceTree = "<group>"; };
@@ -784,6 +787,7 @@
 		FC0DB8209324E7627CD54505 /* BindingElementTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BindingElementTests.swift; sourceTree = "<group>"; };
 		FDD7620BFB8202DF073E99DD /* RAMFitTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RAMFitTests.swift; sourceTree = "<group>"; };
 		FE1832089B5311712FEF1286 /* scenario_prompt.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = scenario_prompt.md; sourceTree = "<group>"; };
+		FE39C80041694B2028405812 /* LastFormsMigrationTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LastFormsMigrationTests.swift; sourceTree = "<group>"; };
 		FF03D33ABE80325E929DCC2B /* FirstRunPathsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FirstRunPathsTests.swift; sourceTree = "<group>"; };
 		FF8DCF0B4C390F01F3C03025 /* ModelGuideTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelGuideTests.swift; sourceTree = "<group>"; };
 		FFC15B4AC3BB449915BCF5FD /* RAMFit+Color.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "RAMFit+Color.swift"; sourceTree = "<group>"; };
@@ -1033,6 +1037,7 @@
 				82748860A03A26EBBB7D3F7E /* KeyboardShortcutCatalogTests.swift */,
 				9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */,
 				17C6C541C0616732AFB0D86E /* LandingDiffTests.swift */,
+				FE39C80041694B2028405812 /* LastFormsMigrationTests.swift */,
 				14B3DD76D0853DB83ADE9973 /* LibraryStatusTests.swift */,
 				B37EACF553C8C7E29AAE62E1 /* LineBufferTests.swift */,
 				5E9882E2488E7CDE2179ECBE /* LoraBaseModelHeuristicTests.swift */,
@@ -1365,6 +1370,7 @@
 				32006628FC87B8BD95A86417 /* HFCacheVerdictStore.swift */,
 				F9547EC3D59188BB3F12386B /* JobHistoryFile.swift */,
 				90A2C4A7D1C766F5DCEC91F3 /* JobQueueOrder.swift */,
+				BD44B13C3853D107253E7A0A /* LastForms.swift */,
 				75E08D8BC7BE1DE5473731C4 /* LoraLibraryStore.swift */,
 				08E77A32B68E5EB388143653 /* ModelDownloadStore.swift */,
 				F58B413D62386AE2297E3E27 /* ModelInventory.swift */,
@@ -1669,6 +1675,7 @@
 				7EB6298472732B183A437E70 /* Krea2ParamsPanelState.swift in Sources */,
 				1C11642AF481FCD2EC662F71 /* Krea2ParamsPanelView.swift in Sources */,
 				15E67B4034C1782015E9B85F /* Landing.swift in Sources */,
+				C9184909AB723EBFA0DB4A7C /* LastForms.swift in Sources */,
 				C49C85AFEFD88DE0F0FC1FEB /* LibraryFolderPanel.swift in Sources */,
 				BB14E4636BCB1B9A0CBFC87F /* LibraryStatus.swift in Sources */,
 				0B0B5E6F7524A1F37E034E7C /* LineBuffer.swift in Sources */,
@@ -1871,6 +1878,7 @@
 				4187202131C6DC870AD7BDBC /* KeyboardShortcutCatalogTests.swift in Sources */,
 				37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */,
 				09D10DFF98F5EC3413A02385 /* LandingDiffTests.swift in Sources */,
+				4564167C67A612A5F0DC017D /* LastFormsMigrationTests.swift in Sources */,
 				2F4012AB0BA586EBE3111673 /* LibraryStatusTests.swift in Sources */,
 				AF0FAE9470BD4F6A32C14BDB /* LineBufferTests.swift in Sources */,
 				24636A27FCA3C0A9B76AE57D /* LoraBaseModelHeuristicTests.swift in Sources */,

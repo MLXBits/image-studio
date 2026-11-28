@@ -23,6 +23,9 @@ extension AppSettings {
         var activeTemplateIDs: [UUID]?
         /// Legacy single-ID field, decoded for migration only; never written.
         var activeTemplateID: UUID?
+        /// Every family's last-used form. Nil in a profile saved before it.
+        var lastForms: LastForms?
+        // Legacy keys, decoded once to build `lastForms` and never written again.
         var lastPrompt: String?
         var lastLoras: [LoraEntry]?
         var lastIdeogramCaption: IdeogramCaption?
@@ -41,6 +44,14 @@ extension AppSettings {
             activeTemplateIDs ?? activeTemplateID.map { [$0] } ?? []
         }
 
+        /// Whether this profile was saved before `lastForms`, so the old globals
+        /// belong to it. A profile created since has none of the old keys.
+        private var hasLegacyForms: Bool {
+            lastPrompt != nil || lastLoras != nil || lastIdeogramCaption != nil || lastIdeogramPlainPrompt != nil
+                || lastIdeogramUsePlainPrompt != nil || lastIdeogramSeed != nil
+                || lastKrea2 != nil || lastZImage != nil || lastQwen21 != nil
+        }
+
         init() {}
 
         init(snapshotOf settings: AppSettings) {
@@ -49,15 +60,7 @@ extension AppSettings {
             promptHistory = settings.promptHistory
             customTemplates = settings.customTemplates
             activeTemplateIDs = settings.activeTemplateIDs
-            lastPrompt = settings.lastPrompt
-            lastLoras = settings.lastLoras
-            lastIdeogramCaption = settings.lastIdeogramCaption
-            lastIdeogramPlainPrompt = settings.lastIdeogramPlainPrompt
-            lastIdeogramUsePlainPrompt = settings.lastIdeogramUsePlainPrompt
-            lastIdeogramSeed = settings.lastIdeogramSeed
-            lastKrea2 = settings.lastKrea2
-            lastZImage = settings.lastZImage
-            lastQwen21 = settings.lastQwen21
+            lastForms = settings.lastForms
             lastScenarioOutline = settings.lastScenarioOutline
             galleryCollapsedBoards = settings.galleryCollapsedBoards
         }
@@ -72,6 +75,7 @@ extension AppSettings {
             customTemplates = try? c.decode([PromptTemplate].self, forKey: .customTemplates)
             activeTemplateIDs = try? c.decode([UUID].self, forKey: .activeTemplateIDs)
             activeTemplateID = try? c.decode(UUID.self, forKey: .activeTemplateID)
+            lastForms = try? c.decode(LastForms.self, forKey: .lastForms)
             lastPrompt = try? c.decode(String.self, forKey: .lastPrompt)
             lastLoras = try? c.decode([LoraEntry].self, forKey: .lastLoras)
             lastIdeogramCaption = (try? c.decode(LenientIdeogramCaption.self, forKey: .lastIdeogramCaption))?.caption
@@ -84,6 +88,12 @@ extension AppSettings {
             lastScenarioOutline = try? c.decode(String.self, forKey: .lastScenarioOutline)
             galleryCollapsedBoards = try? c.decode([String].self, forKey: .galleryCollapsedBoards)
         }
+
+        /// The profile's forms: `lastForms`, or for a profile saved before it, the
+        /// old keys and `globals`, the values settings.json held then.
+        func resolvedLastForms(globals: LegacyGlobalForms) -> LastForms {
+            lastForms ?? LastForms(legacyProfile: self, globals: hasLegacyForms ? globals : LegacyGlobalForms())
+        }
     }
 
     /// Replaces every per-profile field. Called only from
@@ -94,15 +104,7 @@ extension AppSettings {
         promptHistory = stored.promptHistory ?? []
         customTemplates = stored.customTemplates ?? []
         activeTemplateIDs = stored.resolvedActiveTemplateIDs
-        lastPrompt = stored.lastPrompt ?? ""
-        lastLoras = stored.lastLoras ?? []
-        lastIdeogramCaption = stored.lastIdeogramCaption
-        lastIdeogramPlainPrompt = stored.lastIdeogramPlainPrompt
-        lastIdeogramUsePlainPrompt = stored.lastIdeogramUsePlainPrompt
-        lastIdeogramSeed = stored.lastIdeogramSeed
-        lastKrea2 = stored.lastKrea2
-        lastZImage = stored.lastZImage
-        lastQwen21 = stored.lastQwen21
+        lastForms = stored.resolvedLastForms(globals: legacyGlobalForms)
         lastScenarioOutline = stored.lastScenarioOutline ?? ""
         galleryCollapsedBoards = stored.galleryCollapsedBoards ?? []
     }

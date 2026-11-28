@@ -30,24 +30,35 @@ final class Ideogram4ParamsPanelState {
     }
 
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
-        preset = settings.lastIdeogramPreset ?? .normal
-        width = settings.lastIdeogramWidth ?? 1024
-        height = settings.lastIdeogramHeight ?? 1024
-        quantize = settings.lastIdeogramQuantize ?? 8 // BF16 (0), Q8, or Q4: each an mflux-community repo
-        seed = settings.lastIdeogramSeed ?? -1
+        let last = settings.lastForms.ideogram4
+        let defaults = settings.defaults(for: .ideogram4)
+        preset = last.preset ?? settings.ideogram4Preset
+        width = last.width ?? defaults.width ?? 1024
+        height = last.height ?? defaults.height ?? 1024
+        // BF16 (0), Q8, or Q4: each an mflux-community repo.
+        quantize = last.quantize ?? defaults.quantize ?? 8
+        seed = last.seed ?? -1
         lowRam = settings.ideogram4LowRam
         strictValidation = settings.ideogram4StrictValidation
         board = settings.defaultBoard
-        if let cap = settings.lastIdeogramCaption {
+        if let cap = last.caption {
             caption = cap
         }
-        if let prompt = settings.lastIdeogramPlainPrompt {
+        if let prompt = last.plainPrompt {
             plainPrompt = prompt
         }
-        if let usePlain = settings.lastIdeogramUsePlainPrompt {
+        if let usePlain = last.usePlainPrompt {
             usePlainPrompt = usePlain
         }
         loras = library.defaultLoras(for: .ideogram4)
+    }
+
+    /// The form as ``LastForms`` saves it.
+    func snapshot() -> Ideogram4FormState {
+        Ideogram4FormState(
+            preset: preset, width: width, height: height, quantize: quantize,
+            caption: caption, plainPrompt: plainPrompt, usePlainPrompt: usePlainPrompt, seed: seed
+        )
     }
 
     /// Replays a completed generation's settings back into the form.

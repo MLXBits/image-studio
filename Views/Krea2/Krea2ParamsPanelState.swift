@@ -73,7 +73,7 @@ final class Krea2ParamsPanelState {
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         // Restore the last-used form across launches when present; otherwise fall
         // back to the model defaults from Settings → Models.
-        if let s = settings.lastKrea2 {
+        if let s = settings.lastForms.krea2 {
             prompt = s.prompt
             negativePrompt = s.negativePrompt
             width = s.width

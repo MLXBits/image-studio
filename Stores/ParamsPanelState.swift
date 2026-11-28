@@ -79,10 +79,11 @@ final class ParamsPanelState {
         model = m
         customModelRepo = settings.lastCustomModelRepo
         customBaseModel = settings.lastCustomBaseModel
-        quantize = settings.lastQuantize
+        let last = settings.lastForms.flux
+        quantize = last.quantize ?? d.quantize
         board = settings.defaultBoard
-        width = settings.lastWidth
-        height = settings.lastHeight
+        width = last.width ?? d.width
+        height = last.height ?? d.height
         steps = d.steps
         guidance = d.guidance
         seed = -1
@@ -91,7 +92,7 @@ final class ParamsPanelState {
         // Build last-run lookup (safe against duplicate paths). Only include FLUX LoRAs —
         // the last-run list may contain Ideogram entries that the Flux runner must not receive.
         let fluxDefaultLoras = library.defaultLoras(for: .flux)
-        let fluxLastLoras = settings.lastLoras.filter { $0.modelFamily == .flux }
+        let fluxLastLoras = (last.loras ?? []).filter { $0.modelFamily == .flux }
         let lastByPath = Dictionary(
             fluxLastLoras.map { ($0.path, $0) }
         ) { first, _ in first }
@@ -104,7 +105,12 @@ final class ParamsPanelState {
         // Session-only loras (added during a run but not in global defaults) persist across launches.
         loraResult += fluxLastLoras.filter { !defaultPaths.contains($0.path) }
         loras = loraResult
-        prompt = settings.lastPrompt
+        prompt = last.prompt ?? ""
+    }
+
+    /// The form as ``LastForms`` saves it.
+    func snapshot() -> FluxFormState {
+        FluxFormState(prompt: prompt, loras: loras, width: width, height: height, quantize: quantize)
     }
 
     /// Re-reads Low RAM for the picked model. Called just before a job is built so a
