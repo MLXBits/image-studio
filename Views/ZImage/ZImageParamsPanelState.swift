@@ -96,7 +96,7 @@ final class ZImageParamsPanelState {
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         // Restore the last-used form across launches when present; otherwise fall
         // back to the model defaults from Settings → Models.
-        if let s = settings.lastZImage {
+        if let s = settings.lastForms.zimage {
             variant = s.variant.isZImage ? s.variant : .zimageTurbo
             prompt = s.prompt
             negativePrompt = s.negativePrompt

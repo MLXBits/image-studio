@@ -21,14 +21,10 @@ struct GenerateAction {
         }
     }
 
-    /// Keeps the prompts typed but not yet generated with the current profile.
-    /// Generating saves these too; this covers leaving the profile first.
+    /// Keeps every family's form, typed but not yet generated, with the current
+    /// profile. Generating saves the family's form too; this covers leaving first.
     func saveContentDrafts() {
-        settings.lastPrompt = forms.flux.prompt
-        settings.lastLoras = forms.flux.loras
-        settings.lastKrea2 = forms.krea2.snapshot()
-        settings.lastZImage = forms.zimage.snapshot()
-        settings.lastQwen21 = forms.qwen21.snapshot()
+        settings.lastForms = forms.snapshot()
     }
 
     /// Queues the press's jobs. `scenarioPrompts`, when supplied, is a batch of
@@ -45,7 +41,7 @@ struct GenerateAction {
             let prompts = PromptBatchSplitter.split(field)
             if prompts.count > 1 {
                 if forms.flux.modelFamily == .flux {
-                    settings.lastPrompt = field
+                    settings.lastForms.flux.prompt = field
                 }
                 settings.recordPromptUse(field)
                 return self(count: prompts.count, scenarioPrompts: prompts)
@@ -76,17 +72,16 @@ struct GenerateAction {
         // A scenario batch brings its own prompts, so an empty prompt field is fine.
         let hasReferences = !forms.flux.isEditMode || !forms.flux.editImagePaths.isEmpty
         guard forms.flux.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return nil }
+        var saved = forms.flux.snapshot()
         if scenarioPrompts == nil {
             // Skip for scenario batches: N rolled prompts would swamp the history,
             // and each image's sidecar already records the prompt it used.
-            settings.lastPrompt = forms.flux.prompt
             settings.recordPromptUse(forms.flux.prompt)
+        } else {
+            saved.prompt = settings.lastForms.flux.prompt
         }
-        settings.lastWidth = forms.flux.width
-        settings.lastHeight = forms.flux.height
-        settings.lastLoras = forms.flux.loras
+        settings.lastForms.flux = saved
         settings.lastModel = forms.flux.model
-        settings.lastQuantize = forms.flux.quantize
         // Low RAM lives in Settings -> Models; read it now so a toggle applies to
         // this run instead of only after a relaunch.
         forms.flux.applyMemoryDefaults(settings: settings)
@@ -108,14 +103,7 @@ struct GenerateAction {
         // Remember the picker selection across sessions — `custom` must survive
         // as itself, not be flattened to the family it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : .ideogram4
-        settings.lastIdeogramPreset = forms.ideogram4.preset
-        settings.lastIdeogramWidth = forms.ideogram4.width
-        settings.lastIdeogramHeight = forms.ideogram4.height
-        settings.lastIdeogramQuantize = forms.ideogram4.quantize
-        settings.lastIdeogramCaption = forms.ideogram4.caption
-        settings.lastIdeogramPlainPrompt = forms.ideogram4.plainPrompt
-        settings.lastIdeogramUsePlainPrompt = forms.ideogram4.usePlainPrompt
-        settings.lastIdeogramSeed = forms.ideogram4.seed
+        settings.lastForms.ideogram4 = forms.ideogram4.snapshot()
         // Low-RAM and strict-validation live in Settings → Models → Ideogram;
         // pull the current values so live edits apply to this run.
         forms.ideogram4.lowRam = settings.ideogram4LowRam
@@ -129,7 +117,7 @@ struct GenerateAction {
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the family it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : .krea2
-        settings.lastKrea2 = forms.krea2.snapshot() // remember the form across launches
+        settings.lastForms.krea2 = forms.krea2.snapshot() // remember the form across launches
         // Low-RAM lives in Settings → Models → Krea 2; pull it so live edits apply to this run.
         forms.krea2.lowRam = settings.resolvedDefaults(for: .krea2).lowRam
         if scenarioPrompts == nil {
@@ -155,7 +143,7 @@ struct GenerateAction {
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the variant it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : forms.zimage.variant
-        settings.lastZImage = forms.zimage.snapshot() // remember the form across launches
+        settings.lastForms.zimage = forms.zimage.snapshot() // remember the form across launches
         if scenarioPrompts == nil {
             settings.recordPromptUse(forms.zimage.prompt)
         }
@@ -180,7 +168,7 @@ struct GenerateAction {
         let hasReferences = !forms.qwen21.isEditMode || !forms.qwen21.editImagePaths.isEmpty
         guard forms.qwen21.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return nil }
         settings.lastModel = forms.flux.model == .custom ? .custom : .qwen21Turbo
-        settings.lastQwen21 = forms.qwen21.snapshot()
+        settings.lastForms.qwen21 = forms.qwen21.snapshot()
         forms.qwen21.lowRam = settings.resolvedDefaults(for: .qwen21Turbo).lowRam
         forms.qwen21.routesToComfy = Qwen21RunnerSpec.routesToComfy(settings: settings)
         if scenarioPrompts == nil {

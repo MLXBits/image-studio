@@ -55,7 +55,7 @@ extension ModelDefaults {
 class AppSettings {
     // MARK: - Stored
 
-    private struct Stored: Codable {
+    struct Stored: Codable {
         /// Read-only legacy key: migrated into `customPython` at launch
         /// (``ToolchainMigration``) and never written again.
         var mfluxBinaryDir: String?
@@ -67,6 +67,9 @@ class AppSettings {
         var defaultLoras: [LoraEntry]?
         var mlxCacheLimitGB: Double?; var hfHome: String?; var mfluxCacheDir: String?
         var hfOffline: Bool?; var logFontSize: Double?
+        /// Frozen legacy keys: Flux's last-used size and precision before they moved
+        /// into each profile's `lastForms`. Written back unchanged, never updated, so
+        /// a profile not opened since the move still migrates with them.
         var lastWidth: Int?; var lastHeight: Int?
         var lastModel: FluxModelVariant?; var lastQuantize: Int?
         var modelDefaults: [String: ModelDefaults]?
@@ -78,10 +81,15 @@ class AppSettings {
         // Ideogram 4
         var gemmaModelPath: String?
         var ideogram4ModelRepoOverride: String?
+        /// Frozen legacy keys, as `lastWidth` above: Ideogram's last-used values,
+        /// which were also its Settings → Models defaults.
         var lastIdeogramPreset: Ideogram4Preset?
         var lastIdeogramWidth: Int?
         var lastIdeogramHeight: Int?
         var lastIdeogramQuantize: Int?
+        /// Settings → Models → Ideogram's default preset. Its size and precision
+        /// are in `modelDefaults`, as every family's are.
+        var ideogram4Preset: Ideogram4Preset?
         var ideogram4LowRam: Bool?
         var ideogram4StrictValidation: Bool?
         var ideogram4CfgEnd: Double?
@@ -130,9 +138,9 @@ class AppSettings {
             defaultLoras: [LoraEntry],
             mlxCacheLimitGB: Double, hfHome: String, mfluxCacheDir: String,
             hfOffline: Bool, logFontSize: Double,
-            lastWidth: Int, lastHeight: Int,
+            lastWidth: Int?, lastHeight: Int?,
             modelDefaults: [String: ModelDefaults],
-            lastModel: FluxModelVariant, lastQuantize: Int,
+            lastModel: FluxModelVariant, lastQuantize: Int?,
             batchShortcutPreset: Int, batchShortcutCustomCount: Int,
             gemmaModelPath: String, ideogram4ModelRepoOverride: String?,
             lastIdeogramPreset: Ideogram4Preset?, lastIdeogramWidth: Int?,
@@ -262,27 +270,16 @@ class AppSettings {
         didSet { save() }
     }
 
-    var lastPrompt: String = "" {
+    /// Every family's last-used form, for the active profile.
+    var lastForms = LastForms() {
         didSet { saveProfile() }
     }
 
-    var lastWidth: Int {
-        didSet { save() }
-    }
+    /// The old global last-used values, frozen: see ``LegacyGlobalForms``.
+    let legacyGlobalForms: LegacyGlobalForms
 
-    var lastHeight: Int {
-        didSet { save() }
-    }
-
-    var lastLoras: [LoraEntry] = [] {
-        didSet { saveProfile() }
-    }
-
+    /// The picked model. Global, so switching profile doesn't change it.
     var lastModel: FluxModelVariant {
-        didSet { save() }
-    }
-
-    var lastQuantize: Int {
         didSet { save() }
     }
 
@@ -332,37 +329,9 @@ class AppSettings {
         }
     }
 
-    var lastIdeogramPreset: Ideogram4Preset? {
+    /// Settings → Models → Ideogram's default preset.
+    var ideogram4Preset: Ideogram4Preset {
         didSet { save() }
-    }
-
-    var lastIdeogramWidth: Int? {
-        didSet { save() }
-    }
-
-    var lastIdeogramHeight: Int? {
-        didSet { save() }
-    }
-
-    var lastIdeogramQuantize: Int? {
-        didSet { save() }
-    }
-
-    var lastIdeogramCaption: IdeogramCaption? {
-        didSet { saveProfile() }
-    }
-
-    var lastIdeogramPlainPrompt: String? {
-        didSet { saveProfile() }
-    }
-
-    var lastIdeogramUsePlainPrompt: Bool? {
-        didSet { saveProfile() }
-    }
-
-    /// Last Ideogram 4 seed (-1 = random), restored on next launch.
-    var lastIdeogramSeed: Int? {
-        didSet { saveProfile() }
     }
 
     /// Repo ID or path last entered for the picker's `Custom…` entry. Persisted
@@ -375,11 +344,6 @@ class AppSettings {
     /// Which known model that custom checkpoint was last loaded as.
     var lastCustomBaseModel: FluxModelVariant {
         didSet { save() }
-    }
-
-    /// Last-used Krea 2 form, restored on next launch.
-    var lastKrea2: Krea2FormState? {
-        didSet { saveProfile() }
     }
 
     // MARK: - ComfyUI remote inference backend
@@ -413,16 +377,6 @@ class AppSettings {
     var activeComfyURL: String? {
         let url = comfyURL.trimmed()
         return url.isEmpty || !comfyBackendEnabled.values.contains(true) ? nil : url
-    }
-
-    /// Last-used Z-Image form, restored on next launch.
-    var lastZImage: ZImageFormState? {
-        didSet { saveProfile() }
-    }
-
-    /// Last-used Qwen-Image 2.1 form, restored on next launch.
-    var lastQwen21: Qwen21FormState? {
-        didSet { saveProfile() }
     }
 
     // MARK: - SeedVR2 upscale defaults
@@ -641,8 +595,12 @@ class AppSettings {
         return caches.appendingPathComponent("mflux")
     }
 
-    init() {
-        let s = Self.loadStored()
+    convenience init() {
+        self.init(stored: Self.loadStored())
+    }
+
+    /// Settings from `s`, the decoded settings.json. Tests pass their own.
+    init(stored s: Stored) {
         let model = s.defaultModel ?? .flux2Klein9B
 
         customPythonPath = Self.customPython(migrating: s); customPythonMigrationUnsaved = s.customPython == nil && s.mfluxBinaryDir != nil
@@ -657,23 +615,26 @@ class AppSettings {
         KeychainHelper.migrateLegacyItemsOnce()
         hfToken = KeychainHelper.get("hf_token")
         logFontSize = s.logFontSize ?? 12.0
-        lastWidth = s.lastWidth ?? 1024
-        lastHeight = s.lastHeight ?? 1024
-        modelDefaults = s.modelDefaults ?? [:]
-        let lastM = s.lastModel ?? s.defaultModel ?? .flux2Klein9B
-        lastModel = lastM
-        lastQuantize = s.lastQuantize
-            ?? (s.modelDefaults?[lastM.rawValue]?.quantize ?? lastM.recommendedQuantize)
+        let legacy = LegacyGlobalForms(
+            fluxWidth: s.lastWidth, fluxHeight: s.lastHeight, fluxQuantize: s.lastQuantize,
+            ideogramPreset: s.lastIdeogramPreset, ideogramWidth: s.lastIdeogramWidth,
+            ideogramHeight: s.lastIdeogramHeight, ideogramQuantize: s.lastIdeogramQuantize
+        )
+        legacyGlobalForms = legacy
+        var defaults = s.modelDefaults ?? [:]
+        // Ideogram's Settings → Models defaults start from the values that form edited until now.
+        if defaults[FluxModelVariant.ideogram4.rawValue] == nil, let seeded = legacy.ideogramDefaults {
+            defaults[FluxModelVariant.ideogram4.rawValue] = seeded
+        }
+        modelDefaults = defaults
+        lastModel = s.lastModel ?? s.defaultModel ?? .flux2Klein9B
         batchShortcutPreset = s.batchShortcutPreset ?? 3
         batchShortcutCustomCount = (s.batchShortcutCustomCount ?? 25).clamped(to: Self.batchShortcutCustomRange)
         targetMegapixels = DimensionConstraints.clampMegapixels(s.targetMegapixels ?? 1.0)
         rapidTargetMegapixels = DimensionConstraints.clampMegapixels(s.rapidTargetMegapixels ?? 0.25)
         gemmaModelPath = s.gemmaModelPath ?? "mlx-community/gemma-3-12b-it-4bit"
         ideogram4ModelRepoOverride = s.ideogram4ModelRepoOverride
-        lastIdeogramPreset = s.lastIdeogramPreset
-        lastIdeogramWidth = s.lastIdeogramWidth
-        lastIdeogramHeight = s.lastIdeogramHeight
-        lastIdeogramQuantize = s.lastIdeogramQuantize
+        ideogram4Preset = s.ideogram4Preset ?? s.lastIdeogramPreset ?? .normal
         lastCustomModelRepo = s.lastCustomModelRepo ?? ""
         lastCustomBaseModel = s.lastCustomBaseModel ?? .flux2Klein9B
         comfyURL = s.comfyURL ?? ""
@@ -888,7 +849,8 @@ class AppSettings {
         }
     }
 
-    private func saveNow() {
+    /// settings.json's contents as of now, frozen legacy keys included.
+    func storedSnapshot() -> Stored {
         var s = Stored(
             defaultModel: defaultModel,
             defaultWidth: defaultWidth, defaultHeight: defaultHeight,
@@ -896,21 +858,22 @@ class AppSettings {
             mlxCacheLimitGB: mlxCacheLimitGB, hfHome: hfHome,
             mfluxCacheDir: mfluxCacheDir, hfOffline: hfOffline,
             logFontSize: logFontSize,
-            lastWidth: lastWidth, lastHeight: lastHeight,
+            lastWidth: legacyGlobalForms.fluxWidth, lastHeight: legacyGlobalForms.fluxHeight,
             modelDefaults: modelDefaults,
-            lastModel: lastModel, lastQuantize: lastQuantize,
+            lastModel: lastModel, lastQuantize: legacyGlobalForms.fluxQuantize,
             batchShortcutPreset: batchShortcutPreset,
             batchShortcutCustomCount: batchShortcutCustomCount,
             gemmaModelPath: gemmaModelPath,
             ideogram4ModelRepoOverride: ideogram4ModelRepoOverride,
-            lastIdeogramPreset: lastIdeogramPreset,
-            lastIdeogramWidth: lastIdeogramWidth,
-            lastIdeogramHeight: lastIdeogramHeight,
-            lastIdeogramQuantize: lastIdeogramQuantize
+            lastIdeogramPreset: legacyGlobalForms.ideogramPreset,
+            lastIdeogramWidth: legacyGlobalForms.ideogramWidth,
+            lastIdeogramHeight: legacyGlobalForms.ideogramHeight,
+            lastIdeogramQuantize: legacyGlobalForms.ideogramQuantize
         )
         s.customPython = customPythonPath
         s.targetMegapixels = targetMegapixels
         s.rapidTargetMegapixels = rapidTargetMegapixels
+        s.ideogram4Preset = ideogram4Preset
         s.ideogram4LowRam = ideogram4LowRam
         s.ideogram4StrictValidation = ideogram4StrictValidation
         s.ideogram4CfgEnd = ideogram4CfgEnd
@@ -937,6 +900,11 @@ class AppSettings {
         s.llmTemperature = llmTemperature
         s.openAITopP = openAITopP
         s.openAITopK = openAITopK
+        return s
+    }
+
+    private func saveNow() {
+        let s = storedSnapshot()
         do {
             try FileManager.default.createDirectory(at: Self.appSupportURL, withIntermediateDirectories: true)
             let enc = JSONEncoder()

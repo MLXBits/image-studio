@@ -146,8 +146,8 @@ struct ContentView: View {
         .frame(maxHeight: .infinity)
     }
 
-    /// Routes the precision picker to the active family's quantize, persisting
-    /// the Ideogram choice. A custom checkpoint's is its target family's, which
+    /// Routes the precision picker to the active family's quantize, saving
+    /// Ideogram's to its last-used form at once. A custom checkpoint's is its target family's, which
     /// its jobs read.
     private var unifiedQuantize: Binding<Int> {
         Binding(
@@ -155,7 +155,7 @@ struct ContentView: View {
             set: { v in
                 forms.active?.quantize = v
                 if params.modelFamily == .ideogram4 {
-                    settings.lastIdeogramQuantize = v
+                    settings.lastForms.ideogram4.quantize = v
                 }
             }
         )
@@ -945,7 +945,7 @@ struct ContentView: View {
             // back to defaults only when none were saved. Wiping straight to
             // defaults here dropped the remembered stack the moment the user
             // re-selected Krea 2 in the picker.
-            let saved = settings.lastKrea2?.loras ?? []
+            let saved = settings.lastForms.krea2?.loras ?? []
             krea2Params.loras = saved.isEmpty
                 ? loraLibrary.defaultLoras(for: .krea2)
                 : saved
@@ -956,14 +956,14 @@ struct ContentView: View {
             // — swaps step/guidance defaults only when untouched — and restore the
             // last-used LoRAs, falling back to defaults when none were saved.
             zimageParams.adoptVariant(m, settings: settings)
-            let saved = settings.lastZImage?.loras ?? []
+            let saved = settings.lastForms.zimage?.loras ?? []
             zimageParams.loras = saved.isEmpty
                 ? loraLibrary.defaultLoras(for: .zimage)
                 : saved
             return true
         }
         if m.isQwen21 {
-            let saved = settings.lastQwen21?.loras ?? []
+            let saved = settings.lastForms.qwen21?.loras ?? []
             qwen21Params.loras = saved.isEmpty ? loraLibrary.defaultLoras(for: .qwen21) : saved
             return true
         }

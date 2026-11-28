@@ -34,7 +34,7 @@ extension ModelDefaultsView {
         )
         Section("Generation") {
             LabeledContent("Default Preset") {
-                Picker("", selection: settingsBinding(\.lastIdeogramPreset, default: .normal)) {
+                Picker("", selection: settingsBinding(\.ideogram4Preset)) {
                     ForEach(Ideogram4Preset.allCases, id: \.self) { preset in
                         Text(preset.labelWithSteps).tag(preset)
                     }
@@ -45,7 +45,7 @@ extension ModelDefaultsView {
             }
 
             LabeledContent("Quantization") {
-                Picker("", selection: settingsBinding(\.lastIdeogramQuantize, default: 8)) {
+                Picker("", selection: ideogramDefault(\.quantize, default: 8)) {
                     Text("BF16").tag(0)
                     Text("Q8").tag(8)
                     Text("Q4").tag(4)
@@ -98,8 +98,8 @@ extension ModelDefaultsView {
 
     private func ideogramCanvasSection() -> some View {
         Section {
-            DimensionSliderRow(label: "Width", value: settingsBinding(\.lastIdeogramWidth, default: 1024))
-            DimensionSliderRow(label: "Height", value: settingsBinding(\.lastIdeogramHeight, default: 1024))
+            DimensionSliderRow(label: "Width", value: ideogramDefault(\.width, default: 1024))
+            DimensionSliderRow(label: "Height", value: ideogramDefault(\.height, default: 1024))
         } header: {
             Text("Canvas")
         } footer: {
@@ -118,11 +118,25 @@ extension ModelDefaultsView {
         }
     }
 
+    /// A binding to one of Ideogram's Settings → Models defaults, `defaultValue` when unset.
+    private func ideogramDefault(_ field: WritableKeyPath<ModelDefaults, Int?>, default defaultValue: Int) -> Binding<Int> {
+        Binding(
+            get: { settings.defaults(for: .ideogram4)[keyPath: field] ?? defaultValue },
+            set: { value in
+                var defaults = settings.defaults(for: .ideogram4)
+                defaults[keyPath: field] = value
+                settings.updateDefaults(defaults, for: .ideogram4)
+            }
+        )
+    }
+
     private func resetIdeogramDefaults() {
-        settings.lastIdeogramPreset = nil
-        settings.lastIdeogramQuantize = nil
-        settings.lastIdeogramWidth = nil
-        settings.lastIdeogramHeight = nil
+        settings.ideogram4Preset = .normal
+        var defaults = settings.defaults(for: .ideogram4)
+        defaults.quantize = nil
+        defaults.width = nil
+        defaults.height = nil
+        settings.updateDefaults(defaults, for: .ideogram4)
         settings.ideogram4ModelRepoOverride = nil
         settings.ideogram4LowRam = false
         settings.ideogram4StrictValidation = false

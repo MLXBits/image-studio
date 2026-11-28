@@ -426,9 +426,9 @@ struct IdeogramCaptionEditorView: View {
     /// Mirrors the prompt-state writes the generate handler performs, so the
     /// restored-on-launch values match what the user last had on screen.
     private func persistPromptState() {
-        settings.lastIdeogramCaption = caption
-        settings.lastIdeogramPlainPrompt = plainPrompt
-        settings.lastIdeogramUsePlainPrompt = usePlainPrompt
+        settings.lastForms.ideogram4.caption = caption
+        settings.lastForms.ideogram4.plainPrompt = plainPrompt
+        settings.lastForms.ideogram4.usePlainPrompt = usePlainPrompt
     }
 
     private func startGenerate() {

@@ -50,7 +50,7 @@ final class Qwen21ParamsPanelState {
     /// Restores the last-used form, else the Settings → Models defaults.
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         let d = settings.resolvedDefaults(for: Self.model)
-        let s = settings.lastQwen21 ?? Qwen21FormState()
+        let s = settings.lastForms.qwen21 ?? Qwen21FormState()
         prompt = s.prompt ?? ""
         isEditMode = s.isEditMode ?? false
         editImagePaths = s.editImagePaths ?? []

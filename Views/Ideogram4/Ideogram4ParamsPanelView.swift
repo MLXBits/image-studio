@@ -184,7 +184,7 @@ struct Ideogram4ParamsPanelView: View {
                     .accessibilityHint("Use -1 for random")
                     // Persist on edit, not just on generate, so a pasted seed survives
                     // a restart even if the user never hits Generate.
-                    .onChange(of: params.seed) { _, v in settings.lastIdeogramSeed = v }
+                    .onChange(of: params.seed) { _, v in settings.lastForms.ideogram4.seed = v }
                 Button {
                     params.seed = Int.random(in: 0 ..< 1_000_000_000)
                 } label: {

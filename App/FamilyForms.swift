@@ -52,6 +52,17 @@ struct FamilyForms {
         }
     }
 
+    /// Every family's form as the profile saves it.
+    func snapshot() -> LastForms {
+        var saved = LastForms()
+        saved.flux = flux.snapshot()
+        saved.ideogram4 = ideogram4.snapshot()
+        saved.krea2 = krea2.snapshot()
+        saved.zimage = zimage.snapshot()
+        saved.qwen21 = qwen21.snapshot()
+        return saved
+    }
+
     /// Follows a LoRA-library edit from `old` to `updated`. Flux keeps its own
     /// stack, with moved paths and new defaults carried in; every other family
     /// takes the library's defaults for it.

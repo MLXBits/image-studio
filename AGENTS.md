@@ -155,7 +155,12 @@ Adding Z-Image touched 24 files. In dependency order:
    `FamilyStoredJob` conformance with its `historyFileName` (a test pins every
    name: it is on disk). The generic store brings `ProfileScopedJobStore` and
    `GenerationJobStore`, which `FamilyQueue<Spec>` (`Runner/FamilyQueue.swift`) needs.
-6. `Stores/AppSettings.swift` — persisted per-family defaults.
+6. `Stores/AppSettings.swift` — persisted per-family defaults (Settings → Models,
+   global). The last-used form is per profile: a `<Family>FormState` field in
+   `LastForms` (`Stores/LastForms.swift`; its key is on disk), the params state's
+   `snapshot()` and its line in `FamilyForms.snapshot()`, its restore from
+   `settings.lastForms.<family>` in `applyDefaults`, its save in its
+   `GenerateAction` generate, and its saved LoRAs in `ContentView.adoptFamilyForm`.
 7. `Views/<Family>/` — params panel and panel state.
 8. `Views/Settings/ModelDefaultsView+<Family>Form.swift`, then register it in
    `ModelDefaultsView.swift`.
