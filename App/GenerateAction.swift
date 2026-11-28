@@ -74,8 +74,8 @@ struct GenerateAction {
 
     private func generateFlux(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
         // A scenario batch brings its own prompts, so an empty prompt field is fine.
-        guard scenarioPrompts?.isEmpty == false || !forms.flux.prompt.trimmingCharacters(in: .whitespaces).isEmpty,
-              !forms.flux.isEditMode || !forms.flux.editImagePaths.isEmpty else { return nil }
+        let hasReferences = !forms.flux.isEditMode || !forms.flux.editImagePaths.isEmpty
+        guard forms.flux.canGenerate || (scenarioPrompts?.isEmpty == false && hasReferences) else { return nil }
         if scenarioPrompts == nil {
             // Skip for scenario batches: N rolled prompts would swamp the history,
             // and each image's sidecar already records the prompt it used.
@@ -89,7 +89,7 @@ struct GenerateAction {
         settings.lastQuantize = forms.flux.quantize
         // Low RAM lives in Settings -> Models; read it now so a toggle applies to
         // this run instead of only after a relaunch.
-        forms.flux.applyMemoryDefaults(from: settings)
+        forms.flux.applyMemoryDefaults(settings: settings)
         let constraints: DimensionConstraints = forms.flux.model.isFlux ? .flux2 : .legacy
         let jobs = PromptFanOut.jobs(prompt: forms.flux.prompt, scenarioPrompts: scenarioPrompts, count: count) {
             forms.flux.templatedPrompts(templates: settings.activeTemplates, overriding: $0)

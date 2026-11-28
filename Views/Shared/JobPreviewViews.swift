@@ -136,6 +136,8 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
     var logTitle = "Generation Log"
 
     @State private var image: NSImage?
+    /// `sidecarOf(job)`, read once per output: an upscale's comes from its file.
+    @State private var sidecar: AnySidecar?
     @State private var showingLog: Bool = false
 
     var body: some View {
@@ -170,8 +172,8 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
                 onUpscale: withOutput(onUpscale)
             )
         }
-        .onAppear { loadImage() }
-        .onChange(of: job.outputPath) { _, _ in loadImage() }
+        .onAppear { load() }
+        .onChange(of: job.outputPath) { _, _ in load() }
         .sheet(isPresented: $showingLog) { logSheet }
     }
 
@@ -220,7 +222,7 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
 
     /// A `mode` replay of this job's settings, when it has some to replay.
     private func replay(_ mode: ReplayMode) -> (() -> Void)? {
-        guard let onReplay, let sidecar = sidecarOf(job) else { return nil }
+        guard let onReplay, let sidecar else { return nil }
         return { onReplay(sidecar, mode) }
     }
 
@@ -230,7 +232,8 @@ struct JobCompletedPreviewView<Job: GeneratedJob>: View {
         return { action(path) }
     }
 
-    private func loadImage() {
+    private func load() {
+        sidecar = sidecarOf(job)
         guard let path = job.outputPath else { return }
         Task.detached(priority: .userInitiated) {
             let img = NSImage(contentsOfFile: path)

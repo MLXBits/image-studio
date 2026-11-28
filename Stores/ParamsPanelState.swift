@@ -35,7 +35,13 @@ final class ParamsPanelState {
     /// whatever family it is loaded as, so its target — not `custom` itself —
     /// picks the runner, panel and queue.
     var modelFamily: ModelFamily {
-        model == .custom ? customBaseModel.family : model.family
+        loadsAs.family
+    }
+
+    /// The variant this selection runs as: a custom checkpoint's target, else the
+    /// picked model. The runner decides FLUX 3's rules (no img2img, no PiD) by it.
+    var loadsAs: FluxModelVariant {
+        model == .custom ? customBaseModel : model
     }
 
     /// The custom repo/path, trimmed, or "" when this isn't a custom selection.
@@ -44,8 +50,27 @@ final class ParamsPanelState {
         model == .custom ? customModelRepo.trimmingCharacters(in: .whitespaces) : ""
     }
 
+    /// Whether the job sends the negative prompt, as the runner decides it.
+    var sendsNegativePrompt: Bool {
+        model.sendsNegativePrompt(loadsAs: loadsAs)
+    }
+
+    /// Whether the Guidance control applies: not on a distilled pick, nor on a
+    /// target the runner sends no guidance to (a custom FLUX 3).
+    var takesGuidance: Bool {
+        !model.isDistilled && loadsAs.supportsGuidance
+    }
+
     var canGenerate: Bool {
         !prompt.trimmingCharacters(in: .whitespaces).isEmpty && (!isEditMode || !editImagePaths.isEmpty)
+    }
+
+    /// Clears the img2img image when the form runs as FLUX 3, which has no img2img:
+    /// the panel hides it there, and the gallery would keep it locked.
+    func dropUnusableImg2ImgSource() {
+        if loadsAs.isFlux3 {
+            imagePath = ""
+        }
     }
 
     func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
@@ -86,7 +111,7 @@ final class ParamsPanelState {
     /// Settings edit lands on this run rather than only on the next launch. It is read
     /// at launch and on a model change, and nowhere else, so a mid-session toggle was
     /// silently ignored for the rest of the session.
-    func applyMemoryDefaults(from settings: AppSettings) {
+    func applyMemoryDefaults(settings: AppSettings) {
         lowRam = settings.resolvedDefaults(for: model).lowRam
     }
 
@@ -133,6 +158,8 @@ final class ParamsPanelState {
         pidDecode = meta.pidDecode ?? false
         pidDegradeSigma = meta.pidDegradeSigma ?? 0.0
         seed = newSeed ? -1 : meta.seed
+        // A sidecar from before the panel hid it can record an image FLUX 3 can't use.
+        dropUnusableImg2ImgSource()
     }
 
     /// Prompt + negative with the active templates chained on, before
@@ -152,7 +179,7 @@ final class ParamsPanelState {
             let applied = template.apply(
                 to: finalPrompt,
                 negativePrompt: finalNegative,
-                supportsNegativePrompt: model.supportsNegativePrompt
+                supportsNegativePrompt: sendsNegativePrompt
             )
             finalPrompt = applied.positive
             finalNegative = applied.negative

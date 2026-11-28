@@ -21,6 +21,18 @@ struct FamilyForms {
         form(for: flux.modelFamily)
     }
 
+    /// Every image a form holds as an img2img source or an edit reference. The
+    /// gallery refuses to delete these. Qwen keeps its references in Generate
+    /// mode, but only Edit mode uses them.
+    var lockedSourcePaths: Set<String> {
+        var paths = Set([flux.imagePath, krea2.imagePath, zimage.imagePath].filter { !$0.isEmpty })
+        paths.formUnion(flux.editImagePaths)
+        if qwen21.isEditMode {
+            paths.formUnion(qwen21.editImagePaths)
+        }
+        return paths
+    }
+
     /// `family`'s form, or nil for SeedVR2, which is never picked.
     func form(for family: ModelFamily) -> (any FamilyParamsForm)? {
         switch family {
@@ -37,6 +49,19 @@ struct FamilyForms {
     func clearFixedSeeds() {
         for form in all {
             form.seed = -1
+        }
+    }
+
+    /// Follows a LoRA-library edit from `old` to `updated`. Flux keeps its own
+    /// stack, with moved paths and new defaults carried in; every other family
+    /// takes the library's defaults for it.
+    func followLibraryDefaults(from old: [LoraEntry], to updated: [LoraEntry]) {
+        let followed = LoraLibraryStore.followingDefaults(flux.loras, from: old, to: updated)
+        if followed != flux.loras {
+            flux.loras = followed
+        }
+        for family in ModelFamily.generative where family != .flux {
+            form(for: family)?.loras = updated.filter { $0.modelFamily == family }
         }
     }
 }
