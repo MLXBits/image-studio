@@ -171,36 +171,15 @@ struct ContentView: View {
     }
 
     /// Routes the precision picker to the active family's quantize, persisting
-    /// the Ideogram choice. Mirrors the binding ParamsPanelView used to own.
+    /// the Ideogram choice. A custom checkpoint's is its target family's, which
+    /// its jobs read.
     private var unifiedQuantize: Binding<Int> {
         Binding(
-            get: {
-                if params.model.isIdeogram4 {
-                    return ideogramParams.quantize
-                }
-                if params.model.isKrea2 {
-                    return krea2Params.quantize
-                }
-                if params.model.isZImage {
-                    return zimageParams.quantize
-                }
-                if params.model.isQwen21 {
-                    return qwen21Params.quantize
-                }
-                return params.quantize
-            },
+            get: { forms.active?.quantize ?? params.quantize },
             set: { v in
-                if params.model.isIdeogram4 {
-                    ideogramParams.quantize = v
+                forms.active?.quantize = v
+                if params.modelFamily == .ideogram4 {
                     settings.lastIdeogramQuantize = v
-                } else if params.model.isKrea2 {
-                    krea2Params.quantize = v
-                } else if params.model.isZImage {
-                    zimageParams.quantize = v
-                } else if params.model.isQwen21 {
-                    qwen21Params.quantize = v
-                } else {
-                    params.quantize = v
                 }
             }
         )
@@ -411,11 +390,9 @@ struct ContentView: View {
                 // down so the next genuine user switch isn't swallowed.
                 let launchModel = params.model
                 suppressedModelObservers = settings.lastModel != params.model ? [.model] : []
-                params.applyDefaults(from: settings, library: loraLibrary)
-                ideogramParams.applyDefaults(settings: settings, library: loraLibrary)
-                krea2Params.applyDefaults(settings: settings, library: loraLibrary)
-                zimageParams.applyDefaults(settings: settings, library: loraLibrary)
-                qwen21Params.applyDefaults(settings: settings, library: loraLibrary)
+                for form in forms.all {
+                    form.applyDefaults(settings: settings, library: loraLibrary)
+                }
                 try? IdeogramPromptConfig.seedIfNeeded()
                 try? ScenarioPromptConfig.seedIfNeeded()
                 try? ScenarioExamplePrompts.seedIfNeeded()
@@ -776,21 +753,7 @@ struct ContentView: View {
     // MARK: - Top control bar
 
     private var canGenerate: Bool {
-        switch params.modelFamily {
-        case .flux:
-            !params.prompt.trimmingCharacters(in: .whitespaces).isEmpty
-                && (!params.isEditMode || !params.editImagePaths.isEmpty)
-        case .ideogram4:
-            ideogramParams.isReadyToGenerate(settings: settings)
-        case .krea2:
-            krea2Params.isReadyToGenerate(settings: settings)
-        case .zimage:
-            zimageParams.isReadyToGenerate(settings: settings)
-        case .qwen21:
-            qwen21Params.canGenerate
-        case .seedvr2:
-            false // upscaler — never the picker-selected family
-        }
+        forms.active?.canGenerate ?? false
     }
 
     private var topControlBar: some View {
@@ -809,15 +772,7 @@ struct ContentView: View {
                     .disabled(!canGenerate)
                     // Batch button: auto-generates N random seeds into one warm job.
                     // Shown for whichever family has a random (-1) seed selected.
-                    let seedIsRandom = switch params.modelFamily {
-                    case .flux: params.seed == -1
-                    case .ideogram4: ideogramParams.seed == -1
-                    case .krea2: krea2Params.seed == -1
-                    case .zimage: zimageParams.seed == -1
-                    case .qwen21: qwen21Params.seed == -1
-                    case .seedvr2: false
-                    }
-                    if seedIsRandom {
+                    if forms.active?.seed == -1 {
                         Rectangle()
                             .fill(.white.opacity(0.35))
                             .frame(width: 1, height: 16)
@@ -868,18 +823,11 @@ struct ContentView: View {
 
     /// Whether the active model family has a fixed (non-random) seed set.
     private var seedIsFixed: Bool {
-        switch params.modelFamily {
-        case .flux: params.seed != -1
-        case .ideogram4: ideogramParams.seed != -1
-        case .krea2: krea2Params.seed != -1
-        case .zimage: zimageParams.seed != -1
-        case .qwen21: qwen21Params.seed != -1
-        case .seedvr2: false
-        }
+        forms.active.map { $0.seed != -1 } ?? false
     }
 
     /// Pill shown next to the queue counter when a fixed seed is set; its ✕
-    /// clears the seed for both Flux and Ideogram back to random.
+    /// sets every family's seed back to random.
     @ViewBuilder
     private var fixedSeedPill: some View {
         if seedIsFixed {
@@ -887,11 +835,7 @@ struct ContentView: View {
                 Image(systemName: "lock.fill").font(.caption2)
                 Text("Fixed Seed").font(.caption)
                 Button {
-                    params.seed = -1
-                    ideogramParams.seed = -1
-                    krea2Params.seed = -1
-                    zimageParams.seed = -1
-                    qwen21Params.seed = -1
+                    forms.clearFixedSeeds()
                 } label: {
                     Image(systemName: "xmark.circle.fill").font(.caption2)
                 }
@@ -1019,14 +963,7 @@ struct ContentView: View {
 
     /// Puts a new group's name on the active family's board.
     private func setActiveBoard(_ name: String) {
-        switch params.modelFamily {
-        case .flux: params.board = name
-        case .ideogram4: ideogramParams.board = name
-        case .krea2: krea2Params.board = name
-        case .zimage: zimageParams.board = name
-        case .qwen21: qwen21Params.board = name
-        case .seedvr2: break
-        }
+        forms.active?.board = name
     }
 
     /// Aligns the non-Flux params form to `m` — Ideogram/Krea 2/Z-Image LoRAs and,

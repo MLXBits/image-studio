@@ -222,8 +222,4 @@ final class ZImageParamsPanelState {
         job.applyBatchSeeds(count: count, typed: batchSeeds)
         return job
     }
-
-    func isReadyToGenerate(settings _: AppSettings) -> Bool {
-        canGenerate
-    }
 }

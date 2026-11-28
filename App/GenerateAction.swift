@@ -104,7 +104,7 @@ struct GenerateAction {
     }
 
     private func generateIdeogram4(count: Int) -> PreviewState? {
-        guard forms.ideogram4.isReadyToGenerate(settings: settings) else { return nil }
+        guard forms.ideogram4.canGenerate else { return nil }
         // Remember the picker selection across sessions — `custom` must survive
         // as itself, not be flattened to the family it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : .ideogram4
@@ -125,7 +125,7 @@ struct GenerateAction {
     }
 
     private func generateKrea2(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
-        guard forms.krea2.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
+        guard forms.krea2.canGenerate || scenarioPrompts?.isEmpty == false else { return nil }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the family it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : .krea2
@@ -151,7 +151,7 @@ struct GenerateAction {
     }
 
     private func generateZImage(count: Int, scenarioPrompts: [String]?) -> PreviewState? {
-        guard forms.zimage.isReadyToGenerate(settings: settings) || scenarioPrompts?.isEmpty == false else { return nil }
+        guard forms.zimage.canGenerate || scenarioPrompts?.isEmpty == false else { return nil }
         // Remember the picker selection across sessions — `custom` must survive as
         // itself, not be flattened to the variant it happens to load as.
         settings.lastModel = forms.flux.model == .custom ? .custom : forms.zimage.variant

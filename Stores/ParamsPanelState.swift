@@ -44,7 +44,11 @@ final class ParamsPanelState {
         model == .custom ? customModelRepo.trimmingCharacters(in: .whitespaces) : ""
     }
 
-    func applyDefaults(from settings: AppSettings, library: LoraLibraryStore) {
+    var canGenerate: Bool {
+        !prompt.trimmingCharacters(in: .whitespaces).isEmpty && (!isEditMode || !editImagePaths.isEmpty)
+    }
+
+    func applyDefaults(settings: AppSettings, library: LoraLibraryStore) {
         let m = settings.lastModel
         let d = settings.resolvedDefaults(for: m)
         model = m

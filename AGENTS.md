@@ -163,11 +163,13 @@ Adding Z-Image touched 24 files. In dependency order:
    run order: the hand-off, Stop, retry, the gallery's landing handler, profile
    switches, the dock badge and job-finish reporting all loop over that list, so
    `App/FamilyQueues.swift` and `App/MLXBitsImageStudioApp.swift` need no edit),
-   `App/FamilyForms.swift` (the family's params state), `App/ContentView.swift`
-   (a `case` in `queueSheet`, plus hand-written lines the compiler does not
-   check: its accessor over `forms`, `img2imgLockedPaths`, the `ParamsPanelView`
-   init in `paramsPane`, `unifiedQuantize`, the `applyDefaults` calls in
-   `onAppear` and the LoRA-library `onChange`), `App/GenerateAction.swift` (its Generate, queued
+   `App/FamilyForms.swift` (the family's params state, its `case` in
+   `form(for:)`, its entry in `all` and its `FamilyParamsForm` conformance: the
+   seed, board, precision and readiness read the active form through it, and the
+   launch defaults loop over `all`), `App/ContentView.swift` (a `case` in `queueSheet`, plus
+   hand-written lines the compiler does not check: its accessor over `forms`,
+   `img2imgLockedPaths`, the `ParamsPanelView` init in `paramsPane` and the
+   LoRA-library `onChange`), `App/GenerateAction.swift` (its Generate, queued
    on `families.<family>`; a prompt-field family fans out through
    `PromptFanOut`), `App/ReplayAction.swift` (its `case`: Remix and Apply
    Settings from every surface go through it), `Views/ParamsPanel/ModelPickerView.swift`,

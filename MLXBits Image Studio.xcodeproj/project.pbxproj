@@ -106,6 +106,7 @@
 		3461F0A77AE564C88AA9B423 /* IconButtonStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 53F160B133D562A1B4415BEF /* IconButtonStyle.swift */; };
 		3498856F6B39D9B78EA1B08E /* GemmaChatRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45EB6A26F997E4EB0AF2B374 /* GemmaChatRunner.swift */; };
 		37BE4E1B66924E36C2AEE610 /* Krea2LowRamTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9891790D9EF1DABA4FB5E739 /* Krea2LowRamTests.swift */; };
+		385DBB5EE8F63148DF22E8DC /* FamilyFormsTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63A285B757E4B5AE0AE0162B /* FamilyFormsTests.swift */; };
 		3990D357A4FEA083CD53B224 /* ModelDefaultsView+Rows.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72E4D8EFC1BACB33C690D6C2 /* ModelDefaultsView+Rows.swift */; };
 		39FB05E51886E08ECB5A2CDA /* ZImageJobRunner.swift in Sources */ = {isa = PBXBuildFile; fileRef = E2A742DE26429AC83DE8D166 /* ZImageJobRunner.swift */; };
 		3AF0A186931B9DD5DE124DAE /* ComfySeedVR2WorkflowTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDEE759E1BCCC5C90FFF5675 /* ComfySeedVR2WorkflowTests.swift */; };
@@ -561,6 +562,7 @@
 		620C7773AFC771C44901D728 /* MfluxProbes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MfluxProbes.swift; sourceTree = "<group>"; };
 		628CEB3E5A2C743C5B5BD0F0 /* GalleryCullingXattrTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GalleryCullingXattrTests.swift; sourceTree = "<group>"; };
 		62C50312EB5DFD6269A2059F /* ProfileMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProfileMenu.swift; sourceTree = "<group>"; };
+		63A285B757E4B5AE0AE0162B /* FamilyFormsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FamilyFormsTests.swift; sourceTree = "<group>"; };
 		643242A3C81BC94AA1B5A99C /* BBoxEditorView+Canvas.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "BBoxEditorView+Canvas.swift"; sourceTree = "<group>"; };
 		6437DEBC10CE1B2500484CE5 /* BatchSeedsTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BatchSeedsTests.swift; sourceTree = "<group>"; };
 		645A8CB0BA8C5A879965FB21 /* ModelInventoryTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ModelInventoryTests.swift; sourceTree = "<group>"; };
@@ -1003,6 +1005,7 @@
 				E7580270CB7EC83880600A3C /* DriverOutputStreamTests.swift */,
 				78205811D764018C1AB46A7F /* EditImageListAppendTests.swift */,
 				5301BE9ED763A494AEF4DC79 /* FailureSummaryTests.swift */,
+				63A285B757E4B5AE0AE0162B /* FamilyFormsTests.swift */,
 				48D73A6950DF8A18BAC27F52 /* FamilyQueuesTests.swift */,
 				CD4A62E3BB9F77972A93DDB8 /* FamilyRegistryTests.swift */,
 				677AC4832CBAFCAD6E03D18B /* FileAccessTests.swift */,
@@ -1847,6 +1850,7 @@
 				9AB20EB3D5591227E0DD0750 /* FailureSummaryTests.swift in Sources */,
 				E45815F48DD8453664C50FDF /* FakeRuntime.swift in Sources */,
 				C4F70EBD570871B1CA6F97B2 /* FakeTipStorefront.swift in Sources */,
+				385DBB5EE8F63148DF22E8DC /* FamilyFormsTests.swift in Sources */,
 				5F71D22AB7F37A8607F32C0C /* FamilyQueuesTests.swift in Sources */,
 				44BC2CCA37BE42B430A2EC42 /* FamilyRegistryTests.swift in Sources */,
 				1E7D6CEC7993F46F061FA29E /* FileAccessTests.swift in Sources */,
