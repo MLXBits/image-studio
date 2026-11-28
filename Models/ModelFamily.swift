@@ -1,6 +1,6 @@
 import Foundation
 
-enum ModelFamily: String, CaseIterable, Codable {
+nonisolated enum ModelFamily: String, CaseIterable, Codable {
     case flux = "FLUX.2"
     case ideogram4 = "Ideogram 4"
     case krea2 = "Krea 2"
@@ -24,5 +24,45 @@ enum ModelFamily: String, CaseIterable, Codable {
     /// checkpoint store is keyed by this so the settings UI and the runner agree.
     var id: String {
         rawValue.replacingOccurrences(of: " ", with: "").lowercased()
+    }
+}
+
+nonisolated extension ModelFamily {
+    /// The file-name prefix the gallery files this family's images by, lowercased.
+    /// Flux's outputs ("image_…") have none: a name no family claims is Flux's.
+    /// Looser than the runners' `outputPrefix` on purpose: "ideogram" also matches
+    /// files saved before Ideogram 4 wrote "ideogram4_".
+    var galleryFilePrefix: String? {
+        switch self {
+        case .flux: nil
+        case .ideogram4: "ideogram"
+        case .krea2: "krea2"
+        case .zimage: "zimage"
+        case .qwen21: "qwen21"
+        case .seedvr2: "seedvr2"
+        }
+    }
+
+    /// The picker family a lowercased gallery file name says, else Flux. An
+    /// upscale's family is its source's (``GalleryItem/modelFamily``), not this.
+    init(galleryFileName name: String) {
+        let claimed = Self.allCases.first { family in
+            family != .seedvr2 && family.galleryFilePrefix.map { name.hasPrefix($0) } == true
+        }
+        self = claimed ?? .flux
+    }
+}
+
+nonisolated extension SidecarFamily {
+    /// The family that wrote a sidecar tagged with this.
+    var modelFamily: ModelFamily {
+        switch self {
+        case .flux: .flux
+        case .ideogram4: .ideogram4
+        case .krea2: .krea2
+        case .zimage: .zimage
+        case .qwen21: .qwen21
+        case .seedvr2: .seedvr2
+        }
     }
 }

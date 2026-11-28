@@ -13,12 +13,9 @@ struct GalleryItem: Identifiable, Equatable {
     let modifiedAt: Date
     var thumbnailData: Data?
     var thumbnailImage: NSImage? // decoded from thumbnailData; not persisted
-    var metadata: GenerationMetadata?
-    var ideogram4Metadata: Ideogram4Metadata?
-    var krea2Metadata: Krea2Metadata?
-    var zimageMetadata: ZImageMetadata?
-    var qwen21Metadata: Qwen21Metadata?
-    var seedVR2Metadata: SeedVR2Metadata?
+    /// The image's own sidecar, of whichever family wrote it. Nil when it has
+    /// none, or one no family decodes.
+    var sidecar: AnySidecar?
     /// Lightroom-style cull verdict, persisted as an xattr on the file (see ``GalleryCulling``).
     var flag: PickFlag?
     /// 0–5 star rating, persisted as an xattr on the file.
@@ -39,85 +36,26 @@ struct GalleryItem: Identifiable, Equatable {
     }
 
     /// Which model family produced this image, used to filter the gallery to the
-    /// currently selected model. Ideogram outputs are named with an "ideogram"
-    /// prefix (e.g. `ideogram4_…`); everything else is treated as Flux. A SeedVR2
-    /// upscale (`seedvr2_…`) isn't a picker family, so it inherits its *source*
-    /// image's family (from the sidecar) — the upscale then sits in the same
-    /// filtered view and board as the image it was made from.
+    /// picked model: the family its file name says (``ModelFamily/galleryFilePrefix``),
+    /// else Flux. A SeedVR2 upscale isn't a picker family, so it takes its source's
+    /// family, and sits in the same filtered view and board as the image it was made from.
     nonisolated var modelFamily: ModelFamily {
         let name = filename.lowercased()
-        if name.hasPrefix("ideogram") {
-            return .ideogram4
+        guard let upscalePrefix = ModelFamily.seedvr2.galleryFilePrefix, name.hasPrefix(upscalePrefix) else {
+            return ModelFamily(galleryFileName: name)
         }
-        if name.hasPrefix("krea2") {
-            return .krea2
+        // Prefer the source the sidecar carries: definitive, and right even for an
+        // upscale of an upscale, whose source file is itself "seedvr2_…".
+        guard case let .seedVR2(upscale) = sidecar else { return .flux }
+        if let source = AnySidecar.seedVR2(upscale).replayTarget {
+            return source.family.modelFamily
         }
-        if name.hasPrefix("zimage") {
-            return .zimage
-        }
-        if name.hasPrefix("qwen21") {
-            return .qwen21
-        }
-        if name.hasPrefix("seedvr2") {
-            // Prefer the embedded source metadata (definitive, and correct even for a
-            // chained upscale whose source filename is itself "seedvr2_…").
-            if seedVR2Metadata?.sourceIdeogram4 != nil {
-                return .ideogram4
-            }
-            if seedVR2Metadata?.sourceKrea2 != nil {
-                return .krea2
-            }
-            if seedVR2Metadata?.sourceZImage != nil {
-                return .zimage
-            }
-            if seedVR2Metadata?.sourceQwen21 != nil {
-                return .qwen21
-            }
-            if seedVR2Metadata?.sourceFlux != nil {
-                return .flux
-            }
-            // Pre-inheritance sidecar: fall back to the source filename prefix.
-            let src = ((seedVR2Metadata?.sourcePath ?? "") as NSString).lastPathComponent.lowercased()
-            if src.hasPrefix("ideogram") {
-                return .ideogram4
-            }
-            if src.hasPrefix("krea2") {
-                return .krea2
-            }
-            if src.hasPrefix("zimage") {
-                return .zimage
-            }
-            // Upscales don't carry Qwen source metadata yet; the filename keeps them in the right view.
-            if src.hasPrefix("qwen21") {
-                return .qwen21
-            }
-            return .flux
-        }
-        return .flux
+        // A sidecar from before upscales carried their source: the source's file name.
+        return ModelFamily(galleryFileName: (upscale.sourcePath as NSString).lastPathComponent.lowercased())
     }
 }
 
 extension GalleryItem {
-    /// The image's own sidecar, of whichever family wrote it.
-    var sidecar: AnySidecar? {
-        if let metadata {
-            return .flux(metadata)
-        }
-        if let ideogram4Metadata {
-            return .ideogram4(ideogram4Metadata)
-        }
-        if let krea2Metadata {
-            return .krea2(krea2Metadata)
-        }
-        if let zimageMetadata {
-            return .zimage(zimageMetadata)
-        }
-        if let qwen21Metadata {
-            return .qwen21(qwen21Metadata)
-        }
-        return seedVR2Metadata.map(AnySidecar.seedVR2)
-    }
-
     /// What Remix and Apply Settings load for this image, filed under the board
     /// the image is in now: the sidecar may predate boards, or name one the image
     /// was moved out of.
@@ -335,37 +273,14 @@ nonisolated private func scanDirectory(
         let board = components.count > 1 ? String(components[0]) : "Default"
 
         let prior = existing[url.path]
-        let fluxMeta: GenerationMetadata?
-        let ideogramMeta: Ideogram4Metadata?
-        let krea2Meta: Krea2Metadata?
-        let zimageMeta: ZImageMetadata?
-        let qwen21Meta: Qwen21Metadata?
-        let seedVR2Meta: SeedVR2Metadata?
-        let priorHasMetadata = prior?.metadata != nil
-            || prior?.ideogram4Metadata != nil
-            || prior?.krea2Metadata != nil
-            || prior?.zimageMetadata != nil
-            || prior?.qwen21Metadata != nil
-            || prior?.seedVR2Metadata != nil
-        if let prior, prior.modifiedAt == modDate, priorHasMetadata {
+        let sidecar: AnySidecar? = if let prior, prior.modifiedAt == modDate, prior.sidecar != nil {
             // Unchanged file already carrying sidecar metadata: skip the JSON re-read.
             // Rescans fire after every completed image, so this is the hot path.
-            fluxMeta = prior.metadata
-            ideogramMeta = prior.ideogram4Metadata
-            krea2Meta = prior.krea2Metadata
-            zimageMeta = prior.zimageMetadata
-            qwen21Meta = prior.qwen21Metadata
-            seedVR2Meta = prior.seedVR2Metadata
+            prior.sidecar
         } else {
             // New or changed file — or one whose sidecar hadn't landed yet when last
             // scanned (batch sidecars are written just after the PNG), so retry the read.
-            let sidecars = GallerySidecars.read(forImageAt: url.path)
-            fluxMeta = sidecars.flux
-            ideogramMeta = sidecars.ideogram4
-            krea2Meta = sidecars.krea2
-            zimageMeta = sidecars.zimage
-            qwen21Meta = sidecars.qwen21
-            seedVR2Meta = sidecars.seedVR2
+            AnySidecar.read(forImageAt: url.path)
         }
         // Flags/ratings live in xattrs and never change the file's mtime, so the
         // mtime-based skip above can't be used for them — read them fresh each scan.
@@ -374,21 +289,11 @@ nonisolated private func scanDirectory(
             id: prior?.id ?? UUID(), path: url.path, board: board,
             modifiedAt: modDate, thumbnailData: prior?.thumbnailData,
             thumbnailImage: prior?.thumbnailImage,
-            metadata: fluxMeta,
-            ideogram4Metadata: ideogramMeta,
-            krea2Metadata: krea2Meta,
-            zimageMetadata: zimageMeta,
-            qwen21Metadata: qwen21Meta,
-            seedVR2Metadata: seedVR2Meta,
+            sidecar: sidecar,
             flag: GalleryCulling.readFlag(path: url.path),
             rating: GalleryCulling.readRating(path: url.path),
             searchHaystack: GallerySearch.haystack(
-                filename: (url.path as NSString).lastPathComponent,
-                flux: fluxMeta,
-                ideogram4: ideogramMeta,
-                krea2: krea2Meta,
-                zimage: zimageMeta,
-                qwen21: qwen21Meta
+                filename: (url.path as NSString).lastPathComponent, sidecar: sidecar
             )
         ))
     }

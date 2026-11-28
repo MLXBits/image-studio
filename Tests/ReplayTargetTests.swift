@@ -25,7 +25,7 @@ struct ReplayTargetTests {
     ) -> GalleryItem {
         GalleryItem(
             id: UUID(), path: "/out/image.png", board: board, modifiedAt: Date(timeIntervalSince1970: 0),
-            krea2Metadata: krea2, seedVR2Metadata: seedVR2, searchHaystack: ""
+            sidecar: krea2.map(AnySidecar.krea2) ?? seedVR2.map(AnySidecar.seedVR2), searchHaystack: ""
         )
     }
 

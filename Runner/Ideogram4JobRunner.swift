@@ -19,8 +19,6 @@ extension Ideogram4Job: @MainActor QueueListedJob {
     }
 }
 
-extension Ideogram4JobStore: @MainActor GenerationJobStore {}
-
 enum Ideogram4RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Ideogram4Job
     typealias Store = Ideogram4JobStore

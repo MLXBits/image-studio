@@ -14,8 +14,6 @@ extension Qwen21Job: @MainActor QueueListedJob {
     }
 }
 
-extension Qwen21JobStore: @MainActor GenerationJobStore {}
-
 enum Qwen21RunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = Qwen21Job
     typealias Store = Qwen21JobStore

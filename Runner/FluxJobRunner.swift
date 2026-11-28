@@ -13,8 +13,6 @@ extension FluxJob: @MainActor QueueListedJob {
     }
 }
 
-extension JobStore: @MainActor GenerationJobStore {}
-
 /// Where a job's weights come from, which decides its `--model` value and whether
 /// `--base-model` rides along. Chosen once by ``FluxRunnerSpec/modelRoute(job:settings:)`` for both
 /// ``FluxRunnerSpec/modelArgs(job:settings:python:)`` and ``FluxRunnerSpec/prepareArgs(job:settings:python:)``.

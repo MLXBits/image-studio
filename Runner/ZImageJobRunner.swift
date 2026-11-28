@@ -14,8 +14,6 @@ extension ZImageJob: @MainActor QueueListedJob {
     }
 }
 
-extension ZImageJobStore: @MainActor GenerationJobStore {}
-
 enum ZImageRunnerSpec: @MainActor JobRunnerSpec {
     typealias Job = ZImageJob
     typealias Store = ZImageJobStore

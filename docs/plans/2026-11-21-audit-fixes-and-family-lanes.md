@@ -2,7 +2,8 @@
 
 > **Status (2026-11-27):** PRs 1–6 (#128–#131, #133, #134) and PR 4a (#132) are
 > merged, and their in-app checks pass. The final sweep (PRs 7–10, settled
-> 2026-11-27) takes the "Later" items and the deferred minors. A second
+> 2026-11-27) takes the "Later" items and the deferred minors: PR 7 (#135) is
+> merged, and PR 8 is next. A second
 > architecture review ran against `43dad04`; Part 4 assesses it and orders the next
 > PRs (4–6). Its decisions were settled on 2026-11-25.
 > Before you start a PR, check its file and symbol references against the current `main`.
@@ -561,7 +562,7 @@ PRs, each with the usual checks:
 - Phase 3b runs in full, including the settings migration (a one-way door, accepted).
 - The ComfyUI items run even though the poll path has not changed since the review.
 
-### PR 7: Leftovers
+### PR 7: Leftovers (merged, #135)
 
 - [x] `ParamsPanelState.loadsAs`: a custom checkpoint's target, else the picked
       model. The Flux panel decides FLUX 3's rules by it, as the runner does, so a
@@ -593,7 +594,7 @@ PRs, each with the usual checks:
       loads as Flux and for Z-Image base. A mutant confirmed each one.
 - [x] AGENTS.md step 9: the ContentView part is now a `queueSheet` case and an
       optional accessor.
-- [ ] In-app: a custom checkpoint that loads as FLUX 3 shows "No img2img for FLUX 3"
+- [x] In-app (2026-11-27): a custom checkpoint that loads as FLUX 3 shows "No img2img for FLUX 3"
       under Image Input, and no PiD toggle, negative prompt or Guidance. On FLUX.2,
       drop an img2img image, then pick that custom checkpoint: the image is cleared. A gallery image dropped into Krea 2's
       img2img can't be deleted until it's cleared. Edit a default LoRA in the
@@ -602,13 +603,51 @@ PRs, each with the usual checks:
 
 ### PR 8: Descriptor registry, Phase 3a (C6)
 
-- [ ] `FamilyDescriptor`, and the gallery, metadata, constraint and sidecar switches
-      moved onto it. It builds on PR 5's registry. See Part 3.
-- [ ] The generic `FamilyJobStore<Job>` for the five identical stores. SeedVR2
-      keeps its own.
+- [x] The generic `FamilyJobStore<Job: FamilyStoredJob>` replaces the five
+      identical store classes. Each family's store name is a typealias, and each job
+      names its `historyFileName`. A test pins every file name, because renaming one
+      loses that family's queue. SeedVR2 keeps its own store.
+- [x] `GalleryItem` holds one `sidecar: AnySidecar?`, not six metadata fields.
+      `GallerySidecars` is gone. The scan, the search haystack, the metadata panel
+      (`ImageMetadataInfo(galleryItem:)`), the detail view's Adjust Boxes and the
+      grid's Flux-only gradient each read it.
+- [x] `GalleryItem.modelFamily` comes from two facts:
+      - `ModelFamily.galleryFilePrefix`, and `init(galleryFileName:)` from it.
+      - For an upscale, the source in its sidecar (`replayTarget`), else its source
+        file's name.
+
+      `AnySidecar.family` and `SidecarFamily.modelFamily` link the two enums.
+- [x] `ImageMetadataInfo.elapsed(from:to:)` replaces eight copies of the Time row's
+      formatting. The rewritten Ideogram init had matched the others' tail and
+      raised jscpd. Tested in `ImageMetadataInfoTests`.
+- [x] Tests: `GalleryItemFamilyTests` (each prefix, including the old "ideogram_";
+      an upscale of each family's image; an old upscale's source file; no prefix
+      that starts with another's) and the history file names in `FamilyRegistryTests`. A mutant confirmed each one. The gallery
+      tests now build items from one sidecar.
+- [x] AGENTS.md: the naming table, recipe steps 5 and 10, and the conformance
+      example.
+- [ ] In-app: in each family, the gallery shows that family's images and their
+      upscales, search finds an image by prompt and by LoRA name, and the metadata
+      panel and Adjust Boxes (Ideogram) work. Queue history survives a relaunch in
+      every family.
+
+Rulings:
+
+- No `FamilyDescriptor` protocol in PR 8. Earlier PRs already removed most of the
+  switches Part 3 counted. The facts that remain (a gallery prefix, a sidecar's
+  family) are exhaustive switches on `ModelFamily` and `AnySidecar`. The compiler
+  flags every one of them when a family is added, and Part 3's own trade-off says a
+  protocol cannot. The descriptor comes in PR 9, where the params panels and
+  settings forms need a per-family factory.
+- The gallery's prefixes stay apart from the runners' `outputPrefix`. "ideogram"
+  must still match files from before "ideogram4_", and Flux's "image" prefix is
+  not what makes an image Flux's: any name no family claims is.
 
 ### PR 9: Phase 3b (C4b, C4c, C8)
 
+- [ ] `FamilyDescriptor`, the per-family factory PR 8 deferred to here (see its
+      rulings): the params panel, the settings form and the settings snapshot.
+      Move the `DimensionConstraints` family switch onto it if it fits.
 - [ ] The shared form core for Krea 2 and Z-Image, and the settings forms' ComfyUI
       pickers.
 - [ ] Params panels and settings forms built through the descriptor.
